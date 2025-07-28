@@ -1,0 +1,24 @@
+{
+	"FileVersion": 3,
+	"Version": 1,
+	"VersionName": "1.0",
+	"FriendlyName": "UnrealGridMechanics",
+	"Description": "2D Grid System",
+	"Category": "Other",
+	"CreatedBy": "Robert A. Fowlie",
+	"CreatedByURL": "",
+	"DocsURL": "",
+	"MarketplaceURL": "",
+	"SupportURL": "",
+	"CanContainContent": true,
+	"IsBetaVersion": false,
+	"IsExperimentalVersion": false,
+	"Installed": false,
+	"Modules": [
+		{
+			"Name": "UnrealGridMechanics",
+			"Type": "Runtime",
+			"LoadingPhase": "Default"
+		}
+	]
+}
