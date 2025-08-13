@@ -76,12 +76,18 @@ public:
 	UFUNCTION(BlueprintCallable)
 	static void MakeObjectScoreArray(TArray<FObjectScore>& OutObjectScores, const TMap<UObject*, float>& ScoreMap);
 
-	// selectors
+# pragma region selectors
+	// Given a map of object scores, sort then select randomly from the top N scores
 	UFUNCTION(BlueprintCallable, Category = "Scoring | Selectors")
 	static UObject* ScoreSelect_TopN(const TMap<UObject*, float>& ScoreMap, const int32 N);
 
-	// modifiers
+# pragma endregion
+
+# pragma region modifiers
+	// return object scores adjusted uniquely by a random value between min and max
 	UFUNCTION(BlueprintCallable, Category = "Scoring | Modifiers")
 	static TMap<UObject*, float> ScoreModify_RandomNoise(const TMap<UObject*, float>& ScoreMap, float Min, float Max);
 
+# pragma endregion
+	
 };
