@@ -2,10 +2,18 @@
 
 
 #include "Utility/AI_UtilityGameActionController.h"
-#include "Utility/AI_UtilityGameActionHandler.h"
+#include "Utility/AI_UtilityGameActionEvaluator.h"
+#include "Utility/AI_UtilityStructs.h"
 
 
-void UAI_UtilityGameActionController::GetAllEvaluatedActions(TArray<FGameActionEvaluated>& OutEvaluatedActions)
+FGameActionEvaluated UAI_UtilityGameActionController::PickNextAction()
+{
+	TArray<FGameActionEvaluated> EvaluatedActions;
+	GetEvaluatedActions(EvaluatedActions);
+	return SelectEvaluatedAction(EvaluatedActions);
+}
+
+void UAI_UtilityGameActionController::GetEvaluatedActions(TArray<FGameActionEvaluated>& OutEvaluatedActions)
 {
 	// Gather actions from each evaluator
 	for (auto* Handler : GameActionHandlers)
@@ -19,23 +27,21 @@ void UAI_UtilityGameActionController::GetAllEvaluatedActions(TArray<FGameActionE
 	}
 }
 
-void UAI_UtilityGameActionController::GetEvaluatedActions(
-	TArray<FGameActionEvaluated>& OutEvaluatedActions,
-	TSubclassOf<UAI_UtilityGameActionHandler> HandlerClass)
-{
-	for (auto* Handler : GameActionHandlers)
-	{
-		if (Handler->IsA(HandlerClass))
-		{
-			Handler->GetEvaluatedActions(OutEvaluatedActions);
-		}
-	}
-}
+// void UAI_UtilityGameActionController::GetEvaluatedActionsByClass(
+// 	TArray<FGameActionEvaluated>& OutEvaluatedActions,
+// 	TSubclassOf<UAI_UtilityGameActionEvaluator> HandlerClass)
+// {
+// 	for (auto* Handler : GameActionHandlers)
+// 	{
+// 		if (Handler->IsA(HandlerClass))
+// 		{
+// 			Handler->GetEvaluatedActions(OutEvaluatedActions);
+// 		}
+// 	}
+// }
 
-void UAI_UtilityGameActionController::Execute()
+FGameActionEvaluated UAI_UtilityGameActionController::SelectEvaluatedAction(
+	const TArray<FGameActionEvaluated>& InEvaluatedActions)
 {
-	TArray<FGameActionEvaluated> EvaluatedActions;
-	GetAllEvaluatedActions(EvaluatedActions);
-	const FGameActionEvaluated Action = SelectEvaluatedAction(EvaluatedActions);
-	Action.Execute();
+	return FGameActionEvaluated();
 }
