@@ -11,6 +11,7 @@ public class ConnectIt : ModuleRules
 		PublicDependencyModuleNames.AddRange(new string[]
 		{
 			"Core", "CoreUObject", "Engine", "InputCore", "EnhancedInput",
+			"GameplayTags", "GameplayTasks", "GameplayAbilities",
 			"UnrealGameMechanics",
 			"UnrealGridMechanics"
 		});
