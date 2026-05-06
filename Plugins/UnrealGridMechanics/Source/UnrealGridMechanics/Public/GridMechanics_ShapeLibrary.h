@@ -18,6 +18,13 @@ enum EGridDirection
 	Diagonal_BottomUp
 };
 
+// Encapsulate direction as a pair — cleaner than two loose multipliers
+struct FGridDirectionVector
+{
+	int32 Row = 0;
+	int32 Column = 0;
+};
+
 USTRUCT(BlueprintType)
 struct FShapeConfiguration
 {
@@ -45,6 +52,31 @@ class UNREALGRIDMECHANICS_API UGridMechanics_ShapeLibrary : public UBlueprintFun
 	GENERATED_BODY()
 
 public:
+	static FGridDirectionVector GetDirectionVector(EGridDirection GridDirection);
+	
+	static void GetLongestLine2(
+		TArray<FGridPosition>& OutGridPositions,
+		const TSet<FGridPosition>& InGridPositions,
+		const FGridPosition& StartingPosition,
+		const EGridDirection GridDirection);
+
+	// find every line of x length given starting position and set of positions
+	// NOTE: that this does not distinguish between position ownership
+	static void GetLongestLines(
+		TArray<TArray<FGridPosition>>& OutLines,
+		const TSet<FGridPosition>& InGridPositions,
+		const FGridPosition& StartingPosition,
+		const int32 MinimumLength);
+
+	static void GetLinesOfLength(
+		TArray<TArray<FGridPosition>>& OutLines,
+		const TSet<FGridPosition>& InGridPositions,
+		const EGridDirection GridDirection,
+		const int32 RequiredLength,
+		const bool bExactLength);
+
+
+	// DEPRECATED
 	UFUNCTION(BlueprintCallable)
 	static void GetLongestLine(
 		TArray<FGridPosition>& OutGridPositions, const TArray<FGridPosition>& InGridPositions,
