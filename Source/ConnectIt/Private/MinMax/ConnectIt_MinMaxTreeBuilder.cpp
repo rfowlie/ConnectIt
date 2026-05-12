@@ -7,27 +7,6 @@
 
 void UConnectItTreeBuilder::BuildTreeAsync(const FConnectItMinMaxNodeExposed& InRootNode, int32 MaxDepth)
 {
-	// UE::Tasks::Launch(
-	// 	UE_SOURCE_LOCATION,
-	// 	[this, InRootNode, MaxDepth]() mutable
-	// 	{
-	// 		// Block until tree is built then solve on the same background thread
-	// 		// FConnectItMinMaxNode BuiltRoot = BuildTreeAsync(RootNode, MaxDepth).GetResult();
-	// 		FConnectItMinMaxNode BuiltNode = BuildNodeRecursive<FConnectItMinMaxNode>(
-	// 			InRootNode,
-	// 			0,
-	// 			MaxDepth);
-	//
-	// 		// Marshal back to game thread — only safe place to touch UProperties
-	// 		AsyncTask(ENamedThreads::GameThread, [this, BuiltNode]()
-	// 		{
-	// 			RootNode = BuiltNode;
-	// 			if (OnBuildTreeComplete.IsBound()) { OnBuildTreeComplete.Broadcast(); }
-	// 		});
-	// 	},
-	// 	UE::Tasks::ETaskPriority::BackgroundNormal
-	// );
-
 	// convert exposed node to C++ node
 	FConnectItMinMaxNode StartNode;
 	StartNode.Tiles = InRootNode.Tiles;
@@ -43,20 +22,17 @@ void UConnectItTreeBuilder::BuildTreeAsync(const FConnectItMinMaxNodeExposed& In
 		{
 			if (!WeakThis.IsValid()) return;
 
-			FConnectItMinMaxNode BuiltNode = BuildNodeRecursive<FConnectItMinMaxNode>(
+			FConnectItMinMaxNode BuiltNode = BuildNodeRecursiveWithThreadDepth<FConnectItMinMaxNode>(
 				StartNode,
 				0,
 				MaxDepth,
+				0,
 				[WeakThis](const FConnectItMinMaxNode& Node) -> bool
 				{
 					if (!WeakThis.IsValid()) return false;
 					return WeakThis->IsGameOver(Node);
 				}
 			);
-
-			UE_LOG(LogTemp, Error,
-				TEXT("BuildTreeAsync: BuiltNode has %d children before marshal"),
-				BuiltNode.GetChildren().Num());
 
 			// Shared pointer to transfer ownership safely across the lambda boundary
 			TSharedPtr<FConnectItMinMaxNode> SharedNode =
@@ -65,17 +41,7 @@ void UConnectItTreeBuilder::BuildTreeAsync(const FConnectItMinMaxNodeExposed& In
 			AsyncTask(ENamedThreads::GameThread, [WeakThis, SharedNode]() mutable
 			{
 				if (!WeakThis.IsValid()) return;
-
-				UE_LOG(LogTemp, Error,
-					TEXT("BuildTreeAsync: SharedNode has %d children on game thread"),
-					SharedNode->GetChildren().Num());
-
 				WeakThis->RootNode = MoveTemp(*SharedNode);
-
-				UE_LOG(LogTemp, Error,
-					TEXT("BuildTreeAsync: RootNode has %d children after assignment"),
-					WeakThis->RootNode.GetChildren().Num());
-
 				if (WeakThis->OnBuildTreeComplete.IsBound())
 				{
 					WeakThis->OnBuildTreeComplete.Broadcast();
@@ -96,14 +62,12 @@ void UConnectItTreeBuilder::SolveTreeAsync(bool bIsMaximisingPlayer) const
         [WeakThis, bIsMaximisingPlayer]() mutable
         {
             if (!WeakThis.IsValid()) return;
-
         	TArray<FConnectItMoveOutcome> MoveOutcomes;
 	        
             {
                 FScopeLock Lock(&WeakThis->RootNodeMutex);
 
                 if (!WeakThis.IsValid()) return;
-
                 for (const FConnectItMinMaxNode& Child : WeakThis->RootNode.GetChildren())
                 {
                     const int32 Score = MinMaxABPruningAlgorithm::Solve<FConnectItMinMaxNode>(
@@ -133,12 +97,8 @@ void UConnectItTreeBuilder::SolveTreeAsync(bool bIsMaximisingPlayer) const
             AsyncTask(ENamedThreads::GameThread, [WeakThis, MoveOutcomes]() mutable
             {
             	if (!WeakThis.IsValid()) return;
-
 				WeakThis->RootNodeMoveOutcomes = MoveTemp(MoveOutcomes);
-				if (WeakThis->OnSolveTreeComplete.IsBound())
-				{
-					WeakThis->OnSolveTreeComplete.Broadcast();
-				}
+				if (WeakThis->OnSolveTreeComplete.IsBound()) { WeakThis->OnSolveTreeComplete.Broadcast(); }
             });
         },
         UE::Tasks::ETaskPriority::BackgroundNormal
