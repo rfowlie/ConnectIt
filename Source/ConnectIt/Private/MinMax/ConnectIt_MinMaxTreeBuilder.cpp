@@ -2,10 +2,12 @@
 
 
 #include "MinMax/ConnectIt_MinMaxTreeBuilder.h"
+
+#include "ConnectIt_GameRulesLibrary.h"
 #include "MinMax/MinMaxABPruning.h"
 
 
-void UConnectItTreeBuilder::BuildTreeAsync(const FConnectItMinMaxNodeExposed& InRootNode, int32 MaxDepth)
+void UConnectItTreeBuilder::BuildTreeAsync(const FConnectItMinMaxNodeStruct& InRootNode, int32 MaxDepth)
 {
 	// convert exposed node to C++ node
 	FConnectItMinMaxNode StartNode;
@@ -63,11 +65,14 @@ void UConnectItTreeBuilder::SolveTreeAsync(bool bIsMaximisingPlayer) const
         {
             if (!WeakThis.IsValid()) return;
         	TArray<FConnectItMoveOutcome> MoveOutcomes;
+        	MoveOutcomes.Reserve(WeakThis->RootNode.GetChildren().Num());
 	        
             {
                 FScopeLock Lock(&WeakThis->RootNodeMutex);
-
                 if (!WeakThis.IsValid()) return;
+
+            	// instead of just running on root and getting one result
+            	// run on each child of root list of evaluated child nodes
                 for (const FConnectItMinMaxNode& Child : WeakThis->RootNode.GetChildren())
                 {
                     const int32 Score = MinMaxABPruningAlgorithm::Solve<FConnectItMinMaxNode>(
@@ -110,7 +115,7 @@ bool UConnectItTreeBuilder::IsGameOver(const FConnectItMinMaxNode& InNode) const
 {
 	return InNode.ScoreBoard.ContainsByPredicate([](const float& Score)
 	{
-		return Score >= Connect_It_Score_Max;
+		return Score >= UConnectIt_GameRulesLibrary::ConnectIt_Score_Max;
 	});
 }
 
@@ -121,14 +126,14 @@ int32 UConnectItTreeBuilder::Evaluate(const FConnectItMinMaxNode& InNode) const
 	// check for winning score and send
 	for (int32 Index = 0; Index < InNode.ScoreBoard.Num(); Index++)
 	{
-		if (InNode.ScoreBoard[Index] >= Connect_It_Score_Max)
+		if (InNode.ScoreBoard[Index] >= UConnectIt_GameRulesLibrary::ConnectIt_Score_Max)
 		{
 			if (Index == InNode.FactionTurn)
 			{
-				return Connect_It_Score_Max;
+				return UConnectIt_GameRulesLibrary::ConnectIt_Score_Max;
 			}
 
-			return -Connect_It_Score_Max;
+			return -UConnectIt_GameRulesLibrary::ConnectIt_Score_Max;
 		}		
 	}
 
@@ -146,6 +151,6 @@ int32 UConnectItTreeBuilder::Evaluate(const FConnectItMinMaxNode& InNode) const
 	int32 OutScore = (InNode.ScoreBoard[InNode.FactionTurn] - RootNode.ScoreBoard[InNode.FactionTurn]) + NumberOfPieces;
 
 	// clamp so not to give perfect score
-	return FMath::Clamp(OutScore, 0, Connect_It_Score_Max - 1);
+	return FMath::Clamp(OutScore, 0, UConnectIt_GameRulesLibrary::ConnectIt_Score_Max - 1);
 
 }

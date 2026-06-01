@@ -30,7 +30,7 @@ struct FConnectItTileRepresentation
  * Blueprint facing version of FConnectItMinMaxNode
  */
 USTRUCT(BlueprintType)
-struct FConnectItMinMaxNodeExposed
+struct FConnectItMinMaxNodeStruct
 {
 	GENERATED_BODY()
 
@@ -59,13 +59,11 @@ struct FConnectItMinMaxNode
 	FConnectItMinMaxNode& operator=(const FConnectItMinMaxNode&) = default;
 	
 	TMap<FGridPosition, FConnectItTileRepresentation> Tiles;
-	
+	FGridPosition MovePlayed;
 	TArray<float> ScoreBoard;
 	
-	// The faction whose turn was played, zero meaning none
-	int32 FactionTurn = 0;
-	
-	FGridPosition MovePlayed;
+	// The faction whose turn was played
+	int32 FactionTurn = 0;	
 
 	// const is required to satisfy the CMinMaxNode concept
 	const TArray<FConnectItMinMaxNode>& GetChildren() const
@@ -179,7 +177,6 @@ class CONNECTIT_API UConnectItTreeBuilder : public UObject
     GENERATED_BODY()
     
 public:
-    static constexpr int32 Connect_It_Score_Max = 100;
     
     UPROPERTY(BlueprintAssignable)
     FOnTreeBuilt OnBuildTreeComplete;
@@ -188,7 +185,7 @@ public:
     FOnTreeBuilt OnSolveTreeComplete;
 
     UFUNCTION(BlueprintCallable)
-    void BuildTreeAsync(const FConnectItMinMaxNodeExposed& InRootNode, int32 MaxDepth);
+    void BuildTreeAsync(const FConnectItMinMaxNodeStruct& InRootNode, int32 MaxDepth);
     UFUNCTION(BlueprintCallable)
     void SolveTreeAsync(bool bIsMaximisingPlayer) const;
 
