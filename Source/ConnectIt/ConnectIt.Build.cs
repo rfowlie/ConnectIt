@@ -10,12 +10,23 @@ public class ConnectIt : ModuleRules
 	
 		PublicDependencyModuleNames.AddRange(new string[]
 		{
-			"Core", "CoreUObject", "Engine", "InputCore", "EnhancedInput",
+			"Core", 
+			"CoreUObject", 
+			"Engine", 
+			"InputCore", 
+			"EnhancedInput",
+			"GameplayTags", 
+			"GameplayTasks", 
+			"GameplayAbilities",
 			"UnrealGameMechanics",
-			"UnrealGridMechanics"
+			"UnrealGridMechanics", 
+			"UnrealGameIntelligence"
 		});
 
-		PrivateDependencyModuleNames.AddRange(new string[] {  });
+		PrivateDependencyModuleNames.AddRange(new string[]
+		{
+			"UnrealGameIntelligence"
+		});
 
 		// Uncomment if you are using Slate UI
 		// PrivateDependencyModuleNames.AddRange(new string[] { "Slate", "SlateCore" });
