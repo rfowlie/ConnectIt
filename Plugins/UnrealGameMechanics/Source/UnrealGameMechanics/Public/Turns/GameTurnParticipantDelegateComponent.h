@@ -23,4 +23,10 @@ public:
 	
 	UPROPERTY(BlueprintAssignable, BlueprintCallable)
 	FTurnParticipantDelegate OnTurnComplete;
+
+	UPROPERTY(BlueprintAssignable, BlueprintCallable)
+	FTurnParticipantDelegate OnTurnPause;
+	
+	UPROPERTY(BlueprintAssignable, BlueprintCallable)
+	FTurnParticipantDelegate OnTurnResume;
 };
