@@ -268,3 +268,205 @@ static TNode EvaluateNodeRecursive(
 	Node.SetScore(BestScore);
 	return Node;
 }
+
+
+/*
+ * template class for game implementation
+ */
+namespace MinMax
+{
+	/*
+	 * C++ will allow us to inherit from UObject and this class to work effectively with game logic
+	 */
+	template<typename TNode>
+	requires c_min_max_node_2<TNode>
+	class TMinMaxManager
+	{
+		public:
+
+			virtual ~TMinMaxManager() = default;
+
+			// -- Tree Queries --------------------------------------------------------
+
+			int32 CountNodes(const TNode& Node) const
+			{
+				const TArray<TNode>& Children = Node.GetChildren();
+				if (Children.IsEmpty()) { return 1; }
+
+				int32 Count = 1;
+				for (const TNode& Child : Children)
+				{
+					Count += CountNodes(Child);
+				}
+				return Count;
+			}
+
+			int32 GetDeepestDepth(const TNode& Node, const int32 CurrentDepth = 0) const
+			{
+				const TArray<TNode>& Children = Node.GetChildren();
+				if (Children.IsEmpty()) { return CurrentDepth; }
+
+				int32 MaxDepth = CurrentDepth;
+				for (const TNode& Child : Children)
+				{
+					MaxDepth = FMath::Max(MaxDepth, GetDeepestDepth(Child, CurrentDepth + 1));
+				}
+				return MaxDepth;
+			}
+
+			// -- Accessors -----------------------------------------------------------
+
+			const TNode& GetRootNode() const { return RootNode; }
+			bool         HasTree()     const { return !RootNode.GetChildren().IsEmpty(); }
+
+			// -- Core Interface (implement in subclass) ------------------------------
+
+			virtual void BuildTreeAsync(int32 MaxDepth)                                  = 0;
+			virtual void EvaluateTreeAsync(bool bIsMaximising)                           = 0;
+			virtual void BuildAndEvaluateTreeAsync(int32 MaxDepth, bool bIsMaximising)   = 0;
+
+		protected:
+
+			mutable TNode RootNode;
+	};
+
+} // namespace MinMax
+
+
+// template<typename TNode>
+// requires c_min_max_node_2<TNode>
+// class TMinMaxManagerBase
+// {
+// public:
+//
+//     // -- Delegate Injection --------------------------------------------------
+//     // Concrete subclass sets these before calling build/evaluate
+//
+//     TFunction<bool(const TNode&)>           IsGameOverDelegate;
+//     TFunction<TArray<TNode>(const TNode&)>  BuildChildrenDelegate;
+//     TFunction<float(const TNode&)>          MoveOrdererDelegate;
+//     TFunction<float(const TNode&)>          EvaluatorDelegate;
+//
+//     // -- Core API ------------------------------------------------------------
+//
+//     void BuildTreeAsync(TNode InRootNode, int32 MaxDepth)
+//     {
+//         checkf(IsGameOverDelegate,    TEXT("BuildTreeAsync: IsGameOverDelegate not set"));
+//         checkf(BuildChildrenDelegate, TEXT("BuildTreeAsync: BuildChildrenDelegate not set"));
+//         checkf(MoveOrdererDelegate,   TEXT("BuildTreeAsync: MoveOrdererDelegate not set"));
+//
+//         TWeakObjectPtr<TMinMaxManagerBase> WeakThis(this);
+//
+//         // Capture delegates by value so they are safe across thread boundary
+//         auto IsGameOver    = IsGameOverDelegate;
+//         auto BuildChildren = BuildChildrenDelegate;
+//         auto MoveOrderer   = MoveOrdererDelegate;
+//
+//         UE::Tasks::Launch(
+//             UE_SOURCE_LOCATION,
+//             [WeakThis, InRootNode, MaxDepth, IsGameOver, BuildChildren, MoveOrderer]() mutable
+//             {
+//                 if (!WeakThis.IsValid()) return;
+//
+//                 TNode BuiltNode = BuildNodeRecursive<TNode>(
+//                     InRootNode,
+//                     0,
+//                     MaxDepth,
+//                     [&IsGameOver](const TNode& Node) -> bool
+//                     {
+//                         return IsGameOver(Node);
+//                     },
+//                     [&BuildChildren](const TNode& Node) -> TArray<TNode>
+//                     {
+//                         return BuildChildren(Node);
+//                     },
+//                     [&MoveOrderer](const TNode& Node) -> float
+//                     {
+//                         return MoveOrderer(Node);
+//                     }
+//                 );
+//
+//                 TSharedPtr<TNode> SharedNode = MakeShared<TNode>(MoveTemp(BuiltNode));
+//
+//                 AsyncTask(ENamedThreads::GameThread, [WeakThis, SharedNode]() mutable
+//                 {
+//                     if (!WeakThis.IsValid()) return;
+//                     WeakThis->Manager.SetRootNode(MoveTemp(*SharedNode));
+//                     if (WeakThis->OnTreeBuilt.IsBound()) { WeakThis->OnTreeBuilt.Broadcast(); }
+//                 });
+//             },
+//             UE::Tasks::ETaskPriority::BackgroundNormal
+//         );
+//     }
+//
+//     void EvaluateTreeAsync(bool bIsMaximising)
+//     {
+//         checkf(EvaluatorDelegate, TEXT("EvaluateTreeAsync: EvaluatorDelegate not set"));
+//
+//         if (!Manager.HasTree())
+//         {
+//             UE_LOG(LogTemp, Error, TEXT("EvaluateTreeAsync: No tree built — call BuildTreeAsync first"));
+//             return;
+//         }
+//
+//         TWeakObjectPtr<TMinMaxManagerBase> WeakThis(this);
+//
+//         auto Evaluator = EvaluatorDelegate;
+//         TSharedPtr<TNode> SharedNode = MakeShared<TNode>(Manager.GetRootNode());
+//
+//         UE::Tasks::Launch(
+//             UE_SOURCE_LOCATION,
+//             [WeakThis, SharedNode, bIsMaximising, Evaluator]() mutable
+//             {
+//                 if (!WeakThis.IsValid()) return;
+//
+//                 TNode EvaluatedNode = EvaluateNodeRecursive<TNode>(
+//                     MoveTemp(*SharedNode),
+//                     bIsMaximising,
+//                     -FLT_MAX,
+//                     FLT_MAX,
+//                     [&Evaluator](const TNode& Node) -> float
+//                     {
+//                         return Evaluator(Node);
+//                     }
+//                 );
+//
+//                 TSharedPtr<TNode> SharedEvaluatedNode = MakeShared<TNode>(MoveTemp(EvaluatedNode));
+//
+//                 AsyncTask(ENamedThreads::GameThread, [WeakThis, SharedEvaluatedNode]() mutable
+//                 {
+//                     if (!WeakThis.IsValid()) return;
+//                     WeakThis->Manager.SetRootNode(MoveTemp(*SharedEvaluatedNode));
+//                     if (WeakThis->OnTreeEvaluated.IsBound()) { WeakThis->OnTreeEvaluated.Broadcast(); }
+//                 });
+//             },
+//             UE::Tasks::ETaskPriority::BackgroundNormal
+//         );
+//     }
+//
+//     void BuildAndEvaluateTreeAsync(TNode InRootNode, int32 MaxDepth, bool bIsMaximising)
+//     {
+//         bPendingIsMaximising = bIsMaximising;
+//         OnTreeBuilt.RemoveDynamic(this, &TMinMaxManagerBase::OnTreeBuilt_Internal);
+//         OnTreeBuilt.AddDynamic(this, &TMinMaxManagerBase::OnTreeBuilt_Internal);
+//         BuildTreeAsync(MoveTemp(InRootNode), MaxDepth);
+//     }
+//
+//     // -- Helpers -------------------------------------------------------------
+//
+//     UFUNCTION(BlueprintCallable)
+//     int32 GetNodeCount() const { return Manager.CountNodes(Manager.GetRootNode()); }
+//
+//     UFUNCTION(BlueprintCallable)
+//     int32 GetTreeDepth() const { return Manager.GetDeepestDepth(Manager.GetRootNode()); }
+//
+// protected:
+//
+//     MinMax::TMinMaxManager<TNode> Manager;
+//
+//     void OnTreeBuilt_Internal() override
+//     {
+//         OnTreeBuilt.RemoveDynamic(this, &TMinMaxManagerBase::OnTreeBuilt_Internal);
+//         EvaluateTreeAsync(bPendingIsMaximising);
+//     }
+// };

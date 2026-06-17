@@ -133,14 +133,21 @@ float ConnectIt::DefaultEvaluator(const FMinMaxNode& InNode, const FMinMaxNode& 
 	}
 
 	// return the improvement to faction turns score and give one point for piece count
-	int32 OutScore = (InNode.ScoreBoard[InNode.FactionTurn] - RootNode.ScoreBoard[InNode.FactionTurn]) + NumberOfPieces;
+	int32 OutScore = 0;
+	OutScore += (InNode.ScoreBoard[InNode.FactionTurn] - RootNode.ScoreBoard[InNode.FactionTurn]) * 2;
+	OutScore += NumberOfPieces;
 
 	// clamp so not to give perfect score
 	return FMath::Clamp(OutScore, 0, UConnectIt_GameRulesLibrary::ConnectIt_Score_Max - 1);
 }
 
-void UConnectIt_MinMaxManager::BuildTreeAsync(const FConnectItMinMaxNodeStruct& InRootNode, int32 MaxDepth)
+UConnectIt_MinMaxManager::UConnectIt_MinMaxManager()
 {
+	
+}
+
+void UConnectIt_MinMaxManager::BuildTree(const FConnectItMinMaxNodeStruct& InRootNode, int32 MaxDepth)
+{	
 	// convert exposed node to C++ node
 	ConnectIt::FMinMaxNode InitialNode = ConnectIt::ConvertNode(InRootNode);
 
@@ -185,8 +192,8 @@ void UConnectIt_MinMaxManager::BuildTreeAsync(const FConnectItMinMaxNodeStruct& 
 	);
 }
 
-void UConnectIt_MinMaxManager::EvaluateTreeAsync(bool bIsMaximising) const
-{
+void UConnectIt_MinMaxManager::EvaluateTree(const bool bIsMaximising)
+{	
 	// Guard against evaluating a non-built tree
 	if (RootNode.GetChildren().IsEmpty())
 	{
@@ -198,8 +205,7 @@ void UConnectIt_MinMaxManager::EvaluateTreeAsync(bool bIsMaximising) const
 	TWeakObjectPtr WeakThis(this);
 
 	// Snapshot the built tree into a shared pointer so the lambda owns it safely
-	TSharedPtr<ConnectIt::FMinMaxNode> SharedNode =
-		MakeShared<ConnectIt::FMinMaxNode>(RootNode);
+	TSharedPtr<ConnectIt::FMinMaxNode> SharedNode = MakeShared<ConnectIt::FMinMaxNode>(RootNode);
 
 	UE::Tasks::Launch(
 		UE_SOURCE_LOCATION,
@@ -210,7 +216,7 @@ void UConnectIt_MinMaxManager::EvaluateTreeAsync(bool bIsMaximising) const
 			ConnectIt::FMinMaxNode EvaluatedNode = EvaluateNodeRecursive<ConnectIt::FMinMaxNode>(
 				MoveTemp(*SharedNode),
 				bIsMaximising,
-				-TNumericLimits<int32>::Min(),
+				TNumericLimits<int32>::Min(),
 				TNumericLimits<int32>::Max(),
 				[SharedNode](const ConnectIt::FMinMaxNode& Node) -> float
 				{
@@ -219,8 +225,7 @@ void UConnectIt_MinMaxManager::EvaluateTreeAsync(bool bIsMaximising) const
 				}
 			);
 
-			TSharedPtr<ConnectIt::FMinMaxNode> SharedEvaluatedNode =
-				MakeShared<ConnectIt::FMinMaxNode>(MoveTemp(EvaluatedNode));
+			TSharedPtr<ConnectIt::FMinMaxNode> SharedEvaluatedNode = MakeShared<ConnectIt::FMinMaxNode>(MoveTemp(EvaluatedNode));
 
 			// Marshal result back to game thread
 			AsyncTask(ENamedThreads::GameThread, [WeakThis, SharedEvaluatedNode]() mutable
@@ -232,4 +237,38 @@ void UConnectIt_MinMaxManager::EvaluateTreeAsync(bool bIsMaximising) const
 		},
 		UE::Tasks::ETaskPriority::BackgroundNormal
 	);
+}
+
+FMoveScoreInfo UConnectIt_MinMaxManager::GetMoveScoreInfo() const
+{
+	FMoveScoreInfo Out;
+	Out.MoveScores = GetMoveScores();
+	if (Out.MoveScores.IsEmpty()) { return Out; }
+	
+	Out.MoveScores.Sort([](const FGridPositionScore& A, const FGridPositionScore& B)
+	{
+		return A.Score > B.Score;
+	});
+
+	Out.HighestScore = Out.MoveScores[0].Score;
+
+	// Best moves are everything at the front that shares the highest score
+	for (const FGridPositionScore& MoveScore : Out.MoveScores)
+	{
+		if (!FMath::IsNearlyEqual(MoveScore.Score, Out.HighestScore)) { break; }
+		Out.MovesWithHighestScore.Add(MoveScore);
+	}
+
+	return Out;
+}
+
+TArray<FGridPositionScore> UConnectIt_MinMaxManager::GetMoveScores() const
+{
+	TArray<FGridPositionScore> Out;
+	for (const auto& Node : RootNode.GetChildren())
+	{
+		Out.Add(FGridPositionScore(Node.MovePlayed, Node.GetScore()));
+	}
+	
+	return Out;
 }

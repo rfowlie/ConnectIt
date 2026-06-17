@@ -64,12 +64,6 @@ namespace ConnectIt
 		
 	};
 
-	// struct FMoveOutcome
-	// {
-	// 	FGridPosition GridPosition;
-	// 	int32 Score = 0;
-	// };
-
 	// Default functions
 	static FMinMaxNode ConvertNode(const FConnectItMinMaxNodeStruct& Node);
 	
@@ -83,17 +77,53 @@ namespace ConnectIt
 	
 }
 
+USTRUCT(BlueprintType)
+struct FGridPositionScore
+{
+	GENERATED_BODY()
+
+	FGridPositionScore() = default;
+	FGridPositionScore(const FGridPosition& InGridPosition, const float InScore) :
+		GridPosition(InGridPosition), Score(InScore) {}
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FGridPosition GridPosition;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	float Score = 0;
+		
+};
+
+USTRUCT(BlueprintType)
+struct FMoveScoreInfo
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	float HighestScore = -1.f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	TArray<FGridPositionScore> MovesWithHighestScore;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	TArray<FGridPositionScore> MoveScores;
+	
+};
+
+
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FConnectItMinMaxDelegate);
 
 /*
  * 
  */
-UCLASS()
+UCLASS(BlueprintType)
 class CONNECTIT_API UConnectIt_MinMaxManager : public UObject
 {
 	GENERATED_BODY()
 
 public:
+	UConnectIt_MinMaxManager();
+	
 	UPROPERTY(BlueprintAssignable)
 	FConnectItMinMaxDelegate OnTreeBuilt;
     
@@ -101,12 +131,21 @@ public:
 	FConnectItMinMaxDelegate OnTreeEvaluated;
 
 	UFUNCTION(BlueprintCallable)
-	void BuildTreeAsync(const FConnectItMinMaxNodeStruct& InRootNode, int32 MaxDepth);
+	void BuildTree(const FConnectItMinMaxNodeStruct& InRootNode, int32 MaxDepth);
 
 	UFUNCTION(BlueprintCallable)
-	void EvaluateTreeAsync(bool bIsMaximisingPlayer) const;
+	void EvaluateTree(const bool bIsMaximising);
+	
+	// UFUNCTION(BlueprintCallable)
+	// void BuildAndEvaluateTree(const FConnectItMinMaxNodeStruct& InRootNode, int32 MaxDepth, bool bIsMaximising);
 
+	UFUNCTION(BlueprintCallable)
+	FMoveScoreInfo GetMoveScoreInfo() const;
+	
+	UFUNCTION(BlueprintCallable)
+	TArray<FGridPositionScore> GetMoveScores() const;
+	
 protected:	
 	mutable ConnectIt::FMinMaxNode RootNode;
-
+	
 };

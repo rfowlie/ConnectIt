@@ -19,7 +19,8 @@ public class ConnectIt : ModuleRules
 			"GameplayTasks", 
 			"GameplayAbilities",
 			"UnrealGameMechanics",
-			"UnrealGridMechanics"
+			"UnrealGridMechanics", 
+			"UnrealGameIntelligence"
 		});
 
 		PrivateDependencyModuleNames.AddRange(new string[]
