@@ -16,7 +16,8 @@ class UGridTileSelector : public UInterface
 };
 
 /**
- * 
+ * Pattern: there is a task that will potentially take time
+ * Usage: bind to delegate then call function to begin calculations, unbind afterward if needed
  */
 class UNREALGRIDMECHANICS_API IGridTileSelector
 {
@@ -24,6 +25,9 @@ class UNREALGRIDMECHANICS_API IGridTileSelector
 
 	// Add interface functions to this class. This is the class that will be inherited to implement this interface.
 public:
+
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
+	void SelectGridTile();
 
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
 	UGridTileSelectorComponent* GetGridTileSelectorComponent();

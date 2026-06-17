@@ -7,8 +7,9 @@
 #include "GridMechanics_Structs.h"
 #include "GridTileSelectorComponent.generated.h"
 
+class AGridTileBase;
 
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FGridTileSelectorDelegate, FGridPosition, GridPosition);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FGridTileSelectorDelegate, AGridTileBase*, GridTile, FGridPosition, GridPosition);
 
 UCLASS(ClassGroup=(Custom), meta=(BlueprintSpawnableComponent))
 class UNREALGRIDMECHANICS_API UGridTileSelectorComponent : public UActorComponent
