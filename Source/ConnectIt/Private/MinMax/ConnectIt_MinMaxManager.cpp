@@ -3,7 +3,7 @@
 
 #include "MinMax/ConnectIt_MinMaxManager.h"
 #include "MinMax/MinMaxUtility.h"
-#include "ConnectIt_GameRulesLibrary.h"
+#include "Library/ConnectIt_GameRulesLibrary.h"
 
 
 ConnectIt::FMinMaxNode ConnectIt::ConvertNode(const FConnectItMinMaxNodeStruct& Node)

@@ -12,7 +12,7 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE(FGameStateSimpleDelegate);
 /**
  * 
  */
-UCLASS()
+UCLASS(Blueprintable, BlueprintType)
 class UNREALGAMEMECHANICS_API UGameMechanicsStateSimple : public UObject
 {
 	GENERATED_BODY()

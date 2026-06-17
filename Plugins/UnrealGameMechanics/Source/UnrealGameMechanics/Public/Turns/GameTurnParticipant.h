@@ -33,6 +33,12 @@ public:
 	void TurnComplete();
 
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category="Game Mechanics | Turn")
+	void TurnPause();
+	
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category="Game Mechanics | Turn")
+	void TurnResume();
+	
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category="Game Mechanics | Turn")
 	UGameTurnParticipantDelegateComponent* GetTurnParticipantDelegateComponent();
 	
 };

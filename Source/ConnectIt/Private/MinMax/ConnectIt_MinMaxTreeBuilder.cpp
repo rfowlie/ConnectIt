@@ -2,8 +2,7 @@
 
 
 #include "MinMax/ConnectIt_MinMaxTreeBuilder.h"
-
-#include "ConnectIt_GameRulesLibrary.h"
+#include "Library/ConnectIt_GameRulesLibrary.h"
 #include "MinMax/MinMaxABPruning.h"
 
 
