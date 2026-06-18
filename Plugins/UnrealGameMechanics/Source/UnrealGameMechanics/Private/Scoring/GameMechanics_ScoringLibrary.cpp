@@ -1,8 +1,7 @@
 ﻿// Fill out your copyright notice in the Description page of Project Settings.
 
-#include "GameMechanics_ScoringLibrary.h"
+#include "Scoring/GameMechanics_ScoringLibrary.h"
 
-#include "Kismet/KismetMathLibrary.h"
 
 void UGameMechanics_ScoringLibrary::MakeObjectScoreArray(TArray<FObjectScore>& OutObjectScores, const TMap<UObject*, float>& ScoreMap)
 {
@@ -27,8 +26,7 @@ UObject* UGameMechanics_ScoringLibrary::ScoreSelect_TopN(const TMap<UObject*, fl
 	return SortedMapKeys[FMath::RandHelper(NValue)];
 }
 
-TMap<UObject*, float> UGameMechanics_ScoringLibrary::ScoreModify_RandomNoise(const TMap<UObject*, float>& ScoreMap,
-	float Min, float Max)
+TMap<UObject*, float> UGameMechanics_ScoringLibrary::ScoreModify_RandomNoise(const TMap<UObject*, float>& ScoreMap, float Min, float Max)
 {
 	TMap<UObject*, float> ModifiedMap = ScoreMap;
 	for (auto& Pair : ModifiedMap)
