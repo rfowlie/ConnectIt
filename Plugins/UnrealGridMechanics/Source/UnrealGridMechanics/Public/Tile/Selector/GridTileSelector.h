@@ -27,7 +27,10 @@ class UNREALGRIDMECHANICS_API IGridTileSelector
 public:
 
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
-	void SelectGridTile();
+	void SelectGridTileEnter();
+	
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
+	void SelectGridTileExit();
 
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
 	UGridTileSelectorComponent* GetGridTileSelectorComponent();
