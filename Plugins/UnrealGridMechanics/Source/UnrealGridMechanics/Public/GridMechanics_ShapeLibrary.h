@@ -3,27 +3,10 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "GridMechanics_Structs.h"
 #include "Kismet/BlueprintFunctionLibrary.h"
 #include "GridMechanics_ShapeLibrary.generated.h"
 
-struct FGridPosition;
-
-
-UENUM(BlueprintType)
-enum EGridDirection
-{
-	Row,
-	Column,
-	Diagonal_TopDown,
-	Diagonal_BottomUp
-};
-
-// Encapsulate direction as a pair — cleaner than two loose multipliers
-struct FGridDirectionVector
-{
-	int32 Row = 0;
-	int32 Column = 0;
-};
 
 USTRUCT(BlueprintType)
 struct FShapeConfiguration
@@ -75,6 +58,11 @@ public:
 		const int32 RequiredLength,
 		const bool bExactLength);
 
+
+	UFUNCTION(BlueprintCallable, Category = "Gigafire|Grid|Shape")
+	static bool IsSquare(
+		const TArray<FGridPosition>& Positions,
+		TArray<FGridPosition>& OutCorners);
 
 	// DEPRECATED
 	UFUNCTION(BlueprintCallable)

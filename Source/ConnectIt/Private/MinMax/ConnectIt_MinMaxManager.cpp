@@ -2,6 +2,8 @@
 
 
 #include "MinMax/ConnectIt_MinMaxManager.h"
+
+#include "GridMechanics_GridLibrary.h"
 #include "MinMax/MinMaxUtility.h"
 #include "Library/ConnectIt_GameRulesLibrary.h"
 
@@ -77,7 +79,7 @@ bool ConnectIt::DefaultIsGameOver(const FMinMaxNode& Node)
 	return UConnectIt_GameRulesLibrary::IsGameOver(Node.ScoreBoard);
 }
 
-TArray<ConnectIt::FMinMaxNode> ConnectIt::DefaultBuildChildNodes(const FMinMaxNode& Parent)
+TArray<ConnectIt::FMinMaxNode> ConnectIt::BuildAllChildNodes(const FMinMaxNode& Parent)
 {
 	// Guard against uninitialised ScoreBoard
 	if (Parent.ScoreBoard.IsEmpty())
@@ -99,6 +101,30 @@ TArray<ConnectIt::FMinMaxNode> ConnectIt::DefaultBuildChildNodes(const FMinMaxNo
 
 	return Children;
 }
+
+TArray<ConnectIt::FMinMaxNode> ConnectIt::BuildChildNodesFromConnectionsFloodMap(
+	const FMinMaxNode& Parent, const int32 MaxChildNodes,	const TArray<TPair<int32, FGridPosition>>& ConnectionsFloodMap)
+{
+	// prevent negative numbers
+	const int32 NumChildNodes = FMath::Max(1, MaxChildNodes);
+	
+	TArray<FMinMaxNode> Children;
+	for (const auto& [Connections, GridPosition] : ConnectionsFloodMap)
+	{
+		if (Parent.Tiles.Contains(GridPosition))
+		{
+			if (Parent.Tiles[GridPosition].FactionPiece == -1)
+			{
+				FMinMaxNode Child = BuildChildNode(Parent, GridPosition);
+				Children.Add(MoveTemp(Child));
+				if (Children.Num() >= NumChildNodes) break;
+			}
+		}
+	}
+	
+	return Children;
+}
+
 
 float ConnectIt::DefaultMoveOrder(const FMinMaxNode& Node)
 {
@@ -141,9 +167,19 @@ float ConnectIt::DefaultEvaluator(const FMinMaxNode& InNode, const FMinMaxNode& 
 	return FMath::Clamp(OutScore, 0, UConnectIt_GameRulesLibrary::ConnectIt_Score_Max - 1);
 }
 
+TArray<TPair<int32, FGridPosition>> ConnectIt::CreateConnectionsFloodMap(const FMinMaxNode& Parent)
+{
+	// find grid positions that do not have tiles
+	TMap<int32, FGridPosition> PossibleConnectionsFloodMap;
+	TArray<FGridPosition> GridPositions;
+	Parent.Tiles.GetKeys(GridPositions);	
+	return UGridMechanics_GridLibrary::CreateConnectionsFloodMap(GridPositions, 4);
+}
+
 UConnectIt_MinMaxManager::UConnectIt_MinMaxManager()
 {
-	
+	// TODO: testing if this works...
+	IsGameOverDelegate = ConnectIt::DefaultIsGameOver;
 }
 
 void UConnectIt_MinMaxManager::BuildTree(const FConnectItMinMaxNodeStruct& InRootNode, int32 MaxDepth)
@@ -154,23 +190,35 @@ void UConnectIt_MinMaxManager::BuildTree(const FConnectItMinMaxNodeStruct& InRoo
 	// create weak pointer for access safety
 	TWeakObjectPtr WeakThis(this);
 
+	// create flood maps
+	auto ConnectionsFloodMap = CreateConnectionsFloodMap(InitialNode);
+	
 	UE::Tasks::Launch(
 		UE_SOURCE_LOCATION,
-		[WeakThis, InitialNode, MaxDepth]() mutable
+		[WeakThis, InitialNode, MaxDepth, ConnectionsFloodMap]() mutable
 		{
 			if (!WeakThis.IsValid()) return;
 
-			ConnectIt::FMinMaxNode BuiltNode = BuildNodeRecursive2<ConnectIt::FMinMaxNode>(
+				ConnectIt::FMinMaxNode BuiltNode = BuildNodeRecursive2<ConnectIt::FMinMaxNode>(
 				InitialNode,
 				0,
 				MaxDepth,
 				[WeakThis](const ConnectIt::FMinMaxNode& Node) -> bool
 				{
-					return ConnectIt::DefaultIsGameOver(Node);
+					// return ConnectIt::DefaultIsGameOver(Node);
+					
+					// if (!WeakThis.IsValid()) return false;
+					// return WeakThis->IsGameOver(Node);
+					
+					if (!WeakThis.IsValid()) return false;
+					if (!WeakThis->IsGameOverDelegate) return false;
+					return WeakThis->IsGameOverDelegate(Node);
 				},
-				[WeakThis](const ConnectIt::FMinMaxNode& Node) -> TArray<ConnectIt::FMinMaxNode>
+				[WeakThis, &ConnectionsFloodMap](const ConnectIt::FMinMaxNode& Node) -> TArray<ConnectIt::FMinMaxNode>
 				{
-					return ConnectIt::DefaultBuildChildNodes(Node);
+					// return ConnectIt::BuildAllChildNodes(Node);
+					return ConnectIt::BuildChildNodesFromConnectionsFloodMap(Node, 10, ConnectionsFloodMap);
+
 				},
 				[WeakThis](const ConnectIt::FMinMaxNode& Node) -> float
 				{
@@ -265,10 +313,23 @@ FMoveScoreInfo UConnectIt_MinMaxManager::GetMoveScoreInfo() const
 TArray<FGridPositionScore> UConnectIt_MinMaxManager::GetMoveScores() const
 {
 	TArray<FGridPositionScore> Out;
+	Out.Reserve(RootNode.GetChildren().Num());
+
 	for (const auto& Node : RootNode.GetChildren())
 	{
 		Out.Add(FGridPositionScore(Node.MovePlayed, Node.GetScore()));
 	}
-	
+
+	// Sort highest score first
+	Algo::Sort(Out, [](const FGridPositionScore& A, const FGridPositionScore& B)
+	{
+		return A.Score > B.Score;
+	});
+
 	return Out;
+}
+
+bool UConnectIt_MinMaxManager::IsGameOver(const ConnectIt::FMinMaxNode& Node) const
+{
+	return ConnectIt::DefaultIsGameOver(Node);
 }

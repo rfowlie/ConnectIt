@@ -19,7 +19,7 @@ struct FGameActionEvaluated
 	FGameplayTag GameplayActionTag;
 
 	UPROPERTY(BlueprintReadWrite, Category = "AI | Utility")
-	UObject* GameplayActionContext;
+	UObject* GameplayActionContext = nullptr;
 	
 	UPROPERTY(BlueprintReadWrite, Category = "AI | Utility")
 	float Score = 0;
