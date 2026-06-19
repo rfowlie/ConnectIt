@@ -71,9 +71,16 @@ namespace ConnectIt
 	static FMinMaxNode BuildChildNode(const FMinMaxNode& Parent, const FGridPosition& GridPosition);
 
 	static bool DefaultIsGameOver(const FMinMaxNode& Node);
-	static TArray<FMinMaxNode> DefaultBuildChildNodes(const FMinMaxNode& Parent);
+	// builds
+	static TArray<FMinMaxNode> BuildAllChildNodes(const FMinMaxNode& Parent);
+	static TArray<FMinMaxNode> BuildChildNodesFromConnectionsFloodMap(const FMinMaxNode& Parent, int32 MaxChildNodes, const TArray<TPair<int32, FGridPosition>>& ConnectionsFloodMap);
+	// move orders
 	static float DefaultMoveOrder(const FMinMaxNode& Node);
+	// evaluators
 	static float DefaultEvaluator(const FMinMaxNode& InNode, const FMinMaxNode& RootNode);
+
+	// flood maps
+	static TArray<TPair<int32, FGridPosition>> CreateConnectionsFloodMap(const FMinMaxNode& Parent);
 	
 }
 
@@ -116,7 +123,7 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE(FConnectItMinMaxDelegate);
 /*
  * 
  */
-UCLASS(BlueprintType)
+UCLASS(Blueprintable, BlueprintType)
 class CONNECTIT_API UConnectIt_MinMaxManager : public UObject
 {
 	GENERATED_BODY()
@@ -147,5 +154,8 @@ public:
 	
 protected:	
 	mutable ConnectIt::FMinMaxNode RootNode;
+
+	virtual bool IsGameOver(const ConnectIt::FMinMaxNode& Node) const;
+	TFunction<bool(const ConnectIt::FMinMaxNode&)> IsGameOverDelegate;
 	
 };

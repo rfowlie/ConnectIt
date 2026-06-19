@@ -169,6 +169,54 @@ void UGridMechanics_ShapeLibrary::GetLinesOfLength(
     }
 }
 
+bool UGridMechanics_ShapeLibrary::IsSquare(const TArray<FGridPosition>& Positions, TArray<FGridPosition>& OutCorners)
+{
+	 OutCorners.Empty();
+    
+        if (Positions.Num() < 4) return false;
+    
+        // Build a set for O(1) lookup
+        TSet<FGridPosition> PositionSet(Positions);
+    
+        // Find bounding box extents
+        int32 MinX = TNumericLimits<int32>::Max();
+        int32 MaxX = TNumericLimits<int32>::Min();
+        int32 MinY = TNumericLimits<int32>::Max();
+        int32 MaxY = TNumericLimits<int32>::Min();
+    
+        for (const FGridPosition& Position : Positions)
+        {
+            MinX = FMath::Min(MinX, Position.X);
+            MaxX = FMath::Max(MaxX, Position.X);
+            MinY = FMath::Min(MinY, Position.Y);
+            MaxY = FMath::Max(MaxY, Position.Y);
+        }
+    
+        const int32 Width  = MaxX - MinX;
+        const int32 Height = MaxY - MinY;
+    
+        // Bounding box must be square and non-degenerate
+        if (Width != Height || Width == 0) return false;
+    
+        // All 4 corners must exist in the position set
+        const FGridPosition TopLeft     = FGridPosition(MinX, MinY);
+        const FGridPosition TopRight    = FGridPosition(MaxX, MinY);
+        const FGridPosition BottomLeft  = FGridPosition(MinX, MaxY);
+        const FGridPosition BottomRight = FGridPosition(MaxX, MaxY);
+    
+        if (!PositionSet.Contains(TopLeft))     return false;
+        if (!PositionSet.Contains(TopRight))    return false;
+        if (!PositionSet.Contains(BottomLeft))  return false;
+        if (!PositionSet.Contains(BottomRight)) return false;
+    
+        OutCorners.Add(TopLeft);
+        OutCorners.Add(TopRight);
+        OutCorners.Add(BottomLeft);
+        OutCorners.Add(BottomRight);
+    
+        return true;
+}
+
 void UGridMechanics_ShapeLibrary::GetLongestLine(
 	TArray<FGridPosition>& OutGridPositions, const TArray<FGridPosition>& InGridPositions,
 	const FGridPosition& StartingPosition, const EGridDirection GridDirection)

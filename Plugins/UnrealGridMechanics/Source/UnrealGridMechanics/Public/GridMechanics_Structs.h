@@ -6,6 +6,31 @@
 #include "GridMechanics_Structs.generated.h"
 
 
+UENUM(BlueprintType)
+enum EGridDirection
+{
+	Row,
+	Column,
+	Diagonal_TopDown,
+	Diagonal_BottomUp
+};
+
+// Encapsulate direction as a pair — cleaner than two loose multipliers
+USTRUCT(BlueprintType)
+struct FGridDirectionVector
+{
+	GENERATED_BODY()
+
+	FGridDirectionVector() = default;
+	FGridDirectionVector(const int32 InRow, const int32 InColumn) : Row(InRow), Column(InColumn) {}
+
+	UPROPERTY()
+	int32 Row = 0;
+
+	UPROPERTY()
+	int32 Column = 0;
+};
+
 USTRUCT(BlueprintType)
 struct UNREALGRIDMECHANICS_API FGridPosition
 {
