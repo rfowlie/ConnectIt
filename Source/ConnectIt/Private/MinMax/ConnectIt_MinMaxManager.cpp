@@ -26,7 +26,7 @@ ConnectIt::FMinMaxNode ConnectIt::ConvertNode(const FConnectItMinMaxNodeStruct& 
 void ConnectIt::UpdateBoardIfMoveScoring(FMinMaxNode& Node)
 {
 	// Get grid positions controlled by faction turn
-	TSet<FGridPosition> InGridPositions;
+	TArray<FGridPosition> InGridPositions;
 	for (const auto& [GridPosition, Tile] : Node.Tiles)
 	{
 		if (Tile.FactionPiece == Node.FactionTurn)

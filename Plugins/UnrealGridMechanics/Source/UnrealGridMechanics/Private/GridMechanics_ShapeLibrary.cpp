@@ -17,59 +17,22 @@ FGridDirectionVector UGridMechanics_ShapeLibrary::GetDirectionVector(EGridDirect
     }
 }
 
-void UGridMechanics_ShapeLibrary::GetLongestLine2(
-    TArray<FGridPosition>& OutGridPositions,
-    const TSet<FGridPosition>& InGridPositions,
-    const FGridPosition& StartingPosition,
-    const EGridDirection GridDirection)
-{
-    OutGridPositions.Empty();
-
-    if (!InGridPositions.Contains(StartingPosition)) return;
-
-    const FGridDirectionVector Dir = GetDirectionVector(GridDirection);
-
-    // Cap to input size — no line can be longer than the total positions
-    const int32 MaxSteps = InGridPositions.Num();
-
-    // Walk positive direction
-    int32 PositiveExtent = 0;
-    for (int32 Step = 1; Step <= MaxSteps; Step++)
-    {
-        const FGridPosition Offset(Step * Dir.Row, Step * Dir.Column);
-        if (!InGridPositions.Contains(StartingPosition + Offset)) break;
-        PositiveExtent = Step;
-    }
-
-    // Walk negative direction
-    int32 NegativeExtent = 0;
-    for (int32 Step = 1; Step <= MaxSteps; Step++)
-    {
-        const FGridPosition Offset(-Step * Dir.Row, -Step * Dir.Column);
-        if (!InGridPositions.Contains(StartingPosition + Offset)) break;
-        NegativeExtent = Step;
-    }
-
-    // Collect the full line — negative extent to positive extent inclusive
-    OutGridPositions.Reserve(PositiveExtent + NegativeExtent + 1);
-
-    for (int32 Index = -NegativeExtent; Index <= PositiveExtent; Index++)
-    {
-        OutGridPositions.Add(
-            StartingPosition + FGridPosition(Index * Dir.Row, Index * Dir.Column));
-    }
-}
-
 void UGridMechanics_ShapeLibrary::GetLongestLines(TArray<TArray<FGridPosition>>& OutLines,
-	const TSet<FGridPosition>& InGridPositions, const FGridPosition& StartingPosition, const int32 MinimumLength)
+	const TArray<FGridPosition>& InGridPositions, const FGridPosition& StartingPosition, const int32 MinimumLength)
 {
-	TArray AllGridDirections { EGridDirection::Column, EGridDirection::Row, EGridDirection::Diagonal_BottomUp, EGridDirection::Diagonal_TopDown };
+	TArray AllGridDirections
+	{
+		EGridDirection::Column,
+		EGridDirection::Row,
+		EGridDirection::Diagonal_BottomUp,
+		EGridDirection::Diagonal_TopDown
+	};
 
 	TArray<FGridPosition> TempGridPositions;
 	for (const EGridDirection Direction : AllGridDirections)
 	{
 		TempGridPositions.Empty();
-		GetLongestLine2(TempGridPositions, InGridPositions, StartingPosition, Direction);
+		GetLongestLine(TempGridPositions, InGridPositions, StartingPosition, Direction);
 		if (TempGridPositions.Num() >= MinimumLength)
 		{
 			OutLines.Add(TempGridPositions);
@@ -221,52 +184,35 @@ void UGridMechanics_ShapeLibrary::GetLongestLine(
 	TArray<FGridPosition>& OutGridPositions, const TArray<FGridPosition>& InGridPositions,
 	const FGridPosition& StartingPosition, const EGridDirection GridDirection)
 {
-	// if (!InGridPositions.Contains(StartingPosition)) { return; }
-	TMap<FGridPosition, bool> GridMap;
-	for (auto GridPosition : InGridPositions) { GridMap.Add(GridPosition, false); }
+	OutGridPositions.Empty();
+	if (!InGridPositions.Contains(StartingPosition)) return;
 
-	int32 RowDirectionMultiplier = 0;
-	int32 ColumnDirectionMultiplier = 0;
-	
-	switch (GridDirection){
-	case Row:
-		ColumnDirectionMultiplier = 1;
-		break;
-	case Column:
-		RowDirectionMultiplier = 1;
-		break;
-	case Diagonal_TopDown:
-		RowDirectionMultiplier = 1;
-		ColumnDirectionMultiplier = 1;
-		break;
-	case Diagonal_BottomUp:
-		RowDirectionMultiplier = -1;
-		ColumnDirectionMultiplier = 1;
-		break;
-	}
-	
-	int32 Positive = 0;
-	for (int32 Index = 1; Index <= MAX_int32; Index++)
+	const FGridDirectionVector Dir = GetDirectionVector(GridDirection);
+
+	// Walk positive direction
+	int32 PositiveExtent = 0;
+	while (true)
 	{
-		FGridPosition TempPosition (
-			Index * RowDirectionMultiplier, Index * ColumnDirectionMultiplier);
-		if (!GridMap.Contains(StartingPosition + TempPosition)) { break; }
-		Positive = Index;
-	}
-	
-	int32 Negative = 0;
-	for (int32 Index = 1; Index <= MAX_int32; Index++)
+		const FGridPosition Offset(PositiveExtent * Dir.Row, PositiveExtent * Dir.Column);
+		if (!InGridPositions.Contains(StartingPosition + Offset)) { break; };
+		PositiveExtent++;
+	}	
+
+	// Walk negative direction
+	int32 NegativeExtent = 0;
+	while (true)
 	{
-		FGridPosition TempPosition (
-			-Index * RowDirectionMultiplier, -Index * ColumnDirectionMultiplier);
-		if (!GridMap.Contains(StartingPosition + TempPosition)) { break; }
-		Negative = -Index;
+		const FGridPosition Offset(-NegativeExtent * Dir.Row, -NegativeExtent * Dir.Column);
+		if (!InGridPositions.Contains(StartingPosition + Offset)) break;
+		NegativeExtent++;
 	}
 
-	for (int32 Index = Negative; Index <= Positive; Index++)
+	// Collect the full line — negative extent to positive extent inclusive
+	OutGridPositions.Reserve(PositiveExtent + NegativeExtent + 1);
+
+	for (int32 Index = -NegativeExtent; Index <= PositiveExtent; Index++)
 	{
 		OutGridPositions.Add(
-			StartingPosition +
-			FGridPosition(Index * RowDirectionMultiplier, Index * ColumnDirectionMultiplier));
-	}	
+			StartingPosition + FGridPosition(Index * Dir.Row, Index * Dir.Column));
+	}
 }

@@ -35,22 +35,24 @@ class UNREALGRIDMECHANICS_API UGridMechanics_ShapeLibrary : public UBlueprintFun
 	GENERATED_BODY()
 
 public:
+	UFUNCTION(BlueprintCallable, Category = "Grid|Shape")
 	static FGridDirectionVector GetDirectionVector(EGridDirection GridDirection);
-	
-	static void GetLongestLine2(
-		TArray<FGridPosition>& OutGridPositions,
-		const TSet<FGridPosition>& InGridPositions,
-		const FGridPosition& StartingPosition,
-		const EGridDirection GridDirection);
 
-	// find every line of x length given starting position and set of positions
-	// NOTE: that this does not distinguish between position ownership
+	/*
+	 * Find every line of x length given starting position and array of positions
+	 * NOTE that this does not distinguish between position ownership, positions should be pre-filtered before calling
+	 */
+	UFUNCTION(BlueprintCallable)
+	static void GetLongestLine(
+		TArray<FGridPosition>& OutGridPositions, const TArray<FGridPosition>& InGridPositions,
+		const FGridPosition& StartingPosition, const EGridDirection GridDirection);
+	
 	static void GetLongestLines(
 		TArray<TArray<FGridPosition>>& OutLines,
-		const TSet<FGridPosition>& InGridPositions,
+		const TArray<FGridPosition>& InGridPositions,
 		const FGridPosition& StartingPosition,
 		const int32 MinimumLength);
-
+	
 	static void GetLinesOfLength(
 		TArray<TArray<FGridPosition>>& OutLines,
 		const TSet<FGridPosition>& InGridPositions,
@@ -59,14 +61,11 @@ public:
 		const bool bExactLength);
 
 
-	UFUNCTION(BlueprintCallable, Category = "Gigafire|Grid|Shape")
+	// other
+	UFUNCTION(BlueprintCallable, Category = "Grid|Shape")
 	static bool IsSquare(
 		const TArray<FGridPosition>& Positions,
 		TArray<FGridPosition>& OutCorners);
-
-	// DEPRECATED
-	UFUNCTION(BlueprintCallable)
-	static void GetLongestLine(
-		TArray<FGridPosition>& OutGridPositions, const TArray<FGridPosition>& InGridPositions,
-		const FGridPosition& StartingPosition, const EGridDirection GridDirection);
+	
+	
 };

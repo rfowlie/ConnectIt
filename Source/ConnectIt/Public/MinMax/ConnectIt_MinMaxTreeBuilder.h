@@ -119,7 +119,7 @@ struct FConnectItMinMaxNode
 	void UpdateBoardIfMoveScoring()
 	{
 		// get grid positions controlled by faction turn 
-		TSet<FGridPosition> InGridPositions;
+		TArray<FGridPosition> InGridPositions;
 		for (const auto& [GridPosition, Faction] : Tiles)
 		{
 			if (Tiles[GridPosition].FactionPiece == FactionTurn)
