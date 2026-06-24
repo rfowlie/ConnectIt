@@ -3,8 +3,9 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "GridMechanics_Structs.h"
 #include "Kismet/BlueprintFunctionLibrary.h"
+#include "GridMechanicsBaseEnums.h"
+#include "GridMechanicsBaseStructs.h"
 #include "GridMechanics_ShapeLibrary.generated.h"
 
 
@@ -35,9 +36,6 @@ class UNREALGRIDMECHANICS_API UGridMechanics_ShapeLibrary : public UBlueprintFun
 	GENERATED_BODY()
 
 public:
-	UFUNCTION(BlueprintCallable, Category = "Grid|Shape")
-	static FGridDirectionVector GetDirectionVector(EGridDirection GridDirection);
-
 	/*
 	 * Find every line of x length given starting position and array of positions
 	 * NOTE that this does not distinguish between position ownership, positions should be pre-filtered before calling

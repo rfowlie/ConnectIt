@@ -2,7 +2,6 @@
 
 
 #include "MinMax/ConnectIt_MinMaxManager.h"
-
 #include "GridMechanics_GridLibrary.h"
 #include "MinMax/MinMaxUtility.h"
 #include "Library/ConnectIt_GameRulesLibrary.h"
@@ -13,7 +12,7 @@ ConnectIt::FMinMaxNode ConnectIt::ConvertNode(const FConnectItMinMaxNodeStruct& 
 	ConnectIt::FMinMaxNode OutNode;
 	for (auto Tile : Node.Tiles)
 	{
-		OutNode.Tiles.Add(Tile.Key, ConnectIt::FTileDescriptor(Tile.Value.FactionPiece, Tile.Value.Multiplier));
+		OutNode.Tiles.Add(Tile.Key, ConnectIt::FTileDescriptor(Tile.Value.FactionID, Tile.Value.Multiplier));
 	}
 	
 	OutNode.FactionTurn = Node.FactionTurn;

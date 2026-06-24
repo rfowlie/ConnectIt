@@ -2,30 +2,20 @@
 
 
 #include "GridMechanics_ShapeLibrary.h"
-#include "GridMechanics_Structs.h"
+#include "GridMechanicsBaseEnums.h"
+#include "GridMechanicsBaseStructs.h"
+#include "GridMechanics_GridLibrary.h"
 
-
-FGridDirectionVector UGridMechanics_ShapeLibrary::GetDirectionVector(EGridDirection GridDirection)
-{
-    switch (GridDirection)
-    {
-        case EGridDirection::Row:				return {  0,  1 };
-        case EGridDirection::Column:			return {  1,  0 };
-        case EGridDirection::Diagonal_TopDown:	return {  1,  1 };
-        case EGridDirection::Diagonal_BottomUp:	return { -1,  1 };
-        default:								return {  0,  0 };
-    }
-}
 
 void UGridMechanics_ShapeLibrary::GetLongestLines(TArray<TArray<FGridPosition>>& OutLines,
 	const TArray<FGridPosition>& InGridPositions, const FGridPosition& StartingPosition, const int32 MinimumLength)
 {
 	TArray AllGridDirections
 	{
-		EGridDirection::Column,
-		EGridDirection::Row,
-		EGridDirection::Diagonal_BottomUp,
-		EGridDirection::Diagonal_TopDown
+		EGridDirection::Up,
+		EGridDirection::Right,
+		EGridDirection::UpRight,
+		EGridDirection::DownRight
 	};
 
 	TArray<FGridPosition> TempGridPositions;
@@ -51,7 +41,7 @@ void UGridMechanics_ShapeLibrary::GetLinesOfLength(
 
     if (InGridPositions.IsEmpty() || RequiredLength <= 0) return;
 
-    const FGridDirectionVector Dir = GetDirectionVector(GridDirection);
+    const FGridDirectionVector Dir = UGridMechanics_GridLibrary::GetGridDirectionVector(GridDirection);
     const int32 MaxSteps = InGridPositions.Num();
 
     // Track positions we have already used as a start point
@@ -187,7 +177,7 @@ void UGridMechanics_ShapeLibrary::GetLongestLine(
 	OutGridPositions.Empty();
 	if (!InGridPositions.Contains(StartingPosition)) return;
 
-	const FGridDirectionVector Dir = GetDirectionVector(GridDirection);
+	const FGridDirectionVector Dir = UGridMechanics_GridLibrary::GetGridDirectionVector(GridDirection);
 
 	// Walk positive direction
 	int32 PositiveExtent = 0;

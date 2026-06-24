@@ -3,7 +3,8 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "GridMechanics_Structs.h"
+#include "GridMechanicsBaseEnums.h"
+#include "GridMechanicsBaseStructs.h"
 #include "Kismet/BlueprintFunctionLibrary.h"
 #include "GridMechanics_GridLibrary.generated.h"
 
@@ -18,6 +19,9 @@ class UNREALGRIDMECHANICS_API UGridMechanics_GridLibrary : public UBlueprintFunc
 public:
 	
 	static const TMap<EGridDirection, FGridDirectionVector> GridDirectionVectors;
+
+	UFUNCTION(BlueprintCallable)
+	static FGridDirectionVector GetGridDirectionVector(EGridDirection Direction);
 	
 	UFUNCTION(BlueprintCallable)
 	static FGridPosition CalculateGridPositionFromSize(const AActor* Actor, int32 Size);

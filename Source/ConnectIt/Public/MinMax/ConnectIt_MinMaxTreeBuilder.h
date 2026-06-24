@@ -4,7 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "Tasks/Task.h"
-#include "GridMechanics_Structs.h"
+#include "GridMechanicsBaseStructs.h"
 #include "GridMechanics_ShapeLibrary.h"
 #include "ConnectIt_MinMaxTreeBuilder.generated.h"
 
@@ -16,14 +16,14 @@ struct FConnectItTileRepresentation
 
 	FConnectItTileRepresentation() = default;
 	FConnectItTileRepresentation(const float InMultiplier, const int32 InFactionPiece) :
-	Multiplier(InMultiplier), FactionPiece(InFactionPiece) {}
+	Multiplier(InMultiplier), FactionID(InFactionPiece) {}
 	
 	UPROPERTY(BlueprintReadWrite)
 	float Multiplier = 1;
 
 	// the owner of the active piece on this tile, zero meaning no piece
 	UPROPERTY(BlueprintReadWrite)
-	int32 FactionPiece = 0;
+	int32 FactionID = 0;
 };
 
 /*
@@ -98,7 +98,7 @@ struct FConnectItMinMaxNode
 		for (const auto& [GridPosition, Tile] : Tiles)
 		{
 			// Only consider empty tiles (-1 == empty)
-			if (Tile.FactionPiece != -1) continue;
+			if (Tile.FactionID != -1) continue;
 
 			FConnectItMinMaxNode ChildNode;
 			ChildNode.FactionTurn = NextFactionTurn;
@@ -106,7 +106,7 @@ struct FConnectItMinMaxNode
 			ChildNode.MovePlayed  = GridPosition;
 			ChildNode.Tiles       = Tiles;
 
-			ChildNode.Tiles[GridPosition].FactionPiece = NextFactionTurn;
+			ChildNode.Tiles[GridPosition].FactionID = NextFactionTurn;
 			ChildNode.UpdateBoardIfMoveScoring();
 
 			NewChildren.Add(MoveTemp(ChildNode));
@@ -122,7 +122,7 @@ struct FConnectItMinMaxNode
 		TArray<FGridPosition> InGridPositions;
 		for (const auto& [GridPosition, Faction] : Tiles)
 		{
-			if (Tiles[GridPosition].FactionPiece == FactionTurn)
+			if (Tiles[GridPosition].FactionID == FactionTurn)
 			{
 				InGridPositions.Add(GridPosition);
 			}
@@ -139,13 +139,13 @@ struct FConnectItMinMaxNode
 			for (auto GridPosition : Line)
 			{
 				MoveScore += Tiles[GridPosition].Multiplier;
-				Tiles[GridPosition].FactionPiece = -1;
+				Tiles[GridPosition].FactionID = -1;
 				Tiles[GridPosition].Multiplier += 1.0f;
 			}
 		}
 
 		// place move piece back on board in accordance with game logic
-		Tiles[MovePlayed].FactionPiece = FactionTurn;
+		Tiles[MovePlayed].FactionID = FactionTurn;
 		// update scoreboard
 		ScoreBoard[FactionTurn] += MoveScore;
 	}
