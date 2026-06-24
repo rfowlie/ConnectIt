@@ -4,7 +4,6 @@
 
 #include "CoreMinimal.h"
 #include "UObject/Object.h"
-#include "GridMechanics_Structs.h"
 #include "ConnectIt_MinMaxTreeBuilder.h"
 #include "ConnectIt_MinMaxManager.generated.h"
 

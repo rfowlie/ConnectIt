@@ -2,16 +2,26 @@
 
 
 #include "GridMechanics_GridLibrary.h"
-#include "GridMechanics_Structs.h"
+#include "GridMechanicsBaseEnums.h"
+#include "GridMechanicsBaseStructs.h"
 
 
 const TMap<EGridDirection, FGridDirectionVector> UGridMechanics_GridLibrary::GridDirectionVectors =
 {
-	{ EGridDirection::Row,               { 0,  1 } },
-	{ EGridDirection::Column,            { 1,  0 } },
-	{ EGridDirection::Diagonal_TopDown,  { 1,  1 } },
-	{ EGridDirection::Diagonal_BottomUp, { 1, -1 } }
+	{ EGridDirection::Up,       { 0,  1 } },
+	{ EGridDirection::UpRight,  { 1,  1 } },
+	{ EGridDirection::Right,    { 1,  0 } },
+	{ EGridDirection::DownRight,{ 1, -1 } },
+	{ EGridDirection::Down,     { 0, -1 } },
+	{ EGridDirection::DownLeft, { -1, -1 } },
+	{ EGridDirection::Left,     { -1, 0 } },
+	{ EGridDirection::UpLeft,   { -1, 1 } }
 };
+
+FGridDirectionVector UGridMechanics_GridLibrary::GetGridDirectionVector(EGridDirection Direction)
+{
+	return GridDirectionVectors.FindRef(Direction);
+}
 
 FGridPosition UGridMechanics_GridLibrary::CalculateGridPositionFromSize(const AActor* Actor, int32 Size)
 {

@@ -140,7 +140,7 @@ int32 UConnectItTreeBuilder::Evaluate(const FConnectItMinMaxNode& InNode) const
 	int32 NumberOfPieces = 0;
 	for (const auto& [GridPosition, Faction] : InNode.Tiles)
 	{
-		if (InNode.Tiles[GridPosition].FactionPiece == InNode.FactionTurn)
+		if (InNode.Tiles[GridPosition].FactionID == InNode.FactionTurn)
 		{
 			NumberOfPieces++;
 		}

@@ -3,8 +3,8 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "GridMechanicsBaseStructs.h"
 #include "Components/ActorComponent.h"
-#include "GridMechanics_Structs.h"
 #include "GridTileSelectorComponent.generated.h"
 
 class AGridTileBase;
