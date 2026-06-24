@@ -193,7 +193,7 @@ void UGridMechanics_ShapeLibrary::GetLongestLine(
 	int32 PositiveExtent = 0;
 	while (true)
 	{
-		const FGridPosition Offset(PositiveExtent * Dir.Row, PositiveExtent * Dir.Column);
+		const FGridPosition Offset((PositiveExtent + 1) * Dir.Row, (PositiveExtent + 1) * Dir.Column);
 		if (!InGridPositions.Contains(StartingPosition + Offset)) { break; };
 		PositiveExtent++;
 	}	
@@ -202,7 +202,7 @@ void UGridMechanics_ShapeLibrary::GetLongestLine(
 	int32 NegativeExtent = 0;
 	while (true)
 	{
-		const FGridPosition Offset(-NegativeExtent * Dir.Row, -NegativeExtent * Dir.Column);
+		const FGridPosition Offset((-NegativeExtent - 1) * Dir.Row, (-NegativeExtent - 1) * Dir.Column);
 		if (!InGridPositions.Contains(StartingPosition + Offset)) break;
 		NegativeExtent++;
 	}
