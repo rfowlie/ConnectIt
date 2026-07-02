@@ -20,20 +20,25 @@ public:
 	
 	static const TMap<EGridDirection, FGridDirectionVector> GridDirectionVectors;
 
-	UFUNCTION(BlueprintCallable)
+	UFUNCTION(BlueprintCallable, Category = "Grid Mechanics | Library")
 	static FGridDirectionVector GetGridDirectionVector(EGridDirection Direction);
 	
-	UFUNCTION(BlueprintCallable)
+	UFUNCTION(BlueprintCallable, Category = "Grid Mechanics | Library")
 	static FGridPosition CalculateGridPositionFromSize(const AActor* Actor, int32 Size);
+	
+	UFUNCTION(BlueprintCallable, Category = "Grid Mechanics | Library | Util")
+	static AGridTileBase* GetRandomGridTile(const TArray<AGridTileBase*> InTiles);
 
-	UFUNCTION(BlueprintCallable, Category = "Grid")
+
+	// connect it specific...
+	UFUNCTION(BlueprintCallable, Category = "Grid Mechanics | Library")
 	static int32 CountValidWindows(
 		const FGridPosition& Position,
 		const TSet<FGridPosition>& ValidPositions,
 		const FGridDirectionVector& Direction,
 		int32 ConnectLength);
 	
-	UFUNCTION(BlueprintCallable, Category = "Grid")
+	UFUNCTION(BlueprintCallable, Category = "Grid Mechanics | Library")
 	static int32 CountPossibleGridConnections(
 		const FGridPosition& StartPosition,
 		const TSet<FGridPosition>& ValidPositions,

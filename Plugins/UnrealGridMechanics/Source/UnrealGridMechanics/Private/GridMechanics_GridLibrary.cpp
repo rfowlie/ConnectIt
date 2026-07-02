@@ -4,6 +4,8 @@
 #include "GridMechanics_GridLibrary.h"
 #include "GridMechanicsBaseEnums.h"
 #include "GridMechanicsBaseStructs.h"
+#include "Interface/GridTileHandler.h"
+#include "Tile/GridTileBase.h"
 
 
 const TMap<EGridDirection, FGridDirectionVector> UGridMechanics_GridLibrary::GridDirectionVectors =
@@ -36,6 +38,12 @@ FGridPosition UGridMechanics_GridLibrary::CalculateGridPositionFromSize(const AA
 	// UE_LOG(LogTemp, Display, TEXT("Grid Position: %d %d"), GridPosition.X, GridPosition.Y);
 	
 	return GridPosition;
+}
+
+AGridTileBase* UGridMechanics_GridLibrary::GetRandomGridTile(const TArray<AGridTileBase*> InTiles)
+{
+	if (InTiles.IsEmpty()) { return nullptr; }
+	return InTiles[FMath::RandRange(0, InTiles.Num() - 1)];
 }
 
 int32 UGridMechanics_GridLibrary::CountValidWindows(

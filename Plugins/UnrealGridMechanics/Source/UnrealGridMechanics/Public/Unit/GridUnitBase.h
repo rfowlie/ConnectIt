@@ -8,11 +8,12 @@
 #include "AbilitySystemInterface.h"
 #include "GridMechanicsBaseEnums.h"
 #include "Interface/GridSizeInterface.h"
+#include "Piece/GridPieceBase.h"
 #include "GridUnitBase.generated.h"
 
 
 UCLASS(Blueprintable, BlueprintType)
-class UNREALGRIDMECHANICS_API AGridUnitBase : public AActor, public IAbilitySystemInterface, public IGridSizeInterface
+class UNREALGRIDMECHANICS_API AGridUnitBase : public AGridPieceBase, public IAbilitySystemInterface, public IGridSizeInterface
 {
 	GENERATED_BODY()
 

@@ -7,7 +7,7 @@
 #include "GridTileBase.generated.h"
 
 
-
+class AGridPieceBase;
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FGridTileBaseBeginCursorOver, AGridTileBase*, GridTileBase);
 
 UCLASS()
@@ -17,6 +17,9 @@ class UNREALGRIDMECHANICS_API AGridTileBase : public AActor
 
 public:
 	AGridTileBase();
+
+	UFUNCTION(BlueprintImplementableEvent, BlueprintCallable, Category = "Grid Tile")
+	void PlacePiece(AActor* InGridPiece);
 
 protected:
 	virtual void BeginPlay() override;
