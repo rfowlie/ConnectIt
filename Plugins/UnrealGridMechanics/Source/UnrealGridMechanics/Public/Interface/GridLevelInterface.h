@@ -8,7 +8,7 @@
 
 // This class does not need to be modified.
 UINTERFACE(BlueprintType)
-class UGridLevelInterface : public UInterface
+class UNREALGRIDMECHANICS_API UGridLevelInterface : public UInterface
 {
 	GENERATED_BODY()
 };

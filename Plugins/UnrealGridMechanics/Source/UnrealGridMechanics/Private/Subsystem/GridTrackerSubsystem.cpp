@@ -3,7 +3,7 @@
 
 #include "Subsystem/GridTrackerSubsystem.h"
 #include "Tile/GridTileBase.h"
-#include "Unit/GridUnitBase.h"
+#include "Piece/Unit/GridUnitBase.h"
 
 
 void UGridTrackerSubsystem::PostInitialize()

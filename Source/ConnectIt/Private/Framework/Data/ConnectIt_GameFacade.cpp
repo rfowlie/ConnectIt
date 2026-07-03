@@ -2,18 +2,17 @@
 
 
 #include "Framework/Data/ConnectIt_GameFacade.h"
-
+#include "Library/ConnectIt_GridRulesLibrary.h"
 #include "GridMechanics_GridLibrary.h"
 #include "GridMechanics_ShapeLibrary.h"
+#include "Tile/GridTileBase.h"
+#include "GameTurn/GameTurnTracker.h"
 #include "Framework/Data/ConnectIt_PlayerData.h"
 #include "Framework/State/ConnectIt_State_Game.h"
-#include "GameTurn/GameTurnTracker.h"
 #include "Interface/GridFactionInterface.h"
 #include "Interface/GridLevelInterface.h"
 #include "Interface/GridPieceHandler.h"
 #include "Interface/GridTileHandler.h"
-#include "Library/ConnectIt_GridRulesLibrary.h"
-#include "Tile/GridTileBase.h"
 
 
 UConnectIt_GameFacade* UConnectIt_GameFacade::Create(UObject* Outer, UConnectIt_State_Game* InGameState)
@@ -52,9 +51,9 @@ TArray<AGridTileBase*> UConnectIt_GameFacade::GetGridTilesWithPlayerPieces(const
 {
 	TArray<AGridTileBase*> OutGridTiles;
 	if (!GameState) { return OutGridTiles; }
-	for (const auto GridTile : GetGridTiles())
+	for (auto GridTile : GetGridTiles())
 	{
-		if (GridTile->Implements<IGridFactionInterface>())
+		if (GridTile->Implements<UGridFactionInterface>())
 		{
 			if (PlayerID == IGridFactionInterface::Execute_GetFactionId(GridTile))
 			{
@@ -66,16 +65,10 @@ TArray<AGridTileBase*> UConnectIt_GameFacade::GetGridTilesWithPlayerPieces(const
 	return OutGridTiles;
 }
 
-TArray<const UConnectIt_PlayerData*> UConnectIt_GameFacade::GetAllPlayerData() const
+TArray<UConnectIt_PlayerData*> UConnectIt_GameFacade::GetAllPlayerData() const
 {
-	TArray<const UConnectIt_PlayerData*> OutPlayerData;
-	if (!GameState) { return OutPlayerData; }
-	for (const auto Data : GameState->AllPlayerData)
-	{
-		OutPlayerData.Add(Data);
-	}
-	
-	return OutPlayerData;
+	if (!GameState) { return {}; }
+	return GameState->AllPlayerData;
 }
 
 UConnectIt_PlayerData* UConnectIt_GameFacade::GetPlayerDataById(const int32 PlayerId) const

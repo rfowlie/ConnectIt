@@ -3,5 +3,4 @@
 
 #include "Interface/GridFactionInterface.h"
 
-
 // Add default functionality here for any IGridFactionInterface functions that are not pure virtual.

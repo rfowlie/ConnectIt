@@ -23,10 +23,10 @@ public:
 
 	// TODO: this will need to work with animations etc...
 	UFUNCTION(BlueprintCallable, Category = "ConnectIt | ViewModel")
-	void PlacePiece(UConnectIt_PlayerData* InPlayerData, AGridTileBase* InGridTile);
+	void PlacePiece(UConnectIt_PlayerData* InPlayerData, AGridTileBase* InGridTile) const;
 
 	UFUNCTION(BlueprintCallable, Category = "ConnectIt | ViewModel")
-	void SetPlayerScore(const int32 PlayerId, const int32 InScore);
+	void SetPlayerScore(const int32 PlayerId, const int32 InScore) const;
 	
 protected:
 	UPROPERTY()

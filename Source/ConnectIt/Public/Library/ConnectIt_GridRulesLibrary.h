@@ -18,6 +18,4 @@ public:
 
 	static constexpr float ConnectIt_Grid_Size_Default = 100.f;
 	
-	UFUNCTION(BlueprintCallable, Category = "ConnectIt | Library | Grid")
-	void Test();
 };

@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "GridMechanicsBaseStructs.h"
 #include "GameFramework/Actor.h"
 #include "GridPieceBase.generated.h"
 
@@ -15,14 +16,17 @@ class UNREALGRIDMECHANICS_API AGridPieceBase : public AActor
 	GENERATED_BODY()
 
 public:
-	// Sets default values for this actor's properties
 	AGridPieceBase();
 
+	UFUNCTION(BlueprintPure, Category = "Grid")
+	FGridPosition GetGridPosition() const { return GridPosition; }
+	
 protected:
-	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
 
-public:
-	// Called every frame
-	virtual void Tick(float DeltaTime) override;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Grid")
+	FGridPosition GridPosition;
+
+	
+	
 };

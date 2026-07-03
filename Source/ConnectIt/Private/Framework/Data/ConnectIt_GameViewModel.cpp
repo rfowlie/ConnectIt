@@ -18,13 +18,13 @@ UConnectIt_GameViewModel* UConnectIt_GameViewModel::Create(UObject* Outer, UConn
 	return GameFacade;
 }
 
-void UConnectIt_GameViewModel::PlacePiece(UConnectIt_PlayerData* InPlayerData, AGridTileBase* InGridTile)
+void UConnectIt_GameViewModel::PlacePiece(UConnectIt_PlayerData* InPlayerData, AGridTileBase* InGridTile) const
 {
 	if (!InPlayerData || !InGridTile) return;
 	InPlayerData->LastTileSelected = InGridTile;
 	AActor* Piece = GameState->PlayerPiecePool->GetObjects(1)[0];
 	if (!Piece) return;
-	if (Piece->Implements<IGridFactionInterface>)
+	if (Piece->Implements<UGridFactionInterface>())
 	{
 		IGridFactionInterface::Execute_SetFactionId(Piece, InPlayerData->PlayerId);
 	}
@@ -32,7 +32,7 @@ void UConnectIt_GameViewModel::PlacePiece(UConnectIt_PlayerData* InPlayerData, A
 	InPlayerData->LastPiecePlaced = Piece;
 }
 
-void UConnectIt_GameViewModel::SetPlayerScore(const int32 PlayerId, const int32 InScore)
+void UConnectIt_GameViewModel::SetPlayerScore(const int32 PlayerId, const int32 InScore) const
 {
 	if (!GameState) return;
 	UConnectIt_PlayerData* PlayerData = GameState->GameFacade->GetPlayerDataById(PlayerId);

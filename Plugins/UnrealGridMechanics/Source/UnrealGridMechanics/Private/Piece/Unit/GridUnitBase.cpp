@@ -1,8 +1,7 @@
 ﻿// Fill out your copyright notice in the Description page of Project Settings.
 
 
-#include "Unit/GridUnitBase.h"
-
+#include "Piece/Unit/GridUnitBase.h"
 #include "Subsystem/GridTrackerSubsystem.h"
 
 
@@ -22,16 +21,5 @@ void AGridUnitBase::BeginPlay()
 	if (UGridTrackerSubsystem* Subsystem = GetWorld()->GetSubsystem<UGridTrackerSubsystem>(); IsValid(Subsystem))
 	{
 		Subsystem->RegisterGridUnit(this);
-	}
-	else
-	{
-		UE_LOG(LogTemp, Warning, TEXT("GridTrackerSubsystem Is Not Available..."))
-	}
-	
-}
-
-// Called every frame
-void AGridUnitBase::Tick(float DeltaTime)
-{
-	Super::Tick(DeltaTime);
+	}	
 }

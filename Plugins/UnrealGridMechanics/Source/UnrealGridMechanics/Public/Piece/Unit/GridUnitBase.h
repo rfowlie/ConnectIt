@@ -7,27 +7,18 @@
 #include "GameplayTagContainer.h"
 #include "AbilitySystemInterface.h"
 #include "GridMechanicsBaseEnums.h"
-#include "Interface/GridSizeInterface.h"
 #include "Piece/GridPieceBase.h"
 #include "GridUnitBase.generated.h"
 
 
 UCLASS(Blueprintable, BlueprintType)
-class UNREALGRIDMECHANICS_API AGridUnitBase : public AGridPieceBase, public IAbilitySystemInterface, public IGridSizeInterface
+class UNREALGRIDMECHANICS_API AGridUnitBase : public AGridPieceBase, public IAbilitySystemInterface
 {
 	GENERATED_BODY()
 
 public:
 	// Sets default values for this actor's properties
 	AGridUnitBase();
-
-protected:
-	// Called when the game starts or when spawned
-	virtual void BeginPlay() override;
-
-public:
-	// Called every frame
-	virtual void Tick(float DeltaTime) override;
 
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Grid Mechanics|Grid Unit")
 	virtual UAbilitySystemComponent* GetAbilitySystemComponent() const override { return AbilitySystemComponent; }
@@ -38,8 +29,10 @@ public:
 	// rotate and move all relevant meshes to face set direction
 	UFUNCTION(BlueprintImplementableEvent, BlueprintCallable, Category = "Grid Mechanics|Grid Unit")
 	void FaceGridDirection(const EGridDirection InDirection);
-	
+
 protected:
+	virtual void BeginPlay() override;
+	
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 	UAbilitySystemComponent* AbilitySystemComponent = nullptr;
 };

@@ -5,7 +5,6 @@
 #include "CoreMinimal.h"
 #include "Interface/GridFactionInterface.h"
 #include "Interface/GridLevelInterface.h"
-#include "Interface/GridSizeInterface.h"
 #include "Interface/GridTileHandler.h"
 #include "Piece/GridPieceBase.h"
 #include "ConnectIt_GridPieceBase.generated.h"
@@ -17,7 +16,6 @@ UCLASS(BlueprintType, Blueprintable)
 class CONNECTIT_API AConnectIt_GridPieceBase : public AGridPieceBase,
 	public IGridFactionInterface,
 	public IGridLevelInterface,
-	public IGridSizeInterface,
 	public IGridTileHandler
 {
 	GENERATED_BODY()

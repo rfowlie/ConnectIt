@@ -49,8 +49,9 @@ public:
 	AGridTileBase* GetRandomGridTile() const;
 
 	// PLAYER
+	// TODO: in BP we cloned all the data and passed it out so it couldn't be tampered with
 	UFUNCTION(BlueprintCallable, Category = "ConnectIt | Facade")
-	TArray<const UConnectIt_PlayerData*> GetAllPlayerData() const;
+	TArray<UConnectIt_PlayerData*> GetAllPlayerData() const;
 
 	UFUNCTION(BlueprintCallable, Category = "ConnectIt | Facade")
 	UConnectIt_PlayerData* GetPlayerDataById(const int32 PlayerId) const;
