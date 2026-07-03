@@ -3,8 +3,9 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "ConnectIt_State_Base.h"
 #include "GridMechanicsBaseStructs.h"
-#include "States/GameMechanicsStateSimple.h"
+#include "State/GameMechanicsStateSimple.h"
 #include "ConnectIt_State_SelectTile.generated.h"
 
 class AGridTileBase;
@@ -15,17 +16,17 @@ class UConnectIt_GameFacade;
  * 
  */
 UCLASS(BlueprintType, Blueprintable)
-class CONNECTIT_API UConnectIt_State_SelectTile : public UGameMechanicsStateSimple
+class CONNECTIT_API UConnectIt_State_SelectTile : public UConnectIt_State_Base
 {
 	GENERATED_BODY()
 
 public:
 	static UConnectIt_State_SelectTile* Create(UObject* Outer, UConnectIt_GameFacade* InGameFacade, UConnectIt_GameViewModel* InViewModel);
 
-	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "ConnectIt | Player Turn")
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "ConnectIt | SelectTile")
 	AGridTileBase* GetSelectedTile();
 
-	UFUNCTION()
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "ConnectIt | SelectTile")
 	void CheckSelectedTile(AGridTileBase* GridTile, FGridPosition GridPosition);
 
 	// interface

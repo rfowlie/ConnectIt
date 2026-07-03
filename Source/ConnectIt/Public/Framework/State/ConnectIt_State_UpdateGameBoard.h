@@ -3,8 +3,9 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "States/GameMechanicsStateSimple.h"
+#include "ConnectIt_State_Base.h"
 #include "UObject/Object.h"
+#include "State/GameMechanicsStateSimple.h"
 #include "ConnectIt_State_UpdateGameBoard.generated.h"
 
 class UConnectIt_GameFacade;
@@ -14,7 +15,7 @@ class UConnectIt_GameViewModel;
  * 
  */
 UCLASS(BlueprintType, Blueprintable)
-class CONNECTIT_API UConnectIt_State_UpdateGameBoard : public UGameMechanicsStateSimple
+class CONNECTIT_API UConnectIt_State_UpdateGameBoard : public UConnectIt_State_Base
 {
 	GENERATED_BODY()
 

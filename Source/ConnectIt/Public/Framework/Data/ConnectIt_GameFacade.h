@@ -16,7 +16,7 @@ class UConnectIt_State_Game;
 /**
  * access information about the game without being able to change anything
  */
-UCLASS()
+UCLASS(BlueprintType)
 class CONNECTIT_API UConnectIt_GameFacade : public UObject
 {
 	GENERATED_BODY()
@@ -48,6 +48,10 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "ConnectIt | Facade | Util")
 	AGridTileBase* GetRandomGridTile() const;
 
+	// BOARD
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "ConnectIt")
+	bool IsGameBoardFull() const;
+	
 	// PLAYER
 	// TODO: in BP we cloned all the data and passed it out so it couldn't be tampered with
 	UFUNCTION(BlueprintCallable, Category = "ConnectIt | Facade")
@@ -62,6 +66,9 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "ConnectIt | Facade")
 	TArray<float> GetPlayerScores() const;
 
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "ConnectIt")
+	bool CheckPlayerWon(const UConnectIt_PlayerData* InPlayerData);
+	
 	// SCORING
 	UFUNCTION(BlueprintCallable, Category = "ConnectIt | Facade | Scoring")
 	void GetConnectionsFromMove(const int32 InPlayerID, const FGridPosition InMove) const;

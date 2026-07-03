@@ -9,22 +9,22 @@
 /**
  * 
  */
-UCLASS()
+UCLASS(BlueprintType)
 class CONNECTIT_API UConnectIt_PlayerData : public UObject
 {
 	GENERATED_BODY()
 
 public:
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "ConnectIt | Data")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "ConnectIt | Data", meta=(ExposeOnSpawn="true"))
 	UObject* PlayerObject = nullptr;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "ConnectIt | Data")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "ConnectIt | Data", meta=(ExposeOnSpawn="true"))
 	int32 PlayerId = -1;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "ConnectIt | Data")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "ConnectIt | Data", meta=(ExposeOnSpawn="true"))
 	int32 Score = 0;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "ConnectIt | Data")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "ConnectIt | Data", meta=(ExposeOnSpawn="true"))
 	FText Name = FText();
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "ConnectIt | Data")

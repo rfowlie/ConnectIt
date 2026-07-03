@@ -3,7 +3,8 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "States/GameMechanicsStateSimple.h"
+#include "ConnectIt_State_Base.h"
+#include "State/GameMechanicsStateSimple.h"
 #include "ConnectIt_State_PlacePiece.generated.h"
 
 class AGridTileBase;
@@ -14,7 +15,7 @@ class UConnectIt_GameViewModel;
  * 
  */
 UCLASS(BlueprintType, Blueprintable)
-class CONNECTIT_API UConnectIt_State_PlacePiece : public UGameMechanicsStateSimple
+class CONNECTIT_API UConnectIt_State_PlacePiece : public UConnectIt_State_Base
 {
 	GENERATED_BODY()
 

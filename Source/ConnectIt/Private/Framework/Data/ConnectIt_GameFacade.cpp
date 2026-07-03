@@ -97,6 +97,12 @@ TArray<float> UConnectIt_GameFacade::GetPlayerScores() const
 	return OutScores;
 }
 
+bool UConnectIt_GameFacade::CheckPlayerWon_Implementation(const UConnectIt_PlayerData* InPlayerData)
+{
+	if (!InPlayerData) return false;
+	return InPlayerData->Score >= 100;
+}
+
 void UConnectIt_GameFacade::GetConnectionsFromMove(const int32 InPlayerID, const FGridPosition InMove) const
 {
 	// get tiles with players pieces	
@@ -174,6 +180,20 @@ AGridTileBase* UConnectIt_GameFacade::GetRandomGridTile() const
 {
 	if (!GameState) { return nullptr; }
 	return UGridMechanics_GridLibrary::GetRandomGridTile(GetGridTiles());
+}
+
+bool UConnectIt_GameFacade::IsGameBoardFull_Implementation() const
+{
+	if (!GameState) { return false; }
+	for (const auto Tile : GameState->AllGridTiles)
+	{
+		if (!IGridPieceHandler::Execute_HasPiece(Tile))
+		{
+			return false;
+		}
+	}
+
+	return true;
 }
 
 bool UConnectIt_GameFacade::IsTileEmpty(AGridTileBase* InGridTile) const

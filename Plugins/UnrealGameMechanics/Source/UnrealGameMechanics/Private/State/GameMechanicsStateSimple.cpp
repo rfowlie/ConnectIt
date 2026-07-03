@@ -1,7 +1,7 @@
 ﻿// Fill out your copyright notice in the Description page of Project Settings.
 
 
-#include "States/GameMechanicsStateSimple.h"
+#include "UnrealGameMechanics/Public/State/GameMechanicsStateSimple.h"
 
 void UGameMechanicsStateSimple::Enter_Implementation()
 {

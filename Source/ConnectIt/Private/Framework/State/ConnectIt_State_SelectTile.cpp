@@ -17,7 +17,12 @@ UConnectIt_State_SelectTile* UConnectIt_State_SelectTile::Create(
 	return State;
 }
 
-void UConnectIt_State_SelectTile::CheckSelectedTile(AGridTileBase* GridTile, FGridPosition GridPosition)
+AGridTileBase* UConnectIt_State_SelectTile::GetSelectedTile_Implementation()
+{
+	return SelectedTile ? SelectedTile : nullptr;
+}
+
+void UConnectIt_State_SelectTile::CheckSelectedTile_Implementation(AGridTileBase* GridTile, FGridPosition GridPosition)
 {
 	if (GameFacade->IsTileEmpty(GridTile))
 	{
@@ -29,11 +34,6 @@ void UConnectIt_State_SelectTile::CheckSelectedTile(AGridTileBase* GridTile, FGr
 		SelectedTile = GridTile;
 		if (OnStateComplete.IsBound()) { OnStateComplete.Broadcast(); }
 	}
-}
-
-AGridTileBase* UConnectIt_State_SelectTile::GetSelectedTile_Implementation()
-{
-	return SelectedTile ? SelectedTile : nullptr;
 }
 
 void UConnectIt_State_SelectTile::Enter_Implementation()
