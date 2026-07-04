@@ -17,23 +17,19 @@ UConnectIt_State_Game::UConnectIt_State_Game()
 
 UConnectIt_State_Game* UConnectIt_State_Game::Create(UObject* Outer)
 {
+	if (!Outer) { return nullptr; }
 	UConnectIt_State_Game* Obj = NewObject<UConnectIt_State_Game>(Outer);
 	
 	Obj->GameTurnTracker = NewObject<UGameTurnTracker>(Outer);
 	
 	Obj->GameFacade = UConnectIt_GameFacade::Create(Outer, Obj);
-	Obj->GameViewModel = UConnectIt_GameViewModel::Create(Outer, Obj);
+	Obj->GameViewModel = UConnectIt_GameViewModel::Create(Outer, Obj, Obj->GameFacade);
 	// PlayerPiecePool = UActorPool::Create(AGridPieceBase::StaticClass(), 64);
 	
-	Obj->StatePlayerTurn = UConnectIt_State_SelectTile::Create(Outer, Obj->GameFacade, Obj->GameViewModel);
-	Obj->StatePlayerTurn->OnStateComplete.AddDynamic(Obj, &ThisClass::OnTileSelected);
-
-	Obj->StatePlacePiece = UConnectIt_State_PlacePiece::Create(Outer, Obj->GameFacade, Obj->GameViewModel);
-	Obj->StatePlacePiece->OnStateComplete.AddDynamic(Obj, &ThisClass::OnPiecePlaced);
-
-	Obj->StateUpdateBoard = UConnectIt_State_UpdateGameBoard::Create(Outer, Obj->GameFacade, Obj->GameViewModel);
-	Obj->StateUpdateBoard->OnStateComplete.AddDynamic(Obj, &ThisClass::OnBoardUpdated);
-
+	Obj->ConstructStateSelectTile(Outer);
+	Obj->ConstructStatePlacePiece(Outer);
+	Obj->ConstructStateUpdateGameBoard(Outer);
+	
 	return Obj;
 }
 
@@ -42,13 +38,28 @@ void UConnectIt_State_Game::Initialize(UObject* Outer)
 	GameTurnTracker = NewObject<UGameTurnTracker>(Outer);
 	
 	GameFacade = UConnectIt_GameFacade::Create(Outer, this);
-	GameViewModel = UConnectIt_GameViewModel::Create(Outer, this);
+	GameViewModel = UConnectIt_GameViewModel::Create(Outer, this, GameFacade);
 	// PlayerPiecePool = UActorPool::Create(AGridPieceBase::StaticClass(), 64);
 	
+	ConstructStateSelectTile(Outer);
+	ConstructStatePlacePiece(Outer);
+	ConstructStateUpdateGameBoard(Outer);
+}
+
+void UConnectIt_State_Game::ConstructStateSelectTile_Implementation(UObject* Outer)
+{
 	StatePlayerTurn = UConnectIt_State_SelectTile::Create(Outer, GameFacade, GameViewModel);
 	StatePlayerTurn->OnStateComplete.AddDynamic(this, &ThisClass::OnTileSelected);
+}
+
+void UConnectIt_State_Game::ConstructStatePlacePiece_Implementation(UObject* Outer)
+{
 	StatePlacePiece = UConnectIt_State_PlacePiece::Create(Outer, GameFacade, GameViewModel);
 	StatePlacePiece->OnStateComplete.AddDynamic(this, &ThisClass::OnPiecePlaced);
+}
+
+void UConnectIt_State_Game::ConstructStateUpdateGameBoard_Implementation(UObject* Outer)
+{
 	StateUpdateBoard = UConnectIt_State_UpdateGameBoard::Create(Outer, GameFacade, GameViewModel);
 	StateUpdateBoard->OnStateComplete.AddDynamic(this, &ThisClass::OnBoardUpdated);
 }
@@ -56,7 +67,7 @@ void UConnectIt_State_Game::Initialize(UObject* Outer)
 void UConnectIt_State_Game::BroadCastGameState(UConnectIt_State_Base* GameState) const
 {
 	// TODO: why is this not working? Because not Tag set?
-	return;
+	// return;
 	if (!GameState) { return; }
 	if (OnGameStateChanged.IsBound()) { OnGameStateChanged.Broadcast(GameState->GetGameStateTag()); }
 }

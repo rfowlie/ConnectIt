@@ -5,7 +5,7 @@
 #include "CoreMinimal.h"
 #include "ConnectIt_State_Base.h"
 #include "GridMechanicsBaseStructs.h"
-#include "State/GameMechanicsStateSimple.h"
+#include "Tile/Selector/GridTileSelector.h"
 #include "ConnectIt_State_SelectTile.generated.h"
 
 class AGridTileBase;
@@ -21,8 +21,10 @@ class CONNECTIT_API UConnectIt_State_SelectTile : public UConnectIt_State_Base
 	GENERATED_BODY()
 
 public:
+	UConnectIt_State_SelectTile();
+	
 	static UConnectIt_State_SelectTile* Create(UObject* Outer, UConnectIt_GameFacade* InGameFacade, UConnectIt_GameViewModel* InViewModel);
-
+	
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "ConnectIt | SelectTile")
 	AGridTileBase* GetSelectedTile();
 
@@ -34,11 +36,9 @@ public:
 	
 	
 protected:
-	UPROPERTY(BlueprintReadOnly)
-	UConnectIt_GameViewModel* GameViewModel = nullptr;
-	UPROPERTY(BlueprintReadOnly)
-	UConnectIt_GameFacade* GameFacade = nullptr;
-
 	UPROPERTY(BlueprintReadWrite)
 	AGridTileBase* SelectedTile = nullptr;
+
+	UPROPERTY()
+	FGridTileSelectorDelegate TileSelectorDelegate;
 };

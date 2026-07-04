@@ -1,7 +1,7 @@
 ﻿// Fill out your copyright notice in the Description page of Project Settings.
 
 
-#include "Shift/GridMechanics_GridShiftLibrary.h"
+#include "Board/Shift/GridMechanics_GridShiftLibrary.h"
 
 
 FShiftResult UGridMechanics_GridShiftLibrary::ComputeShiftResult(

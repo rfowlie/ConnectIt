@@ -11,11 +11,11 @@
 #include "Pooling/ActorPool.h"
 
 
-UConnectIt_GameViewModel* UConnectIt_GameViewModel::Create(UObject* Outer, UConnectIt_State_Game* InGameState)
+UConnectIt_GameViewModel* UConnectIt_GameViewModel::Create(UObject* Outer, UConnectIt_State_Game* InGameState, UConnectIt_GameFacade* InGameFacade)
 {
-	UConnectIt_GameViewModel* GameFacade = NewObject<UConnectIt_GameViewModel>();
-	GameFacade->GameState = InGameState;
-	return GameFacade;
+	UConnectIt_GameViewModel* Obj = NewObject<UConnectIt_GameViewModel>();
+	Obj->GameState = InGameState;
+	return Obj;
 }
 
 void UConnectIt_GameViewModel::PlacePiece(UConnectIt_PlayerData* InPlayerData, AGridTileBase* InGridTile) const
@@ -35,7 +35,7 @@ void UConnectIt_GameViewModel::PlacePiece(UConnectIt_PlayerData* InPlayerData, A
 void UConnectIt_GameViewModel::SetPlayerScore(const int32 PlayerId, const int32 InScore) const
 {
 	if (!GameState) return;
-	UConnectIt_PlayerData* PlayerData = GameState->GameFacade->GetPlayerDataById(PlayerId);
+	UConnectIt_PlayerData* PlayerData = GameFacade->GetPlayerDataById(PlayerId);
 	if (!PlayerData) return;
 	PlayerData->AddToScore(InScore);
 }

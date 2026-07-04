@@ -52,11 +52,6 @@ public:
 	UPROPERTY(BlueprintReadOnly)
 	UConnectIt_State_UpdateGameBoard* StateUpdateBoard = nullptr;
 
-	UPROPERTY(BlueprintReadOnly)
-	UConnectIt_GameFacade* GameFacade = nullptr;
-	UPROPERTY(BlueprintReadOnly)
-	UConnectIt_GameViewModel* GameViewModel = nullptr;
-
 	UPROPERTY(BlueprintReadWrite, meta=(ExposeOnSpawn = "true"))
 	AConnectIt_BoardManager* BoardManager = nullptr;
 	
@@ -97,6 +92,15 @@ protected:
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
 	TSubclassOf<UConnectIt_State_UpdateGameBoard> StateUpdateGameBoardClass = UConnectIt_State_UpdateGameBoard::StaticClass();
+
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "ConnectIt | State")
+	void ConstructStateSelectTile(UObject* Outer);
+
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "ConnectIt | State")
+	void ConstructStatePlacePiece(UObject* Outer);
+
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "ConnectIt | State")
+	void ConstructStateUpdateGameBoard(UObject* Outer);
 	
 	void BroadCastGameState(UConnectIt_State_Base* GameState) const;
 };

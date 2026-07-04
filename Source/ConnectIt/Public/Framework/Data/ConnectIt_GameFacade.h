@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "ConnectIt_PlayerData.h"
+#include "GameplayTagContainer.h"
 #include "GridMechanicsBaseStructs.h"
 #include "Tile/GridTileBase.h"
 #include "UObject/Object.h"
@@ -12,6 +13,10 @@
 class AGridTileBase;
 class UConnectIt_PlayerData;
 class UConnectIt_State_Game;
+
+
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FConnectItFacadeGameStateDelegate, FGameplayTag, GameStateTag);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FConnectItFacadeScoreDelegate);
 
 /**
  * access information about the game without being able to change anything
@@ -24,6 +29,12 @@ class CONNECTIT_API UConnectIt_GameFacade : public UObject
 public:
 	static UConnectIt_GameFacade* Create(UObject* Outer, UConnectIt_State_Game* InGameState);	
 
+	UPROPERTY(BlueprintAssignable, BlueprintCallable, Category = "ConnectIt | Facade")
+	FConnectItFacadeGameStateDelegate GameStateDelegate;
+	
+	UPROPERTY(BlueprintAssignable, BlueprintCallable, Category = "ConnectIt | Facade")
+	FConnectItFacadeScoreDelegate ScoreDelegate;
+	
 	// GRID
 	// TODO: return const array?
 	UFUNCTION(BlueprintCallable, Category = "ConnectIt | Facade")
@@ -67,7 +78,7 @@ public:
 	TArray<float> GetPlayerScores() const;
 
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "ConnectIt")
-	bool CheckPlayerWon(const UConnectIt_PlayerData* InPlayerData);
+	bool CheckPlayerWon(const UConnectIt_PlayerData* InPlayerData) const;
 	
 	// SCORING
 	UFUNCTION(BlueprintCallable, Category = "ConnectIt | Facade | Scoring")

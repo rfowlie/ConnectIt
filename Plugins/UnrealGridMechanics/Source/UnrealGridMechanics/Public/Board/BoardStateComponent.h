@@ -5,8 +5,9 @@
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
 #include "GridMechanicsBaseStructs.h"
-#include "UnrealGridMechanics/Public/Shift/GridShiftTypes.h"
+#include "UnrealGridMechanics/Public/Board/Shift/GridShiftTypes.h"
 #include "BoardStateComponent.generated.h"
+
 
 // Extensible tile data — add game specific fields in subclass or directly here
 USTRUCT(BlueprintType)

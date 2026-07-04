@@ -6,6 +6,7 @@
 #include "UObject/Object.h"
 #include "ConnectIt_GameViewModel.generated.h"
 
+class UConnectIt_GameFacade;
 class UConnectIt_State_Game;
 class UConnectIt_PlayerData;
 class AGridTileBase;
@@ -19,7 +20,7 @@ class CONNECTIT_API UConnectIt_GameViewModel : public UObject
 	GENERATED_BODY()
 
 public:
-	static UConnectIt_GameViewModel* Create(UObject* Outer, UConnectIt_State_Game* InGameState);
+	static UConnectIt_GameViewModel* Create(UObject* Outer, UConnectIt_State_Game* InGameState, UConnectIt_GameFacade* InGameFacade);
 
 	// TODO: this will need to work with animations etc...
 	UFUNCTION(BlueprintCallable, Category = "ConnectIt | ViewModel")
@@ -31,4 +32,7 @@ public:
 protected:
 	UPROPERTY()
 	UConnectIt_State_Game* GameState = nullptr;
+
+	UPROPERTY()
+	UConnectIt_GameFacade* GameFacade = nullptr;
 };

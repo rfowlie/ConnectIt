@@ -5,7 +5,6 @@
 #include "CoreMinimal.h"
 #include "ConnectIt_State_Base.h"
 #include "UObject/Object.h"
-#include "State/GameMechanicsStateSimple.h"
 #include "ConnectIt_State_UpdateGameBoard.generated.h"
 
 class UConnectIt_GameFacade;
@@ -21,10 +20,5 @@ class CONNECTIT_API UConnectIt_State_UpdateGameBoard : public UConnectIt_State_B
 
 public:
 	static UConnectIt_State_UpdateGameBoard* Create(UObject* Outer, UConnectIt_GameFacade* InGameFacade, UConnectIt_GameViewModel* InViewModel);
-
-protected:
-	UPROPERTY()
-	UConnectIt_GameViewModel* GameViewModel = nullptr;
-	UPROPERTY()
-	UConnectIt_GameFacade* GameFacade = nullptr;
+	
 };

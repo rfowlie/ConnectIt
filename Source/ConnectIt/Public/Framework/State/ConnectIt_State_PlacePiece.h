@@ -21,16 +21,11 @@ class CONNECTIT_API UConnectIt_State_PlacePiece : public UConnectIt_State_Base
 
 public:
 	static UConnectIt_State_PlacePiece* Create(UObject* Outer, UConnectIt_GameFacade* InGameFacade, UConnectIt_GameViewModel* InViewModel);
-
+	
 	UFUNCTION(BlueprintCallable, Category = "ConnectIt")
 	void SetSelectedTile(AGridTileBase* InGridTile) { SelectedTile = InGridTile; }
 	
 protected:
-	UPROPERTY()
-	UConnectIt_GameViewModel* GameViewModel = nullptr;
-	UPROPERTY()
-	UConnectIt_GameFacade* GameFacade = nullptr;
-
 	UPROPERTY(BlueprintReadWrite)
 	AGridTileBase* SelectedTile = nullptr;
 };

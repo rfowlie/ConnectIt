@@ -4,7 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
-#include "UnrealGridMechanics/Public/Shift/GridShiftTypes.h"
+#include "UnrealGridMechanics/Public/Board/Shift/GridShiftTypes.h"
 #include "BoardActor.generated.h"
 
 class UGridTileRegistryComponent;

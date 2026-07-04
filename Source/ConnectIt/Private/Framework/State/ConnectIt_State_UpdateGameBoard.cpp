@@ -2,12 +2,14 @@
 
 
 #include "Framework/State/ConnectIt_State_UpdateGameBoard.h"
+#include "ConnectIt_GameplayTags.h"
 
 UConnectIt_State_UpdateGameBoard* UConnectIt_State_UpdateGameBoard::Create(
 	UObject* Outer,	UConnectIt_GameFacade* InGameFacade, UConnectIt_GameViewModel* InViewModel)
 {
-	UConnectIt_State_UpdateGameBoard* State = NewObject<UConnectIt_State_UpdateGameBoard>();
-	State->GameFacade = InGameFacade;
-	State->GameViewModel = InViewModel;
-	return State;
+	UConnectIt_State_UpdateGameBoard* Obj = NewObject<UConnectIt_State_UpdateGameBoard>();
+	Obj->GameStateTag = ConnectIt_Game_UpdateBoard;
+	Obj->GameFacade = InGameFacade;
+	Obj->GameViewModel = InViewModel;
+	return Obj;
 }

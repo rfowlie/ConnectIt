@@ -1,4 +1,4 @@
 ﻿// Fill out your copyright notice in the Description page of Project Settings.
 
 
-#include "UnrealGridMechanics/Public/Shift/GridShiftTypes.h"
+#include "UnrealGridMechanics/Public/Board/Shift/GridShiftTypes.h"

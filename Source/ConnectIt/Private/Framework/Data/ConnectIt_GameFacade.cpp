@@ -97,7 +97,7 @@ TArray<float> UConnectIt_GameFacade::GetPlayerScores() const
 	return OutScores;
 }
 
-bool UConnectIt_GameFacade::CheckPlayerWon_Implementation(const UConnectIt_PlayerData* InPlayerData)
+bool UConnectIt_GameFacade::CheckPlayerWon_Implementation(const UConnectIt_PlayerData* InPlayerData) const
 {
 	if (!InPlayerData) return false;
 	return InPlayerData->Score >= 100;

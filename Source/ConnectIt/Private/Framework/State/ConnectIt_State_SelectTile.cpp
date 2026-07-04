@@ -2,19 +2,29 @@
 
 
 #include "Framework/State/ConnectIt_State_SelectTile.h"
+
+#include "ConnectIt_GameplayTags.h"
 #include "Framework/Data/ConnectIt_GameFacade.h"
 #include "Framework/Data/ConnectIt_PlayerData.h"
+#include "GameTurn/GameTurnParticipant.h"
+#include "GameTurn/GameTurnParticipantComponent.h"
 #include "Tile/Selector/GridTileSelector.h"
 #include "Tile/Selector/GridTileSelectorComponent.h"
 
 
+UConnectIt_State_SelectTile::UConnectIt_State_SelectTile()
+{
+	TileSelectorDelegate.BindDynamic(this, &UConnectIt_State_SelectTile::CheckSelectedTile);
+}
+
 UConnectIt_State_SelectTile* UConnectIt_State_SelectTile::Create(
 	UObject* Outer, UConnectIt_GameFacade* InGameFacade, UConnectIt_GameViewModel* InViewModel)
 {
-	UConnectIt_State_SelectTile* State = NewObject<UConnectIt_State_SelectTile>();
-	State->GameFacade = InGameFacade;
-	State->GameViewModel = InViewModel;
-	return State;
+	UConnectIt_State_SelectTile* Obj = NewObject<UConnectIt_State_SelectTile>();
+	Obj->GameStateTag = ConnectIt_Game_SelectTile;
+	Obj->GameFacade = InGameFacade;
+	Obj->GameViewModel = InViewModel;
+	return Obj;
 }
 
 AGridTileBase* UConnectIt_State_SelectTile::GetSelectedTile_Implementation()
@@ -27,9 +37,18 @@ void UConnectIt_State_SelectTile::CheckSelectedTile_Implementation(AGridTileBase
 	if (GameFacade->IsTileEmpty(GridTile))
 	{
 		const UConnectIt_PlayerData* Data = GameFacade->GetCurrentPlayerData();
-		UGridTileSelectorComponent* Component = IGridTileSelector::Execute_GetGridTileSelectorComponent(Data->PlayerObject);
-		Component->GridTileSelectorDelegate.RemoveDynamic(this, &ThisClass::CheckSelectedTile);
-		IGridTileSelector::Execute_SelectGridTileExit(Data->PlayerObject);
+		checkf(Data, TEXT("ConnectIt State - Select Tile - Player Data nullptr "))
+		// check(Data->PlayerObject == nullptr);
+		// check(Data->PlayerObject->Implements<UGridTileSelector>());
+		IGridTileSelector::Execute_SelectGridTileUnregister(Data->PlayerObject, TileSelectorDelegate);
+		// Data->GameTurnParticipantComponent->OnTurnEnd.Broadcast();
+		Data->GameTurnParticipant->OnTurnEnd.Broadcast(GameStateTag);
+
+		
+		// UGridTileSelectorComponent* Component = IGridTileSelector::Execute_GetGridTileSelectorComponent(Data->PlayerObject);
+		// Component->GridTileSelectorDelegate.RemoveDynamic(this, &ThisClass::CheckSelectedTile);
+		// IGridTileSelector::Execute_SelectGridTileRegister(Data->PlayerObject, &ThisClass::CheckSelectedTile);
+		// IGridTileSelector::Execute_SelectGridTileExit(Data->PlayerObject);
 		
 		SelectedTile = GridTile;
 		if (OnStateComplete.IsBound()) { OnStateComplete.Broadcast(); }
@@ -39,8 +58,17 @@ void UConnectIt_State_SelectTile::CheckSelectedTile_Implementation(AGridTileBase
 void UConnectIt_State_SelectTile::Enter_Implementation()
 {
 	const UConnectIt_PlayerData* Data = GameFacade->GetCurrentPlayerData();
-	UGridTileSelectorComponent* Component = IGridTileSelector::Execute_GetGridTileSelectorComponent(Data->PlayerObject);
-	Component->GridTileSelectorDelegate.AddDynamic(this, &ThisClass::CheckSelectedTile);
-	IGridTileSelector::Execute_SelectGridTileEnter(Data->PlayerObject);
+	checkf(Data, TEXT("ConnectIt State - Select Tile - Player Data nullptr "))
+	// check(Data->PlayerObject == nullptr);
+	// check(Data->PlayerObject->Implements<UGridTileSelector>());
+	IGridTileSelector::Execute_SelectGridTileRegister(Data->PlayerObject, TileSelectorDelegate);
+	// Data->GameTurnParticipantComponent->OnTurnBegin.Broadcast();
+	if (Data->GameTurnParticipant) { Data->GameTurnParticipant->OnTurnBegin.Broadcast(GameStateTag); }
+
+	
+	// UGridTileSelectorComponent* Component = IGridTileSelector::Execute_GetGridTileSelectorComponent(Data->PlayerObject);
+	// checkf(Component, TEXT("ConnectIt State - Select Tile - Grid Tile Selector Component nullptr "))
+	// Component->GridTileSelectorDelegate.AddDynamic(this, &ThisClass::CheckSelectedTile);
+	// IGridTileSelector::Execute_SelectGridTileEnter(Data->PlayerObject);
 }
 

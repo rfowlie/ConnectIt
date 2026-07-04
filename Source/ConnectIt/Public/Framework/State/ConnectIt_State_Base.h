@@ -7,6 +7,9 @@
 #include "State/GameStateHandlerInterface.h"
 #include "ConnectIt_State_Base.generated.h"
 
+class UConnectIt_GameFacade;
+class UConnectIt_GameViewModel;
+
 /**
  * 
  */
@@ -18,6 +21,12 @@ class CONNECTIT_API UConnectIt_State_Base : public UGameMechanicsStateSimple, pu
 	virtual FGameplayTag GetGameStateTag_Implementation() override;
 
 protected:
-	UPROPERTY(EditDefaultsOnly, Category = "Game State")
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Game State")
 	FGameplayTag GameStateTag;
+	
+	UPROPERTY(BlueprintReadOnly)
+	UConnectIt_GameViewModel* GameViewModel = nullptr;
+	
+	UPROPERTY(BlueprintReadOnly)
+	UConnectIt_GameFacade* GameFacade = nullptr;
 };

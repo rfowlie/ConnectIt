@@ -6,6 +6,9 @@
 #include "UObject/Object.h"
 #include "ConnectIt_PlayerData.generated.h"
 
+class UGameTurnParticipant;
+class UGameTurnParticipantComponent;
+
 /**
  * 
  */
@@ -18,6 +21,12 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "ConnectIt | Data", meta=(ExposeOnSpawn="true"))
 	UObject* PlayerObject = nullptr;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "ConnectIt | Data", meta=(ExposeOnSpawn="true"))
+	UGameTurnParticipantComponent* GameTurnParticipantComponent = nullptr;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "ConnectIt | Data", meta=(ExposeOnSpawn="true"))
+	UGameTurnParticipant* GameTurnParticipant = nullptr;
+	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "ConnectIt | Data", meta=(ExposeOnSpawn="true"))
 	int32 PlayerId = -1;
 

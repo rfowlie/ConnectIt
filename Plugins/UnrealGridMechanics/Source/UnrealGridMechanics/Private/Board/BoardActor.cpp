@@ -3,7 +3,7 @@
 
 #include "Board/BoardActor.h"
 #include "Board/BoardStateComponent.h"
-#include "Board/BoardShiftComponent.h"
+#include "Board/Shift/BoardShiftComponent.h"
 #include "Tile/GridTileRegistryComponent.h"
 
 

@@ -1,12 +1,12 @@
 ﻿// Fill out your copyright notice in the Description page of Project Settings.
 
 
-#include "Board/BoardShiftComponent.h"
+#include "Board/Shift/BoardShiftComponent.h"
 #include "Board/BoardStateComponent.h"
-#include "Tile/GridTileRegistryComponent.h"
-#include "UnrealGridMechanics/Public/Shift/GridMechanics_GridShiftLibrary.h"
-#include "Interface/GridShiftInterface.h"
+#include "Board/Shift/GridMechanics_GridShiftLibrary.h"
 #include "Tile/GridTileBase.h"
+#include "Tile/GridTileRegistryComponent.h"
+#include "Interface/GridShiftInterface.h"
 
 
 UBoardShiftComponent::UBoardShiftComponent()

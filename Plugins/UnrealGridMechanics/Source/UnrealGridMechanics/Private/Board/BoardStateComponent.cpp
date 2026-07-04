@@ -2,7 +2,7 @@
 
 
 #include "Board/BoardStateComponent.h"
-#include "UnrealGridMechanics/Public/Shift/GridShiftTypes.h"
+#include "UnrealGridMechanics/Public/Board/Shift/GridShiftTypes.h"
 
 
 UBoardStateComponent::UBoardStateComponent()

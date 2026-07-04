@@ -5,7 +5,7 @@
 #include "CoreMinimal.h"
 #include "UObject/Object.h"
 #include "GameplayTagContainer.h"
-#include "UnrealGameStructs.generated.h"
+#include "UnrealGameMechanicsStructs.generated.h"
 
 
 // this is useful in many different scenarios
