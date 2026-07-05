@@ -4,7 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "UObject/Interface.h"
-#include "UnrealGridMechanics/Public/Shift/GridShiftTypes.h"
+#include "Board/Shift/GridShiftTypes.h"
 #include "GridShiftInterface.generated.h"
 
 // This class does not need to be modified.

@@ -19,17 +19,18 @@ UConnectIt_State_Game* UConnectIt_State_Game::Create(UObject* Outer)
 {
 	if (!Outer) { return nullptr; }
 	UConnectIt_State_Game* Obj = NewObject<UConnectIt_State_Game>(Outer);
+	Obj->Initialize(Outer);
 	
-	Obj->GameTurnTracker = NewObject<UGameTurnTracker>(Outer);
-	
-	Obj->GameFacade = UConnectIt_GameFacade::Create(Outer, Obj);
-	Obj->GameViewModel = UConnectIt_GameViewModel::Create(Outer, Obj, Obj->GameFacade);
-	// PlayerPiecePool = UActorPool::Create(AGridPieceBase::StaticClass(), 64);
-	
-	Obj->ConstructStateSelectTile(Outer);
-	Obj->ConstructStatePlacePiece(Outer);
-	Obj->ConstructStateUpdateGameBoard(Outer);
-	
+	// Obj->GameTurnTracker = NewObject<UGameTurnTracker>(Outer);
+	//
+	// Obj->GameFacade = UConnectIt_GameFacade::Create(Outer, Obj);
+	// Obj->GameViewModel = UConnectIt_GameViewModel::Create(Outer, Obj, Obj->GameFacade);
+	// // PlayerPiecePool = UActorPool::Create(AGridPieceBase::StaticClass(), 64);
+	//
+	// Obj->ConstructStateSelectTile(Outer);
+	// Obj->ConstructStatePlacePiece(Outer);
+	// Obj->ConstructStateUpdateGameBoard(Outer);
+	//
 	return Obj;
 }
 
