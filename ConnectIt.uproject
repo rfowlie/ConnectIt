@@ -33,6 +33,10 @@
 		{
 			"Name": "UnrealGridMechanics",
 			"Enabled": true
+		},
+		{
+			"Name": "UnrealTurnBasedStrategyMechanics",
+			"Enabled": true
 		}
 	]
 }
