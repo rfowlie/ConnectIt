@@ -2,7 +2,7 @@
 
 
 #include "Tile/GridTileBase.h"
-
+#include "GameplayTagContainer.h"
 #include "GridMechanics_GridLibrary.h"
 #include "Subsystem/GridTrackerSubsystem.h"
 #include "Subsystem/GridWorldSubsystem.h"
@@ -18,12 +18,15 @@ void AGridTileBase::BeginPlay()
 	
 	if (UGridWorldSubsystem* Subsystem = GetWorld()->GetSubsystem<UGridWorldSubsystem>())
 	{
-		Subsystem->RegisterTile(
-			this, UGridMechanics_GridLibrary::CalculateGridPositionFromSize(this, 100.f));
+		Subsystem->RegisterTile(this);
 	}	
 	
-	if (UGridTrackerSubsystem* Subsystem = GetWorld()->GetSubsystem<UGridTrackerSubsystem>())
-	{
-		Subsystem->RegisterGridTile(this);
-	}
+	// if (UGridTrackerSubsystem* Subsystem = GetWorld()->GetSubsystem<UGridTrackerSubsystem>())
+	// {
+	// 	Subsystem->RegisterGridTile(this);
+	// }
+}
+
+void AGridTileBase::SendGameplayTag_Implementation(FGameplayTag StateTag)
+{
 }

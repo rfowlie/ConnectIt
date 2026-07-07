@@ -215,7 +215,7 @@ TMap<FGridPosition, AGridTileBase*> UBoardShiftComponent::BuildGridPositionTileM
 
     for (FGridPosition Position : Positions)
     {
-        if (AGridTileBase* Tile = RegistryComponent->GetTile(Position))
+        if (AGridTileBase* Tile = RegistryComponent->GetTileAtPosition(Position))
         {
             TileActors.Add(Position, Tile);
         }

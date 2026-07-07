@@ -15,6 +15,6 @@ void AGridPieceBase::BeginPlay()
 
 	if (UGridWorldSubsystem* Subsystem = GetWorld()->GetSubsystem<UGridWorldSubsystem>())
 	{
-		Subsystem->RegisterPiece(this, GridPosition);
+		Subsystem->RegisterPiece(this);
 	}	
 }

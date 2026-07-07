@@ -2,25 +2,17 @@
 
 
 #include "Framework/Manager/ConnectIt_BoardManager.h"
+#include "Framework/Data/ConnectIt_ConfigComponent.h"
 
 
-// Sets default values
 AConnectIt_BoardManager::AConnectIt_BoardManager()
 {
-	// Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
-	PrimaryActorTick.bCanEverTick = true;
+	PrimaryActorTick.bCanEverTick = false;
+
+	ConnectItConfig = CreateDefaultSubobject<UConnectIt_ConfigComponent>(TEXT("ConnectItConfig"));
 }
 
-// Called when the game starts or when spawned
-void AConnectIt_BoardManager::BeginPlay()
+const UConnectIt_ConfigComponent* AConnectIt_BoardManager::GetConnectItConfig() const
 {
-	Super::BeginPlay();
-	
+	return ConnectItConfig;
 }
-
-// Called every frame
-void AConnectIt_BoardManager::Tick(float DeltaTime)
-{
-	Super::Tick(DeltaTime);
-}
-

@@ -3,23 +3,26 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "GameFramework/Actor.h"
+#include "Board/BoardManager.h"
 #include "ConnectIt_BoardManager.generated.h"
 
-UCLASS()
-class CONNECTIT_API AConnectIt_BoardManager : public AActor
+class UConnectIt_ConfigComponent;
+
+
+UCLASS(Blueprintable, BlueprintType)
+class CONNECTIT_API AConnectIt_BoardManager : public ABoardManager
 {
 	GENERATED_BODY()
 
 public:
-	// Sets default values for this actor's properties
+
 	AConnectIt_BoardManager();
 
-protected:
-	// Called when the game starts or when spawned
-	virtual void BeginPlay() override;
+	UFUNCTION(BlueprintCallable, Category = "ConnectIt|Config")
+	const UConnectIt_ConfigComponent* GetConnectItConfig() const;
 
-public:
-	// Called every frame
-	virtual void Tick(float DeltaTime) override;
+protected:
+	UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, Category = "ConnectIt")
+	TObjectPtr<UConnectIt_ConfigComponent> ConnectItConfig = nullptr;
+	
 };

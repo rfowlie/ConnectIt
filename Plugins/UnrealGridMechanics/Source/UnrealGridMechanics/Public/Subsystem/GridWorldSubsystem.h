@@ -12,15 +12,13 @@
 class AGridTileBase;
 class AGridPieceBase;
 
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnTileRegistered,
-    AGridTileBase*, Tile, FGridPosition, Position);
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnTileUnregistered,
-    AGridTileBase*, Tile, FGridPosition, Position);
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnPieceRegistered,
-    AGridPieceBase*, Piece, FGridPosition, Position);
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnPieceUnregistered,
-    AGridPieceBase*, Piece, FGridPosition, Position);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FGridWorldSubsystemTileDelegate, AGridTileBase*, Tile);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FGridWorldSubsystemPieceDelegate, AGridPieceBase*, Piece);
 
+/*
+ * keep track of all grid pieces in the current level
+ * provide global point for binding cursor overlaps
+ */
 UCLASS()
 class UNREALGRIDMECHANICS_API UGridWorldSubsystem : public UWorldSubsystem
 {
@@ -31,39 +29,28 @@ public:
     // --- Tile Registration ---
 
     UFUNCTION(BlueprintCallable, Category = "Grid|Registry")
-    void RegisterTile(AGridTileBase* Tile, FGridPosition Position);
+    void RegisterTile(AGridTileBase* Tile);
 
     UFUNCTION(BlueprintCallable, Category = "Grid|Registry")
     void UnregisterTile(AGridTileBase* Tile);
 
     UFUNCTION(BlueprintPure, Category = "Grid|Registry")
-    AGridTileBase* GetTileAtPosition(FGridPosition Position) const;
-
-    UFUNCTION(BlueprintPure, Category = "Grid|Registry")
-    bool IsTileRegistered(AGridTileBase* Tile) const;
+    bool IsTileRegistered(const AGridTileBase* Tile) const;
 
     UFUNCTION(BlueprintPure, Category = "Grid|Registry")
     TArray<AGridTileBase*> GetAllTiles() const;
-
-    UFUNCTION(BlueprintPure, Category = "Grid|Registry")
-    TArray<FGridPosition> GetAllTilePositions() const;
+    
 
     // --- Piece Registration ---
 
     UFUNCTION(BlueprintCallable, Category = "Grid|Registry")
-    void RegisterPiece(AGridPieceBase* Piece, FGridPosition Position);
+    void RegisterPiece(AGridPieceBase* Piece);
 
     UFUNCTION(BlueprintCallable, Category = "Grid|Registry")
     void UnregisterPiece(AGridPieceBase* Piece);
 
-    UFUNCTION(BlueprintCallable, Category = "Grid|Registry")
-    void UpdatePiecePosition(AGridPieceBase* Piece, FGridPosition NewPosition);
-
     UFUNCTION(BlueprintPure, Category = "Grid|Registry")
-    AGridPieceBase* GetPieceAtPosition(FGridPosition Position) const;
-
-    UFUNCTION(BlueprintPure, Category = "Grid|Registry")
-    bool IsPieceRegistered(AGridPieceBase* Piece) const;
+    bool IsPieceRegistered(const AGridPieceBase* Piece) const;
 
     UFUNCTION(BlueprintPure, Category = "Grid|Registry")
     TArray<AGridPieceBase*> GetAllPieces() const;
@@ -71,30 +58,31 @@ public:
     // --- Delegates ---
 
     UPROPERTY(BlueprintAssignable, Category = "Grid|Registry")
-    FOnTileRegistered OnTileRegistered;
+    FGridWorldSubsystemTileDelegate OnTileRegistered;
 
     UPROPERTY(BlueprintAssignable, Category = "Grid|Registry")
-    FOnTileUnregistered OnTileUnregistered;
+    FGridWorldSubsystemTileDelegate OnTileUnregistered;
 
     UPROPERTY(BlueprintAssignable, Category = "Grid|Registry")
-    FOnPieceRegistered OnPieceRegistered;
+    FGridWorldSubsystemPieceDelegate OnPieceRegistered;
 
     UPROPERTY(BlueprintAssignable, Category = "Grid|Registry")
-    FOnPieceUnregistered OnPieceUnregistered;
+    FGridWorldSubsystemPieceDelegate OnPieceUnregistered;
 
+    UPROPERTY(BlueprintAssignable, Category = "Grid|Registry")
+    FGridWorldSubsystemTileDelegate OnGridTileHoverChanged;
+    
 private:
 
     // Tile maps — bidirectional for fast lookup in both directions
-    UPROPERTY()
-    TMap<FGridPosition, AGridTileBase*> TilesByPosition;
 
     UPROPERTY()
-    TMap<AGridTileBase*, FGridPosition> PositionsByTile;
-
-    // Piece maps — bidirectional
-    UPROPERTY()
-    TMap<FGridPosition, AGridPieceBase*> PiecesByPosition;
+    TMap<AGridTileBase*, bool> RegisteredTiles;
 
     UPROPERTY()
-    TMap<AGridPieceBase*, FGridPosition> PositionsByPiece;
+    TMap<AGridPieceBase*, bool> RegisteredPieces;
+
+    UFUNCTION()
+    void BroadcastGridTileHoverChanged(AGridTileBase* InTile);
+    
 };

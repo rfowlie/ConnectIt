@@ -6,7 +6,7 @@
 #include "Piece/GridPieceBase.h"
 
 
-void UGridWorldSubsystem::RegisterTile(AGridTileBase* Tile, FGridPosition Position)
+void UGridWorldSubsystem::RegisterTile(AGridTileBase* Tile)
 {
     if (!IsValid(Tile))
     {
@@ -16,71 +16,44 @@ void UGridWorldSubsystem::RegisterTile(AGridTileBase* Tile, FGridPosition Positi
     }
 
     // Warn if position is already occupied by a different tile
-    if (AGridTileBase* Existing = TilesByPosition.FindRef(Position))
+    if (RegisteredTiles.Contains(Tile))
     {
-        if (Existing != Tile)
-        {
-            UE_LOG(LogTemp, Warning,
-                TEXT("GridWorldSubsystem: Position (%d, %d) already occupied by %s — overwriting"),
-                Position.X, Position.Y, *Existing->GetName());
-        }
+        UE_LOG(LogTemp, Warning,
+               TEXT("GridWorldSubsystem: RegisterTile called with tile already registered"));
     }
 
-    // Remove old position entry if tile is re-registering
-    if (FGridPosition* OldPosition = PositionsByTile.Find(Tile))
-    {
-        TilesByPosition.Remove(*OldPosition);
-    }
+    RegisteredTiles.Add(Tile);
 
-    TilesByPosition.Add(Position, Tile);
-    PositionsByTile.Add(Tile, Position);
+    // chain delegates for global broadcast
+    Tile->OnGridTileBeginCursorOver.AddDynamic(this, &ThisClass::BroadcastGridTileHoverChanged);
 
-    OnTileRegistered.Broadcast(Tile, Position);
+    OnTileRegistered.Broadcast(Tile);
 
     UE_LOG(LogTemp, Log,
-        TEXT("GridWorldSubsystem: Registered tile %s at (%d, %d)"),
-        *Tile->GetName(), Position.X, Position.Y);
+        TEXT("GridWorldSubsystem: Registered tile"));
 }
 
 void UGridWorldSubsystem::UnregisterTile(AGridTileBase* Tile)
 {
     if (!IsValid(Tile)) return;
-
-    FGridPosition* Position = PositionsByTile.Find(Tile);
-    if (!Position) return;
-
-    OnTileUnregistered.Broadcast(Tile, *Position);
-
-    TilesByPosition.Remove(*Position);
-    PositionsByTile.Remove(Tile);
+    if (!RegisteredTiles.Contains(Tile)) return;
+    OnTileUnregistered.Broadcast(Tile);
+    RegisteredTiles.Remove(Tile);
 }
 
-AGridTileBase* UGridWorldSubsystem::GetTileAtPosition(FGridPosition Position) const
+bool UGridWorldSubsystem::IsTileRegistered(const AGridTileBase* Tile) const
 {
-    AGridTileBase* const* Found = TilesByPosition.Find(Position);
-    return Found ? *Found : nullptr;
-}
-
-bool UGridWorldSubsystem::IsTileRegistered(AGridTileBase* Tile) const
-{
-    return PositionsByTile.Contains(Tile);
+    return RegisteredTiles.Contains(Tile);
 }
 
 TArray<AGridTileBase*> UGridWorldSubsystem::GetAllTiles() const
 {
     TArray<AGridTileBase*> Out;
-    TilesByPosition.GenerateValueArray(Out);
+    RegisteredTiles.GenerateKeyArray(Out);
     return Out;
 }
 
-TArray<FGridPosition> UGridWorldSubsystem::GetAllTilePositions() const
-{
-    TArray<FGridPosition> Out;
-    TilesByPosition.GenerateKeyArray(Out);
-    return Out;
-}
-
-void UGridWorldSubsystem::RegisterPiece(AGridPieceBase* Piece, FGridPosition Position)
+void UGridWorldSubsystem::RegisterPiece(AGridPieceBase* Piece)
 {
     if (!IsValid(Piece))
     {
@@ -89,68 +62,37 @@ void UGridWorldSubsystem::RegisterPiece(AGridPieceBase* Piece, FGridPosition Pos
         return;
     }
 
-    if (AGridPieceBase* Existing = PiecesByPosition.FindRef(Position))
+    if (RegisteredPieces.Contains(Piece))
     {
-        if (Existing != Piece)
-        {
-            UE_LOG(LogTemp, Warning,
-                TEXT("GridWorldSubsystem: Position (%d, %d) already has piece %s — overwriting"),
-                Position.X, Position.Y, *Existing->GetName());
-        }
+        UE_LOG(LogTemp, Warning,
+               TEXT("GridWorldSubsystem: RegisterPiece called with already registered piece"));
     }
 
-    if (FGridPosition* OldPosition = PositionsByPiece.Find(Piece))
-    {
-        PiecesByPosition.Remove(*OldPosition);
-    }
-
-    PiecesByPosition.Add(Position, Piece);
-    PositionsByPiece.Add(Piece, Position);
-
-    OnPieceRegistered.Broadcast(Piece, Position);
+    RegisteredPieces.Add(Piece);
+    OnPieceRegistered.Broadcast(Piece);
 }
 
 void UGridWorldSubsystem::UnregisterPiece(AGridPieceBase* Piece)
 {
     if (!IsValid(Piece)) return;
-
-    FGridPosition* Position = PositionsByPiece.Find(Piece);
-    if (!Position) return;
-
-    OnPieceUnregistered.Broadcast(Piece, *Position);
-
-    PiecesByPosition.Remove(*Position);
-    PositionsByPiece.Remove(Piece);
+    if (!RegisteredPieces.Contains(Piece)) return;
+    OnPieceUnregistered.Broadcast(Piece);
+    RegisteredPieces.Remove(Piece);
 }
 
-void UGridWorldSubsystem::UpdatePiecePosition(AGridPieceBase* Piece, FGridPosition NewPosition)
+bool UGridWorldSubsystem::IsPieceRegistered(const AGridPieceBase* Piece) const
 {
-    if (!IsValid(Piece)) return;
-
-    // Remove old position mapping
-    if (FGridPosition* OldPosition = PositionsByPiece.Find(Piece))
-    {
-        PiecesByPosition.Remove(*OldPosition);
-    }
-
-    PiecesByPosition.Add(NewPosition, Piece);
-    PositionsByPiece.Add(Piece, NewPosition);
-}
-
-AGridPieceBase* UGridWorldSubsystem::GetPieceAtPosition(FGridPosition Position) const
-{
-    AGridPieceBase* const* Found = PiecesByPosition.Find(Position);
-    return Found ? *Found : nullptr;
-}
-
-bool UGridWorldSubsystem::IsPieceRegistered(AGridPieceBase* Piece) const
-{
-    return PositionsByPiece.Contains(Piece);
+    return RegisteredPieces.Contains(Piece);
 }
 
 TArray<AGridPieceBase*> UGridWorldSubsystem::GetAllPieces() const
 {
     TArray<AGridPieceBase*> Out;
-    PiecesByPosition.GenerateValueArray(Out);
+    RegisteredPieces.GenerateKeyArray(Out);
     return Out;
+}
+
+void UGridWorldSubsystem::BroadcastGridTileHoverChanged(AGridTileBase* InTile)
+{
+    if (OnGridTileHoverChanged.IsBound()) { OnGridTileHoverChanged.Broadcast(InTile); }
 }

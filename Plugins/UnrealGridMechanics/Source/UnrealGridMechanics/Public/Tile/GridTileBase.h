@@ -3,8 +3,8 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "GridMechanicsBaseStructs.h"
 #include "GameFramework/Actor.h"
+#include "GameplayTagContainer.h"
 #include "GridTileBase.generated.h"
 
 class AGridPieceBase;
@@ -24,6 +24,9 @@ public:
 	UPROPERTY(BlueprintAssignable, BlueprintCallable)
 	FGridTileBaseBeginCursorOver OnGridTileBeginCursorOver;
 
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "Grid Tile")
+	void SendGameplayTag(FGameplayTag StateTag);
+	
 	// TODO: DO WE NEED THIS???
 	UFUNCTION(BlueprintImplementableEvent, BlueprintCallable, Category = "Grid | Tile")
 	void PlacePiece(AActor* InGridPiece);

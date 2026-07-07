@@ -35,7 +35,7 @@
 			"Enabled": true
 		},
 		{
-			"Name": "UnrealTurnBasedStrategyMechanics",
+			"Name": "UnrealTurnBasedMechanics",
 			"Enabled": true
 		}
 	]

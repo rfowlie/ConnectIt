@@ -21,14 +21,16 @@ public class ConnectIt : ModuleRules
 			//
 			"UnrealGameMechanics",
 			"UnrealGridMechanics", 
-			"UnrealGameIntelligence"
+			"UnrealGameIntelligence", 
+			"UnrealTurnBasedMechanics"
 		});
 
 		PrivateDependencyModuleNames.AddRange(new string[]
 		{
 			"UnrealGameMechanics",
 			"UnrealGridMechanics",
-			"UnrealGameIntelligence"
+			"UnrealGameIntelligence", 
+			"UnrealTurnBasedMechanics"
 		});
 
 		// Uncomment if you are using Slate UI

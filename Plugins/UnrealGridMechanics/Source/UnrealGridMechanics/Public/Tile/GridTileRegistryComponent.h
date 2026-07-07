@@ -11,6 +11,11 @@
 class AGridTileBase;
 class UGridWorldSubsystem;
 
+
+/*
+ * responsible for interpreting the grid positions of all tiles
+ * and providing responses to generic grid queries
+ */
 UCLASS(ClassGroup=(Grid), meta=(BlueprintSpawnableComponent))
 class UNREALGRIDMECHANICS_API UGridTileRegistryComponent : public UActorComponent
 {
@@ -36,7 +41,10 @@ public:
     // --- Tile Queries ---
 
     UFUNCTION(BlueprintPure, Category = "Grid|Registry")
-    AGridTileBase* GetTile(FGridPosition Position) const;
+    AGridTileBase* GetTileAtPosition(FGridPosition Position) const;
+    
+    UFUNCTION(BlueprintPure, Category = "Grid|Registry")
+    FGridPosition GetPositionOfTile(const AGridTileBase* Tile) const;
 
     UFUNCTION(BlueprintPure, Category = "Grid|Registry")
     TArray<AGridTileBase*> GetRow(int32 RowIndex) const;

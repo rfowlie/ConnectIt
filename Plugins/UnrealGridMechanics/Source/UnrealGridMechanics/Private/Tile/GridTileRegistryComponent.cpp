@@ -54,10 +54,23 @@ FGridPosition UGridTileRegistryComponent::WorldToGridPosition(const FVector& Wor
 
 // --- Tile Queries ---
 
-AGridTileBase* UGridTileRegistryComponent::GetTile(const FGridPosition Position) const
+AGridTileBase* UGridTileRegistryComponent::GetTileAtPosition(const FGridPosition Position) const
 {
     if (!IsValid(GridSubsystem)) return nullptr;
-    return GridSubsystem->GetTileAtPosition(Position);
+    for (const auto Tile : GridSubsystem->GetAllTiles())
+    {
+        if (Position == WorldToGridPosition(Tile->GetActorLocation()))
+        {
+            return Tile;
+        }
+    }
+    
+    return nullptr;
+}
+
+FGridPosition UGridTileRegistryComponent::GetPositionOfTile(const AGridTileBase* Tile) const
+{
+    return WorldToGridPosition(Tile->GetActorLocation());
 }
 
 TArray<AGridTileBase*> UGridTileRegistryComponent::GetRow(const int32 RowIndex) const
@@ -67,7 +80,7 @@ TArray<AGridTileBase*> UGridTileRegistryComponent::GetRow(const int32 RowIndex) 
 
     for (const FGridPosition& Position : GetRowPositions(RowIndex))
     {
-        if (AGridTileBase* Tile = GridSubsystem->GetTileAtPosition(Position))
+        if (AGridTileBase* Tile = GetTileAtPosition(Position))
         {
             OutTiles.Add(Tile);
         }
@@ -83,7 +96,7 @@ TArray<AGridTileBase*> UGridTileRegistryComponent::GetColumn(const int32 ColumnI
 
     for (const FGridPosition& Position : GetColumnPositions(ColumnIndex))
     {
-        if (AGridTileBase* Tile = GridSubsystem->GetTileAtPosition(Position))
+        if (AGridTileBase* Tile = GetTileAtPosition(Position))
         {
             OutTiles.Add(Tile);
         }
@@ -94,8 +107,13 @@ TArray<AGridTileBase*> UGridTileRegistryComponent::GetColumn(const int32 ColumnI
 
 TArray<FGridPosition> UGridTileRegistryComponent::GetAllTilePositions() const
 {
-    if (!IsValid(GridSubsystem)) return TArray<FGridPosition>();
-    return GridSubsystem->GetAllTilePositions();
+    TArray<FGridPosition> OutPositions;
+    if (!IsValid(GridSubsystem)) return OutPositions;
+    for (const auto Tile : GridSubsystem->GetAllTiles())
+    {
+        OutPositions.Add(GetPositionOfTile(Tile));
+    }
+    return OutPositions;
 }
 
 TArray<AGridTileBase*> UGridTileRegistryComponent::GetAllTiles() const
