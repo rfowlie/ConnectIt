@@ -4,8 +4,10 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
+#include "GameplayTagContainer.h"
 #include "GridTileBase.generated.h"
 
+class AGridPieceBase;
 
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FGridTileBaseBeginCursorOver, AGridTileBase*, GridTileBase);
@@ -18,12 +20,14 @@ class UNREALGRIDMECHANICS_API AGridTileBase : public AActor
 public:
 	AGridTileBase();
 
-protected:
-	virtual void BeginPlay() override;
-
-public:
 	// allow for grid actors to customize what triggers the cursor over
 	UPROPERTY(BlueprintAssignable, BlueprintCallable)
 	FGridTileBaseBeginCursorOver OnGridTileBeginCursorOver;
+
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "Grid Tile")
+	void SendGameplayTag(FGameplayTag StateTag);
+
+protected:
+	virtual void BeginPlay() override;
 	
 };

@@ -1,0 +1,38 @@
+﻿// Fill out your copyright notice in the Description page of Project Settings.
+
+#pragma once
+
+#include "CoreMinimal.h"
+#include "GameFramework/Actor.h"
+#include "GameplayTagContainer.h"
+#include "AbilitySystemInterface.h"
+#include "GridMechanicsBaseEnums.h"
+#include "Piece/GridPieceBase.h"
+#include "GridUnitBase.generated.h"
+
+
+UCLASS(Blueprintable, BlueprintType)
+class UNREALGRIDMECHANICS_API AGridUnitBase : public AGridPieceBase, public IAbilitySystemInterface
+{
+	GENERATED_BODY()
+
+public:
+	// Sets default values for this actor's properties
+	AGridUnitBase();
+
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Grid Mechanics|Grid Unit")
+	virtual UAbilitySystemComponent* GetAbilitySystemComponent() const override { return AbilitySystemComponent; }
+	
+	UFUNCTION(BlueprintImplementableEvent, BlueprintCallable, Category = "Grid Mechanics|Grid Unit")
+	FGameplayTag GetFactionTag();
+
+	// rotate and move all relevant meshes to face set direction
+	UFUNCTION(BlueprintImplementableEvent, BlueprintCallable, Category = "Grid Mechanics|Grid Unit")
+	void FaceGridDirection(const EGridDirection InDirection);
+
+protected:
+	virtual void BeginPlay() override;
+	
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
+	UAbilitySystemComponent* AbilitySystemComponent = nullptr;
+};

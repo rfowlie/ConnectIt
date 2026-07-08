@@ -7,7 +7,7 @@
 #include "GridPieceHandler.generated.h"
 
 // This class does not need to be modified.
-UINTERFACE()
+UINTERFACE(BlueprintType)
 class UGridPieceHandler : public UInterface
 {
 	GENERATED_BODY()

@@ -23,33 +23,33 @@ class UNREALGAMEMECHANICS_API UGameTurnHandler : public UActorComponent
 	GENERATED_BODY()
 
 public:
-	UFUNCTION(BlueprintCallable, Category = "Gigafire|Turn")
+	UFUNCTION(BlueprintCallable, Category = "Game Mechanics | Turn")
 	static UGameTurnHandler* Create();
 
 	// useful for blueprint setup
-	UFUNCTION(BlueprintCallable, Category = "Gigafire|Turn")
+	UFUNCTION(BlueprintCallable, Category = "Game Mechanics | Turn")
 	void Initialize();
 
-	UFUNCTION(BlueprintCallable, Category = "Gigafire|Turn")
+	UFUNCTION(BlueprintCallable, Category = "Game Mechanics | Turn")
 	FGameplayTag GetActiveFactionTag() const { return FactionTagActive; }
 	
-	UFUNCTION(BlueprintCallable, Category = "Gigafire|Turn")
+	UFUNCTION(BlueprintCallable, Category = "Game Mechanics | Turn")
 	void RegisterAsyncTaskTurnStart(UGameEventTask_Async* AsyncTask, int32 Phase) const;
 	
-	UFUNCTION(BlueprintCallable, Category = "Gigafire|Turn")
+	UFUNCTION(BlueprintCallable, Category = "Game Mechanics | Turn")
 	void RegisterAsyncTaskTurnEnd(UGameEventTask_Async* AsyncTask, int32 Phase) const;
 
 	// delegates
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gigafire|Turn")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Game Mechanics | Turn")
 	FGameTurnHandlerDelegate TurnStartPreAsync;
 	
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gigafire|Turn")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Game Mechanics | Turn")
 	FGameTurnHandlerDelegate TurnStartPostAsync;
 	
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gigafire|Turn")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Game Mechanics | Turn")
 	FGameTurnHandlerDelegate TurnEndPreAsync;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gigafire|Turn")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Game Mechanics | Turn")
 	FGameTurnHandlerDelegate TurnEndPostAsync;
 	
 

@@ -18,14 +18,22 @@ public class ConnectIt : ModuleRules
 			"GameplayTags", 
 			"GameplayTasks", 
 			"GameplayAbilities",
+			"AIModule",
+			//
 			"UnrealGameMechanics",
 			"UnrealGridMechanics", 
-			"UnrealGameIntelligence"
+			"UnrealGameIntelligence", 
+			"UnrealTurnBasedMechanics"
 		});
 
 		PrivateDependencyModuleNames.AddRange(new string[]
 		{
-			"UnrealGameIntelligence"
+			"AIModule",
+			"UnrealCodingUtils",
+			"UnrealGameMechanics",
+			"UnrealGridMechanics",
+			"UnrealGameIntelligence", 
+			"UnrealTurnBasedMechanics", 
 		});
 
 		// Uncomment if you are using Slate UI

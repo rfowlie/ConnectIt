@@ -172,7 +172,7 @@ struct FConnectItMoveOutcome
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnTreeBuilt);
 
 UCLASS(BlueprintType)
-class CONNECTIT_API UConnectItTreeBuilder : public UObject
+class CONNECTIT_API UConnectIt_MinMaxTreeBuilder : public UObject
 {
     GENERATED_BODY()
     

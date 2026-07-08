@@ -8,7 +8,7 @@
 #include "GridTileHandler.generated.h"
 
 // This class does not need to be modified.
-UINTERFACE()
+UINTERFACE(BlueprintType)
 class UGridTileHandler : public UInterface
 {
 	GENERATED_BODY()

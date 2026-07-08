@@ -2,7 +2,7 @@
 	"FileVersion": 3,
 	"Version": 1,
 	"VersionName": "1.0",
-	"FriendlyName": "UnrealGridMechanics",
+	"FriendlyName": "Unreal Grid Mechanics",
 	"Description": "2D Grid System",
 	"Category": "Other",
 	"CreatedBy": "Robert A. Fowlie",
@@ -19,12 +19,20 @@
 			"Name": "UnrealGridMechanics",
 			"Type": "Runtime",
 			"LoadingPhase": "Default"
+		},
+		{
+			"Name": "UnrealGridMechanicsEditor",
+			"Type": "Editor",
+			"LoadingPhase": "PostEngineInit"
 		}
 	],
-	"Plugins":
-	[
+	"Plugins": [
 		{
 			"Name": "GameplayAbilities",
+			"Enabled": true
+		},
+		{
+			"Name": "DataValidation",
 			"Enabled": true
 		}
 	]

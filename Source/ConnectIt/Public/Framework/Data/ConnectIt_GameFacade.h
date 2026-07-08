@@ -1,0 +1,94 @@
+﻿// Fill out your copyright notice in the Description page of Project Settings.
+
+#pragma once
+
+#include "CoreMinimal.h"
+#include "ConnectIt_PlayerData.h"
+#include "GameplayTagContainer.h"
+#include "GridMechanicsBaseStructs.h"
+#include "Tile/GridTileBase.h"
+#include "UObject/Object.h"
+#include "ConnectIt_GameFacade.generated.h"
+
+class AGridTileBase;
+class UConnectIt_PlayerData;
+class UConnectIt_State_Game;
+
+
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FConnectItFacadeGameStateDelegate, FGameplayTag, GameStateTag);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FConnectItFacadeScoreDelegate);
+
+/**
+ * access information about the game without being able to change anything
+ */
+UCLASS(BlueprintType)
+class CONNECTIT_API UConnectIt_GameFacade : public UObject
+{
+	GENERATED_BODY()
+
+public:
+	static UConnectIt_GameFacade* Create(UObject* Outer, UConnectIt_State_Game* InGameState);	
+
+	UPROPERTY(BlueprintAssignable, BlueprintCallable, Category = "ConnectIt | Facade")
+	FConnectItFacadeGameStateDelegate GameStateDelegate;
+	
+	UPROPERTY(BlueprintAssignable, BlueprintCallable, Category = "ConnectIt | Facade")
+	FConnectItFacadeScoreDelegate ScoreDelegate;
+	
+	// GRID
+	// TODO: return const array?
+	UFUNCTION(BlueprintCallable, Category = "ConnectIt | Facade")
+	TArray<AGridTileBase*> GetGridTiles() const;
+
+	UFUNCTION(BlueprintCallable, Category = "ConnectIt | Facade")
+	TArray<AGridTileBase*> GetEmptyGridTiles() const;
+
+	UFUNCTION(BlueprintCallable, Category = "ConnectIt | Facade")
+	bool IsTileEmpty(AGridTileBase* InGridTile) const;
+	
+	// TODO: logic messy here, should probably also pass in player data not ID
+	UFUNCTION(BlueprintCallable, Category = "ConnectIt | Facade")
+	TArray<AGridTileBase*> GetGridTilesWithPlayerPieces(const int32 PlayerID) const;
+
+	UFUNCTION(BlueprintCallable, Category = "ConnectIt | Facade | Util")
+	bool GetPositionFromTile(FGridPosition& OutGridPosition, const AGridTileBase* InGridTile) const;
+	
+	UFUNCTION(BlueprintCallable, Category = "ConnectIt | Facade | Util")
+	AGridTileBase* GetTileFromPosition(const FGridPosition InGridPosition) const;
+	
+	UFUNCTION(BlueprintCallable, Category = "ConnectIt | Facade | Util")
+	AGridTileBase* GetRandomGridTile() const;
+
+	// BOARD
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "ConnectIt")
+	bool IsGameBoardFull() const;
+	
+	// PLAYER
+	// TODO: in BP we cloned all the data and passed it out so it couldn't be tampered with
+	UFUNCTION(BlueprintCallable, Category = "ConnectIt | Facade")
+	TArray<UConnectIt_PlayerData*> GetAllPlayerData() const;
+
+	UFUNCTION(BlueprintCallable, Category = "ConnectIt | Facade")
+	UConnectIt_PlayerData* GetPlayerDataById(const int32 PlayerId) const;
+	
+	UFUNCTION(BlueprintCallable, Category = "ConnectIt | Facade")
+	const UConnectIt_PlayerData* GetCurrentPlayerData() const;
+	
+	UFUNCTION(BlueprintCallable, Category = "ConnectIt | Facade")
+	TArray<float> GetPlayerScores() const;
+
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "ConnectIt")
+	bool CheckPlayerWon(const UConnectIt_PlayerData* InPlayerData) const;
+	
+	// SCORING
+	UFUNCTION(BlueprintCallable, Category = "ConnectIt | Facade | Scoring")
+	void GetConnectionsFromMove(const int32 InPlayerID, const FGridPosition InMove) const;
+	
+	UFUNCTION(BlueprintCallable, Category = "ConnectIt | Facade | Scoring")
+	int32 GetConnectionScore(const TArray<FGridPosition>& InConnection) const;
+	
+protected:
+	UPROPERTY()
+	UConnectIt_State_Game* GameState = nullptr;
+	
+};

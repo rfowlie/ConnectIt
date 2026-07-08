@@ -3,13 +3,14 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "GridMechanicsBaseStructs.h"
 #include "Components/ActorComponent.h"
+#include "GridMechanicsBaseStructs.h"
 #include "GridTileSelectorComponent.generated.h"
 
 class AGridTileBase;
 
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FGridTileSelectorDelegate, AGridTileBase*, GridTile, FGridPosition, GridPosition);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(
+	FGridTileSelectorDynamicMulticastDelegate, AGridTileBase*, GridTile, FGridPosition, GridPosition);
 
 UCLASS(ClassGroup=(Custom), meta=(BlueprintSpawnableComponent))
 class UNREALGRIDMECHANICS_API UGridTileSelectorComponent : public UActorComponent
@@ -21,6 +22,6 @@ public:
 	UGridTileSelectorComponent();
 
 	UPROPERTY(BlueprintAssignable, BlueprintCallable)
-	FGridTileSelectorDelegate GridTileSelectorDelegate;
+	FGridTileSelectorDynamicMulticastDelegate GridTileSelectorDelegate;
 
 };

@@ -23,7 +23,23 @@
 			"Enabled": true
 		},
 		{
+			"Name": "UnrealGameMechanics",
+			"Enabled": true
+		},
+		{
 			"Name": "UnrealGameIntelligence",
+			"Enabled": true
+		},
+		{
+			"Name": "UnrealGridMechanics",
+			"Enabled": true
+		},
+		{
+			"Name": "UnrealTurnBasedMechanics",
+			"Enabled": true
+		},
+		{
+			"Name": "UnrealCodingUtils",
 			"Enabled": true
 		}
 	]
