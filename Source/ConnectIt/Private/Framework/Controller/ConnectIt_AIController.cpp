@@ -5,7 +5,8 @@
 #include "EngineUtils.h"
 #include "Action/ActionLoadoutDataAsset.h"
 #include "Action/TurnBasedActionComponent.h"
-#include "Board/ConnectItBoardActor.h"
+#include "Board/ConnectItBoardManager.h"
+#include "Framework/GameMode/TurnBasedGameMode.h"
 #include "MinMax/ConnectIt_MinMaxTreeBuilder.h"
 #include "Turn/Participant/TurnBasedParticipantComponent.h"
 
@@ -19,10 +20,7 @@ AConnectIt_AIController::AConnectIt_AIController()
     ActionComponent =
         CreateDefaultSubobject<UTurnBasedActionComponent>(
             TEXT("ActionComponent"));
-
-    TreeBuilder =
-        CreateDefaultSubobject<UConnectIt_MinMaxTreeBuilder>(
-            TEXT("TreeBuilder"));
+    
 }
 
 void AConnectIt_AIController::BeginPlay()
@@ -32,18 +30,16 @@ void AConnectIt_AIController::BeginPlay()
     // Cache slot index for blackboard lookups
     MySlotIndex = ParticipantComponent->CachedSlotIndex;
 
-    ParticipantComponent->OnTurnStarted.AddDynamic(
-        this, &AConnectIt_AIController::HandleTurnStarted);
-
-    ParticipantComponent->OnTurnEnded.AddDynamic(
-        this, &AConnectIt_AIController::HandleTurnEnded);
+    ParticipantComponent->OnTurnNotificationReceived.AddDynamic(
+        this, &AConnectIt_AIController::HandleTurnNotification);
+    
 
     InitialiseFromBoardActor();
 }
 
 void AConnectIt_AIController::InitialiseFromBoardActor()
 {
-    for (TActorIterator<AConnectItBoardActor> It(GetWorld()); It; ++It)
+    for (TActorIterator<AConnectItBoardManager> It(GetWorld()); It; ++It)
     {
         BoardActor = *It;
         break;
@@ -68,93 +64,21 @@ void AConnectIt_AIController::InitialiseFromBoardActor()
             &UConnectItBoardManagerComponent::ProcessRequest);
     }
 
-    // Wire tree builder completion to handler
-    TreeBuilder->OnSolveTreeComplete.AddDynamic(
-        this, &AConnectIt_AIController::HandleMinMaxComplete);
-
+    // auto attempt to 
+    if (ATurnBasedGameMode* GameMode = Cast<ATurnBasedGameMode>(
+        GetWorld()->GetAuthGameMode()))
+    {
+        GameMode->RegisterAIParticipant(this);
+    }
+    else
+    {
+        UE_LOG(LogTemp, Error,
+            TEXT("ConnectItAIController: game mode not Turn Based"));
+        return;
+    }
+    
     UE_LOG(LogTemp, Log,
         TEXT("ConnectItAIController: Initialised from board actor"));
-}
-
-void AConnectIt_AIController::HandleTurnStarted(
-    const FTurnNotification& Notification)
-{
-    // UE_LOG(LogTemp, Log,
-    //     TEXT("ConnectItAIController: Turn %d started — "
-    //          "checking blackboard then running MinMax"),
-    //     Notification.TurnNumber);
-    //
-    // ActionComponent->OnTurnBegan(Notification.TurnNumber);
-    //
-    // // Check for forced move from player shard activation
-    // // If found submit immediately without running MinMax
-    // if (CheckAndApplyForcedMove())
-    // {
-    //     UE_LOG(LogTemp, Log,
-    //         TEXT("ConnectItAIController: Forced move applied — "
-    //              "skipping MinMax"));
-    //     return;
-    // }
-    //
-    // // Build and solve MinMax tree async
-    // // HandleMinMaxComplete fires when done
-    // if (!IsValid(BoardActor) || !IsValid(TreeBuilder)) return;
-    //
-    // const FConnectItBoardState& CurrentState =
-    //     BoardActor->ConnectItBoardState->GetCurrentState();
-    //
-    // // Build root node from current board state
-    // FConnectItMinMaxNode RootNode;
-    // RootNode.Tiles      = CurrentState.TilePositions;
-    // RootNode.ScoreBoard = CurrentState.ScoreBoard;
-    // RootNode.FactionTurn = MySlotIndex;
-    //
-    // const int32 SearchDepth =
-    //     IsValid(BoardActor->ConnectItConfig)
-    //         ? BoardActor->ConnectItConfig->AISearchDepth
-    //         : 3;
-    //
-    // const int32 ThreadDepth =
-    //     IsValid(BoardActor->ConnectItConfig)
-    //         ? BoardActor->ConnectItConfig->AIThreadDepth
-    //         : 1;
-    //
-    // TreeBuilder->BuildTreeAsync(RootNode, SearchDepth, ThreadDepth);
-}
-
-void AConnectIt_AIController::HandleTurnEnded(
-    const FTurnNotification& Notification)
-{
-    UE_LOG(LogTemp, Log,
-        TEXT("ConnectItAIController: Turn %d ended"),
-        Notification.TurnNumber);
-}
-
-void AConnectIt_AIController::HandleMinMaxComplete()
-{
-    // // RootNodeMoveOutcomes holds all root children with their scores
-    // // Sorted highest first by SolveTreeAsync
-    // const TArray<FConnectItMoveOutcome>& Outcomes =
-    //     TreeBuilder->RootNodeMoveOutcomes;
-    //
-    // if (Outcomes.IsEmpty())
-    // {
-    //     UE_LOG(LogTemp, Warning,
-    //         TEXT("ConnectItAIController: MinMax returned no outcomes "
-    //              "— submitting turn end without placing"));
-    //     ActionComponent->RequestTurnEnd();
-    //     return;
-    // }
-    //
-    // // Best move is first -- highest score
-    // const FGridPosition BestPosition = Outcomes[0].Node.MovePlayed;
-    //
-    // UE_LOG(LogTemp, Log,
-    //     TEXT("ConnectItAIController: MinMax complete — "
-    //          "best move (%d,%d) score %d"),
-    //     BestPosition.X, BestPosition.Y, Outcomes[0].Score);
-    //
-    // SubmitMove(BestPosition);
 }
 
 bool AConnectIt_AIController::CheckAndApplyForcedMove()

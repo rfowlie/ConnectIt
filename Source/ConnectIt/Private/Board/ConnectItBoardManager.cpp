@@ -1,7 +1,7 @@
 ﻿// Fill out your copyright notice in the Description page of Project Settings.
 
 
-#include "Board/ConnectItBoardActor.h"
+#include "Board/ConnectItBoardManager.h"
 
 #include "Board/Shift/BoardShiftComponent.h"
 #include "Framework/Data/ConnectIt_ConfigComponent.h"
@@ -10,7 +10,7 @@
 #include "Interpreter/ConnectItTileStateInterpreter.h"
 
 
-AConnectItBoardActor::AConnectItBoardActor()
+AConnectItBoardManager::AConnectItBoardManager()
 {
     // ConnectIt specific board state
     // Replaces the generic UBoardStateComponentBase slot on ABoardActor
@@ -40,7 +40,7 @@ AConnectItBoardActor::AConnectItBoardActor()
     bReplicates = true;
 }
 
-void AConnectItBoardActor::BeginPlay()
+void AConnectItBoardManager::BeginPlay()
 {
     Super::BeginPlay();
 
@@ -64,7 +64,7 @@ void AConnectItBoardActor::BeginPlay()
     }
 }
 
-void AConnectItBoardActor::BindInterpreters()
+void AConnectItBoardManager::BindInterpreters()
 {
     if (!IsValid(ConnectItBoardState))
     {
@@ -97,7 +97,7 @@ void AConnectItBoardActor::BindInterpreters()
         TEXT("ConnectItBoardActor: Interpreters bound to board state"));
 }
 
-void AConnectItBoardActor::BindBoardManager()
+void AConnectItBoardManager::BindBoardManager()
 {
     if (!IsValid(BoardManager))
     {
@@ -122,7 +122,7 @@ void AConnectItBoardActor::BindBoardManager()
         TEXT("ConnectItBoardActor: Board manager wired"));
 }
 
-void AConnectItBoardActor::InitialiseBoard(int32 NumFactions)
+void AConnectItBoardManager::InitialiseBoard(int32 NumFactions)
 {
     if (!HasAuthority()) return;
 
@@ -139,21 +139,21 @@ void AConnectItBoardActor::InitialiseBoard(int32 NumFactions)
 
 // --- Convenience Accessors ---
 
-UActionLoadOutDataAsset* AConnectItBoardActor::GetPlayerLoadout() const
+UActionLoadOutDataAsset* AConnectItBoardManager::GetPlayerLoadout() const
 {
     return IsValid(ConnectItConfig)
         ? ConnectItConfig->PlayerLoadout
         : nullptr;
 }
 
-UActionLoadOutDataAsset* AConnectItBoardActor::GetEnemyLoadout() const
+UActionLoadOutDataAsset* AConnectItBoardManager::GetEnemyLoadout() const
 {
     return IsValid(ConnectItConfig)
         ? ConnectItConfig->EnemyLoadout
         : nullptr;
 }
 
-float AConnectItBoardActor::GetWinScoreThreshold() const
+float AConnectItBoardManager::GetWinScoreThreshold() const
 {
     return IsValid(ConnectItConfig)
         ? ConnectItConfig->WinScoreThreshold

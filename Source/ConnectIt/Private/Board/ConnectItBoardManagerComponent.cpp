@@ -2,21 +2,14 @@
 
 
 #include "Board/ConnectItBoardManagerComponent.h"
+#include "ConnectIt_GameplayTags.h"
 #include "GameplayTagContainer.h"
 #include "TurnBasedMechanicsStructs.h"
 #include "Board/ConnectItBoardStateComponent.h"
 #include "Board/Shift/BoardShiftComponent.h"
-#include "Chaos/Deformable/MuscleActivationConstraints.h"
 #include "Library/CodingUtilsComponentLibrary.h"
 #include "Tile/GridTileRegistryComponent.h"
 
-
-// Request type tags -- match what actions send
-namespace ConnectItRequestTags
-{
-    const FGameplayTag PlacePiece =
-        FGameplayTag::RequestGameplayTag("ConnectIt.Board.PlacePiece");
-}
 
 UConnectItBoardManagerComponent::UConnectItBoardManagerComponent()
 {
@@ -112,7 +105,7 @@ void UConnectItBoardManagerComponent::ProcessRequest(const FTurnActionRequest& R
         *Request.RequestType.ToString(),
         Request.FactionID);
 
-    if (Request.RequestType == ConnectItRequestTags::PlacePiece)
+    if (Request.RequestType == ConnectIt_Game_PlacePiece)
     {
         HandlePlacePieceRequest(Request);
         return;

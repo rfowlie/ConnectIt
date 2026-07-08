@@ -8,7 +8,7 @@
 #include "TurnBasedMechanicsStructs.h"
 #include "ConnectIt_AIController.generated.h"
 
-class AConnectItBoardActor;
+class AConnectItBoardManager;
 class UTurnBasedActionComponent;
 class UTurnBasedParticipantComponent;
 class UConnectItBlackboardSubsystem;
@@ -32,35 +32,26 @@ public:
 		Category = "ConnectIt|Components")
 	TObjectPtr<UTurnBasedActionComponent> ActionComponent = nullptr;
 
-	// MinMax tree builder -- runs async on background thread
-	UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly,
-		Category = "ConnectIt|AI")
-	TObjectPtr<UConnectIt_MinMaxTreeBuilder> TreeBuilder = nullptr;
 
 protected:
 
 	virtual void BeginPlay() override;
 
+	// Turn handlers
+	UFUNCTION(BlueprintImplementableEvent, Category = "ConnectIt | Turn")
+	void HandleTurnNotification(const FTurnNotification& Notification);
+
+
 private:
 
 	// Cached references
 	UPROPERTY()
-	TObjectPtr<AConnectItBoardActor> BoardActor = nullptr;
+	TObjectPtr<AConnectItBoardManager> BoardActor = nullptr;
 
 	int32 MySlotIndex = -1;
 
 	void InitialiseFromBoardActor();
-
-	// Turn handlers
-	UFUNCTION()
-	void HandleTurnStarted(const FTurnNotification& Notification);
-
-	UFUNCTION()
-	void HandleTurnEnded(const FTurnNotification& Notification);
-
-	// Called when MinMax tree is built and solved
-	UFUNCTION()
-	void HandleMinMaxComplete();
+	
 
 	// Checks blackboard for forced move modifier
 	// Returns true if a forced move was found and submitted

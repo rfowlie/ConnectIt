@@ -6,7 +6,7 @@
 #include "Board/BoardManager.h"
 #include "ConnectItBoardManagerComponent.h"
 #include "ConnectItBoardStateComponent.h"
-#include "ConnectItBoardActor.generated.h"
+#include "ConnectItBoardManager.generated.h"
 
 class UActionLoadOutDataAsset;
 class UConnectIt_ConfigComponent;
@@ -16,13 +16,13 @@ class UConnectItScoreInterpreter;
 
 
 UCLASS(Blueprintable, BlueprintType)
-class CONNECTIT_API AConnectItBoardActor : public ABoardManager
+class CONNECTIT_API AConnectItBoardManager : public ABoardManager
 {
     GENERATED_BODY()
 
 public:
 
-    AConnectItBoardActor();
+    AConnectItBoardManager();
 
     // --- Components ---
 

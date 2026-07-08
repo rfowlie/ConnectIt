@@ -6,29 +6,29 @@
 
 ATurnBasedGameState::ATurnBasedGameState()
 {
-	TurnManager = CreateDefaultSubobject<UTurnBasedParticipantManagerComponent>(
+	ParticipantManager = CreateDefaultSubobject<UTurnBasedParticipantManagerComponent>(
 		TEXT("TurnManager"));
-}
-
-ETurnPhase ATurnBasedGameState::GetCurrentPhase() const
-{
-	return IsValid(TurnManager)
-		? TurnManager->CurrentPhase
-		: ETurnPhase::WaitingForParticipants;
-}
-
-int32 ATurnBasedGameState::GetActiveTurnNumber() const
-{
-	return IsValid(TurnManager) ? TurnManager->TurnNumber : 0;
 }
 
 const TArray<FTurnParticipantInfo>& ATurnBasedGameState::GetParticipants() const
 {
 	static TArray<FTurnParticipantInfo> Empty;
-	return IsValid(TurnManager) ? TurnManager->Participants : Empty;
+	return IsValid(ParticipantManager) ? ParticipantManager->Participants : Empty;
 }
 
 float ATurnBasedGameState::GetTurnDuration() const
 {
-	return IsValid(TurnManager) ? TurnManager->TurnDuration : 0.f;
+	return IsValid(ParticipantManager) ? ParticipantManager->TurnDuration : 0.f;
+}
+
+ETurnPhase ATurnBasedGameState::GetCurrentPhase() const
+{
+	return IsValid(ParticipantManager)
+		? ParticipantManager->CurrentPhase
+		: ETurnPhase::WaitingForParticipants;
+}
+
+int32 ATurnBasedGameState::GetActiveTurnNumber() const
+{
+	return IsValid(ParticipantManager) ? ParticipantManager->TurnNumber : 0;
 }

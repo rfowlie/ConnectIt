@@ -2,6 +2,8 @@
 
 
 #include "Framework/Manager/ConnectIt_BoardManager.h"
+
+#include "Board/ConnectItBoardStateComponent.h"
 #include "Framework/Data/ConnectIt_ConfigComponent.h"
 
 
@@ -9,10 +11,17 @@ AConnectIt_BoardManager::AConnectIt_BoardManager()
 {
 	PrimaryActorTick.bCanEverTick = false;
 
-	ConnectItConfig = CreateDefaultSubobject<UConnectIt_ConfigComponent>(TEXT("ConnectItConfig"));
+	ConnectItConfigComponent = CreateDefaultSubobject<UConnectIt_ConfigComponent>(TEXT("ConnectItConfig"));
+	ConnectItBoardStateComponent = CreateDefaultSubobject<UConnectItBoardStateComponent>(TEXT("ConnectItBoardState"));
+
 }
 
-const UConnectIt_ConfigComponent* AConnectIt_BoardManager::GetConnectItConfig() const
+UConnectIt_ConfigComponent* AConnectIt_BoardManager::GetConnectItConfig() const
 {
-	return ConnectItConfig;
+	return ConnectItConfigComponent;
+}
+
+UConnectItBoardStateComponent* AConnectIt_BoardManager::GetConnectItBoardState() const
+{
+	return ConnectItBoardStateComponent;
 }

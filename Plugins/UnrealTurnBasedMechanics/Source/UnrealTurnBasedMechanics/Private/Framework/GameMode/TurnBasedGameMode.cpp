@@ -17,7 +17,7 @@ void ATurnBasedGameMode::PostLogin(APlayerController* NewPlayer)
 {
     Super::PostLogin(NewPlayer);
 
-    UTurnBasedParticipantManagerComponent* Manager = GetTurnManager();
+    UTurnBasedParticipantManagerComponent* Manager = GetParticipantManager();
     if (!Manager) return;
 
     // Check if this is a reconnect
@@ -26,7 +26,7 @@ void ATurnBasedGameMode::PostLogin(APlayerController* NewPlayer)
         : TEXT("Player");
 
     // Check if already registered (reconnect case)
-    if (FTurnParticipantInfo* Existing = Manager->FindParticipant(NewPlayer))
+    if (Manager->IsParticipantRegistered(NewPlayer))
     {
         Manager->NotifyParticipantReconnected(NewPlayer);
         return;
@@ -42,7 +42,7 @@ void ATurnBasedGameMode::PostLogin(APlayerController* NewPlayer)
 
 void ATurnBasedGameMode::Logout(AController* Exiting)
 {
-    UTurnBasedParticipantManagerComponent* Manager = GetTurnManager();
+    UTurnBasedParticipantManagerComponent* Manager = GetParticipantManager();
     if (Manager)
     {
         Manager->NotifyParticipantDisconnected(Exiting);
@@ -55,20 +55,21 @@ void ATurnBasedGameMode::HandleMatchHasStarted()
 {
     Super::HandleMatchHasStarted();
 
-    UTurnBasedParticipantManagerComponent* Manager = GetTurnManager();
+    UTurnBasedParticipantManagerComponent* Manager = GetParticipantManager();
     if (!Manager) return;
 
     // Apply configuration
-    Manager->TurnDuration      = TurnDuration;
-    Manager->ForfeitThreshold  = ForfeitThreshold;
-    Manager->ReconnectTimeout  = ReconnectTimeout;
+    Manager->TurnDuration           = TurnDuration;
+    Manager->ForfeitThreshold       = ForfeitThreshold;
+    Manager->ReconnectTimeout       = ReconnectTimeout;
+    Manager->TurnResolutionDuration = TurnResolutionDuration;
 }
 
 void ATurnBasedGameMode::RegisterAIParticipant(
     AController* AIController,
-    const FString& DisplayName)
+    const FString& DisplayName) const
 {
-    UTurnBasedParticipantManagerComponent* Manager = GetTurnManager();
+    UTurnBasedParticipantManagerComponent* Manager = GetParticipantManager();
     if (!Manager) return;
 
     Manager->RegisterParticipant(AIController, EParticipantType::AI, DisplayName);
@@ -76,14 +77,14 @@ void ATurnBasedGameMode::RegisterAIParticipant(
 
 void ATurnBasedGameMode::StartReadyCheck()
 {
-    UTurnBasedParticipantManagerComponent* Manager = GetTurnManager();
+    UTurnBasedParticipantManagerComponent* Manager = GetParticipantManager();
     if (!Manager) return;
 
     Manager->BeginReadyCheck();
 }
 
-UTurnBasedParticipantManagerComponent* ATurnBasedGameMode::GetTurnManager() const
+UTurnBasedParticipantManagerComponent* ATurnBasedGameMode::GetParticipantManager() const
 {
-    ATurnBasedGameState* GS = GetGameState<ATurnBasedGameState>();
-    return IsValid(GS) ? GS->TurnManager : nullptr;
+    const ATurnBasedGameState* Gs = GetGameState<ATurnBasedGameState>();
+    return IsValid(Gs) ? Gs->ParticipantManager : nullptr;
 }

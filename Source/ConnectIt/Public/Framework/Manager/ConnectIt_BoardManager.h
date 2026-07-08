@@ -6,6 +6,7 @@
 #include "Board/BoardManager.h"
 #include "ConnectIt_BoardManager.generated.h"
 
+class UConnectItBoardStateComponent;
 class UConnectIt_ConfigComponent;
 
 
@@ -19,10 +20,17 @@ public:
 	AConnectIt_BoardManager();
 
 	UFUNCTION(BlueprintCallable, Category = "ConnectIt|Config")
-	const UConnectIt_ConfigComponent* GetConnectItConfig() const;
+	UConnectIt_ConfigComponent* GetConnectItConfig() const;
+
+	UFUNCTION(BlueprintCallable, Category = "ConnectIt|Config")
+	UConnectItBoardStateComponent* GetConnectItBoardState() const;
 
 protected:
 	UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, Category = "ConnectIt")
-	TObjectPtr<UConnectIt_ConfigComponent> ConnectItConfig = nullptr;
+	TObjectPtr<UConnectIt_ConfigComponent> ConnectItConfigComponent = nullptr;
+
+	UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly,
+	Category = "ConnectIt|Components")
+	TObjectPtr<UConnectItBoardStateComponent> ConnectItBoardStateComponent = nullptr;
 	
 };

@@ -12,9 +12,8 @@ void UConnectItScoreInterpreter::OnBoardStateChanged_Implementation(
 		Cast<UConnectItBoardStateComponent>(Component);
 	if (!IsValid(ConnectItComp)) return;
 
-	const FConnectItBoardStateSnapshot Snapshot = ConnectItComp->GetBoardSnapshot();
-	const FConnectItBoardState Previous = Snapshot.PreviousState;
-	const FConnectItBoardState Current = Snapshot.PreviousState;
+	const FConnectItBoardState Previous = *ConnectItComp->GetBoardSnapShotPrevious();
+	const FConnectItBoardState Current = *ConnectItComp->GetBoardSnapShotCurrent();
 
 	// Check each faction for score changes
 	for (int32 i = 0; i < Current.ScoreBoard.Num(); i++)

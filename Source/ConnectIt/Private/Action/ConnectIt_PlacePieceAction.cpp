@@ -3,7 +3,7 @@
 
 #include "Action/ConnectIt_PlacePieceAction.h"
 #include "EngineUtils.h"
-#include "Board/ConnectItBoardActor.h"
+#include "Board/ConnectItBoardManager.h"
 #include "Board/ConnectItBoardStateComponent.h"
 #include "Tile/GridTileBase.h"
 #include "Turn/Participant/TurnBasedParticipantComponent.h"
@@ -125,7 +125,7 @@ const UConnectItBoardStateComponent* UConnectIt_PlacePieceAction::GetBoardStateC
     const UWorld* World = GetWorld();
     if (!IsValid(World)) return nullptr;
 
-    for (TActorIterator<AConnectItBoardActor> It(World); It; ++It)
+    for (TActorIterator<AConnectItBoardManager> It(World); It; ++It)
     {
         return It->ConnectItBoardState;
     }

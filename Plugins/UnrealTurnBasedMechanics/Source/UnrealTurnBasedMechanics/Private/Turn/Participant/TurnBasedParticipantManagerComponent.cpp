@@ -46,7 +46,7 @@ void UTurnBasedParticipantManagerComponent::GetLifetimeReplicatedProps(
 
 void UTurnBasedParticipantManagerComponent::RegisterParticipant(
     AController* Controller,
-    EParticipantType Type,
+    const EParticipantType Type,
     const FString& DisplayName)
 {
     check(!IsRunningClientOnly());
@@ -195,14 +195,14 @@ void UTurnBasedParticipantManagerComponent::NotifyParticipantReconnected(
 
         SetPhase(ETurnPhase::TurnActive);
 
-        // Notify the reconnected participant to resume
-        if (UTurnBasedParticipantComponent* Comp = GetParticipantComponent(Controller))
+        // Single RPC call -- old ClientNotifyTurnResumed removed
+        if (UTurnBasedParticipantComponent* Comp =
+            GetParticipantComponent(Controller))
         {
-            Comp->ClientNotifyTurnResumed(
+            Comp->ClientReceiveTurnNotification(
                 BuildNotification(ReconnectedIndex, ETurnPhase::TurnActive));
         }
 
-        // Restart full turn duration — acceptable for turn based
         GetWorld()->GetTimerManager().SetTimer(
             TurnTimerHandle,
             this,
@@ -410,7 +410,7 @@ void UTurnBasedParticipantManagerComponent::CheckGameOver()
 }
 
 void UTurnBasedParticipantManagerComponent::BroadcastTurnStartToAllParticipants(
-    int32 NewActiveIndex)
+    const int32 NewActiveIndex)
 {
     for (int32 i = 0; i < Participants.Num(); i++)
     {
@@ -423,9 +423,8 @@ void UTurnBasedParticipantManagerComponent::BroadcastTurnStartToAllParticipants(
 
         const bool bIsMyTurn = (i == NewActiveIndex);
 
-        // Participant component fires OnAnyParticipantTurnStarted(bIsMyTurn)
-        // Action component binds to this for cooldown ticking
-        ParticipantComp->HandleAnyParticipantTurnStarted(bIsMyTurn);
+        // Updated to match renamed function on participant component
+        ParticipantComp->NotifyAnyParticipantTurnStarted(bIsMyTurn);
     }
 }
 
@@ -463,36 +462,11 @@ void UTurnBasedParticipantManagerComponent::NotifyActiveParticipant(
 {
     if (!Participants.IsValidIndex(ActiveParticipantIndex)) return;
 
-    const FTurnParticipantInfo& Info = Participants[ActiveParticipantIndex];
-    UTurnBasedParticipantComponent* Comp =
-        GetParticipantComponent(Info.Controller.Get());
+    UTurnBasedParticipantComponent* Comp = GetParticipantComponent(
+        Participants[ActiveParticipantIndex].Controller.Get());
     if (!IsValid(Comp)) return;
 
-    const FTurnNotification Notification =
-        BuildNotification(ActiveParticipantIndex, Phase, Reason);
-
-    switch (Phase)
-    {
-        case ETurnPhase::TurnStart:
-            Comp->ClientNotifyTurnStarted(Notification);
-            break;
-        case ETurnPhase::TurnEnd:
-            if (Reason == ETurnEndReason::Forfeited)
-                Comp->ClientNotifyForfeited(Notification);
-            else if (Reason == ETurnEndReason::Skipped)
-                Comp->ClientNotifyTurnSkipped(Notification);
-            else
-                Comp->ClientNotifyTurnEnded(Notification);
-            break;
-        case ETurnPhase::TurnTimeout:
-            Comp->ClientNotifyTurnTimedOut(Notification);
-            break;
-        case ETurnPhase::Paused:
-            Comp->ClientNotifyTurnPaused(Notification);
-            break;
-        default:
-            break;
-    }
+    Comp->ClientReceiveTurnNotification(BuildNotification(ActiveParticipantIndex, Phase, Reason));
 }
 
 FTurnNotification UTurnBasedParticipantManagerComponent::BuildNotification(

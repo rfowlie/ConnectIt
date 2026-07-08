@@ -1,10 +1,12 @@
-﻿// TurnBasedParticipantManagerComponent.h
+﻿// Fill out your copyright notice in the Description page of Project Settings.
+
 #pragma once
 
 #include "CoreMinimal.h"
 #include "TurnBasedMechanicsEnums.h"
 #include "TurnBasedMechanicsStructs.h"
 #include "Components/ActorComponent.h"
+#include "Turn/Order/TurnOrderInterface.h"
 #include "TurnBasedParticipantManagerComponent.generated.h"
 
 class UTurnBasedParticipantComponent;
@@ -18,8 +20,7 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnTurnResolutionStarted);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnGameOver);
 
 UCLASS(ClassGroup=(TurnBased), meta=(BlueprintSpawnableComponent))
-class UNREALTURNBASEDMECHANICS_API UTurnBasedParticipantManagerComponent
-    : public UActorComponent
+class UNREALTURNBASEDMECHANICS_API UTurnBasedParticipantManagerComponent : public UActorComponent
 {
     GENERATED_BODY()
 
@@ -51,34 +52,30 @@ public:
     // Turn order strategy -- must implement ITurnOrderInterface
     // Instanced inline in Details panel
     // Defaults to USequentialTurnOrderStrategy if not set
-    UPROPERTY(EditAnywhere, Instanced, BlueprintReadOnly,
-        Category = "Turn Based|Config",
-        meta = (MustImplement = "/Script/UnrealTurnBasedMechanics.TurnOrderInterface"))
+    // UPROPERTY(EditAnywhere, Instanced, BlueprintReadOnly, Category = "Turn Based|Config",
+    //     meta = (MustImplement = "/Script/UnrealTurnBasedMechanics.TurnOrderInterface"))
+    UPROPERTY(EditAnywhere, Instanced, BlueprintReadOnly, Category = "Turn Based|Config")
     TObjectPtr<UObject> TurnOrderStrategy = nullptr;
+    
+    // UPROPERTY(EditAnywhere, Instanced, BlueprintReadOnly, Category = "Turn Based|Config")
+    // TScriptInterface<UTurnOrderInterface> TurnOrderStrategy = nullptr;
 
     // --- Replicated State ---
 
-    UPROPERTY(BlueprintReadOnly,
-        ReplicatedUsing = OnRep_CurrentPhase,
-        Category = "Turn Based|State")
+    UPROPERTY(BlueprintReadOnly, ReplicatedUsing = OnRep_CurrentPhase, Category = "Turn Based|State")
     ETurnPhase CurrentPhase = ETurnPhase::WaitingForParticipants;
 
-    UPROPERTY(BlueprintReadOnly,
-        ReplicatedUsing = OnRep_ActiveParticipantIndex,
-        Category = "Turn Based|State")
+    UPROPERTY(BlueprintReadOnly, ReplicatedUsing = OnRep_ActiveParticipantIndex, Category = "Turn Based|State")
     int32 ActiveParticipantIndex = -1;
 
-    UPROPERTY(BlueprintReadOnly, Replicated,
-        Category = "Turn Based|State")
+    UPROPERTY(BlueprintReadOnly, Replicated, Category = "Turn Based|State")
     int32 TurnNumber = 0;
 
-    UPROPERTY(BlueprintReadOnly, Replicated,
-        Category = "Turn Based|State")
+    UPROPERTY(BlueprintReadOnly, Replicated, Category = "Turn Based|State")
     TArray<FTurnParticipantInfo> Participants;
 
     // Replicated once per turn start -- clients start local timer from this
-    UPROPERTY(BlueprintReadOnly, Replicated,
-        Category = "Turn Based|State")
+    UPROPERTY(BlueprintReadOnly, Replicated, Category = "Turn Based|State")
     float ReplicatedTurnDuration = 0.f;
 
     // --- Setup --- Server only ---
@@ -87,6 +84,12 @@ public:
         AController* Controller,
         EParticipantType Type,
         const FString& DisplayName);
+
+    UFUNCTION(BlueprintPure, Category = "Turn Based")
+    bool IsParticipantRegistered(AController* Controller) const
+    {
+        return FindParticipantIndex(Controller) != INDEX_NONE;
+    }
 
     void BeginReadyCheck();
 
@@ -153,14 +156,12 @@ private:
     void BroadcastTurnStartToAllParticipants(int32 NewActiveIndex);
 
     // --- Helpers ---
-
-public:
+    
     FTurnParticipantInfo* FindParticipant(AController* Controller);
     int32 FindParticipantIndex(AController* Controller) const;
     UTurnBasedParticipantComponent* GetParticipantComponent(
         AController* Controller) const;
-
-private:
+    
     void NotifyActiveParticipant(
         ETurnPhase Phase,
         ETurnEndReason Reason = ETurnEndReason::ParticipantEnded);

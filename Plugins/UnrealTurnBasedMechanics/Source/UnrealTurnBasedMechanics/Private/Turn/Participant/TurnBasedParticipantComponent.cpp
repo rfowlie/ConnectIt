@@ -24,7 +24,6 @@ void UTurnBasedParticipantComponent::ServerNotifyReady_Implementation()
 {
     UTurnBasedParticipantManagerComponent* Manager = GetParticipantManager();
     if (!IsValid(Manager)) return;
-
     Manager->NotifyParticipantReady(GetOwner<AController>());
 }
 
@@ -41,119 +40,63 @@ void UTurnBasedParticipantComponent::ServerSubmitTurnEnd_Implementation()
 
     UTurnBasedParticipantManagerComponent* Manager = GetParticipantManager();
     if (!IsValid(Manager)) return;
-
     Manager->NotifyTurnEndSubmitted(GetOwner<AController>());
 }
 
-// --- Client RPCs ---
+// --- Client RPC ---
 
-void UTurnBasedParticipantComponent::ClientNotifyTurnStarted_Implementation(
-    FTurnNotification Notification)
+void UTurnBasedParticipantComponent::ClientReceiveTurnNotification_Implementation(
+    const FTurnNotification Notification)
 {
-    bIsMyTurn = true;
-    HandleTurnStarted(Notification);
-    OnTurnStarted.Broadcast(Notification);
-    OnTurnStarted_Native.Broadcast(Notification);
-}
+    // Update bIsMyTurn based on phase before broadcasting
+    // so subscribers read the correct value when they receive the notification
+    if (IsMyTurnStartingPhase(Notification.Phase))
+    {
+        bIsMyTurn = true;
+    }
+    else if (IsMyTurnEndingPhase(Notification.Phase))
+    {
+        bIsMyTurn = false;
+    }
 
-void UTurnBasedParticipantComponent::ClientNotifyTurnEnded_Implementation(
-    FTurnNotification Notification)
-{
-    bIsMyTurn = false;
-    HandleTurnEnded(Notification);
-    OnTurnEnded.Broadcast(Notification);
-    OnTurnEnded_Native.Broadcast(Notification);
-}
-
-void UTurnBasedParticipantComponent::ClientNotifyTurnPaused_Implementation(
-    FTurnNotification Notification)
-{
-    HandleTurnPaused(Notification);
-    OnTurnPaused.Broadcast(Notification);
-    OnTurnPaused_Native.Broadcast(Notification);
-}
-
-void UTurnBasedParticipantComponent::ClientNotifyTurnResumed_Implementation(
-    FTurnNotification Notification)
-{
-    HandleTurnResumed(Notification);
-    OnTurnResumed.Broadcast(Notification);
-    OnTurnResumed_Native.Broadcast(Notification);
-}
-
-void UTurnBasedParticipantComponent::ClientNotifyTurnTimedOut_Implementation(
-    FTurnNotification Notification)
-{
-    bIsMyTurn = false;
-    HandleTurnTimedOut(Notification);
-    OnTurnTimedOut.Broadcast(Notification);
-    OnTurnTimedOut_Native.Broadcast(Notification);
-}
-
-void UTurnBasedParticipantComponent::ClientNotifyTurnSkipped_Implementation(
-    FTurnNotification Notification)
-{
-    bIsMyTurn = false;
-    HandleTurnSkipped(Notification);
-    OnTurnSkipped.Broadcast(Notification);
-    OnTurnSkipped_Native.Broadcast(Notification);
-}
-
-void UTurnBasedParticipantComponent::ClientNotifyForfeited_Implementation(
-    FTurnNotification Notification)
-{
-    bIsMyTurn = false;
-    HandleForfeited(Notification);
-    OnForfeited.Broadcast(Notification);
-    OnForfeited_Native.Broadcast(Notification);
+    OnTurnNotificationReceived.Broadcast(Notification);
+    OnTurnNotificationReceived_Native.Broadcast(Notification);
 }
 
 // --- Manager callback ---
 
-void UTurnBasedParticipantComponent::HandleAnyParticipantTurnStarted( bool bIsTurn)
+void UTurnBasedParticipantComponent::NotifyAnyParticipantTurnStarted(
+    bool bIsThisMyTurn)
 {
-    // Fire both Blueprint and Native delegates
-    // UTurnBasedActionComponent binds here for cooldown ticking
-    OnAnyParticipantTurnStarted.Broadcast(bIsTurn);
-    OnAnyParticipantTurnStarted_Native.Broadcast(bIsTurn);
+    OnAnyParticipantTurnStarted.Broadcast(bIsThisMyTurn);
+    OnAnyParticipantTurnStarted_Native.Broadcast(bIsThisMyTurn);
 }
 
-// --- Virtual handlers ---
+// --- Static phase helpers ---
 
-void UTurnBasedParticipantComponent::HandleTurnStarted(
-    const FTurnNotification& Notification)
+bool UTurnBasedParticipantComponent::IsMyTurnStartingPhase(ETurnPhase Phase)
 {
-    // Base does nothing
-    // AI subclass overrides to begin MinMax computation
-    // Player subclass may override to enable input
+    return Phase == ETurnPhase::TurnStart
+        || Phase == ETurnPhase::TurnActive;
 }
 
-void UTurnBasedParticipantComponent::HandleTurnEnded(
-    const FTurnNotification& Notification) {}
-
-void UTurnBasedParticipantComponent::HandleTurnPaused(
-    const FTurnNotification& Notification) {}
-
-void UTurnBasedParticipantComponent::HandleTurnResumed(
-    const FTurnNotification& Notification) {}
-
-void UTurnBasedParticipantComponent::HandleTurnTimedOut(
-    const FTurnNotification& Notification) {}
-
-void UTurnBasedParticipantComponent::HandleTurnSkipped(
-    const FTurnNotification& Notification) {}
-
-void UTurnBasedParticipantComponent::HandleForfeited(
-    const FTurnNotification& Notification) {}
+bool UTurnBasedParticipantComponent::IsMyTurnEndingPhase(ETurnPhase Phase)
+{
+    return Phase == ETurnPhase::TurnEnd
+        || Phase == ETurnPhase::TurnTimeout
+        || Phase == ETurnPhase::TurnSkipped
+        || Phase == ETurnPhase::GameOver;
+}
 
 // --- Helper ---
 
-UTurnBasedParticipantManagerComponent* UTurnBasedParticipantComponent::GetParticipantManager() const
+UTurnBasedParticipantManagerComponent*
+UTurnBasedParticipantComponent::GetParticipantManager() const
 {
-    const UWorld* World = GetWorld();
+    UWorld* World = GetWorld();
     if (!IsValid(World)) return nullptr;
 
-    const AGameStateBase* GS = World->GetGameState();
+    AGameStateBase* GS = World->GetGameState();
     if (!IsValid(GS)) return nullptr;
 
     return GS->FindComponentByClass<UTurnBasedParticipantManagerComponent>();

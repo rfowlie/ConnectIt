@@ -22,19 +22,20 @@ public:
 	ATurnBasedGameState();
 	
 	UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, Category = "Turn Based")
-	UTurnBasedParticipantManagerComponent* TurnManager = nullptr;
+	UTurnBasedParticipantManagerComponent* ParticipantManager = nullptr;
 
-	// Convenience accessors
-
-	UFUNCTION(BlueprintPure, Category = "Turn Based")
-	ETurnPhase GetCurrentPhase() const;
-
-	UFUNCTION(BlueprintPure, Category = "Turn Based")
-	int32 GetActiveTurnNumber() const;
+	// Convenience accessors (for replicated properties)
 
 	UFUNCTION(BlueprintPure, Category = "Turn Based")
 	const TArray<FTurnParticipantInfo>& GetParticipants() const;
 
 	UFUNCTION(BlueprintPure, Category = "Turn Based")
+	int32 GetActiveTurnNumber() const;
+	
+	UFUNCTION(BlueprintPure, Category = "Turn Based")
+	ETurnPhase GetCurrentPhase() const;
+
+	UFUNCTION(BlueprintPure, Category = "Turn Based")
 	float GetTurnDuration() const;
+	
 };

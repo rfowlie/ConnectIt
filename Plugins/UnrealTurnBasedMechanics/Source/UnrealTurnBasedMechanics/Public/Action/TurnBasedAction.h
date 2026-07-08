@@ -42,6 +42,14 @@ public:
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Action|Config")
     bool bIsCancellable = true;
 
+    // Whether an optional action can interrupt this action while it is active
+    // Only relevant for required actions
+    // When false -- optional actions cannot activate while this is the active action
+    // When true  -- optional actions can interupt this and activate
+    //               this action reactivates when the optional action completes
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Action|Config")
+    bool bAllowsOptionalInterrupt = true;
+    
     // Waits for a grid tile selection before completing
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Action|Config")
     bool bRequiresSelection = false;

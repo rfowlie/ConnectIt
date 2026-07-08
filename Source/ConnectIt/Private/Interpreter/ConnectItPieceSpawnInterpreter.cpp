@@ -46,7 +46,7 @@ void UConnectItPieceSpawnInterpreter::OnBoardStateChanged_Implementation(
         Cast<UConnectItBoardStateComponent>(Component);
     if (!IsValid(ConnectItComp)) return;
     
-    FConnectItBoardStateSnapshot Snapshot = ConnectItComp->GetBoardSnapshot();
+    const FConnectItBoardStateSnapshot Snapshot = *ConnectItComp->GetBoardSnapshot();
     
     if (!IsValid(PiecePool)) return;
 

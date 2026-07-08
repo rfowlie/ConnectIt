@@ -66,9 +66,19 @@ void UConnectItBoardStateComponent::ApplyAndBroadcast(
     BroadcastChange();
 }
 
-FConnectItBoardStateSnapshot UConnectItBoardStateComponent::GetBoardSnapshot() const
+const FConnectItBoardStateSnapshot* UConnectItBoardStateComponent::GetBoardSnapshot() const
 {
-    return BoardSnapshot;
+    return &BoardSnapshot;
+}
+
+const FConnectItBoardState* UConnectItBoardStateComponent::GetBoardSnapShotCurrent() const
+{
+    return &BoardSnapshot.CurrentState;
+}
+
+const FConnectItBoardState* UConnectItBoardStateComponent::GetBoardSnapShotPrevious() const
+{
+    return &BoardSnapshot.PreviousState;
 }
 
 void UConnectItBoardStateComponent::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const

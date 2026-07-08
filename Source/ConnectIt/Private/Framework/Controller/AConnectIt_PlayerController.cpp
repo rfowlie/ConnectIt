@@ -1,11 +1,11 @@
 ﻿// Fill out your copyright notice in the Description page of Project Settings.
 
 
-#include "Framework/Controller/AConnectIt_PlayerController.h"
+#include "Framework/Controller/ConnectIt_PlayerController.h"
 #include "EngineUtils.h"
 #include "Action/ActionLoadoutDataAsset.h"
 #include "Action/TurnBasedActionComponent.h"
-#include "Board/ConnectItBoardActor.h"
+#include "Board/ConnectItBoardManager.h"
 #include "Turn/Participant/TurnBasedParticipantComponent.h"
 
 
@@ -25,11 +25,9 @@ void AConnectIt_PlayerController::BeginPlay()
     Super::BeginPlay();
 
     // Bind turn notifications
-    ParticipantComponent->OnTurnStarted.AddDynamic(
-        this, &AConnectIt_PlayerController::HandleTurnStarted);
-
-    ParticipantComponent->OnTurnEnded.AddDynamic(
-        this, &AConnectIt_PlayerController::HandleTurnEnded);
+    ParticipantComponent->OnTurnNotificationReceived.AddDynamic(
+        this, &AConnectIt_PlayerController::HandleTurnChanged);
+    
 
     // Initialise from board actor
     // Only owning client needs actions -- IsLocalController guards this
@@ -41,8 +39,8 @@ void AConnectIt_PlayerController::BeginPlay()
 
 void AConnectIt_PlayerController::InitialiseFromBoardActor()
 {
-    AConnectItBoardActor* BoardActor = nullptr;
-    for (TActorIterator<AConnectItBoardActor> It(GetWorld()); It; ++It)
+    AConnectItBoardManager* BoardActor = nullptr;
+    for (TActorIterator<AConnectItBoardManager> It(GetWorld()); It; ++It)
     {
         BoardActor = *It;
         break;
@@ -81,22 +79,21 @@ void AConnectIt_PlayerController::InitialiseFromBoardActor()
         *Loadout->LoadoutName);
 }
 
-void AConnectIt_PlayerController::HandleTurnStarted(
-    const FTurnNotification& Notification)
+void AConnectIt_PlayerController::HandleTurnChanged(const FTurnNotification& Notification)
 {
-    // Notify action component to reset state and activate required actions
-    ActionComponent->OnTurnBegan(Notification.TurnNumber);
-
+    switch (Notification.Phase)
+    {
+        case ETurnPhase::TurnStart :
+            ActionComponent->NotifyTurnStarted(Notification.TurnNumber);
+            break;
+        case ETurnPhase::TurnEnd :
+            ActionComponent->NotifyTurnEnded();
+            break;
+        default:
+            break;
+    }
+    
     UE_LOG(LogTemp, Log,
         TEXT("ConnectItPlayerController: Turn %d started"),
         Notification.TurnNumber);
-}
-
-void AConnectIt_PlayerController::HandleTurnEnded(
-    const FTurnNotification& Notification)
-{
-    UE_LOG(LogTemp, Log,
-        TEXT("ConnectItPlayerController: Turn %d ended — reason: %s"),
-        Notification.TurnNumber,
-        *UEnum::GetValueAsString(Notification.EndReason));
 }

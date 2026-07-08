@@ -35,7 +35,12 @@ public:
     // --- Read API ---
     // Interpreters and game logic call these
 
-    FConnectItBoardStateSnapshot GetBoardSnapshot() const;
+    const FConnectItBoardStateSnapshot* GetBoardSnapshot() const;
+
+    // void GetBoardSnapShotCurrent(const FConnectItBoardState* OutSnapshot);
+    const FConnectItBoardState* GetBoardSnapShotCurrent() const;
+    
+    const FConnectItBoardState* GetBoardSnapShotPrevious() const;
     
     UFUNCTION(BlueprintPure, Category = "Board State")
     const FConnectItBoardState& GetCurrentState() const

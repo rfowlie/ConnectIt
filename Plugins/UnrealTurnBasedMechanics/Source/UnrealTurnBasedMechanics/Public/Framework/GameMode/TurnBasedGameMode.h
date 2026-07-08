@@ -32,6 +32,9 @@ public:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Turn Based|Config")
 	float ReconnectTimeout = 30.f;
 
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Turn Based|Config")
+	float TurnResolutionDuration = 1.5f;
+	
 	// --- Overrides ---
 
 	virtual void PostLogin(APlayerController* NewPlayer) override;
@@ -45,7 +48,7 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Turn Based")
 	void RegisterAIParticipant(
 		AController* AIController,
-		const FString& DisplayName = TEXT("AI"));
+		const FString& DisplayName = TEXT("AI")) const;
 
 	// Signals that all participants have been registered
 	// Transitions manager to WaitingForReady
@@ -54,6 +57,6 @@ public:
 
 protected:
 
-	UTurnBasedParticipantManagerComponent* GetTurnManager() const;
+	UTurnBasedParticipantManagerComponent* GetParticipantManager() const;
 	
 };

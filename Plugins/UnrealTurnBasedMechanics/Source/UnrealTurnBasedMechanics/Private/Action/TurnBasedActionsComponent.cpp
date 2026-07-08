@@ -1,33 +1,32 @@
 ﻿// Fill out your copyright notice in the Description page of Project Settings.
 
-#include "Action/TurnBasedActionComponent.h"
+
+#include "Action/TurnBasedActionsComponent.h"
 #include "Action/TurnBasedAction.h"
 #include "Action/ActionLoadoutDataAsset.h"
 #include "GameFramework/Controller.h"
 #include "EnhancedInputComponent.h"
 
 
-UTurnBasedActionComponent::UTurnBasedActionComponent()
+UTurnBasedActionsComponent::UTurnBasedActionsComponent()
 {
     PrimaryComponentTick.bCanEverTick = false;
     SetIsReplicatedByDefault(false);
 }
 
-void UTurnBasedActionComponent::BeginPlay()
+void UTurnBasedActionsComponent::BeginPlay()
 {
     Super::BeginPlay();
-    // No internal bindings -- caller wires externally
 }
 
 // --- Setup ---
 
-void UTurnBasedActionComponent::InitialiseFromLoadout(
-    UActionLoadOutDataAsset* InLoadout)
+void UTurnBasedActionsComponent::InitialiseFromLoadout(UActionLoadOutDataAsset* InLoadout)
 {
     if (!IsValid(InLoadout))
     {
         UE_LOG(LogTemp, Warning,
-            TEXT("TurnBasedActionComponent: InitialiseFromLoadout "
+            TEXT("TurnBasedActionsComponent: InitialiseFromLoadout "
                  "called with null loadout on %s"),
             *GetOwner()->GetName());
         return;
@@ -35,20 +34,22 @@ void UTurnBasedActionComponent::InitialiseFromLoadout(
 
     Loadout = InLoadout;
     CloneActionsFromLoadout();
+    CreateRootAction();
     bIsInitialised = true;
 
     UE_LOG(LogTemp, Log,
-        TEXT("TurnBasedActionComponent: %s initialised — "
-             "loadout '%s', %d actions, "
+        TEXT("TurnBasedActionsComponent: %s initialised — "
+             "loadout '%s', %d actions, root: %s, "
              "AutoActivate: %s, AutoEnd: %s"),
         *GetOwner()->GetName(),
         *InLoadout->LoadoutName,
         RuntimeActions.Num(),
+        IsValid(RootAction) ? *RootAction->ActionTag.ToString() : TEXT("none"),
         bAutoActivateRequiredActions ? TEXT("On") : TEXT("Off"),
         bAutoEndTurnOnAllRequiredActionsCompleted ? TEXT("On") : TEXT("Off"));
 }
 
-void UTurnBasedActionComponent::CloneActionsFromLoadout()
+void UTurnBasedActionsComponent::CloneActionsFromLoadout()
 {
     RuntimeActions.Empty();
     if (!IsValid(Loadout)) return;
@@ -57,14 +58,6 @@ void UTurnBasedActionComponent::CloneActionsFromLoadout()
     UEnhancedInputComponent* EIC = IsValid(Controller)
         ? Cast<UEnhancedInputComponent>(Controller->InputComponent.Get())
         : nullptr;
-
-    if (!IsValid(EIC))
-    {
-        UE_LOG(LogTemp, Warning,
-            TEXT("TurnBasedActionComponent: No UEnhancedInputComponent "
-                 "on %s — selection input will not bind"),
-            *GetOwner()->GetName());
-    }
 
     for (const UTurnBasedAction* Source : Loadout->GetPermittedActions())
     {
@@ -79,8 +72,9 @@ void UTurnBasedActionComponent::CloneActionsFromLoadout()
         RuntimeActions.Add(Clone);
 
         UE_LOG(LogTemp, Log,
-            TEXT("TurnBasedActionComponent: Cloned '%s' "
-                 "(Required: %s, Cancellable: %s, AllowsOptionalInterrupt: %s)"),
+            TEXT("TurnBasedActionsComponent: Cloned '%s' "
+                 "(Required: %s, Cancellable: %s, "
+                 "AllowsOptionalInterrupt: %s)"),
             *Clone->ActionTag.ToString(),
             Clone->bIsRequired ? TEXT("Yes") : TEXT("No"),
             Clone->bIsCancellable ? TEXT("Yes") : TEXT("No"),
@@ -88,21 +82,42 @@ void UTurnBasedActionComponent::CloneActionsFromLoadout()
     }
 }
 
-void UTurnBasedActionComponent::BindActionDelegates(UTurnBasedAction* Action)
+void UTurnBasedActionsComponent::CreateRootAction()
+{
+    RootAction = nullptr;
+    if (!RootActionClass) return;
+
+    AController* Controller = GetOwningController();
+    UEnhancedInputComponent* EIC = IsValid(Controller)
+        ? Cast<UEnhancedInputComponent>(Controller->InputComponent.Get())
+        : nullptr;
+
+    RootAction = NewObject<UTurnBasedAction>(this, RootActionClass);
+    if (!IsValid(RootAction)) return;
+
+    RootAction->InitialiseAction(Controller, EIC);
+    BindActionDelegates(RootAction);
+
+    UE_LOG(LogTemp, Log,
+        TEXT("TurnBasedActionsComponent: Root action created — '%s'"),
+        *RootAction->ActionTag.ToString());
+}
+
+void UTurnBasedActionsComponent::BindActionDelegates(UTurnBasedAction* Action)
 {
     if (!IsValid(Action)) return;
 
     Action->OnChangeRequested.AddDynamic(
-        this, &UTurnBasedActionComponent::HandleActionChangeRequested);
+        this, &UTurnBasedActionsComponent::HandleActionChangeRequested);
     Action->OnActionCompleted.AddDynamic(
-        this, &UTurnBasedActionComponent::HandleActionCompleted);
+        this, &UTurnBasedActionsComponent::HandleActionCompleted);
     Action->OnActionCancelled.AddDynamic(
-        this, &UTurnBasedActionComponent::HandleActionCancelled);
+        this, &UTurnBasedActionsComponent::HandleActionCancelled);
 }
 
 // --- Turn Lifecycle ---
 
-void UTurnBasedActionComponent::NotifyTurnStarted(const int32 InTurnNumber)
+void UTurnBasedActionsComponent::NotifyTurnStarted(int32 InTurnNumber)
 {
     CurrentTurnNumber = InTurnNumber;
     ActiveAction      = nullptr;
@@ -112,19 +127,20 @@ void UTurnBasedActionComponent::NotifyTurnStarted(const int32 InTurnNumber)
         if (IsValid(Action)) Action->ResetTurnState();
     }
 
-    // Always build the queue so CanEndTurn() works correctly
-    // even when bAutoActivateRequiredActions is false
+    if (IsValid(RootAction)) RootAction->ResetTurnState();
+
+    // Build required queue first so CanEndTurn() is correct
     BuildRequiredQueue();
 
     UE_LOG(LogTemp, Log,
-        TEXT("TurnBasedActionComponent: Turn %d started on %s "
+        TEXT("TurnBasedActionsComponent: Turn %d started on %s "
              "— %d required actions queued"),
         CurrentTurnNumber,
         *GetOwner()->GetName(),
         PendingRequiredActions.Num());
 }
 
-void UTurnBasedActionComponent::TickCooldowns(bool bIsMyTurn)
+void UTurnBasedActionsComponent::TickCooldowns(bool bIsMyTurn)
 {
     for (UTurnBasedAction* Action : RuntimeActions)
     {
@@ -132,58 +148,68 @@ void UTurnBasedActionComponent::TickCooldowns(bool bIsMyTurn)
     }
 }
 
-void UTurnBasedActionComponent::NotifyTurnEnded()
+void UTurnBasedActionsComponent::NotifyTurnEnded()
 {
-    if (IsValid(ActiveAction) && ActiveAction->bIsCancellable)
+    // Cancel active action if it is not the root
+    if (IsValid(ActiveAction) && ActiveAction != RootAction)
     {
-        CancelActiveAction();
+        if (ActiveAction->bIsCancellable) CancelActiveAction();
     }
+
+    // Deactivate root cleanly
+    if (IsValid(RootAction) && ActiveAction == RootAction)
+    {
+        RootAction->Cancel();
+    }
+
     ActiveAction = nullptr;
     PendingRequiredActions.Empty();
 
     UE_LOG(LogTemp, Log,
-        TEXT("TurnBasedActionComponent: Turn ended on %s"),
+        TEXT("TurnBasedActionsComponent: Turn ended on %s"),
         *GetOwner()->GetName());
 }
 
-void UTurnBasedActionComponent::NotifyTurnPaused()
+void UTurnBasedActionsComponent::NotifyTurnPaused()
 {
-    if (IsValid(ActiveAction) && ActiveAction->bIsCancellable)
+    // Pause active non-root action
+    if (IsValid(ActiveAction)
+        && ActiveAction != RootAction
+        && ActiveAction->bIsCancellable)
     {
         CancelActiveAction();
     }
 
     UE_LOG(LogTemp, Log,
-        TEXT("TurnBasedActionComponent: Turn paused on %s"),
+        TEXT("TurnBasedActionsComponent: Turn paused on %s"),
         *GetOwner()->GetName());
 }
 
-void UTurnBasedActionComponent::NotifyTurnResumed()
+void UTurnBasedActionsComponent::NotifyTurnResumed()
 {
-    // Rebuild queue from remaining incomplete required actions
-    // and advance if auto-activate is on
+    // Rebuild queue and return to appropriate state
     BuildRequiredQueue();
 
     UE_LOG(LogTemp, Log,
-        TEXT("TurnBasedActionComponent: Turn resumed on %s"),
+        TEXT("TurnBasedActionsComponent: Turn resumed on %s"),
         *GetOwner()->GetName());
 }
 
 // --- Action Control ---
 
-bool UTurnBasedActionComponent::TryActivateAction(FGameplayTag ActionTag)
+bool UTurnBasedActionsComponent::TryActivateActionByTag(FGameplayTag ActionTag)
 {
     return TryActivateActionByRef(FindActionByTag(ActionTag));
 }
 
-bool UTurnBasedActionComponent::TryActivateActionByRef(UTurnBasedAction* Action)
+bool UTurnBasedActionsComponent::TryActivateActionByRef(UTurnBasedAction* Action)
 {
     if (!IsValid(Action)) return false;
 
     if (!Action->CanActivate())
     {
         UE_LOG(LogTemp, Log,
-            TEXT("TurnBasedActionComponent: '%s' cannot activate "
+            TEXT("TurnBasedActionsComponent: '%s' cannot activate "
                  "— state: %s, uses: %d/%d, cooldown: %d"),
             *Action->ActionTag.ToString(),
             *UEnum::GetValueAsString(Action->State),
@@ -193,65 +219,87 @@ bool UTurnBasedActionComponent::TryActivateActionByRef(UTurnBasedAction* Action)
         return false;
     }
 
-    // If this is an optional action check whether the active required
-    // action allows interruption
-    if (!Action->bIsRequired && IsValid(ActiveAction) && ActiveAction->bIsRequired)
+    // Check optional interrupt permission on active required action
+    const bool bActiveIsRequired = IsValid(ActiveAction)
+        && ActiveAction->bIsRequired
+        && ActiveAction != RootAction;
+
+    if (!Action->bIsRequired && bActiveIsRequired)
     {
         if (!ActiveAction->bAllowsOptionalInterrupt)
         {
             UE_LOG(LogTemp, Warning,
-                TEXT("TurnBasedActionComponent: Optional '%s' cannot "
-                     "interrupt required '%s' — bAllowsOptionalInterrupt is false"),
+                TEXT("TurnBasedActionsComponent: Optional '%s' cannot "
+                     "interrupt required '%s' — bAllowsOptionalInterrupt false"),
                 *Action->ActionTag.ToString(),
                 *ActiveAction->ActionTag.ToString());
             return false;
         }
     }
 
+    // Cancel current if possible
+    // Root action is always interruptible by TryActivateAction
     if (IsValid(ActiveAction))
     {
-        if (ActiveAction->bIsCancellable)
-        {
-            CancelActiveAction();
-        }
-        else
+        const bool bIsRoot = (ActiveAction == RootAction);
+        if (!bIsRoot && !ActiveAction->bIsCancellable)
         {
             UE_LOG(LogTemp, Warning,
-                TEXT("TurnBasedActionComponent: Cannot activate '%s' "
+                TEXT("TurnBasedActionsComponent: Cannot activate '%s' "
                      "— '%s' is active and not cancellable"),
                 *Action->ActionTag.ToString(),
                 *ActiveAction->ActionTag.ToString());
             return false;
+        }
+
+        // Interrupt root or cancel active
+        if (bIsRoot)
+        {
+            // Interrupt root -- do not fire cancel delegate
+            // root will resume when this action completes
+            ActiveAction = nullptr;
+        }
+        else
+        {
+            CancelActiveAction();
         }
     }
 
     ActiveAction = Action;
     Action->Activate();
     OnActionActivated.Broadcast(Action);
+
+    UE_LOG(LogTemp, Log,
+        TEXT("TurnBasedActionsComponent: Activated '%s'"),
+        *Action->ActionTag.ToString());
+
     return true;
 }
 
-void UTurnBasedActionComponent::CancelActiveAction()
+void UTurnBasedActionsComponent::CancelActiveAction()
 {
     if (!IsValid(ActiveAction)) return;
+    if (ActiveAction == RootAction) return; // Root cannot be cancelled by caller
+
     ActiveAction->Cancel();
     // ActiveAction cleared in HandleActionCancelled
+    // which then calls ReturnToRoot
 }
 
-bool UTurnBasedActionComponent::CanEndTurn() const
+bool UTurnBasedActionsComponent::CanEndTurn() const
 {
     if (!bIsInitialised) return false;
 
-    // No required actions in loadout -- always can end
-    const bool bHasRequiredActions = RuntimeActions.ContainsByPredicate(
+    // No required actions -- always can end
+    const bool bHasRequired = RuntimeActions.ContainsByPredicate(
         [](const UTurnBasedAction* A)
         {
             return IsValid(A) && A->bIsRequired;
         });
 
-    if (!bHasRequiredActions) return true;
+    if (!bHasRequired) return true;
 
-    // Has required actions -- all must be complete
+    // All required must be complete
     for (const UTurnBasedAction* Action : RuntimeActions)
     {
         if (!IsValid(Action)) continue;
@@ -262,12 +310,12 @@ bool UTurnBasedActionComponent::CanEndTurn() const
     return true;
 }
 
-void UTurnBasedActionComponent::RequestTurnEnd()
+void UTurnBasedActionsComponent::RequestTurnEnd()
 {
     if (!CanEndTurn())
     {
         UE_LOG(LogTemp, Warning,
-            TEXT("TurnBasedActionComponent: RequestTurnEnd — "
+            TEXT("TurnBasedActionsComponent: RequestTurnEnd — "
                  "required actions not complete on %s"),
             *GetOwner()->GetName());
         return;
@@ -277,13 +325,13 @@ void UTurnBasedActionComponent::RequestTurnEnd()
     OnTurnEndRequested_Native.Broadcast();
 
     UE_LOG(LogTemp, Log,
-        TEXT("TurnBasedActionComponent: Turn end requested on %s"),
+        TEXT("TurnBasedActionsComponent: Turn end requested on %s"),
         *GetOwner()->GetName());
 }
 
 // --- Queries ---
 
-TArray<UTurnBasedAction*> UTurnBasedActionComponent::GetAllActions() const
+TArray<UTurnBasedAction*> UTurnBasedActionsComponent::GetAllActions() const
 {
     TArray<UTurnBasedAction*> Out;
     for (UTurnBasedAction* A : RuntimeActions)
@@ -293,7 +341,7 @@ TArray<UTurnBasedAction*> UTurnBasedActionComponent::GetAllActions() const
     return Out;
 }
 
-TArray<UTurnBasedAction*> UTurnBasedActionComponent::GetAvailableActions() const
+TArray<UTurnBasedAction*> UTurnBasedActionsComponent::GetAvailableActions() const
 {
     TArray<UTurnBasedAction*> Out;
     for (UTurnBasedAction* A : RuntimeActions)
@@ -303,7 +351,7 @@ TArray<UTurnBasedAction*> UTurnBasedActionComponent::GetAvailableActions() const
     return Out;
 }
 
-TArray<UTurnBasedAction*> UTurnBasedActionComponent::GetRequiredActions() const
+TArray<UTurnBasedAction*> UTurnBasedActionsComponent::GetRequiredActions() const
 {
     TArray<UTurnBasedAction*> Out;
     for (UTurnBasedAction* A : RuntimeActions)
@@ -313,20 +361,51 @@ TArray<UTurnBasedAction*> UTurnBasedActionComponent::GetRequiredActions() const
     return Out;
 }
 
-UTurnBasedAction* UTurnBasedActionComponent::FindActionByTag(
-    FGameplayTag Tag) const
+UTurnBasedAction* UTurnBasedActionsComponent::FindActionByTag(FGameplayTag Tag) const
 {
+    // Check runtime actions
     UTurnBasedAction* const* Found = RuntimeActions.FindByPredicate(
         [Tag](const UTurnBasedAction* A)
         {
             return IsValid(A) && A->ActionTag == Tag;
         });
-    return Found ? *Found : nullptr;
+
+    if (Found) return *Found;
+
+    // Check root action
+    if (IsValid(RootAction) && RootAction->ActionTag == Tag)
+        return RootAction;
+
+    return nullptr;
 }
 
-// --- Internal Turn Flow ---
+// --- Internal ---
 
-void UTurnBasedActionComponent::BuildRequiredQueue()
+void UTurnBasedActionsComponent::ReturnToRoot()
+{
+    if (!IsValid(RootAction))
+    {
+        ActiveAction = nullptr;
+        return;
+    }
+
+    if (!RootAction->CanActivate())
+    {
+        // Root might be exhausted or on cooldown in edge cases
+        // Reset it explicitly since root should always be available
+        RootAction->ResetTurnState();
+    }
+
+    ActiveAction = RootAction;
+    RootAction->Activate();
+    OnActionActivated.Broadcast(RootAction);
+
+    UE_LOG(LogTemp, Log,
+        TEXT("TurnBasedActionsComponent: Returned to root action '%s'"),
+        *RootAction->ActionTag.ToString());
+}
+
+void UTurnBasedActionsComponent::BuildRequiredQueue()
 {
     PendingRequiredActions.Empty();
 
@@ -338,15 +417,20 @@ void UTurnBasedActionComponent::BuildRequiredQueue()
         PendingRequiredActions.Add(Action);
     }
 
-    if (bAutoActivateRequiredActions)
+    if (bAutoActivateRequiredActions && !PendingRequiredActions.IsEmpty())
     {
         AdvanceRequiredQueue();
     }
+    else
+    {
+        // No required actions to auto-activate -- return to root
+        ReturnToRoot();
+    }
 }
 
-void UTurnBasedActionComponent::AdvanceRequiredQueue()
+void UTurnBasedActionsComponent::AdvanceRequiredQueue()
 {
-    // Clean stale entries from front of queue
+    // Clean stale entries
     while (!PendingRequiredActions.IsEmpty())
     {
         UTurnBasedAction* Next = PendingRequiredActions[0];
@@ -366,29 +450,40 @@ void UTurnBasedActionComponent::AdvanceRequiredQueue()
 
     UTurnBasedAction* Next = PendingRequiredActions[0];
 
-    // Active non-cancellable action is blocking -- defer
-    if (IsValid(ActiveAction) && !ActiveAction->bIsCancellable)
+    // Active non-cancellable non-root action is blocking
+    if (IsValid(ActiveAction)
+        && ActiveAction != RootAction
+        && !ActiveAction->bIsCancellable)
     {
         UE_LOG(LogTemp, Log,
-            TEXT("TurnBasedActionComponent: Deferring required '%s' "
+            TEXT("TurnBasedActionsComponent: Deferring required '%s' "
                  "— '%s' is active and not cancellable"),
             *Next->ActionTag.ToString(),
             *ActiveAction->ActionTag.ToString());
         return;
     }
 
-    if (IsValid(ActiveAction) && ActiveAction->bIsCancellable)
+    // Interrupt root or cancel active non-root
+    if (IsValid(ActiveAction))
     {
-        CancelActiveAction();
+        if (ActiveAction == RootAction)
+        {
+            ActiveAction = nullptr; // Interrupt root silently
+        }
+        else if (ActiveAction->bIsCancellable)
+        {
+            CancelActiveAction();
+        }
     }
 
     if (!Next->CanActivate())
     {
         UE_LOG(LogTemp, Warning,
-            TEXT("TurnBasedActionComponent: Required '%s' cannot "
+            TEXT("TurnBasedActionsComponent: Required '%s' cannot "
                  "activate — state: %s"),
             *Next->ActionTag.ToString(),
             *UEnum::GetValueAsString(Next->State));
+        ReturnToRoot();
         return;
     }
 
@@ -397,45 +492,67 @@ void UTurnBasedActionComponent::AdvanceRequiredQueue()
     OnActionActivated.Broadcast(Next);
 
     UE_LOG(LogTemp, Log,
-        TEXT("TurnBasedActionComponent: Auto-activated required '%s' "
-             "(%d remaining in queue)"),
+        TEXT("TurnBasedActionsComponent: Auto-activated required '%s' "
+             "(%d remaining)"),
         *Next->ActionTag.ToString(),
         PendingRequiredActions.Num() - 1);
 }
 
-void UTurnBasedActionComponent::HandleAllRequiredComplete()
+void UTurnBasedActionsComponent::HandleAllRequiredComplete()
 {
     OnTurnEndReady.Broadcast();
 
     UE_LOG(LogTemp, Log,
-        TEXT("TurnBasedActionComponent: All required actions complete on %s"),
+        TEXT("TurnBasedActionsComponent: All required complete on %s"),
         *GetOwner()->GetName());
 
     if (bAutoEndTurnOnAllRequiredActionsCompleted)
     {
         RequestTurnEnd();
     }
+    else
+    {
+        // Return to root -- player decides when to end
+        ReturnToRoot();
+    }
 }
 
-void UTurnBasedActionComponent::CheckAutoTurnEnd()
+void UTurnBasedActionsComponent::CheckRequiredCompletion()
 {
     if (PendingRequiredActions.IsEmpty())
     {
         HandleAllRequiredComplete();
     }
+    else
+    {
+        ReturnToRoot();
+    }
 }
 
 // --- Action Delegate Handlers ---
 
-void UTurnBasedActionComponent::HandleActionChangeRequested(
+void UTurnBasedActionsComponent::HandleActionChangeRequested(
     const FTurnActionRequest& Request)
 {
     OnBoardChangeRequested.Broadcast(Request);
     OnBoardChangeRequested_Native.Broadcast(Request);
 }
 
-void UTurnBasedActionComponent::HandleActionCompleted(UTurnBasedAction* Action)
+void UTurnBasedActionsComponent::HandleActionCompleted(
+    UTurnBasedAction* Action)
 {
+    // Root action completing is unusual -- it should never complete
+    // naturally but handle it defensively
+    if (Action == RootAction)
+    {
+        UE_LOG(LogTemp, Warning,
+            TEXT("TurnBasedActionsComponent: Root action completed "
+                 "unexpectedly on %s"),
+            *GetOwner()->GetName());
+        ActiveAction = nullptr;
+        return;
+    }
+
     if (ActiveAction == Action) ActiveAction = nullptr;
 
     LogActionRecord(Action, ETurnBasedActionState::Completed);
@@ -447,37 +564,51 @@ void UTurnBasedActionComponent::HandleActionCompleted(UTurnBasedAction* Action)
 
         if (bAutoActivateRequiredActions)
         {
-            // Advance to next required or fire all-complete
             AdvanceRequiredQueue();
         }
         else
         {
-            // Not auto-activating -- just check if all done
-            CheckAutoTurnEnd();
+            CheckRequiredCompletion();
         }
     }
     else
     {
-        // Optional completed -- resume required queue if auto-activate on
-        if (bAutoActivateRequiredActions)
+        // Optional completed -- return to root or advance required queue
+        if (bAutoActivateRequiredActions && !PendingRequiredActions.IsEmpty())
         {
             AdvanceRequiredQueue();
+        }
+        else
+        {
+            ReturnToRoot();
         }
     }
 }
 
-void UTurnBasedActionComponent::HandleActionCancelled(UTurnBasedAction* Action)
+void UTurnBasedActionsComponent::HandleActionCancelled(
+    UTurnBasedAction* Action)
 {
+    if (Action == RootAction)
+    {
+        // Root was cancelled by system (turn end, pause)
+        // Do not return to root
+        if (ActiveAction == Action) ActiveAction = nullptr;
+        return;
+    }
+
     if (ActiveAction == Action) ActiveAction = nullptr;
 
     LogActionRecord(Action, ETurnBasedActionState::Cancelled,
-        TEXT("Cancelled by player or system"));
+        TEXT("Cancelled"));
     OnActionCancelled.Broadcast(Action);
+
+    // Always return to root after any non-root cancellation
+    ReturnToRoot();
 }
 
 // --- Logging ---
 
-void UTurnBasedActionComponent::LogActionRecord(
+void UTurnBasedActionsComponent::LogActionRecord(
     UTurnBasedAction* Action,
     ETurnBasedActionState OutcomeState,
     const FString& Note)
@@ -495,7 +626,7 @@ void UTurnBasedActionComponent::LogActionRecord(
     ActionHistory.Add(Record);
 
     UE_LOG(LogTemp, Log,
-        TEXT("TurnBasedActionComponent: [Turn %d] '%s' -> %s%s"),
+        TEXT("TurnBasedActionsComponent: [Turn %d] '%s' -> %s%s"),
         Record.TurnNumber,
         *Record.ActionTag.ToString(),
         *UEnum::GetValueAsString(OutcomeState),
@@ -506,7 +637,7 @@ void UTurnBasedActionComponent::LogActionRecord(
 
 // --- Helpers ---
 
-AController* UTurnBasedActionComponent::GetOwningController() const
+AController* UTurnBasedActionsComponent::GetOwningController() const
 {
     return GetOwner<AController>();
 }

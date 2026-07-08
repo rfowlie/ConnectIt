@@ -5,7 +5,7 @@
 #include "CoreMinimal.h"
 #include "TurnBasedMechanicsStructs.h"
 #include "GameFramework/PlayerController.h"
-#include "AConnectIt_PlayerController.generated.h"
+#include "ConnectIt_PlayerController.generated.h"
 
 class UTurnBasedParticipantComponent;
 class UTurnBasedActionComponent;
@@ -43,9 +43,7 @@ private:
 
 	// Delegate handlers
 	UFUNCTION()
-	void HandleTurnStarted(const FTurnNotification& Notification);
+	void HandleTurnChanged(const FTurnNotification& Notification);
 
-	UFUNCTION()
-	void HandleTurnEnded(const FTurnNotification& Notification);
 };
 
