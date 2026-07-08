@@ -37,6 +37,10 @@
 		{
 			"Name": "UnrealTurnBasedMechanics",
 			"Enabled": true
+		},
+		{
+			"Name": "UnrealCodingUtils",
+			"Enabled": true
 		}
 	]
 }

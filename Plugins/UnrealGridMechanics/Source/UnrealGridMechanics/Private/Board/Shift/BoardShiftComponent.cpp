@@ -2,7 +2,7 @@
 
 
 #include "Board/Shift/BoardShiftComponent.h"
-#include "Board/BoardStateComponent.h"
+#include "Board/BoardStateComponentBase.h"
 #include "Board/Shift/GridMechanics_GridShiftLibrary.h"
 #include "Tile/GridTileBase.h"
 #include "Tile/GridTileRegistryComponent.h"
@@ -30,7 +30,7 @@ void UBoardShiftComponent::BeginPlay()
 bool UBoardShiftComponent::ResolveComponents()
 {
     RegistryComponent = GetOwner()->FindComponentByClass<UGridTileRegistryComponent>();
-    StateComponent    = GetOwner()->FindComponentByClass<UBoardStateComponent>();
+    StateComponent    = GetOwner()->FindComponentByClass<UBoardStateComponentBase>();
 
     if (!IsValid(RegistryComponent))
     {
@@ -166,10 +166,7 @@ void UBoardShiftComponent::BroadcastAlphaToTiles(float Alpha)
 
 void UBoardShiftComponent::FinaliseShift()
 {
-    // Update board state atomically
-    StateComponent->ApplyShiftResult(ActiveResult);
-
-    // Notify all tiles that shift is complete
+    // Notify all tiles that animation is complete
     for (const FTileShiftInstruction& Instruction : ActiveInstructions)
     {
         if (!IsValid(Instruction.TileActor)) continue;
@@ -179,9 +176,15 @@ void UBoardShiftComponent::FinaliseShift()
         }
     }
 
+    // Fire shift result to board manager via delegate
+    // Board manager applies the remap to board state
+    // replication drives client visual updates
+    // Shift component has no knowledge of state shape
+    OnShiftResultReady.Broadcast(ActiveOperation, ActiveResult);
+
     // Reset shift state
-    bIsShifting = false;
-    ShiftAlpha  = 0.f;
+    bIsShifting         = false;
+    ShiftAlpha          = 0.f;
     ActiveInstructions.Empty();
     SetComponentTickEnabled(false);
 

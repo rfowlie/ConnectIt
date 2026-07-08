@@ -27,7 +27,8 @@ public class UnrealTurnBasedMechanics : ModuleRules
 			{
 				"Core", 
 				"EnhancedInput",
-				"GameplayTags"
+				"GameplayTags", 
+				"UnrealGridMechanics"
 				// ... add other public dependencies that you statically link with here ...
 			}
 			);

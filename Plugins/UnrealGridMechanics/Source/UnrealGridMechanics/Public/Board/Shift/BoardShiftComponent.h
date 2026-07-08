@@ -7,12 +7,14 @@
 #include "UnrealGridMechanics/Public/Board/Shift/GridShiftTypes.h"
 #include "BoardShiftComponent.generated.h"
 
-class UBoardStateComponent;
+class UBoardStateComponentBase;
 class UGridTileRegistryComponent;
 
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnShiftStarted, FShiftOperation, Operation);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnShiftCompleted, FShiftOperation, Operation);
+// Board manager binds here to process the shift result server side
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnShiftResultReady, const FShiftOperation&, Operation, const FShiftResult&, Result);
 
 UCLASS(ClassGroup=(Grid), meta=(BlueprintSpawnableComponent))
 class UNREALGRIDMECHANICS_API UBoardShiftComponent : public UActorComponent
@@ -32,6 +34,9 @@ public:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Grid|Shift")
     float ShiftDuration = 0.5f;
 
+    UPROPERTY(BlueprintAssignable, Category = "Grid|Shift")
+    FOnShiftResultReady OnShiftResultReady;
+    
     // Requests a shift operation
     // Returns false if a shift is already in progress
     UFUNCTION(BlueprintCallable, Category = "Grid|Shift")
@@ -59,7 +64,7 @@ private:
     UGridTileRegistryComponent* RegistryComponent = nullptr;
 
     UPROPERTY()
-    UBoardStateComponent* StateComponent = nullptr;
+    UBoardStateComponentBase* StateComponent = nullptr;
 
     // Active shift state
     bool bIsShifting = false;

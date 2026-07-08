@@ -7,9 +7,17 @@
 #include "ConnectIt_PlacePieceAction.generated.h"
 
 
+class UConnectItBoardStateComponent;
 class AConnectIt_GridPiece;
 class AConnectIt_BoardManager;
 
+// ConnectIt concrete action -- places a piece on the board
+// Responsibilities:
+//   - Validates hover and selection (empty, active tile)
+//   - Sends GameplayTags to tiles for visual hover feedback
+//   - Builds FTurnActionRequest and fires OnChangeRequested
+//   - Has NO knowledge of pools, piece actors, or board state mutation
+//   - Has NO visual responsibilities beyond sending tags to tiles
 UCLASS(Blueprintable, BlueprintType, EditInlineNew, DefaultToInstanced)
 class CONNECTIT_API UConnectIt_PlacePieceAction : public UTurnBasedAction
 {
@@ -19,9 +27,23 @@ public:
 
     UConnectIt_PlacePieceAction();
 
-protected:
+    // GameplayTags sent to tiles to drive their visual state
+    // Set in editor -- tile Blueprint responds to these tags
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Action|Tags")
+    FGameplayTag Tag_ValidHover;
 
-    // --- UTurnBasedAction overrides ---
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Action|Tags")
+    FGameplayTag Tag_InvalidHover;
+
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Action|Tags")
+    FGameplayTag Tag_Default;
+
+    // Request type tag sent to board manager
+    // Must match ConnectItRequestTags::PlacePiece in board manager
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Action|Tags")
+    FGameplayTag Tag_RequestType;
+
+protected:
 
     virtual void OnActivated_Implementation() override;
     virtual void OnCancelled_Implementation() override;
@@ -42,33 +64,14 @@ protected:
     virtual void HandleValidSelection_Implementation(
         AGridTileBase* Tile) override;
 
-    virtual void ClearVisuals_Implementation() override;
+    virtual void ClearSelectionState_Implementation() override;
 
 private:
 
-    // Cached board actor reference — found once on activation
-    UPROPERTY()
-    TObjectPtr<AConnectIt_BoardManager> BoardManager = nullptr;
+    // Reads board state to validate tile
+    // Finds UConnectItBoardStateComponent on board actor
+    const UConnectItBoardStateComponent* GetBoardStateComponent() const;
 
-    // The piece placed this turn — returned to pool if action cancelled
-    UPROPERTY()
-    TObjectPtr<AConnectIt_GridPiece> PlacedPiece = nullptr;
-
-    // Find and cache the board actor from the world
-    AConnectIt_BoardManager* FindBoardActor() const;
-
-    // Get the owning controller's faction ID via participant component
+    // Gets owning faction ID from participant component slot index
     int32 GetOwningFactionID() const;
-
-    // Server RPC — validates and applies piece placement
-    UFUNCTION(Server, Reliable)
-    void ServerPlacePiece(AGridTileBase* TargetTile, int32 FactionID);
-    void ServerPlacePiece_Implementation(AGridTileBase* TargetTile, int32 FactionID);
-
-    // Tags used to communicate visual state to tiles
-    // Defined as static members so Blueprint tiles can react to them
-    static const FGameplayTag ConnectIt_Tile_ValidHover;
-    static const FGameplayTag ConnectIt_Tile_InvalidHover;
-    static const FGameplayTag ConnectIt_Tile_Occupied;
-    static const FGameplayTag ConnectIt_Tile_Default;
 };

@@ -1,8 +1,8 @@
 ﻿// Fill out your copyright notice in the Description page of Project Settings.
 
-
 #include "Action/TurnBasedActionComponent.h"
 #include "GameFramework/Controller.h"
+#include "EnhancedInputComponent.h"
 #include "Action/ActionLoadoutDataAsset.h"
 #include "Turn/Participant/TurnBasedParticipantComponent.h"
 
@@ -10,60 +10,95 @@
 UTurnBasedActionComponent::UTurnBasedActionComponent()
 {
     PrimaryComponentTick.bCanEverTick = false;
+    // Action component does not replicate
+    // All server communication goes through ServerRPC
+    SetIsReplicatedByDefault(false);
 }
 
 void UTurnBasedActionComponent::BeginPlay()
 {
     Super::BeginPlay();
-    
+
+    // Bind to participant component's OnAnyParticipantTurnStarted
+    // so cooldowns tick on every turn start regardless of who is active
+    if (UTurnBasedParticipantComponent* ParticipantComp =
+        GetParticipantComponent())
+    {
+        ParticipantComp->OnAnyParticipantTurnStarted_Native.AddLambda(
+            [this](bool bIsMyTurn)
+            {
+                OnAnyParticipantTurnStarted(bIsMyTurn);
+            });
+    }
 }
 
-void UTurnBasedActionComponent::InitialiseFromLoadOut(UActionLoadOutDataAsset* InDataAsset)
+// --- Setup ---
+
+void UTurnBasedActionComponent::InitialiseFromLoadout(UActionLoadOutDataAsset* InLoadOut)
 {
-    if (!IsValid(InDataAsset))
+    if (!IsValid(InLoadOut))
     {
         UE_LOG(LogTemp, Warning,
-            TEXT("TurnBasedActionComponent: InitialiseFromLoadout called with null loadout"));
+            TEXT("TurnBasedActionComponent: InitialiseFromLoadout "
+                 "called with null loadout on %s"),
+            *GetOwner()->GetName());
         return;
     }
 
-    Loadout = InDataAsset;
+    Loadout = InLoadOut;
     CloneActionsFromLoadOut();
+    bIsInitialised = true;
 
     UE_LOG(LogTemp, Log,
-        TEXT("TurnBasedActionComponent: Initialised with load out %s — %d actions"),
-        *InDataAsset->LoadoutName,
-        ActiveActions.Num());
+        TEXT("TurnBasedActionComponent: %s initialised with loadout '%s' "
+             "— %d actions (%d required, %d optional)"),
+        *GetOwner()->GetName(),
+        *InLoadOut->LoadoutName,
+        RuntimeActions.Num(),
+        GetRequiredActions().Num(),
+        GetAvailableActions().Num() - GetRequiredActions().Num());
 }
 
 void UTurnBasedActionComponent::CloneActionsFromLoadOut()
 {
-    ActiveActions.Empty();
+    RuntimeActions.Empty();
 
     if (!IsValid(Loadout)) return;
 
-    AController* OwningController = GetOwner<AController>();
-    UInputComponent* IC = IsValid(OwningController)
-        ? OwningController->InputComponent.Get()
+    AController* Controller = GetOwningController();
+    UEnhancedInputComponent* EIC = IsValid(Controller)
+        ? Cast<UEnhancedInputComponent>(Controller->InputComponent.Get())
         : nullptr;
+
+    if (!IsValid(EIC))
+    {
+        UE_LOG(LogTemp, Warning,
+            TEXT("TurnBasedActionComponent: No UEnhancedInputComponent "
+                 "found on %s — selection input will not bind"),
+            *GetOwner()->GetName());
+    }
 
     for (UTurnBasedAction* SourceAction : Loadout->GetPermittedActions())
     {
         if (!IsValid(SourceAction)) continue;
 
-        // Clone from asset — runtime instance is independent
+        // Clone from asset -- runtime instance is independent
+        // Each controller has its own copy with independent state
         UTurnBasedAction* Clone = DuplicateObject<UTurnBasedAction>(
             SourceAction, this);
 
         if (!IsValid(Clone)) continue;
 
-        Clone->InitialiseAction(OwningController, IC);
+        Clone->InitialiseAction(Controller, EIC);
         BindActionDelegates(Clone);
-        ActiveActions.Add(Clone);
+        RuntimeActions.Add(Clone);
 
         UE_LOG(LogTemp, Log,
-            TEXT("TurnBasedActionComponent: Cloned action %s"),
-            *Clone->ActionTag.ToString());
+            TEXT("TurnBasedActionComponent: Cloned action '%s' "
+                 "(Required: %s, Cancellable: %s)"),
+            *Clone->ActionTag.ToString(),
+            Clone->bIsRequired ? TEXT("Yes") : TEXT("No"),
+            Clone->bIsCancellable ? TEXT("Yes") : TEXT("No"));
     }
 }
 
@@ -71,19 +106,25 @@ void UTurnBasedActionComponent::BindActionDelegates(UTurnBasedAction* Action)
 {
     if (!IsValid(Action)) return;
 
+    Action->OnChangeRequested.AddDynamic(
+        this, &UTurnBasedActionComponent::HandleActionChangeRequested);
+
     Action->OnActionCompleted.AddDynamic(
         this, &UTurnBasedActionComponent::HandleActionCompleted);
+
     Action->OnActionCancelled.AddDynamic(
         this, &UTurnBasedActionComponent::HandleActionCancelled);
 }
 
-void UTurnBasedActionComponent::OnTurnBegan()
+// --- Turn Lifecycle ---
+
+void UTurnBasedActionComponent::OnTurnBegan(int32 InTurnNumber)
 {
-    CurrentTurnNumber++;
-    ActiveAction = nullptr;
+    CurrentTurnNumber = InTurnNumber;
+    ActiveAction      = nullptr;
 
     // Reset per-turn state on all actions
-    for (UTurnBasedAction* Action : ActiveActions)
+    for (UTurnBasedAction* Action : RuntimeActions)
     {
         if (IsValid(Action))
         {
@@ -91,15 +132,20 @@ void UTurnBasedActionComponent::OnTurnBegan()
         }
     }
 
+    // Auto-activate required actions immediately
+    ActivateRequiredActions();
+
     UE_LOG(LogTemp, Log,
-        TEXT("TurnBasedActionComponent: Turn began — %d actions available"),
+        TEXT("TurnBasedActionComponent: Turn %d began on %s "
+             "— %d actions available"),
+        CurrentTurnNumber,
+        *GetOwner()->GetName(),
         GetAvailableActions().Num());
 }
 
 void UTurnBasedActionComponent::OnAnyParticipantTurnStarted(bool bIsMyTurn)
 {
-    // Tick cooldowns on all actions
-    for (UTurnBasedAction* Action : ActiveActions)
+    for (UTurnBasedAction* Action : RuntimeActions)
     {
         if (IsValid(Action))
         {
@@ -107,6 +153,8 @@ void UTurnBasedActionComponent::OnAnyParticipantTurnStarted(bool bIsMyTurn)
         }
     }
 }
+
+// --- Action Control ---
 
 bool UTurnBasedActionComponent::TryActivateAction(FGameplayTag ActionTag)
 {
@@ -119,31 +167,40 @@ bool UTurnBasedActionComponent::TryActivateActionByRef(UTurnBasedAction* Action)
     if (!IsValid(Action))
     {
         UE_LOG(LogTemp, Warning,
-            TEXT("TurnBasedActionComponent: TryActivateAction called with null action"));
+            TEXT("TurnBasedActionComponent: TryActivateAction "
+                 "called with null action"));
         return false;
     }
 
     if (!Action->CanActivate())
     {
-        UE_LOG(LogTemp, Warning,
-            TEXT("TurnBasedActionComponent: Action %s cannot activate — state: %s"),
+        UE_LOG(LogTemp, Log,
+            TEXT("TurnBasedActionComponent: Action '%s' cannot activate "
+                 "— state: %s, uses: %d/%d, cooldown: %d"),
             *Action->ActionTag.ToString(),
-            *UEnum::GetValueAsString(Action->State));
+            *UEnum::GetValueAsString(Action->State),
+            Action->UsesThisTurn,
+            Action->MaxUsesPerTurn,
+            Action->TurnsUntilAvailable);
         return false;
     }
 
-    // Cancel any currently active action if it is cancellable
-    if (IsValid(ActiveAction) && ActiveAction->bIsCancellable)
+    // Cancel current active action if cancellable
+    if (IsValid(ActiveAction))
     {
-        CancelActiveAction();
-    }
-    else if (IsValid(ActiveAction))
-    {
-        UE_LOG(LogTemp, Warning,
-            TEXT("TurnBasedActionComponent: Cannot activate %s — %s is active and not cancellable"),
-            *Action->ActionTag.ToString(),
-            *ActiveAction->ActionTag.ToString());
-        return false;
+        if (ActiveAction->bIsCancellable)
+        {
+            CancelActiveAction();
+        }
+        else
+        {
+            UE_LOG(LogTemp, Warning,
+                TEXT("TurnBasedActionComponent: Cannot activate '%s' "
+                     "— '%s' is active and not cancellable"),
+                *Action->ActionTag.ToString(),
+                *ActiveAction->ActionTag.ToString());
+            return false;
+        }
     }
 
     ActiveAction = Action;
@@ -156,12 +213,16 @@ bool UTurnBasedActionComponent::TryActivateActionByRef(UTurnBasedAction* Action)
 void UTurnBasedActionComponent::CancelActiveAction()
 {
     if (!IsValid(ActiveAction)) return;
+
     ActiveAction->Cancel();
+    // ActiveAction cleared in HandleActionCancelled
 }
 
 bool UTurnBasedActionComponent::CanEndTurn() const
 {
-    for (const UTurnBasedAction* Action : ActiveActions)
+    if (!bIsInitialised) return false;
+
+    for (const UTurnBasedAction* Action : RuntimeActions)
     {
         if (!IsValid(Action)) continue;
         if (Action->bIsRequired && !Action->IsComplete())
@@ -169,6 +230,7 @@ bool UTurnBasedActionComponent::CanEndTurn() const
             return false;
         }
     }
+
     return true;
 }
 
@@ -177,44 +239,108 @@ void UTurnBasedActionComponent::RequestTurnEnd()
     if (!CanEndTurn())
     {
         UE_LOG(LogTemp, Warning,
-            TEXT("TurnBasedActionComponent: RequestTurnEnd called but required actions not complete"));
+            TEXT("TurnBasedActionComponent: RequestTurnEnd called "
+                 "but required actions not complete on %s"),
+            *GetOwner()->GetName());
         return;
     }
 
-    // Delegate to the participant component to submit to server
     if (UTurnBasedParticipantComponent* ParticipantComp =
-        GetOwner()->FindComponentByClass<UTurnBasedParticipantComponent>())
+        GetParticipantComponent())
     {
         ParticipantComp->ServerSubmitTurnEnd();
 
         UE_LOG(LogTemp, Log,
-            TEXT("TurnBasedActionComponent: Turn end submitted"));
+            TEXT("TurnBasedActionComponent: Turn end submitted on %s"),
+            *GetOwner()->GetName());
     }
+}
+
+// --- Queries ---
+
+TArray<UTurnBasedAction*> UTurnBasedActionComponent::GetAllActions() const
+{
+    TArray<UTurnBasedAction*> Out;
+    for (UTurnBasedAction* Action : RuntimeActions)
+    {
+        if (IsValid(Action)) Out.Add(Action);
+    }
+    return Out;
 }
 
 TArray<UTurnBasedAction*> UTurnBasedActionComponent::GetAvailableActions() const
 {
-    TArray<UTurnBasedAction*> Available;
-    for (UTurnBasedAction* Action : ActiveActions)
+    TArray<UTurnBasedAction*> Out;
+    for (UTurnBasedAction* Action : RuntimeActions)
     {
-        if (IsValid(Action) && Action->CanActivate())
-        {
-            Available.Add(Action);
-        }
+        if (IsValid(Action) && Action->CanActivate()) Out.Add(Action);
     }
-    return Available;
+    return Out;
 }
 
-UTurnBasedAction* UTurnBasedActionComponent::FindActionByTag(
-    FGameplayTag Tag) const
+TArray<UTurnBasedAction*> UTurnBasedActionComponent::GetRequiredActions() const
 {
-    TObjectPtr<UTurnBasedAction> const* Found = ActiveActions.FindByPredicate(
+    TArray<UTurnBasedAction*> Out;
+    for (UTurnBasedAction* Action : RuntimeActions)
+    {
+        if (IsValid(Action) && Action->bIsRequired) Out.Add(Action);
+    }
+    return Out;
+}
+
+UTurnBasedAction* UTurnBasedActionComponent::FindActionByTag(FGameplayTag Tag) const
+{
+    UTurnBasedAction* const* Found = RuntimeActions.FindByPredicate(
         [Tag](const UTurnBasedAction* Action)
         {
             return IsValid(Action) && Action->ActionTag == Tag;
         });
 
     return Found ? *Found : nullptr;
+}
+
+// --- Turn Flow ---
+
+void UTurnBasedActionComponent::ActivateRequiredActions()
+{
+    for (UTurnBasedAction* Action : RuntimeActions)
+    {
+        if (!IsValid(Action)) continue;
+        if (!Action->bIsRequired) continue;
+        if (!Action->CanActivate()) continue;
+
+        TryActivateActionByRef(Action);
+
+        UE_LOG(LogTemp, Log,
+            TEXT("TurnBasedActionComponent: Auto-activated required "
+                 "action '%s'"),
+            *Action->ActionTag.ToString());
+    }
+}
+
+void UTurnBasedActionComponent::CheckAutoTurnEnd()
+{
+    if (!CanEndTurn()) return;
+
+    OnTurnEndReady.Broadcast();
+
+    UE_LOG(LogTemp, Log,
+        TEXT("TurnBasedActionComponent: All required actions complete "
+             "on %s — auto-ending turn"),
+        *GetOwner()->GetName());
+
+    RequestTurnEnd();
+}
+
+// --- Action Delegate Handlers ---
+
+void UTurnBasedActionComponent::HandleActionChangeRequested(
+    const FTurnActionRequest& Request)
+{
+    // Route to server via RPC
+    // Component has zero knowledge of what processes this on the server
+    // Project-specific wiring connects the server side to the board manager
+    ServerRouteBoardChangeRequest(Request);
 }
 
 void UTurnBasedActionComponent::HandleActionCompleted(UTurnBasedAction* Action)
@@ -227,8 +353,18 @@ void UTurnBasedActionComponent::HandleActionCompleted(UTurnBasedAction* Action)
     LogActionRecord(Action, ETurnBasedActionState::Completed);
     OnActionCompleted.Broadcast(Action);
 
-    // Check if this completion means the turn can now end
-    CheckAutoTurnEnd();
+    if (!Action->bIsRequired)
+    {
+        // Optional action completed
+        // Reactivate required actions so player can proceed
+        ActivateRequiredActions();
+    }
+    else
+    {
+        // Required action completed
+        // Check if all required actions are done
+        CheckAutoTurnEnd();
+    }
 }
 
 void UTurnBasedActionComponent::HandleActionCancelled(UTurnBasedAction* Action)
@@ -238,28 +374,51 @@ void UTurnBasedActionComponent::HandleActionCancelled(UTurnBasedAction* Action)
         ActiveAction = nullptr;
     }
 
-    LogActionRecord(Action, ETurnBasedActionState::Cancelled, TEXT("Cancelled by player"));
+    LogActionRecord(Action, ETurnBasedActionState::Cancelled,
+        TEXT("Cancelled by player or system"));
+
     OnActionCancelled.Broadcast(Action);
 }
 
-void UTurnBasedActionComponent::CheckAutoTurnEnd()
+// --- ServerRPC ---
+
+void UTurnBasedActionComponent::ServerRouteBoardChangeRequest_Implementation(
+    FTurnActionRequest Request)
 {
-    if (!CanEndTurn())
+    // Server side -- validate request is from active participant
+    if (UTurnBasedParticipantComponent* ParticipantComp = GetParticipantComponent())
     {
-        // depending on setup we might want to auto initialize and action or UI
-        // automatically when another action ends, this can be hooked up here
-        OnActionRequired.Broadcast();
-        return;
+        if (!ParticipantComp->IsMyTurn())
+        {
+            UE_LOG(LogTemp, Warning,
+                TEXT("TurnBasedActionComponent: Board change request "
+                     "rejected — not this participant's turn on %s"),
+                *GetOwner()->GetName());
+            return;
+        }
     }
 
-    OnTurnEndReady.Broadcast();
+    // Stamp faction ID from cached slot index if not set by action
+    if (Request.FactionID < 0)
+    {
+        if (UTurnBasedParticipantComponent* ParticipantComp = GetParticipantComponent())
+        {
+            Request.FactionID = ParticipantComp->CachedSlotIndex;
+        }
+    }
 
-    // If the required action was the last one, auto-submit
-    // Optional actions still available — let UI decide to auto-end
-    // For ConnectIt: PlacePiece is required and there are no post-placement
-    // optional actions, so auto-end is safe here
-    RequestTurnEnd();
+    UE_LOG(LogTemp, Log,
+        TEXT("TurnBasedActionComponent: Routing board change request "
+             "'%s' from faction %d"),
+        *Request.RequestType.ToString(),
+        Request.FactionID);
+
+    // Fire passthrough delegate -- project wires this to board manager
+    OnBoardChangeRequested.Broadcast(Request);
+    OnBoardChangeRequested_Native.Broadcast(Request);
 }
+
+// --- Logging ---
 
 void UTurnBasedActionComponent::LogActionRecord(
     UTurnBasedAction* Action,
@@ -269,20 +428,37 @@ void UTurnBasedActionComponent::LogActionRecord(
     if (!IsValid(Action)) return;
 
     FTurnBasedActionRecord Record;
-    Record.ActionTag     = Action->ActionTag;
-    Record.OutcomeState  = OutcomeState;
-    Record.TurnNumber    = CurrentTurnNumber;
-    Record.DebugNote     = Note;
-    Record.Timestamp     = GetWorld()
+    Record.ActionTag    = Action->ActionTag;
+    Record.OutcomeState = OutcomeState;
+    Record.TurnNumber   = CurrentTurnNumber;
+    Record.DebugNote    = Note;
+    Record.Timestamp    = GetWorld()
         ? GetWorld()->GetTimeSeconds()
         : 0.f;
 
     ActionHistory.Add(Record);
 
     UE_LOG(LogTemp, Log,
-        TEXT("TurnBasedActionComponent: [Turn %d] Action %s -> %s %s"),
+        TEXT("TurnBasedActionComponent: [Turn %d] '%s' -> %s%s"),
         Record.TurnNumber,
         *Record.ActionTag.ToString(),
         *UEnum::GetValueAsString(OutcomeState),
-        Note.IsEmpty() ? TEXT("") : *FString::Printf(TEXT("(%s)"), *Note));
+        Note.IsEmpty()
+            ? TEXT("")
+            : *FString::Printf(TEXT(" (%s)"), *Note));
+}
+
+// --- Helpers ---
+
+AController* UTurnBasedActionComponent::GetOwningController() const
+{
+    return GetOwner<AController>();
+}
+
+UTurnBasedParticipantComponent*
+UTurnBasedActionComponent::GetParticipantComponent() const
+{
+    AController* Controller = GetOwningController();
+    if (!IsValid(Controller)) return nullptr;
+    return Controller->FindComponentByClass<UTurnBasedParticipantComponent>();
 }

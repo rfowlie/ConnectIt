@@ -12,5 +12,5 @@ UConnectIt_ConfigComponent::UConnectIt_ConfigComponent()
 void UConnectIt_ConfigComponent::BeginPlay()
 {
 	Super::BeginPlay();
-	
 }
+

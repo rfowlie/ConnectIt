@@ -1,24 +1,31 @@
 ﻿// Fill out your copyright notice in the Description page of Project Settings.
 
-
 #include "Action/TurnBasedAction.h"
+#include "GameFramework/Controller.h"
 #include "EnhancedInputComponent.h"
-#include "TurnBasedMechanicsEnums.h"
+#include "TurnBasedMechanicsStructs.h"
 #include "Subsystem/GridWorldSubsystem.h"
 #include "Tile/GridTileBase.h"
 
 
 void UTurnBasedAction::InitialiseAction(
     AController* InOwningController,
-    UInputComponent* InInputComponent)
+    UEnhancedInputComponent* InInputComponent)
 {
-    OwningController = InOwningController;
-    InputComponent   = InInputComponent;
+    OwningController       = InOwningController;
+    EnhancedInputComponent = InInputComponent;
 }
 
 void UTurnBasedAction::Activate()
 {
-    if (!CanActivate()) return;
+    if (!CanActivate())
+    {
+        UE_LOG(LogTemp, Warning,
+            TEXT("TurnBasedAction: %s cannot activate — state: %s"),
+            *ActionTag.ToString(),
+            *UEnum::GetValueAsString(State));
+        return;
+    }
 
     State = ETurnBasedActionState::Active;
     UsesThisTurn++;
@@ -39,12 +46,26 @@ void UTurnBasedAction::Activate()
 
 void UTurnBasedAction::Cancel()
 {
-    if (!bIsCancellable || State != ETurnBasedActionState::Active) return;
+    if (!bIsCancellable)
+    {
+        UE_LOG(LogTemp, Warning,
+            TEXT("TurnBasedAction: %s is not cancellable"),
+            *ActionTag.ToString());
+        return;
+    }
+
+    if (State != ETurnBasedActionState::Active)
+    {
+        UE_LOG(LogTemp, Warning,
+            TEXT("TurnBasedAction: %s cancel called but not active"),
+            *ActionTag.ToString());
+        return;
+    }
 
     UnbindSelectionInput();
-    ClearVisuals();
+    ClearSelectionState();
 
-    // Refund use — cancellation should not consume the action
+    // Refund the use -- cancellation should not consume the action
     UsesThisTurn = FMath::Max(0, UsesThisTurn - 1);
     State = ETurnBasedActionState::Cancelled;
 
@@ -60,13 +81,14 @@ void UTurnBasedAction::Cancel()
 void UTurnBasedAction::Complete()
 {
     UnbindSelectionInput();
-    ClearVisuals();
+    ClearSelectionState();
 
     State = ETurnBasedActionState::Completed;
 
     if (CooldownTurns > 0)
     {
         TurnsUntilAvailable = CooldownTurns;
+        State = ETurnBasedActionState::OnCooldown;
     }
 
     OnCompleted();
@@ -80,9 +102,9 @@ void UTurnBasedAction::Complete()
 
 bool UTurnBasedAction::CanActivate() const
 {
-    if (State == ETurnBasedActionState::Active)   return false;
+    if (State == ETurnBasedActionState::Active)    return false;
     if (State == ETurnBasedActionState::OnCooldown) return false;
-    if (TurnsUntilAvailable > 0)                  return false;
+    if (TurnsUntilAvailable > 0)                   return false;
     if (MaxUsesPerTurn > 0 && UsesThisTurn >= MaxUsesPerTurn) return false;
     return true;
 }
@@ -112,51 +134,69 @@ void UTurnBasedAction::ResetTurnState()
     UsesThisTurn = 0;
 
     // Restore completed non-cooldown actions to available
-    if (State == ETurnBasedActionState::Completed && CooldownTurns == 0)
+    if (State == ETurnBasedActionState::Completed
+        || State == ETurnBasedActionState::Cancelled)
     {
-        State = ETurnBasedActionState::Available;
+        if (CooldownTurns == 0)
+        {
+            State = ETurnBasedActionState::Available;
+        }
     }
+}
+
+void UTurnBasedAction::RequestBoardChange(const FTurnActionRequest& Request)
+{
+    if (!Request.IsValid())
+    {
+        UE_LOG(LogTemp, Warning,
+            TEXT("TurnBasedAction: %s fired invalid FTurnActionRequest"),
+            *ActionTag.ToString());
+        return;
+    }
+
+    OnChangeRequested.Broadcast(Request);
+    OnChangeRequested_Native.Broadcast(Request);
+
+    UE_LOG(LogTemp, Log,
+        TEXT("TurnBasedAction: %s requested board change — type: %s"),
+        *ActionTag.ToString(),
+        *Request.RequestType.ToString());
 }
 
 UWorld* UTurnBasedAction::GetWorld() const
 {
     if (UActorComponent* Comp = GetTypedOuter<UActorComponent>())
-    {
         return Comp->GetWorld();
-    }
     if (AActor* Actor = GetTypedOuter<AActor>())
-    {
         return Actor->GetWorld();
-    }
     return nullptr;
 }
 
 UGridWorldSubsystem* UTurnBasedAction::GetGridSubsystem() const
 {
     UWorld* World = GetWorld();
-    return IsValid(World) ? World->GetSubsystem<UGridWorldSubsystem>() : nullptr;
+    return IsValid(World)
+        ? World->GetSubsystem<UGridWorldSubsystem>()
+        : nullptr;
 }
+
+// --- Input Binding ---
 
 void UTurnBasedAction::BindSelectionInput()
 {
-    // Bind to subsystem hover updates
     if (UGridWorldSubsystem* GridSub = GetGridSubsystem())
     {
         GridSub->OnGridTileHoverChanged.AddDynamic(
             this, &UTurnBasedAction::OnGridTileHoverChanged);
     }
 
-    // Bind selection input via Enhanced Input
-    if (UEnhancedInputComponent* EIC =
-        Cast<UEnhancedInputComponent>(InputComponent))
+    if (IsValid(EnhancedInputComponent) && IsValid(SelectionInputAction))
     {
-        if (IsValid(SelectionInputAction))
-        {
-            EIC->BindAction(SelectionInputAction,
-                ETriggerEvent::Triggered,
-                this,
-                &UTurnBasedAction::OnSelectionInputTriggered);
-        }
+        EnhancedInputComponent->BindAction(
+            SelectionInputAction,
+            ETriggerEvent::Triggered,
+            this,
+            &UTurnBasedAction::OnSelectionInputTriggered);
     }
 }
 
@@ -168,21 +208,19 @@ void UTurnBasedAction::UnbindSelectionInput()
             this, &UTurnBasedAction::OnGridTileHoverChanged);
     }
 
-    if (UEnhancedInputComponent* EIC =
-        Cast<UEnhancedInputComponent>(InputComponent))
+    if (IsValid(EnhancedInputComponent))
     {
-        if (IsValid(SelectionInputAction))
-        {
-            EIC->ClearBindingsForObject(this);
-        }
+        EnhancedInputComponent->ClearBindingsForObject(this);
     }
+
+    CurrentHoveredTile = nullptr;
 }
 
 void UTurnBasedAction::OnGridTileHoverChanged(AGridTileBase* NewTile)
 {
     AGridTileBase* Previous = CurrentHoveredTile.Get();
 
-    // Clear previous hover visuals
+    // Clear previous hover state
     if (IsValid(Previous) && Previous != NewTile)
     {
         HandleHoverCleared(Previous);
@@ -211,30 +249,38 @@ void UTurnBasedAction::OnSelectionInputTriggered()
     }
 }
 
-// --- Default virtual implementations ---
+// --- Default Virtual Implementations ---
 
 void UTurnBasedAction::OnActivated_Implementation() {}
 void UTurnBasedAction::OnCancelled_Implementation() {}
 void UTurnBasedAction::OnCompleted_Implementation() {}
 
-bool UTurnBasedAction::IsValidHoverTile_Implementation(AGridTileBase* Tile) const
+bool UTurnBasedAction::IsValidHoverTile_Implementation(
+    AGridTileBase* Tile) const
 {
     return IsValid(Tile);
 }
 
-bool UTurnBasedAction::IsValidSelectionTile_Implementation(AGridTileBase* Tile) const
+bool UTurnBasedAction::IsValidSelectionTile_Implementation(
+    AGridTileBase* Tile) const
 {
     return IsValid(Tile);
 }
 
-void UTurnBasedAction::HandleValidHover_Implementation(AGridTileBase* Tile) {}
-void UTurnBasedAction::HandleHoverCleared_Implementation(AGridTileBase* PreviousTile) {}
-void UTurnBasedAction::HandleValidSelection_Implementation(AGridTileBase* Tile) {}
-void UTurnBasedAction::ClearVisuals_Implementation() {}
+void UTurnBasedAction::HandleValidHover_Implementation(
+    AGridTileBase* Tile) {}
+
+void UTurnBasedAction::HandleHoverCleared_Implementation(
+    AGridTileBase* PreviousTile) {}
+
+void UTurnBasedAction::HandleValidSelection_Implementation(
+    AGridTileBase* Tile) {}
+
+void UTurnBasedAction::ClearSelectionState_Implementation() {}
 
 bool UTurnBasedAction::ShouldTickCooldown_Implementation(
     bool bIsOwningParticipantTurn) const
 {
-    // Default — only tick on owning participant's turn
+    // Default -- only tick on owning participant's turn
     return bIsOwningParticipantTurn;
 }

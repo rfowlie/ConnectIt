@@ -1,10 +1,10 @@
-﻿// Fill out your copyright notice in the Description page of Project Settings.
-
+﻿// TurnBasedParticipantManagerComponent.h
 #pragma once
 
 #include "CoreMinimal.h"
-#include "Components/ActorComponent.h"
+#include "TurnBasedMechanicsEnums.h"
 #include "TurnBasedMechanicsStructs.h"
+#include "Components/ActorComponent.h"
 #include "TurnBasedParticipantManagerComponent.generated.h"
 
 class UTurnBasedParticipantComponent;
@@ -12,74 +12,92 @@ class UTurnBasedParticipantComponent;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnTurnPhaseChanged, ETurnPhase, NewPhase);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnParticipantForfeited, const FTurnParticipantInfo&, ParticipantInfo);
+// DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnAnyParticipantTurnStarted, bool, bIsTurn);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnAllParticipantsReady);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnTurnResolutionStarted);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnGameOver);
 
-
 UCLASS(ClassGroup=(TurnBased), meta=(BlueprintSpawnableComponent))
-class UNREALTURNBASEDMECHANICS_API UTurnBasedParticipantManagerComponent : public UActorComponent
+class UNREALTURNBASEDMECHANICS_API UTurnBasedParticipantManagerComponent
+    : public UActorComponent
 {
-	GENERATED_BODY()
+    GENERATED_BODY()
 
 public:
-	 UTurnBasedParticipantManagerComponent();
 
-    // --- Configuration — set by GameMode before game starts ---
+    UTurnBasedParticipantManagerComponent();
 
-    // How long each turn lasts in seconds
-    UPROPERTY(BlueprintReadOnly, Replicated, Category = "Turn Based|Config")
+    // --- Configuration ---
+
+    UPROPERTY(EditAnywhere, BlueprintReadOnly,
+        Category = "Turn Based|Config")
     float TurnDuration = 60.f;
 
-    // How many turns missed before forfeit
-    UPROPERTY(BlueprintReadOnly, Category = "Turn Based|Config")
+    UPROPERTY(EditAnywhere, BlueprintReadOnly,
+        Category = "Turn Based|Config")
     int32 ForfeitThreshold = 3;
 
-    // How long to wait for a disconnected player to reconnect
-    UPROPERTY(BlueprintReadOnly, Category = "Turn Based|Config")
+    UPROPERTY(EditAnywhere, BlueprintReadOnly,
+        Category = "Turn Based|Config")
     float ReconnectTimeout = 30.f;
 
-    // --- State — replicated for UI ---
+    // Duration of the resolution phase between TurnEnd and next TurnStart
+    // External systems hook OnTurnResolutionStarted to drive their logic
+    // Manager advances to next turn after this duration automatically
+    UPROPERTY(EditAnywhere, BlueprintReadOnly,
+        Category = "Turn Based|Config")
+    float TurnResolutionDuration = 2.0f;
 
-    UPROPERTY(BlueprintReadOnly, ReplicatedUsing = OnRep_TurnPhase,
+    // Turn order strategy -- must implement ITurnOrderInterface
+    // Instanced inline in Details panel
+    // Defaults to USequentialTurnOrderStrategy if not set
+    UPROPERTY(EditAnywhere, Instanced, BlueprintReadOnly,
+        Category = "Turn Based|Config",
+        meta = (MustImplement = "/Script/UnrealTurnBasedMechanics.TurnOrderInterface"))
+    TObjectPtr<UObject> TurnOrderStrategy = nullptr;
+
+    // --- Replicated State ---
+
+    UPROPERTY(BlueprintReadOnly,
+        ReplicatedUsing = OnRep_CurrentPhase,
         Category = "Turn Based|State")
     ETurnPhase CurrentPhase = ETurnPhase::WaitingForParticipants;
 
-    UPROPERTY(BlueprintReadOnly, ReplicatedUsing = OnRep_ActiveParticipantIndex,
+    UPROPERTY(BlueprintReadOnly,
+        ReplicatedUsing = OnRep_ActiveParticipantIndex,
         Category = "Turn Based|State")
     int32 ActiveParticipantIndex = -1;
 
-    UPROPERTY(BlueprintReadOnly, Replicated, Category = "Turn Based|State")
+    UPROPERTY(BlueprintReadOnly, Replicated,
+        Category = "Turn Based|State")
     int32 TurnNumber = 0;
 
-    UPROPERTY(BlueprintReadOnly, Replicated, Category = "Turn Based|State")
+    UPROPERTY(BlueprintReadOnly, Replicated,
+        Category = "Turn Based|State")
     TArray<FTurnParticipantInfo> Participants;
 
-    // --- Setup — called by GameMode ---
+    // Replicated once per turn start -- clients start local timer from this
+    UPROPERTY(BlueprintReadOnly, Replicated,
+        Category = "Turn Based|State")
+    float ReplicatedTurnDuration = 0.f;
 
-    // Register a participant — GameMode calls this for each controller
+    // --- Setup --- Server only ---
+
     void RegisterParticipant(
         AController* Controller,
         EParticipantType Type,
         const FString& DisplayName);
 
-    // Runtime swap — callable from Blueprint or GameMode
-    UFUNCTION(BlueprintCallable, Category = "Turn Based|Config")
-    void SetTurnOrderStrategy(UObject* InStrategy);
-
-    // Called by GameMode when all participants are registered
-    // Transitions to WaitingForReady
     void BeginReadyCheck();
 
     // --- Turn Control --- Server only ---
 
-    // Called when a participant submits turn end
     void NotifyTurnEndSubmitted(AController* Controller);
-
-    // Called by GameMode on player logout
     void NotifyParticipantDisconnected(AController* Controller);
-
-    // Called by GameMode on player login (reconnect)
     void NotifyParticipantReconnected(AController* Controller);
+
+    // Called by participant manager when a participant confirms ready
+    void NotifyParticipantReady(AController* Controller);
 
     // --- Delegates ---
 
@@ -92,36 +110,29 @@ public:
     UPROPERTY(BlueprintAssignable, Category = "Turn Based")
     FOnAllParticipantsReady OnAllParticipantsReady;
 
+    // Hook for external systems during resolution phase
+    // Cinematics, scoring visuals, dialogue etc. bind here
+    // Manager auto-advances after TurnResolutionDuration
+    UPROPERTY(BlueprintAssignable, Category = "Turn Based")
+    FOnTurnResolutionStarted OnTurnResolutionStarted;
+
     UPROPERTY(BlueprintAssignable, Category = "Turn Based")
     FOnGameOver OnGameOver;
 
     virtual void GetLifetimeReplicatedProps(
         TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
-    // --- Participant Helpers ---
-
-    FTurnParticipantInfo* FindParticipant(AController* Controller);
-    int32 FindParticipantIndex(AController* Controller) const;
-    UTurnBasedParticipantComponent* GetParticipantComponent(AController* Controller) const;
-    
 protected:
 
     virtual void BeginPlay() override;
 
-    // Instanced — designer picks and configures strategy in Details panel
-    // Defaults to Sequential if not set
-    UPROPERTY(EditAnywhere, Instanced, BlueprintReadOnly, Category = "Turn | Config")
-    TObjectPtr<UObject> TurnOrderStrategy = nullptr;
-
-
 private:
-    // Server side turn timer
-    FTimerHandle TurnTimerHandle;
 
-    // Server side reconnect timer — active during Paused phase
+    // --- Timers ---
+    FTimerHandle TurnTimerHandle;
+    FTimerHandle ResolutionTimerHandle;
     FTimerHandle ReconnectTimerHandle;
 
-    // Index of participant who disconnected — tracked during pause
     int32 DisconnectedParticipantIndex = -1;
 
     // --- State Machine ---
@@ -131,12 +142,25 @@ private:
     void EndTurn(ETurnEndReason Reason);
     void AdvanceToNextParticipant();
     void HandleTurnTimeout();
+    void HandleResolutionComplete();
     void HandleReconnectTimeout();
     void CheckReadyStatus();
     void CheckGameOver();
 
-    // --- Notifications ---
+    // Broadcasts to all participant components each turn start
+    // Each component ticks its own cooldowns
+    // Each component fires OnAnyParticipantTurnStarted(bIsMyTurn)
+    void BroadcastTurnStartToAllParticipants(int32 NewActiveIndex);
 
+    // --- Helpers ---
+
+public:
+    FTurnParticipantInfo* FindParticipant(AController* Controller);
+    int32 FindParticipantIndex(AController* Controller) const;
+    UTurnBasedParticipantComponent* GetParticipantComponent(
+        AController* Controller) const;
+
+private:
     void NotifyActiveParticipant(
         ETurnPhase Phase,
         ETurnEndReason Reason = ETurnEndReason::ParticipantEnded);
@@ -149,7 +173,7 @@ private:
     // --- RepNotify ---
 
     UFUNCTION()
-    void OnRep_TurnPhase();
+    void OnRep_CurrentPhase();
 
     UFUNCTION()
     void OnRep_ActiveParticipantIndex();

@@ -2,7 +2,7 @@
 
 
 #include "Board/BoardManager.h"
-#include "Board/BoardStateComponent.h"
+#include "Board/BoardStateComponentBase.h"
 #include "Board/Shift/BoardShiftComponent.h"
 #include "Tile/GridTileRegistryComponent.h"
 
@@ -13,7 +13,7 @@ ABoardManager::ABoardManager()
 
 	TileRegistryComponent = CreateDefaultSubobject<UGridTileRegistryComponent>(
 		TEXT("GridRegistry"));
-	StateComponent    = CreateDefaultSubobject<UBoardStateComponent>(
+	StateComponent    = CreateDefaultSubobject<UBoardStateComponentBase>(
 		TEXT("BoardState"));
 	ShiftComponent    = CreateDefaultSubobject<UBoardShiftComponent>(
 		TEXT("BoardShift"));

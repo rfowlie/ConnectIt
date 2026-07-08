@@ -28,7 +28,7 @@ void UConnectIt_GameViewModel::PlacePiece(UConnectIt_PlayerData* InPlayerData, A
 	{
 		IGridFactionInterface::Execute_SetFactionId(Piece, InPlayerData->PlayerId);
 	}
-	InGridTile->PlacePiece(Piece);
+	// InGridTile->PlacePiece(Piece);
 	InPlayerData->LastPiecePlaced = Piece;
 }
 

@@ -19,7 +19,7 @@ public:
 
 	UConnectIt_ConfigComponent();
 
-	// --- Load Outs ---
+	// --- LoadOuts ---
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "ConnectIt|Config")
 	TObjectPtr<UActionLoadOutDataAsset> PlayerLoadout = nullptr;
@@ -27,18 +27,33 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "ConnectIt|Config")
 	TObjectPtr<UActionLoadOutDataAsset> EnemyLoadout = nullptr;
 
-	// --- Win Condition ---
+	// --- Rules ---
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "ConnectIt|Config")
-	int32 WinScoreThreshold = 100;
+	float WinScoreThreshold = 100.f;
 
-	// --- AI Config ---
+	// How many tiles in a line required to score
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "ConnectIt|Config",
+		meta = (ClampMin = 3))
+	int32 ConnectLength = 4;
+
+	// --- AI ---
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "ConnectIt|Config")
 	int32 AISearchDepth = 3;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "ConnectIt|Config")
 	int32 AIThreadDepth = 1;
+
+	// --- Piece Pool ---
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "ConnectIt|Config")
+	TSubclassOf<AConnectIt_GridPiece> PieceActorClass = nullptr;
+
+	// Per-client pool size -- each client manages its own pool
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "ConnectIt|Config",
+		meta = (ClampMin = 1))
+	int32 PiecePoolInitialSize = 32;
 
 
 protected:

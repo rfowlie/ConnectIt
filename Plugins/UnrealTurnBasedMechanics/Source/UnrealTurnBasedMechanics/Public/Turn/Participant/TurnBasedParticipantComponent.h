@@ -1,72 +1,59 @@
 ﻿// Fill out your copyright notice in the Description page of Project Settings.
 
+
 #pragma once
 
 #include "CoreMinimal.h"
-#include "Components/ActorComponent.h"
+#include "TurnBasedMechanicsEnums.h"
 #include "TurnBasedMechanicsStructs.h"
+#include "Components/ActorComponent.h"
 #include "TurnBasedParticipantComponent.generated.h"
 
+class UTurnBasedParticipantManagerComponent;
 
 
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnTurnNotification, const FTurnNotification&, Notification);
-DECLARE_MULTICAST_DELEGATE_OneParam(FOnTurnNotificationNative, const FTurnNotification&);
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnAnyParticipantTurnStart, bool, bIsMyTurn);
-
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnTurnNotificationDelegate, const FTurnNotification&, Notification);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnAnyParticipantTurnStarted, bool, bIsMyTurn);
+DECLARE_MULTICAST_DELEGATE_OneParam(FOnTurnNotificationDelegate_Native, const FTurnNotification&);
+DECLARE_MULTICAST_DELEGATE_OneParam(FOnAnyParticipantTurnStarted_Native, bool);
 
 UCLASS(ClassGroup=(TurnBased), meta=(BlueprintSpawnableComponent))
-class UNREALTURNBASEDMECHANICS_API UTurnBasedParticipantComponent : public UActorComponent
+class UNREALTURNBASEDMECHANICS_API UTurnBasedParticipantComponent
+    : public UActorComponent
 {
-	GENERATED_BODY()
+    GENERATED_BODY()
 
 public:
 
     UTurnBasedParticipantComponent();
 
-    // --- Blueprint Delegates ---
+    // --- State ---
 
-    UPROPERTY(BlueprintAssignable, Category = "Turn Based|Notifications")
-    FOnTurnNotification OnTurnStarted;
+    // Set by manager on registration -- stable for lifetime of game
+    // Doubles as FactionID in 1v1 games
+    UPROPERTY(BlueprintReadOnly, Category = "Turn Based|Participant")
+    int32 CachedSlotIndex = -1;
 
-    UPROPERTY(BlueprintAssignable, Category = "Turn Based|Notifications")
-    FOnTurnNotification OnTurnEnded;
+    UPROPERTY(BlueprintReadOnly, Category = "Turn Based|Participant")
+    EParticipantType ParticipantType = EParticipantType::Human;
 
-    UPROPERTY(BlueprintAssignable, Category = "Turn Based|Notifications")
-    FOnTurnNotification OnTurnPaused;
+    UFUNCTION(BlueprintPure, Category = "Turn Based|Participant")
+    bool IsMyTurn() const { return bIsMyTurn; }
 
-    UPROPERTY(BlueprintAssignable, Category = "Turn Based|Notifications")
-    FOnTurnNotification OnTurnResumed;
+    // --- Server RPCs --- Client -> Server ---
 
-    UPROPERTY(BlueprintAssignable, Category = "Turn Based|Notifications")
-    FOnTurnNotification OnTurnTimedOut;
-
-    UPROPERTY(BlueprintAssignable, Category = "Turn Based|Notifications")
-    FOnTurnNotification OnTurnSkipped;
-
-    UPROPERTY(BlueprintAssignable, Category = "Turn Based|Notifications")
-    FOnTurnNotification OnForfeited;
-
-    // --- C++ Native Delegates ---
-
-    FOnTurnNotificationNative OnTurnStarted_Native;
-    FOnTurnNotificationNative OnTurnEnded_Native;
-    FOnTurnNotificationNative OnTurnPaused_Native;
-    FOnTurnNotificationNative OnTurnResumed_Native;
-    FOnTurnNotificationNative OnTurnTimedOut_Native;
-    FOnTurnNotificationNative OnTurnSkipped_Native;
-    FOnTurnNotificationNative OnForfeited_Native;
-
-    // --- Server RPCs ---
-
-    // Called by human participants to signal they are ready to start
-    UFUNCTION(Server, Reliable, BlueprintCallable, Category = "Turn Based")
+    // Human participant confirms they are ready to start
+    UFUNCTION(Server, Reliable, BlueprintCallable,
+        Category = "Turn Based|Participant")
     void ServerNotifyReady();
 
-    // Called by human participants to end their turn early
-    UFUNCTION(Server, Reliable, BlueprintCallable, Category = "Turn Based")
+    // Human participant submits turn end
+    // Validated server side -- must be active participant
+    UFUNCTION(Server, Reliable, BlueprintCallable,
+        Category = "Turn Based|Participant")
     void ServerSubmitTurnEnd();
 
-    // --- Client RPCs — called by UTurnBasedParticipantManagerComponent ---
+    // --- Client RPCs --- Server -> specific client ---
 
     UFUNCTION(Client, Reliable)
     void ClientNotifyTurnStarted(FTurnNotification Notification);
@@ -89,23 +76,58 @@ public:
     UFUNCTION(Client, Reliable)
     void ClientNotifyForfeited(FTurnNotification Notification);
 
-    // Whether this is the currently active participant
-    UFUNCTION(BlueprintPure, Category = "Turn Based")
-    bool IsMyTurn() const { return bIsMyTurn; }
+    // --- Blueprint Delegates ---
 
-    // Participant type set by manager on registration
-    UPROPERTY(BlueprintReadOnly, Category = "Turn Based")
-    EParticipantType ParticipantType = EParticipantType::Human;
+    UPROPERTY(BlueprintAssignable, Category = "Turn Based|Notifications")
+    FOnTurnNotificationDelegate OnTurnStarted;
 
-    UPROPERTY(BlueprintReadOnly, meta = (ExposeOnSpawn = "true"))
-    int32 PlayerId = -1;
+    UPROPERTY(BlueprintAssignable, Category = "Turn Based|Notifications")
+    FOnTurnNotificationDelegate OnTurnEnded;
+
+    UPROPERTY(BlueprintAssignable, Category = "Turn Based|Notifications")
+    FOnTurnNotificationDelegate OnTurnPaused;
+
+    UPROPERTY(BlueprintAssignable, Category = "Turn Based|Notifications")
+    FOnTurnNotificationDelegate OnTurnResumed;
+
+    UPROPERTY(BlueprintAssignable, Category = "Turn Based|Notifications")
+    FOnTurnNotificationDelegate OnTurnTimedOut;
+
+    UPROPERTY(BlueprintAssignable, Category = "Turn Based|Notifications")
+    FOnTurnNotificationDelegate OnTurnSkipped;
+
+    UPROPERTY(BlueprintAssignable, Category = "Turn Based|Notifications")
+    FOnTurnNotificationDelegate OnForfeited;
+
+    // Fires on ALL participants each turn start
+    // bIsMyTurn -- true only for the active participant
+    // Action component binds here for cooldown ticking
+    UPROPERTY(BlueprintAssignable, Category = "Turn Based|Notifications")
+    FOnAnyParticipantTurnStarted OnAnyParticipantTurnStarted;
+
+    // --- Native Delegates --- C++ binding ---
+
+    FOnTurnNotificationDelegate_Native OnTurnStarted_Native;
+    FOnTurnNotificationDelegate_Native OnTurnEnded_Native;
+    FOnTurnNotificationDelegate_Native OnTurnPaused_Native;
+    FOnTurnNotificationDelegate_Native OnTurnResumed_Native;
+    FOnTurnNotificationDelegate_Native OnTurnTimedOut_Native;
+    FOnTurnNotificationDelegate_Native OnTurnSkipped_Native;
+    FOnTurnNotificationDelegate_Native OnForfeited_Native;
+    FOnAnyParticipantTurnStarted_Native OnAnyParticipantTurnStarted_Native;
+
+    // --- Called by manager --- not intended for external use ---
+
+    // Called by UTurnBasedParticipantManagerComponent each turn start
+    // for ALL participants -- not just the active one
+    void HandleAnyParticipantTurnStarted(bool bIsTurn);
 
 protected:
 
     virtual void BeginPlay() override;
 
-    // Subclasses override to respond to turn events
-    // AI subclass calls ServerSubmitTurnEnd after running MinMax
+    // Virtual handlers -- subclasses override for custom behaviour
+    // AI subclass overrides HandleTurnStarted to run MinMax
     virtual void HandleTurnStarted(const FTurnNotification& Notification);
     virtual void HandleTurnEnded(const FTurnNotification& Notification);
     virtual void HandleTurnPaused(const FTurnNotification& Notification);
@@ -114,8 +136,10 @@ protected:
     virtual void HandleTurnSkipped(const FTurnNotification& Notification);
     virtual void HandleForfeited(const FTurnNotification& Notification);
 
-
 private:
 
     bool bIsMyTurn = false;
+
+    // Helper -- finds manager on game state
+    UTurnBasedParticipantManagerComponent* GetParticipantManager() const;
 };

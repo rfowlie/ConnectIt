@@ -9,7 +9,7 @@
 
 class UGridPieceRegistryComponent;
 class UGridTileRegistryComponent;
-class UBoardStateComponent;
+class UBoardStateComponentBase;
 class UBoardShiftComponent;
 
 
@@ -31,7 +31,7 @@ public:
 	UGridPieceRegistryComponent* GetPieceRegistry() const { return PieceRegistryComponent; }
 	
 	UFUNCTION(BlueprintPure, Category = "Grid|Board")
-	UBoardStateComponent* GetBoardState() const { return StateComponent; }
+	UBoardStateComponentBase* GetBoardState() const { return StateComponent; }
 
 	UFUNCTION(BlueprintPure, Category = "Grid|Board")
 	UBoardShiftComponent* GetShiftComponent() const { return ShiftComponent; }
@@ -57,7 +57,7 @@ private:
 
 	UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly,
 		Category = "Grid|Board", meta = (AllowPrivateAccess = "true"))
-	UBoardStateComponent* StateComponent = nullptr;
+	UBoardStateComponentBase* StateComponent = nullptr;
 
 	UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly,
 		Category = "Grid|Board", meta = (AllowPrivateAccess = "true"))

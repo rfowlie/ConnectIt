@@ -26,11 +26,6 @@ public:
 
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "Grid Tile")
 	void SendGameplayTag(FGameplayTag StateTag);
-	
-	// TODO: DO WE NEED THIS???
-	UFUNCTION(BlueprintImplementableEvent, BlueprintCallable, Category = "Grid | Tile")
-	void PlacePiece(AActor* InGridPiece);
-
 
 protected:
 	virtual void BeginPlay() override;

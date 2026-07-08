@@ -1,8 +1,10 @@
 ﻿// Fill out your copyright notice in the Description page of Project Settings.
 
 #include "Turn/Participant/TurnBasedParticipantComponent.h"
-#include "Framework/PlayerState/TurnBasedPlayerState.h"
 #include "TurnBasedMechanicsStructs.h"
+#include "GameFramework/Controller.h"
+#include "GameFramework/GameStateBase.h"
+#include "Turn/Participant/TurnBasedParticipantManagerComponent.h"
 
 
 UTurnBasedParticipantComponent::UTurnBasedParticipantComponent()
@@ -20,14 +22,10 @@ void UTurnBasedParticipantComponent::BeginPlay()
 
 void UTurnBasedParticipantComponent::ServerNotifyReady_Implementation()
 {
-    if (ATurnBasedPlayerState* PS = GetOwner<AController>()->GetPlayerState<ATurnBasedPlayerState>())
-    {
-        PS->Server_SetReady(true);
+    UTurnBasedParticipantManagerComponent* Manager = GetParticipantManager();
+    if (!IsValid(Manager)) return;
 
-        UE_LOG(LogTemp, Log,
-            TEXT("TurnBasedParticipantComponent: %s confirmed ready"),
-            *GetOwner()->GetName());
-    }
+    Manager->NotifyParticipantReady(GetOwner<AController>());
 }
 
 void UTurnBasedParticipantComponent::ServerSubmitTurnEnd_Implementation()
@@ -35,16 +33,16 @@ void UTurnBasedParticipantComponent::ServerSubmitTurnEnd_Implementation()
     if (!bIsMyTurn)
     {
         UE_LOG(LogTemp, Warning,
-            TEXT("TurnBasedParticipantComponent: %s submitted turn end but it is not their turn"),
+            TEXT("TurnBasedParticipantComponent: %s submitted turn end "
+                 "but bIsMyTurn is false — ignored"),
             *GetOwner()->GetName());
         return;
     }
 
-    // Manager picks this up via PlayerState or direct reference
-    // Actual processing happens in UTurnBasedParticipantManagerComponent
-    UE_LOG(LogTemp, Log,
-        TEXT("TurnBasedParticipantComponent: %s submitted turn end"),
-        *GetOwner()->GetName());
+    UTurnBasedParticipantManagerComponent* Manager = GetParticipantManager();
+    if (!IsValid(Manager)) return;
+
+    Manager->NotifyTurnEndSubmitted(GetOwner<AController>());
 }
 
 // --- Client RPCs ---
@@ -110,40 +108,53 @@ void UTurnBasedParticipantComponent::ClientNotifyForfeited_Implementation(
     OnForfeited_Native.Broadcast(Notification);
 }
 
+// --- Manager callback ---
+
+void UTurnBasedParticipantComponent::HandleAnyParticipantTurnStarted( bool bIsTurn)
+{
+    // Fire both Blueprint and Native delegates
+    // UTurnBasedActionComponent binds here for cooldown ticking
+    OnAnyParticipantTurnStarted.Broadcast(bIsTurn);
+    OnAnyParticipantTurnStarted_Native.Broadcast(bIsTurn);
+}
+
 // --- Virtual handlers ---
 
 void UTurnBasedParticipantComponent::HandleTurnStarted(
     const FTurnNotification& Notification)
 {
-    // Base does nothing — subclasses override
+    // Base does nothing
+    // AI subclass overrides to begin MinMax computation
+    // Player subclass may override to enable input
 }
 
 void UTurnBasedParticipantComponent::HandleTurnEnded(
-    const FTurnNotification& Notification)
-{
-}
+    const FTurnNotification& Notification) {}
 
 void UTurnBasedParticipantComponent::HandleTurnPaused(
-    const FTurnNotification& Notification)
-{
-}
+    const FTurnNotification& Notification) {}
 
 void UTurnBasedParticipantComponent::HandleTurnResumed(
-    const FTurnNotification& Notification)
-{
-}
+    const FTurnNotification& Notification) {}
 
 void UTurnBasedParticipantComponent::HandleTurnTimedOut(
-    const FTurnNotification& Notification)
-{
-}
+    const FTurnNotification& Notification) {}
 
 void UTurnBasedParticipantComponent::HandleTurnSkipped(
-    const FTurnNotification& Notification)
-{
-}
+    const FTurnNotification& Notification) {}
 
 void UTurnBasedParticipantComponent::HandleForfeited(
-    const FTurnNotification& Notification)
+    const FTurnNotification& Notification) {}
+
+// --- Helper ---
+
+UTurnBasedParticipantManagerComponent* UTurnBasedParticipantComponent::GetParticipantManager() const
 {
+    const UWorld* World = GetWorld();
+    if (!IsValid(World)) return nullptr;
+
+    const AGameStateBase* GS = World->GetGameState();
+    if (!IsValid(GS)) return nullptr;
+
+    return GS->FindComponentByClass<UTurnBasedParticipantManagerComponent>();
 }

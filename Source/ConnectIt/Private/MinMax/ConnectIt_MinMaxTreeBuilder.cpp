@@ -6,7 +6,7 @@
 #include "MinMax/MinMaxABPruning.h"
 
 
-void UConnectItTreeBuilder::BuildTreeAsync(const FConnectItMinMaxNodeStruct& InRootNode, int32 MaxDepth)
+void UConnectIt_MinMaxTreeBuilder::BuildTreeAsync(const FConnectItMinMaxNodeStruct& InRootNode, int32 MaxDepth)
 {
 	// convert exposed node to C++ node
 	FConnectItMinMaxNode StartNode;
@@ -15,7 +15,7 @@ void UConnectItTreeBuilder::BuildTreeAsync(const FConnectItMinMaxNodeStruct& InR
 	StartNode.FactionTurn = InRootNode.FactionTurn;
 	StartNode.MovePlayed = InRootNode.MovePlayed;
 	
-	TWeakObjectPtr<UConnectItTreeBuilder> WeakThis(this);
+	TWeakObjectPtr<UConnectIt_MinMaxTreeBuilder> WeakThis(this);
 
 	UE::Tasks::Launch(
 		UE_SOURCE_LOCATION,
@@ -53,10 +53,10 @@ void UConnectItTreeBuilder::BuildTreeAsync(const FConnectItMinMaxNodeStruct& InR
 	);
 }
 
-void UConnectItTreeBuilder::SolveTreeAsync(bool bIsMaximisingPlayer) const
+void UConnectIt_MinMaxTreeBuilder::SolveTreeAsync(bool bIsMaximisingPlayer) const
 {
 	// Store the task handle — keeps the task alive
-	TWeakObjectPtr<const UConnectItTreeBuilder> WeakThis(this);
+	TWeakObjectPtr<const UConnectIt_MinMaxTreeBuilder> WeakThis(this);
 
     UE::Tasks::Launch(
         UE_SOURCE_LOCATION,
@@ -110,7 +110,7 @@ void UConnectItTreeBuilder::SolveTreeAsync(bool bIsMaximisingPlayer) const
 }
 
 // helps to early exit from algo so we do not evaluate child nodes past game over positions
-bool UConnectItTreeBuilder::IsGameOver(const FConnectItMinMaxNode& InNode) const
+bool UConnectIt_MinMaxTreeBuilder::IsGameOver(const FConnectItMinMaxNode& InNode) const
 {
 	return InNode.ScoreBoard.ContainsByPredicate([](const float& Score)
 	{
@@ -120,7 +120,7 @@ bool UConnectItTreeBuilder::IsGameOver(const FConnectItMinMaxNode& InNode) const
 
 // need to come up with some metrics to help give a sense of a good position with
 // respect to the score of the game
-int32 UConnectItTreeBuilder::Evaluate(const FConnectItMinMaxNode& InNode) const
+int32 UConnectIt_MinMaxTreeBuilder::Evaluate(const FConnectItMinMaxNode& InNode) const
 {
 	// check for winning score and send
 	for (int32 Index = 0; Index < InNode.ScoreBoard.Num(); Index++)
