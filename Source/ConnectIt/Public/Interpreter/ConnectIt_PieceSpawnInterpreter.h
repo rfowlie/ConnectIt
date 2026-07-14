@@ -6,7 +6,7 @@
 #include "GridMechanicsBaseStructs.h"
 #include "Board/Interpreter/BoardStateInterpreter.h"
 #include "Pooling/ActorPool.h"
-#include "ConnectItPieceSpawnInterpreter.generated.h"
+#include "ConnectIt_PieceSpawnInterpreter.generated.h"
 
 class AConnectIt_GridPiece;
 
@@ -17,7 +17,7 @@ class AConnectIt_GridPiece;
 // Runs on ALL clients independently
 UCLASS(Blueprintable, ClassGroup=(ConnectIt),
 	meta=(BlueprintSpawnableComponent))
-class CONNECTIT_API UConnectItPieceSpawnInterpreter : public UBoardStateInterpreter
+class CONNECTIT_API UConnectIt_PieceSpawnInterpreter : public UBoardStateInterpreter
 {
 	GENERATED_BODY()
 

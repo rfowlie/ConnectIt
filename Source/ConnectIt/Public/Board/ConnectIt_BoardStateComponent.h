@@ -5,17 +5,17 @@
 #include "CoreMinimal.h"
 #include "ConnectIt_Structs.h"
 #include "Board/BoardStateComponentBase.h"
-#include "ConnectItBoardStateComponent.generated.h"
+#include "ConnectIt_BoardStateComponent.generated.h"
 
 
 UCLASS(ClassGroup=(ConnectIt), meta=(BlueprintSpawnableComponent))
-class CONNECTIT_API UConnectItBoardStateComponent : public UBoardStateComponentBase
+class CONNECTIT_API UConnectIt_BoardStateComponent : public UBoardStateComponentBase
 {
     GENERATED_BODY()
 
 public:
 
-    UConnectItBoardStateComponent();
+    UConnectIt_BoardStateComponent();
 
     // --- Server API ---
     // Only the board manager calls these

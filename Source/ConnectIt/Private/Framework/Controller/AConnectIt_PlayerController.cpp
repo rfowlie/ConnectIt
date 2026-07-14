@@ -3,9 +3,10 @@
 
 #include "Framework/Controller/ConnectIt_PlayerController.h"
 #include "EngineUtils.h"
+#include "Board/ConnectIt_BoardManager.h"
 #include "Action/ActionLoadoutDataAsset.h"
-#include "Action/TurnBasedActionComponent.h"
-#include "Board/ConnectItBoardManager.h"
+#include "Action/TurnBasedActionsComponent.h"
+#include "Library/ConnectIt_GameUtilityLibrary.h"
 #include "Turn/Participant/TurnBasedParticipantComponent.h"
 
 
@@ -16,7 +17,7 @@ AConnectIt_PlayerController::AConnectIt_PlayerController()
             TEXT("ParticipantComponent"));
 
     ActionComponent =
-        CreateDefaultSubobject<UTurnBasedActionComponent>(
+        CreateDefaultSubobject<UTurnBasedActionsComponent>(
             TEXT("ActionComponent"));
 }
 
@@ -39,12 +40,7 @@ void AConnectIt_PlayerController::BeginPlay()
 
 void AConnectIt_PlayerController::InitialiseFromBoardActor()
 {
-    AConnectItBoardManager* BoardActor = nullptr;
-    for (TActorIterator<AConnectItBoardManager> It(GetWorld()); It; ++It)
-    {
-        BoardActor = *It;
-        break;
-    }
+    AConnectIt_BoardManager* BoardActor = UConnectIt_GameUtilityLibrary::GetBoardManager(this);
 
     if (!IsValid(BoardActor))
     {
@@ -71,7 +67,7 @@ void AConnectIt_PlayerController::InitialiseFromBoardActor()
     // Project wiring connects it to the board manager here
     ActionComponent->OnBoardChangeRequested.AddDynamic(
         BoardActor->BoardManager,
-        &UConnectItBoardManagerComponent::ProcessRequest);
+        &UConnectIt_BoardManagerComponent::ProcessRequest);
 
     UE_LOG(LogTemp, Log,
         TEXT("ConnectItPlayerController: Initialised from board actor "

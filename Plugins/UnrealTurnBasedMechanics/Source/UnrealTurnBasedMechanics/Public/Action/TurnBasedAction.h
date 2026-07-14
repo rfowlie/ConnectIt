@@ -7,12 +7,14 @@
 #include "UObject/Object.h"
 #include "GameplayTagContainer.h"
 #include "TurnBasedMechanicsEnums.h"
+#include "TurnBasedMechanicsStructs.h"
 #include "TurnBasedAction.generated.h"
 
 class AGridTileBase;
 class UGridWorldSubsystem;
 class UEnhancedInputComponent;
 class UInputAction;
+class UTurnBasedAction;
 
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnTurnBasedActionEvent, UTurnBasedAction*, Action);

@@ -6,6 +6,7 @@
 #include "Action/ActionLoadoutDataAsset.h"
 #include "GameFramework/Controller.h"
 #include "EnhancedInputComponent.h"
+#include "Action/TurnBasedViewerAction.h"
 
 
 UTurnBasedActionsComponent::UTurnBasedActionsComponent()
@@ -23,30 +24,24 @@ void UTurnBasedActionsComponent::BeginPlay()
 
 void UTurnBasedActionsComponent::InitialiseFromLoadout(UActionLoadOutDataAsset* InLoadout)
 {
-    if (!IsValid(InLoadout))
-    {
-        UE_LOG(LogTemp, Warning,
-            TEXT("TurnBasedActionsComponent: InitialiseFromLoadout "
-                 "called with null loadout on %s"),
-            *GetOwner()->GetName());
-        return;
-    }
+    if (!IsValid(InLoadout)) return;
 
     Loadout = InLoadout;
     CloneActionsFromLoadout();
     CreateRootAction();
+    CreateViewerAction();
     bIsInitialised = true;
 
     UE_LOG(LogTemp, Log,
         TEXT("TurnBasedActionsComponent: %s initialised — "
-             "loadout '%s', %d actions, root: %s, "
-             "AutoActivate: %s, AutoEnd: %s"),
+             "loadout '%s', %d actions, root: %s, viewer: %s"),
         *GetOwner()->GetName(),
         *InLoadout->LoadoutName,
         RuntimeActions.Num(),
-        IsValid(RootAction) ? *RootAction->ActionTag.ToString() : TEXT("none"),
-        bAutoActivateRequiredActions ? TEXT("On") : TEXT("Off"),
-        bAutoEndTurnOnAllRequiredActionsCompleted ? TEXT("On") : TEXT("Off"));
+        IsValid(RootAction)
+            ? *RootAction->ActionTag.ToString() : TEXT("none"),
+        IsValid(ViewerAction)
+            ? *ViewerAction->ActionTag.ToString() : TEXT("none"));
 }
 
 void UTurnBasedActionsComponent::CloneActionsFromLoadout()
@@ -103,6 +98,18 @@ void UTurnBasedActionsComponent::CreateRootAction()
         *RootAction->ActionTag.ToString());
 }
 
+void UTurnBasedActionsComponent::CreateViewerAction()
+{
+    ViewerAction = nullptr;
+    if (!ViewerActionClass) return;
+
+    ViewerAction = NewObject<UTurnBasedViewerAction>(this, ViewerActionClass);
+
+    UE_LOG(LogTemp, Log,
+        TEXT("TurnBasedActionsComponent: Viewer action created — '%s'"),
+        *ViewerAction->ActionTag.ToString());
+}
+
 void UTurnBasedActionsComponent::BindActionDelegates(UTurnBasedAction* Action)
 {
     if (!IsValid(Action)) return;
@@ -115,6 +122,26 @@ void UTurnBasedActionsComponent::BindActionDelegates(UTurnBasedAction* Action)
         this, &UTurnBasedActionsComponent::HandleActionCancelled);
 }
 
+void UTurnBasedActionsComponent::ActivateViewerAction()
+{
+    if (!IsValid(ViewerAction)) return;
+    if (bViewerActionActive) return;
+
+    bViewerActionActive = true;
+    ViewerAction->Activate(GetOwningController());
+    OnViewerActionActivated.Broadcast(ViewerAction);
+}
+
+void UTurnBasedActionsComponent::DeactivateViewerAction()
+{
+    if (!IsValid(ViewerAction)) return;
+    if (!bViewerActionActive) return;
+
+    bViewerActionActive = false;
+    ViewerAction->Deactivate();
+    OnViewerActionDeactivated.Broadcast(ViewerAction);
+}
+
 // --- Turn Lifecycle ---
 
 void UTurnBasedActionsComponent::NotifyTurnStarted(int32 InTurnNumber)
@@ -122,19 +149,20 @@ void UTurnBasedActionsComponent::NotifyTurnStarted(int32 InTurnNumber)
     CurrentTurnNumber = InTurnNumber;
     ActiveAction      = nullptr;
 
+    // Deactivate viewer -- no longer observing, now acting
+    DeactivateViewerAction();
+
     for (UTurnBasedAction* Action : RuntimeActions)
     {
         if (IsValid(Action)) Action->ResetTurnState();
     }
-
     if (IsValid(RootAction)) RootAction->ResetTurnState();
 
-    // Build required queue first so CanEndTurn() is correct
     BuildRequiredQueue();
 
     UE_LOG(LogTemp, Log,
         TEXT("TurnBasedActionsComponent: Turn %d started on %s "
-             "— %d required actions queued"),
+             "— %d required queued"),
         CurrentTurnNumber,
         *GetOwner()->GetName(),
         PendingRequiredActions.Num());
@@ -150,35 +178,44 @@ void UTurnBasedActionsComponent::TickCooldowns(bool bIsMyTurn)
 
 void UTurnBasedActionsComponent::NotifyTurnEnded()
 {
-    // Cancel active action if it is not the root
+    // Cancel active board action if not root
     if (IsValid(ActiveAction) && ActiveAction != RootAction)
     {
         if (ActiveAction->bIsCancellable) CancelActiveAction();
     }
 
-    // Deactivate root cleanly
+    // Deactivate root
     if (IsValid(RootAction) && ActiveAction == RootAction)
     {
+        ActiveAction = nullptr;
         RootAction->Cancel();
     }
 
     ActiveAction = nullptr;
     PendingRequiredActions.Empty();
 
+    // Activate viewer -- now observing opponent's turn
+    ActivateViewerAction();
+
     UE_LOG(LogTemp, Log,
-        TEXT("TurnBasedActionsComponent: Turn ended on %s"),
-        *GetOwner()->GetName());
+        TEXT("TurnBasedActionsComponent: Turn ended on %s — "
+             "viewer action %s"),
+        *GetOwner()->GetName(),
+        bViewerActionActive ? TEXT("activated") : TEXT("none set"));
 }
 
 void UTurnBasedActionsComponent::NotifyTurnPaused()
 {
-    // Pause active non-root action
+    // Cancel active non-root board action
     if (IsValid(ActiveAction)
         && ActiveAction != RootAction
         && ActiveAction->bIsCancellable)
     {
         CancelActiveAction();
     }
+
+    // Do not touch viewer -- pause is a game-wide state
+    // not a turn ownership change
 
     UE_LOG(LogTemp, Log,
         TEXT("TurnBasedActionsComponent: Turn paused on %s"),
@@ -187,7 +224,6 @@ void UTurnBasedActionsComponent::NotifyTurnPaused()
 
 void UTurnBasedActionsComponent::NotifyTurnResumed()
 {
-    // Rebuild queue and return to appropriate state
     BuildRequiredQueue();
 
     UE_LOG(LogTemp, Log,
@@ -195,9 +231,36 @@ void UTurnBasedActionsComponent::NotifyTurnResumed()
         *GetOwner()->GetName());
 }
 
+void UTurnBasedActionsComponent::NotifyMatchEnded()
+{
+    // Clean up everything
+    if (IsValid(ActiveAction) && ActiveAction != RootAction)
+    {
+        if (ActiveAction->bIsCancellable) CancelActiveAction();
+    }
+
+    if (IsValid(RootAction) && ActiveAction == RootAction)
+    {
+        ActiveAction = nullptr;
+        RootAction->Cancel();
+    }
+
+    ActiveAction = nullptr;
+    PendingRequiredActions.Empty();
+
+    // Deactivate viewer cleanly
+    DeactivateViewerAction();
+
+    UE_LOG(LogTemp, Log,
+        TEXT("TurnBasedActionsComponent: Match ended on %s — "
+             "all actions deactivated"),
+        *GetOwner()->GetName());
+}
+
+
 // --- Action Control ---
 
-bool UTurnBasedActionsComponent::TryActivateActionByTag(FGameplayTag ActionTag)
+bool UTurnBasedActionsComponent::TryActivateAction(FGameplayTag ActionTag)
 {
     return TryActivateActionByRef(FindActionByTag(ActionTag));
 }

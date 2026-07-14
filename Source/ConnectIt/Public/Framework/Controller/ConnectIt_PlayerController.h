@@ -8,8 +8,7 @@
 #include "ConnectIt_PlayerController.generated.h"
 
 class UTurnBasedParticipantComponent;
-class UTurnBasedActionComponent;
-
+class UTurnBasedActionsComponent;
 
 /**
  * 
@@ -29,7 +28,7 @@ public:
 
 	UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly,
 		Category = "ConnectIt|Components")
-	TObjectPtr<UTurnBasedActionComponent> ActionComponent = nullptr;
+	TObjectPtr<UTurnBasedActionsComponent> ActionComponent = nullptr;
 
 protected:
 

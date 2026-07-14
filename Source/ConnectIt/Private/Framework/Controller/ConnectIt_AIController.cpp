@@ -1,14 +1,13 @@
 ﻿// Fill out your copyright notice in the Description page of Project Settings.
 
-
 #include "Framework/Controller/ConnectIt_AIController.h"
-#include "EngineUtils.h"
-#include "Action/ActionLoadoutDataAsset.h"
-#include "Action/TurnBasedActionComponent.h"
-#include "Board/ConnectItBoardManager.h"
+#include "Library/ConnectIt_GameUtilityLibrary.h"
 #include "Framework/GameMode/TurnBasedGameMode.h"
-#include "MinMax/ConnectIt_MinMaxTreeBuilder.h"
 #include "Turn/Participant/TurnBasedParticipantComponent.h"
+#include "Action/ActionLoadoutDataAsset.h"
+#include "Board/ConnectIt_BoardManager.h"
+#include "Action/TurnBasedActionsComponent.h"
+#include "MinMax/ConnectIt_MinMaxTreeBuilder.h"
 
 
 AConnectIt_AIController::AConnectIt_AIController()
@@ -18,7 +17,7 @@ AConnectIt_AIController::AConnectIt_AIController()
             TEXT("ParticipantComponent"));
 
     ActionComponent =
-        CreateDefaultSubobject<UTurnBasedActionComponent>(
+        CreateDefaultSubobject<UTurnBasedActionsComponent>(
             TEXT("ActionComponent"));
     
 }
@@ -39,11 +38,7 @@ void AConnectIt_AIController::BeginPlay()
 
 void AConnectIt_AIController::InitialiseFromBoardActor()
 {
-    for (TActorIterator<AConnectItBoardManager> It(GetWorld()); It; ++It)
-    {
-        BoardActor = *It;
-        break;
-    }
+    BoardActor = UConnectIt_GameUtilityLibrary::GetBoardManager(this);
 
     if (!IsValid(BoardActor))
     {
@@ -61,7 +56,7 @@ void AConnectIt_AIController::InitialiseFromBoardActor()
         // Wire passthrough to board manager
         ActionComponent->OnBoardChangeRequested.AddDynamic(
             BoardActor->BoardManager,
-            &UConnectItBoardManagerComponent::ProcessRequest);
+            &UConnectIt_BoardManagerComponent::ProcessRequest);
     }
 
     // auto attempt to 

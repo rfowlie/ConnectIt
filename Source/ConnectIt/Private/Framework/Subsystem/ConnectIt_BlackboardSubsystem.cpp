@@ -1,11 +1,11 @@
 ﻿// Fill out your copyright notice in the Description page of Project Settings.
 
-#include "Framework/Subsystem/ConnectItBlackboardSubsystem.h"
+#include "Framework/Subsystem/ConnectIt_BlackboardSubsystem.h"
 
 #include "TurnBasedMechanicsStructs.h"
 
 
-void UConnectItBlackboardSubsystem::ApplyModifier(
+void UConnectIt_BlackboardSubsystem::ApplyModifier(
 	int32 TargetSlotIndex,
 	const FTurnModifier& Modifier)
 {
@@ -18,7 +18,7 @@ void UConnectItBlackboardSubsystem::ApplyModifier(
 		TargetSlotIndex);
 }
 
-void UConnectItBlackboardSubsystem::ClearModifier(int32 TargetSlotIndex)
+void UConnectIt_BlackboardSubsystem::ClearModifier(int32 TargetSlotIndex)
 {
 	if (PendingModifiers.Remove(TargetSlotIndex) > 0)
 	{
@@ -30,18 +30,18 @@ void UConnectItBlackboardSubsystem::ClearModifier(int32 TargetSlotIndex)
 	}
 }
 
-bool UConnectItBlackboardSubsystem::HasModifier(int32 SlotIndex) const
+bool UConnectIt_BlackboardSubsystem::HasModifier(int32 SlotIndex) const
 {
 	return PendingModifiers.Contains(SlotIndex);
 }
 
-FTurnModifier UConnectItBlackboardSubsystem::GetModifier(int32 SlotIndex) const
+FTurnModifier UConnectIt_BlackboardSubsystem::GetModifier(int32 SlotIndex) const
 {
 	const FTurnModifier* Found = PendingModifiers.Find(SlotIndex);
 	return Found ? *Found : FTurnModifier();
 }
 
-TArray<int32> UConnectItBlackboardSubsystem::GetAllModifiedSlots() const
+TArray<int32> UConnectIt_BlackboardSubsystem::GetAllModifiedSlots() const
 {
 	TArray<int32> Keys;
 	PendingModifiers.GenerateKeyArray(Keys);

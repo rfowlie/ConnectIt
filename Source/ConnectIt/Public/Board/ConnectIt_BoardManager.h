@@ -4,37 +4,37 @@
 
 #include "CoreMinimal.h"
 #include "Board/BoardManager.h"
-#include "ConnectItBoardManagerComponent.h"
-#include "ConnectItBoardStateComponent.h"
-#include "ConnectItBoardManager.generated.h"
+#include "ConnectIt_BoardManagerComponent.h"
+#include "ConnectIt_BoardStateComponent.h"
+#include "ConnectIt_BoardManager.generated.h"
 
 class UActionLoadOutDataAsset;
 class UConnectIt_ConfigComponent;
-class UConnectItTileStateInterpreter;
-class UConnectItPieceSpawnInterpreter;
-class UConnectItScoreInterpreter;
+class UConnectIt_TileStateInterpreter;
+class UConnectIt_PieceSpawnInterpreter;
+class UConnectIt_ScoreInterpreter;
 
 
 UCLASS(Blueprintable, BlueprintType)
-class CONNECTIT_API AConnectItBoardManager : public ABoardManager
+class CONNECTIT_API AConnectIt_BoardManager : public ABoardManager
 {
     GENERATED_BODY()
 
 public:
 
-    AConnectItBoardManager();
+    AConnectIt_BoardManager();
 
     // --- Components ---
 
     // ConnectIt specific board state -- typed access
     UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly,
         Category = "ConnectIt|Components")
-    TObjectPtr<UConnectItBoardStateComponent> ConnectItBoardState = nullptr;
+    TObjectPtr<UConnectIt_BoardStateComponent> ConnectItBoardState = nullptr;
 
     // Owns all server side board logic
     UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly,
         Category = "ConnectIt|Components")
-    TObjectPtr<UConnectItBoardManagerComponent> BoardManager = nullptr;
+    TObjectPtr<UConnectIt_BoardManagerComponent> BoardManager = nullptr;
 
     // Designer configuration -- loadouts, pool size, AI config
     UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly,
@@ -47,15 +47,15 @@ public:
 
     UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly,
         Category = "ConnectIt|Interpreters")
-    TObjectPtr<UConnectItTileStateInterpreter> TileStateInterpreter = nullptr;
+    TObjectPtr<UConnectIt_TileStateInterpreter> TileStateInterpreter = nullptr;
 
     UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly,
         Category = "ConnectIt|Interpreters")
-    TObjectPtr<UConnectItPieceSpawnInterpreter> PieceSpawnInterpreter = nullptr;
+    TObjectPtr<UConnectIt_PieceSpawnInterpreter> PieceSpawnInterpreter = nullptr;
 
     UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly,
         Category = "ConnectIt|Interpreters")
-    TObjectPtr<UConnectItScoreInterpreter> ScoreInterpreter = nullptr;
+    TObjectPtr<UConnectIt_ScoreInterpreter> ScoreInterpreter = nullptr;
 
     // --- Convenience Accessors ---
 

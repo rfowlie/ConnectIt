@@ -8,10 +8,10 @@
 #include "TurnBasedMechanicsStructs.h"
 #include "ConnectIt_AIController.generated.h"
 
-class AConnectItBoardManager;
-class UTurnBasedActionComponent;
+class AConnectIt_BoardManager;
 class UTurnBasedParticipantComponent;
-class UConnectItBlackboardSubsystem;
+class UTurnBasedActionsComponent;
+class UConnectIt_BlackboardSubsystem;
 class UConnectIt_MinMaxTreeBuilder;
 
 
@@ -30,7 +30,7 @@ public:
 
 	UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly,
 		Category = "ConnectIt|Components")
-	TObjectPtr<UTurnBasedActionComponent> ActionComponent = nullptr;
+	TObjectPtr<UTurnBasedActionsComponent> ActionComponent = nullptr;
 
 
 protected:
@@ -46,7 +46,7 @@ private:
 
 	// Cached references
 	UPROPERTY()
-	TObjectPtr<AConnectItBoardManager> BoardActor = nullptr;
+	TObjectPtr<AConnectIt_BoardManager> BoardActor = nullptr;
 
 	int32 MySlotIndex = -1;
 

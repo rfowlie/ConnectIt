@@ -1,19 +1,19 @@
 ﻿// Fill out your copyright notice in the Description page of Project Settings.
 
-#include "Board/ConnectItBoardStateComponent.h"
+#include "Board/ConnectIt_BoardStateComponent.h"
 
 #include "Library/CodingUtilsComponentLibrary.h"
 #include "Net/UnrealNetwork.h"
 
 
-UConnectItBoardStateComponent::UConnectItBoardStateComponent()
+UConnectIt_BoardStateComponent::UConnectIt_BoardStateComponent()
 {
     PrimaryComponentTick.bCanEverTick = false;
     SetIsReplicatedByDefault(true);
 }
 
 
-void UConnectItBoardStateComponent::InitialiseBoardState(
+void UConnectIt_BoardStateComponent::InitialiseBoardState(
     const TArray<FGridPosition>& TilePositions,
     int32 NumFactions,
     float InitialMultiplier)
@@ -52,7 +52,7 @@ void UConnectItBoardStateComponent::InitialiseBoardState(
         TilePositions.Num(), NumFactions);
 }
 
-void UConnectItBoardStateComponent::ApplyAndBroadcast(
+void UConnectIt_BoardStateComponent::ApplyAndBroadcast(
     const FConnectItBoardState& NewState)
 {
     check(UCodingUtilsComponentLibrary::IsAuthoritative(this));
@@ -66,34 +66,34 @@ void UConnectItBoardStateComponent::ApplyAndBroadcast(
     BroadcastChange();
 }
 
-const FConnectItBoardStateSnapshot* UConnectItBoardStateComponent::GetBoardSnapshot() const
+const FConnectItBoardStateSnapshot* UConnectIt_BoardStateComponent::GetBoardSnapshot() const
 {
     return &BoardSnapshot;
 }
 
-const FConnectItBoardState* UConnectItBoardStateComponent::GetBoardSnapShotCurrent() const
+const FConnectItBoardState* UConnectIt_BoardStateComponent::GetBoardSnapShotCurrent() const
 {
     return &BoardSnapshot.CurrentState;
 }
 
-const FConnectItBoardState* UConnectItBoardStateComponent::GetBoardSnapShotPrevious() const
+const FConnectItBoardState* UConnectIt_BoardStateComponent::GetBoardSnapShotPrevious() const
 {
     return &BoardSnapshot.PreviousState;
 }
 
-void UConnectItBoardStateComponent::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+void UConnectIt_BoardStateComponent::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
     Super::GetLifetimeReplicatedProps(OutLifetimeProps);
-    DOREPLIFETIME(UConnectItBoardStateComponent, BoardSnapshot);
+    DOREPLIFETIME(UConnectIt_BoardStateComponent, BoardSnapshot);
 }
 
-void UConnectItBoardStateComponent::CaptureSnapshot()
+void UConnectIt_BoardStateComponent::CaptureSnapshot()
 {
     check(UCodingUtilsComponentLibrary::IsAuthoritative(this));
     BoardSnapshot.PreviousState = BoardSnapshot.CurrentState;
 }
 
-void UConnectItBoardStateComponent::OnRep_BoardSnapshot()
+void UConnectIt_BoardStateComponent::OnRep_BoardSnapshot()
 {
     // Previous and current both arrived atomically
     // Fire void delegate -- all bound interpreters respond

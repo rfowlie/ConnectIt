@@ -1,22 +1,22 @@
 ﻿// Fill out your copyright notice in the Description page of Project Settings.
 
 
-#include "Board/ConnectItBoardManagerComponent.h"
+#include "Board/ConnectIt_BoardManagerComponent.h"
 #include "ConnectIt_GameplayTags.h"
 #include "GameplayTagContainer.h"
 #include "TurnBasedMechanicsStructs.h"
-#include "Board/ConnectItBoardStateComponent.h"
+#include "Board/ConnectIt_BoardStateComponent.h"
 #include "Board/Shift/BoardShiftComponent.h"
 #include "Library/CodingUtilsComponentLibrary.h"
 #include "Tile/GridTileRegistryComponent.h"
 
 
-UConnectItBoardManagerComponent::UConnectItBoardManagerComponent()
+UConnectIt_BoardManagerComponent::UConnectIt_BoardManagerComponent()
 {
     PrimaryComponentTick.bCanEverTick = false;
 }
 
-void UConnectItBoardManagerComponent::BeginPlay()
+void UConnectIt_BoardManagerComponent::BeginPlay()
 {
     Super::BeginPlay();
 
@@ -29,10 +29,10 @@ void UConnectItBoardManagerComponent::BeginPlay()
     }
 }
 
-bool UConnectItBoardManagerComponent::ResolveComponents()
+bool UConnectIt_BoardManagerComponent::ResolveComponents()
 {
     BoardStateComponent =
-        GetOwner()->FindComponentByClass<UConnectItBoardStateComponent>();
+        GetOwner()->FindComponentByClass<UConnectIt_BoardStateComponent>();
     RegistryComponent =
         GetOwner()->FindComponentByClass<UGridTileRegistryComponent>();
     ShiftComponent =
@@ -57,7 +57,7 @@ bool UConnectItBoardManagerComponent::ResolveComponents()
     return true;
 }
 
-void UConnectItBoardManagerComponent::InitialiseBoard(int32 NumFactions)
+void UConnectIt_BoardManagerComponent::InitialiseBoard(int32 NumFactions)
 {
     check(UCodingUtilsComponentLibrary::IsAuthoritative(this));
     check(IsValid(BoardStateComponent));
@@ -87,7 +87,7 @@ void UConnectItBoardManagerComponent::InitialiseBoard(int32 NumFactions)
 
 // --- Request Processing ---
 
-void UConnectItBoardManagerComponent::ProcessRequest(const FTurnActionRequest& Request)
+void UConnectIt_BoardManagerComponent::ProcessRequest(const FTurnActionRequest& Request)
 {
     check(UCodingUtilsComponentLibrary::IsAuthoritative(this));
 
@@ -116,7 +116,7 @@ void UConnectItBoardManagerComponent::ProcessRequest(const FTurnActionRequest& R
         *Request.RequestType.ToString());
 }
 
-void UConnectItBoardManagerComponent::HandlePlacePieceRequest(
+void UConnectIt_BoardManagerComponent::HandlePlacePieceRequest(
     const FTurnActionRequest& Request)
 {
     if (Request.Positions.IsEmpty())
@@ -180,11 +180,11 @@ void UConnectItBoardManagerComponent::HandlePlacePieceRequest(
 
     if (NewState.bGameOver)
     {
-        OnGameOver.Broadcast(NewState.WinningFactionSlot);
+        OnPlayerWin.Broadcast(NewState.WinningFactionSlot);
     }
 }
 
-void UConnectItBoardManagerComponent::HandleShiftResult(
+void UConnectIt_BoardManagerComponent::HandleShiftResult(
     const FShiftOperation& Operation,
     const FShiftResult& Result)
 {
@@ -233,7 +233,7 @@ void UConnectItBoardManagerComponent::HandleShiftResult(
 
 // --- Game Logic ---
 
-float UConnectItBoardManagerComponent::CheckAndApplyScoring(
+float UConnectIt_BoardManagerComponent::CheckAndApplyScoring(
     FConnectItBoardState& MutableState,
     FGridPosition Position,
     int32 FactionSlot)
@@ -260,7 +260,7 @@ float UConnectItBoardManagerComponent::CheckAndApplyScoring(
 }
 
 TArray<TArray<FGridPosition>>
-UConnectItBoardManagerComponent::FindScoringLines(
+UConnectIt_BoardManagerComponent::FindScoringLines(
     const FConnectItBoardState& State,
     FGridPosition Position,
     int32 FactionSlot) const
@@ -305,7 +305,7 @@ UConnectItBoardManagerComponent::FindScoringLines(
     return ScoringLines;
 }
 
-float UConnectItBoardManagerComponent::ApplyScoringLine(FConnectItBoardState& MutableState,
+float UConnectIt_BoardManagerComponent::ApplyScoringLine(FConnectItBoardState& MutableState,
     const TArray<FGridPosition>& Line, FGridPosition CompletingPosition, int32 FactionSlot) const
 {
     float PointsScored = 0.f;
@@ -333,7 +333,7 @@ float UConnectItBoardManagerComponent::ApplyScoringLine(FConnectItBoardState& Mu
     return PointsScored;
 }
 
-void UConnectItBoardManagerComponent::CheckWinCondition(
+void UConnectIt_BoardManagerComponent::CheckWinCondition(
     FConnectItBoardState& MutableState) const
 {
     for (int32 i = 0; i < MutableState.ScoreBoard.Num(); i++)
@@ -354,7 +354,7 @@ void UConnectItBoardManagerComponent::CheckWinCondition(
 }
 
 const TArray<FGridDirectionVector>&
-UConnectItBoardManagerComponent::GetScoringDirections()
+UConnectIt_BoardManagerComponent::GetScoringDirections()
 {
     static const TArray<FGridDirectionVector> Directions =
     {

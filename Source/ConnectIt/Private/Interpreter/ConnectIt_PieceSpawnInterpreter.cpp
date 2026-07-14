@@ -1,14 +1,14 @@
 ﻿// Fill out your copyright notice in the Description page of Project Settings.
 
 
-#include "Interpreter/ConnectItPieceSpawnInterpreter.h"
+#include "Interpreter/ConnectIt_PieceSpawnInterpreter.h"
 
-#include "Board/ConnectItBoardStateComponent.h"
+#include "Board/ConnectIt_BoardStateComponent.h"
 #include "Grid/ConnectIt_GridPiece.h"
 #include "Subsystem/GridWorldSubsystem.h"
 
 
-void UConnectItPieceSpawnInterpreter::BeginPlay()
+void UConnectIt_PieceSpawnInterpreter::BeginPlay()
 {
     Super::BeginPlay();
 
@@ -36,14 +36,14 @@ void UConnectItPieceSpawnInterpreter::BeginPlay()
     }
 }
 
-void UConnectItPieceSpawnInterpreter::OnBoardStateChanged_Implementation(
+void UConnectIt_PieceSpawnInterpreter::OnBoardStateChanged_Implementation(
     const UBoardStateComponentBase* Component)
 {
     // Server does not spawn visual pieces
     if (GetOwner()->HasAuthority()) return;
 
-    const UConnectItBoardStateComponent* ConnectItComp =
-        Cast<UConnectItBoardStateComponent>(Component);
+    const UConnectIt_BoardStateComponent* ConnectItComp =
+        Cast<UConnectIt_BoardStateComponent>(Component);
     if (!IsValid(ConnectItComp)) return;
     
     const FConnectItBoardStateSnapshot Snapshot = *ConnectItComp->GetBoardSnapshot();
@@ -97,7 +97,7 @@ void UConnectItPieceSpawnInterpreter::OnBoardStateChanged_Implementation(
     }
 }
 
-void UConnectItPieceSpawnInterpreter::SpawnPieceAt(
+void UConnectIt_PieceSpawnInterpreter::SpawnPieceAt(
     const FGridPosition& Position,
     int32 FactionID)
 {
@@ -125,7 +125,7 @@ void UConnectItPieceSpawnInterpreter::SpawnPieceAt(
         Position.X, Position.Y, FactionID);
 }
 
-void UConnectItPieceSpawnInterpreter::ReturnPieceToPool(
+void UConnectIt_PieceSpawnInterpreter::ReturnPieceToPool(
     const FGridPosition& Position)
 {
     const TObjectPtr<AConnectIt_GridPiece>* Found = ActivePieces.Find(Position);
@@ -144,7 +144,7 @@ void UConnectItPieceSpawnInterpreter::ReturnPieceToPool(
         Position.X, Position.Y);
 }
 
-FVector UConnectItPieceSpawnInterpreter::GetWorldPositionForTile(
+FVector UConnectIt_PieceSpawnInterpreter::GetWorldPositionForTile(
     const FGridPosition& Position) const
 {
     UWorld* World = GetWorld();

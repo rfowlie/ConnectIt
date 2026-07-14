@@ -3,8 +3,9 @@
 
 #include "Action/ConnectIt_PlacePieceAction.h"
 #include "EngineUtils.h"
-#include "Board/ConnectItBoardManager.h"
-#include "Board/ConnectItBoardStateComponent.h"
+#include "Board/ConnectIt_BoardManager.h"
+#include "Board/ConnectIt_BoardStateComponent.h"
+#include "Library/ConnectIt_GameUtilityLibrary.h"
 #include "Tile/GridTileBase.h"
 #include "Turn/Participant/TurnBasedParticipantComponent.h"
 
@@ -47,8 +48,7 @@ bool UConnectIt_PlacePieceAction::IsValidHoverTile_Implementation(
 {
     // if (!IsValid(Tile)) return false;
     //
-    // const UConnectItBoardStateComponent* BoardState =
-    //     GetBoardStateComponent();
+    // const UConnectItBoardStateComponent* BoardState = UConnectIt_GameUtilityLibrary::GetBoardStateComponent(this);
     // if (!IsValid(BoardState)) return false;
     //
     // // Tile must be valid for placement in current board state
@@ -118,19 +118,6 @@ void UConnectIt_PlacePieceAction::ClearSelectionState_Implementation()
             Hovered->SendGameplayTag(Tag_Default);
         }
     }
-}
-
-const UConnectItBoardStateComponent* UConnectIt_PlacePieceAction::GetBoardStateComponent() const
-{
-    const UWorld* World = GetWorld();
-    if (!IsValid(World)) return nullptr;
-
-    for (TActorIterator<AConnectItBoardManager> It(World); It; ++It)
-    {
-        return It->ConnectItBoardState;
-    }
-
-    return nullptr;
 }
 
 int32 UConnectIt_PlacePieceAction::GetOwningFactionID() const

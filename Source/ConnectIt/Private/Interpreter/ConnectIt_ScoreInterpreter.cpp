@@ -1,15 +1,15 @@
 ﻿// Fill out your copyright notice in the Description page of Project Settings.
 
 
-#include "Interpreter/ConnectItScoreInterpreter.h"
-#include "Board/ConnectItBoardStateComponent.h"
+#include "Interpreter/ConnectIt_ScoreInterpreter.h"
+#include "Board/ConnectIt_BoardStateComponent.h"
 
 
-void UConnectItScoreInterpreter::OnBoardStateChanged_Implementation(
+void UConnectIt_ScoreInterpreter::OnBoardStateChanged_Implementation(
 	const UBoardStateComponentBase* Component)
 {
-	const UConnectItBoardStateComponent* ConnectItComp =
-		Cast<UConnectItBoardStateComponent>(Component);
+	const UConnectIt_BoardStateComponent* ConnectItComp =
+		Cast<UConnectIt_BoardStateComponent>(Component);
 	if (!IsValid(ConnectItComp)) return;
 
 	const FConnectItBoardState Previous = *ConnectItComp->GetBoardSnapShotPrevious();
@@ -54,7 +54,7 @@ void UConnectItScoreInterpreter::OnBoardStateChanged_Implementation(
 	}
 }
 
-float UConnectItScoreInterpreter::GetFactionScore(int32 FactionSlot) const
+float UConnectIt_ScoreInterpreter::GetFactionScore(int32 FactionSlot) const
 {
 	return CachedScores.IsValidIndex(FactionSlot)
 		? CachedScores[FactionSlot]

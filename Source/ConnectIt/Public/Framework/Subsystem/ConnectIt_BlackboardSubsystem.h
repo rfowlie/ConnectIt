@@ -5,15 +5,13 @@
 #include "CoreMinimal.h"
 #include "TurnBasedMechanicsStructs.h"
 #include "Subsystems/WorldSubsystem.h"
-#include "ConnectItBlackboardSubsystem.generated.h"
+#include "ConnectIt_BlackboardSubsystem.generated.h"
 
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnModifierApplied,
-	int32, TargetSlotIndex, const FTurnModifier&, Modifier);
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnModifierCleared,
-	int32, TargetSlotIndex);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnModifierApplied, int32, TargetSlotIndex, const FTurnModifier&, Modifier);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnModifierCleared, int32, TargetSlotIndex);
 
 UCLASS()
-class CONNECTIT_API UConnectItBlackboardSubsystem : public UWorldSubsystem
+class CONNECTIT_API UConnectIt_BlackboardSubsystem : public UWorldSubsystem
 {
 	GENERATED_BODY()
 

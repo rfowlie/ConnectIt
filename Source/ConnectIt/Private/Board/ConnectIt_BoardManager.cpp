@@ -1,24 +1,23 @@
 ﻿// Fill out your copyright notice in the Description page of Project Settings.
 
 
-#include "Board/ConnectItBoardManager.h"
-
+#include "Board/ConnectIt_BoardManager.h"
 #include "Board/Shift/BoardShiftComponent.h"
 #include "Framework/Data/ConnectIt_ConfigComponent.h"
-#include "Interpreter/ConnectItPieceSpawnInterpreter.h"
-#include "Interpreter/ConnectItScoreInterpreter.h"
-#include "Interpreter/ConnectItTileStateInterpreter.h"
+#include "Interpreter/ConnectIt_PieceSpawnInterpreter.h"
+#include "Interpreter/ConnectIt_ScoreInterpreter.h"
+#include "Interpreter/ConnectIt_TileStateInterpreter.h"
 
 
-AConnectItBoardManager::AConnectItBoardManager()
+AConnectIt_BoardManager::AConnectIt_BoardManager()
 {
     // ConnectIt specific board state
     // Replaces the generic UBoardStateComponentBase slot on ABoardActor
-    ConnectItBoardState = CreateDefaultSubobject<UConnectItBoardStateComponent>(
+    ConnectItBoardState = CreateDefaultSubobject<UConnectIt_BoardStateComponent>(
         TEXT("ConnectItBoardState"));
 
     // Board manager -- server side logic
-    BoardManager = CreateDefaultSubobject<UConnectItBoardManagerComponent>(
+    BoardManager = CreateDefaultSubobject<UConnectIt_BoardManagerComponent>(
         TEXT("BoardManager"));
 
     // Designer configuration
@@ -27,20 +26,20 @@ AConnectItBoardManager::AConnectItBoardManager()
 
     // Interpreters -- all created as components
     // Visible in Details panel so designers can configure them
-    TileStateInterpreter = CreateDefaultSubobject<UConnectItTileStateInterpreter>(
+    TileStateInterpreter = CreateDefaultSubobject<UConnectIt_TileStateInterpreter>(
         TEXT("TileStateInterpreter"));
 
-    PieceSpawnInterpreter = CreateDefaultSubobject<UConnectItPieceSpawnInterpreter>(
+    PieceSpawnInterpreter = CreateDefaultSubobject<UConnectIt_PieceSpawnInterpreter>(
         TEXT("PieceSpawnInterpreter"));
 
-    ScoreInterpreter = CreateDefaultSubobject<UConnectItScoreInterpreter>(
+    ScoreInterpreter = CreateDefaultSubobject<UConnectIt_ScoreInterpreter>(
         TEXT("ScoreInterpreter"));
 
     // Board actor replicates -- board state component replicates on it
     bReplicates = true;
 }
 
-void AConnectItBoardManager::BeginPlay()
+void AConnectIt_BoardManager::BeginPlay()
 {
     Super::BeginPlay();
 
@@ -64,7 +63,7 @@ void AConnectItBoardManager::BeginPlay()
     }
 }
 
-void AConnectItBoardManager::BindInterpreters()
+void AConnectIt_BoardManager::BindInterpreters()
 {
     if (!IsValid(ConnectItBoardState))
     {
@@ -97,7 +96,7 @@ void AConnectItBoardManager::BindInterpreters()
         TEXT("ConnectItBoardActor: Interpreters bound to board state"));
 }
 
-void AConnectItBoardManager::BindBoardManager()
+void AConnectIt_BoardManager::BindBoardManager()
 {
     if (!IsValid(BoardManager))
     {
@@ -112,7 +111,7 @@ void AConnectItBoardManager::BindBoardManager()
     {
         ShiftComp->OnShiftResultReady.AddDynamic(
             BoardManager,
-            &UConnectItBoardManagerComponent::HandleShiftResult);
+            &UConnectIt_BoardManagerComponent::HandleShiftResult);
 
         UE_LOG(LogTemp, Log,
             TEXT("ConnectItBoardActor: Shift component wired to board manager"));
@@ -122,7 +121,7 @@ void AConnectItBoardManager::BindBoardManager()
         TEXT("ConnectItBoardActor: Board manager wired"));
 }
 
-void AConnectItBoardManager::InitialiseBoard(int32 NumFactions)
+void AConnectIt_BoardManager::InitialiseBoard(int32 NumFactions)
 {
     if (!HasAuthority()) return;
 
@@ -139,21 +138,21 @@ void AConnectItBoardManager::InitialiseBoard(int32 NumFactions)
 
 // --- Convenience Accessors ---
 
-UActionLoadOutDataAsset* AConnectItBoardManager::GetPlayerLoadout() const
+UActionLoadOutDataAsset* AConnectIt_BoardManager::GetPlayerLoadout() const
 {
     return IsValid(ConnectItConfig)
         ? ConnectItConfig->PlayerLoadout
         : nullptr;
 }
 
-UActionLoadOutDataAsset* AConnectItBoardManager::GetEnemyLoadout() const
+UActionLoadOutDataAsset* AConnectIt_BoardManager::GetEnemyLoadout() const
 {
     return IsValid(ConnectItConfig)
         ? ConnectItConfig->EnemyLoadout
         : nullptr;
 }
 
-float AConnectItBoardManager::GetWinScoreThreshold() const
+float AConnectIt_BoardManager::GetWinScoreThreshold() const
 {
     return IsValid(ConnectItConfig)
         ? ConnectItConfig->WinScoreThreshold

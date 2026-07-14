@@ -6,26 +6,26 @@
 #include "ConnectIt_Structs.h"
 #include "GridMechanicsBaseStructs.h"
 #include "Components/ActorComponent.h"
-#include "ConnectItBoardManagerComponent.generated.h"
+#include "ConnectIt_BoardManagerComponent.generated.h"
 
 class UGridTileRegistryComponent;
-class UConnectItBoardStateComponent;
+class UConnectIt_BoardStateComponent;
 class UBoardShiftComponent;
 
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnPiecePlaced, FGridPosition, Position);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnLineScored, int32, FactionSlot, float, PointsScored);
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnGameOver, int32, WinningFactionSlot);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnPlayerWin, int32, WinningFactionSlot);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnShiftApplied, const FShiftOperation&, Operation, const FShiftResult&, Result);
 
 UCLASS(ClassGroup=(ConnectIt), meta=(BlueprintSpawnableComponent))
-class CONNECTIT_API UConnectItBoardManagerComponent : public UActorComponent
+class CONNECTIT_API UConnectIt_BoardManagerComponent : public UActorComponent
 {
     GENERATED_BODY()
 
 public:
 
-    UConnectItBoardManagerComponent();
+    UConnectIt_BoardManagerComponent();
 
     // Win score threshold -- set from UConnectItConfigComponent
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "ConnectIt|Rules")
@@ -66,7 +66,7 @@ public:
     FOnLineScored OnLineScored;
 
     UPROPERTY(BlueprintAssignable, Category = "ConnectIt|Board")
-    FOnGameOver OnGameOver;
+    FOnPlayerWin OnPlayerWin;
 
     UPROPERTY(BlueprintAssignable, Category = "ConnectIt|Board")
     FOnShiftApplied OnShiftApplied;
@@ -79,7 +79,7 @@ private:
 
     // Cached component references -- resolved on BeginPlay
     UPROPERTY()
-    TObjectPtr<UConnectItBoardStateComponent> BoardStateComponent = nullptr;
+    TObjectPtr<UConnectIt_BoardStateComponent> BoardStateComponent = nullptr;
 
     UPROPERTY()
     TObjectPtr<UGridTileRegistryComponent> RegistryComponent = nullptr;

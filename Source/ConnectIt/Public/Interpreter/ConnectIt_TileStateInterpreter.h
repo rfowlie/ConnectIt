@@ -7,7 +7,7 @@
 #include "GridMechanicsBaseStructs.h"
 #include "Board/Interpreter/BoardStateInterpreter.h"
 #include "ConnectIt_Structs.h"
-#include "ConnectItTileStateInterpreter.generated.h"
+#include "ConnectIt_TileStateInterpreter.generated.h"
 
 
 // Reads board state changes and sends GameplayTags to AGridTileBase actors
@@ -15,7 +15,7 @@
 // Runs on ALL clients independently -- no server involvement
 UCLASS(Blueprintable, ClassGroup=(ConnectIt),
 	meta=(BlueprintSpawnableComponent))
-class CONNECTIT_API UConnectItTileStateInterpreter : public UBoardStateInterpreter
+class CONNECTIT_API UConnectIt_TileStateInterpreter : public UBoardStateInterpreter
 {
 	GENERATED_BODY()
 

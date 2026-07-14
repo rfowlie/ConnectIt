@@ -1,17 +1,17 @@
 ﻿// Fill out your copyright notice in the Description page of Project Settings.
 
 
-#include "Interpreter/ConnectItTileStateInterpreter.h"
-#include "Board/ConnectItBoardStateComponent.h"
+#include "Interpreter/ConnectIt_TileStateInterpreter.h"
+#include "Board/ConnectIt_BoardStateComponent.h"
 #include "Subsystem/GridWorldSubsystem.h"
 #include "Tile/GridTileBase.h"
 
 
-void UConnectItTileStateInterpreter::OnBoardStateChanged_Implementation(
+void UConnectIt_TileStateInterpreter::OnBoardStateChanged_Implementation(
     const UBoardStateComponentBase* Component)
 {
-    const UConnectItBoardStateComponent* ConnectItComp =
-        Cast<UConnectItBoardStateComponent>(Component);
+    const UConnectIt_BoardStateComponent* ConnectItComp =
+        Cast<UConnectIt_BoardStateComponent>(Component);
 
     if (!IsValid(ConnectItComp)) return;
 
@@ -48,7 +48,7 @@ void UConnectItTileStateInterpreter::OnBoardStateChanged_Implementation(
     }
 }
 
-void UConnectItTileStateInterpreter::ProcessTileChange(
+void UConnectIt_TileStateInterpreter::ProcessTileChange(
     const FGridPosition& Position,
     const FConnectItTileData& PreviousData,
     const FConnectItTileData& CurrentData)
@@ -82,7 +82,7 @@ void UConnectItTileStateInterpreter::ProcessTileChange(
     }
 }
 
-void UConnectItTileStateInterpreter::SendTagToTile(
+void UConnectIt_TileStateInterpreter::SendTagToTile(
     const FGridPosition& Position,
     FGameplayTag Tag,
     int32 FactionPiece)
@@ -95,7 +95,7 @@ void UConnectItTileStateInterpreter::SendTagToTile(
     Tile->SendGameplayTag(Tag);
 }
 
-AGridTileBase* UConnectItTileStateInterpreter::FindTileActor(
+AGridTileBase* UConnectIt_TileStateInterpreter::FindTileActor(
     const FGridPosition& Position) const
 {
     UWorld* World = GetWorld();

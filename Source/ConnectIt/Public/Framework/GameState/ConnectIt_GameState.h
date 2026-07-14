@@ -9,7 +9,7 @@
 #include "ConnectIt_GameState.generated.h"
 
 class AConnectIt_BoardManager;
-class UConnectItBoardStateComponent;
+class UConnectIt_BoardStateComponent;
 
 
 // Why the match ended
@@ -126,10 +126,10 @@ private:
 
     // Finds and caches board state component
     // Searches for AConnectItBoardActor in world on first call
-    UConnectItBoardStateComponent* GetBoardStateComponent() const;
+    UConnectIt_BoardStateComponent* GetBoardStateComponent() const;
 
     // Cached component reference -- found once, reused
-    mutable TObjectPtr<UConnectItBoardStateComponent> CachedBoardStateComponent = nullptr;
+    mutable TObjectPtr<UConnectIt_BoardStateComponent> CachedBoardStateComponent = nullptr;
 
     UFUNCTION()
     void OnRep_MatchResult();

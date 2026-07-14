@@ -7,7 +7,7 @@
 #include "ConnectIt_PlacePieceAction.generated.h"
 
 
-class UConnectItBoardStateComponent;
+class UConnectIt_BoardStateComponent;
 class AConnectIt_GridPiece;
 class AConnectIt_BoardManager;
 
@@ -67,10 +67,6 @@ protected:
     virtual void ClearSelectionState_Implementation() override;
 
 private:
-
-    // Reads board state to validate tile
-    // Finds UConnectItBoardStateComponent on board actor
-    const UConnectItBoardStateComponent* GetBoardStateComponent() const;
 
     // Gets owning faction ID from participant component slot index
     int32 GetOwningFactionID() const;

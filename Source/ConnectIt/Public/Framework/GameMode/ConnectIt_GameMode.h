@@ -6,7 +6,7 @@
 #include "Framework/GameMode/TurnBasedGameMode.h"
 #include "ConnectIt_GameMode.generated.h"
 
-class AConnectItBoardManager;
+class AConnectIt_BoardManager;
 class AConnectIt_AIController;
 class UTurnBasedParticipantManagerComponent;
 
@@ -63,7 +63,7 @@ protected:
 
     // Finds the board actor in the level
     // Cached after first find
-    AConnectItBoardManager* GetBoardActor() const;
+    AConnectIt_BoardManager* GetBoardActor() const;
 
     // Spawns and registers the AI controller (Adventure mode only)
     void SpawnAndRegisterAI();
@@ -80,7 +80,7 @@ private:
 
     // Cached board actor -- found once in HandleMatchHasStarted
     UPROPERTY()
-    mutable TObjectPtr<AConnectItBoardManager> CachedBoardActor = nullptr;
+    mutable TObjectPtr<AConnectIt_BoardManager> CachedBoardActor = nullptr;
 
     // Tracks how many human players have connected
     // Used in Online mode to know when to start ready check

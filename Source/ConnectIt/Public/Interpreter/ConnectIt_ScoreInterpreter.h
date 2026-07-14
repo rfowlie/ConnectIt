@@ -4,7 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "Board/Interpreter/BoardStateInterpreter.h"
-#include "ConnectItScoreInterpreter.generated.h"
+#include "ConnectIt_ScoreInterpreter.generated.h"
 
 
 // Reads score changes from board state and fires delegates for UI
@@ -12,7 +12,7 @@
 // UI widgets bind to the delegates and update their display
 UCLASS(Blueprintable, ClassGroup=(ConnectIt),
 	meta=(BlueprintSpawnableComponent))
-class CONNECTIT_API UConnectItScoreInterpreter : public UBoardStateInterpreter
+class CONNECTIT_API UConnectIt_ScoreInterpreter : public UBoardStateInterpreter
 {
 	GENERATED_BODY()
 
