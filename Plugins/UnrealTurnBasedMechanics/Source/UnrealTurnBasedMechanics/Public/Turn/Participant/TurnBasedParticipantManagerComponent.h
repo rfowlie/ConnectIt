@@ -14,7 +14,6 @@ class UTurnBasedParticipantComponent;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnTurnPhaseChanged, ETurnPhase, NewPhase);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnParticipantForfeited, const FTurnParticipantInfo&, ParticipantInfo);
-// DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnAnyParticipantTurnStarted, bool, bIsTurn);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnAllParticipantsReady);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnTurnResolutionStarted);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnGameOver);
@@ -52,13 +51,9 @@ public:
     // Turn order strategy -- must implement ITurnOrderInterface
     // Instanced inline in Details panel
     // Defaults to USequentialTurnOrderStrategy if not set
-    // UPROPERTY(EditAnywhere, Instanced, BlueprintReadOnly, Category = "Turn Based|Config",
-    //     meta = (MustImplement = "/Script/UnrealTurnBasedMechanics.TurnOrderInterface"))
-    UPROPERTY(EditAnywhere, Instanced, BlueprintReadOnly, Category = "Turn Based|Config")
-    TObjectPtr<UObject> TurnOrderStrategy = nullptr;
-    
-    // UPROPERTY(EditAnywhere, Instanced, BlueprintReadOnly, Category = "Turn Based|Config")
-    // TScriptInterface<UTurnOrderInterface> TurnOrderStrategy = nullptr;
+    UPROPERTY(EditAnywhere, Instanced, BlueprintReadOnly, Category = "Turn Based|Config",
+        meta = (MustImplement = "/Script/UnrealTurnBasedMechanics.TurnOrderInterface"))
+    TScriptInterface<ITurnOrderInterface> TurnOrderStrategy;
 
     // --- Replicated State ---
 

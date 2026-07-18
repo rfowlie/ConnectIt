@@ -8,38 +8,29 @@
 
 // --- System Action Vending ---
 
-UTurnBasedAction* UActionLoadOutDataAsset::GetRootAction(UObject* Outer) const
+UTurnBasedAction* UActionLoadoutDataAsset::GetRootAction(UObject* Outer) const
 {
-    if (!RootActionClass || !IsValid(Outer)) return nullptr;
-
-    return NewObject<UTurnBasedAction>(Outer, RootActionClass);
+    return CreateSystemAction<UTurnBasedAction>(RootActionClass, Outer);
 }
 
-UTurnBasedSpectatorAction* UActionLoadOutDataAsset::GetIdleViewerAction(UObject* Outer) const
+UTurnBasedSpectatorAction* UActionLoadoutDataAsset::GetIdleViewerAction(UObject* Outer) const
 {
-    if (!IdleViewerActionClass || !IsValid(Outer)) return nullptr;
-
-    return NewObject<UTurnBasedSpectatorAction>(Outer, IdleViewerActionClass);
+    return CreateSystemAction<UTurnBasedSpectatorAction>(IdleViewerActionClass, Outer);
 }
 
-UTurnBasedSpectatorAction* UActionLoadOutDataAsset::GetSpectatorAction(UObject* Outer) const
+UTurnBasedSpectatorAction* UActionLoadoutDataAsset::GetSpectatorAction(UObject* Outer) const
 {
-    if (!SpectatorViewerActionClass || !IsValid(Outer)) return nullptr;
-
-    return NewObject<UTurnBasedSpectatorAction>(
-        Outer, SpectatorViewerActionClass);
+    return CreateSystemAction<UTurnBasedSpectatorAction>(SpectatorViewerActionClass, Outer);
 }
 
-UTurnBasedSpectatorAction* UActionLoadOutDataAsset::GetPauseAction(UObject* Outer) const
+UTurnBasedSpectatorAction* UActionLoadoutDataAsset::GetPauseAction(UObject* Outer) const
 {
-    if (!PauseViewerActionClass || !IsValid(Outer)) return nullptr;
-
-    return NewObject<UTurnBasedSpectatorAction>(Outer, PauseViewerActionClass);
+    return CreateSystemAction<UTurnBasedSpectatorAction>(PauseViewerActionClass, Outer);
 }
 
 // --- Turn Action Accessors ---
 
-TArray<UTurnBasedAction*> UActionLoadOutDataAsset::GetPermittedActions() const
+TArray<UTurnBasedAction*> UActionLoadoutDataAsset::GetPermittedActions() const
 {
     TArray<UTurnBasedAction*> Permitted;
     Permitted.Reserve(Actions.Num());
@@ -54,37 +45,32 @@ TArray<UTurnBasedAction*> UActionLoadOutDataAsset::GetPermittedActions() const
     return Permitted;
 }
 
-TArray<UTurnBasedAction*> UActionLoadOutDataAsset::GetRequiredActions() const
+TArray<UTurnBasedAction*> UActionLoadoutDataAsset::GetRequiredActions() const
 {
-    TArray<UTurnBasedAction*> Required;
+    return FilterPermittedActionsByRequired(true);
+}
+
+TArray<UTurnBasedAction*> UActionLoadoutDataAsset::GetOptionalActions() const
+{
+    return FilterPermittedActionsByRequired(false);
+}
+
+TArray<UTurnBasedAction*> UActionLoadoutDataAsset::FilterPermittedActionsByRequired(bool bRequired) const
+{
+    TArray<UTurnBasedAction*> Out;
 
     for (UTurnBasedAction* Action : GetPermittedActions())
     {
-        if (IsValid(Action) && Action->bIsRequired)
+        if (IsValid(Action) && Action->bIsRequired == bRequired)
         {
-            Required.Add(Action);
+            Out.Add(Action);
         }
     }
 
-    return Required;
+    return Out;
 }
 
-TArray<UTurnBasedAction*> UActionLoadOutDataAsset::GetOptionalActions() const
-{
-    TArray<UTurnBasedAction*> Optional;
-
-    for (UTurnBasedAction* Action : GetPermittedActions())
-    {
-        if (IsValid(Action) && !Action->bIsRequired)
-        {
-            Optional.Add(Action);
-        }
-    }
-
-    return Optional;
-}
-
-bool UActionLoadOutDataAsset::IsActionPermitted(FGameplayTag ActionTag) const
+bool UActionLoadoutDataAsset::IsActionPermitted(FGameplayTag ActionTag) const
 {
     if (BannedActionTags.HasTag(ActionTag)) return false;
 
@@ -96,7 +82,7 @@ bool UActionLoadOutDataAsset::IsActionPermitted(FGameplayTag ActionTag) const
 }
 
 #if WITH_EDITOR
-EDataValidationResult UActionLoadOutDataAsset::IsDataValid(
+EDataValidationResult UActionLoadoutDataAsset::IsDataValid(
     FDataValidationContext& Context) const
 {
     const EDataValidationResult Result = Super::IsDataValid(Context);

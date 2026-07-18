@@ -6,7 +6,7 @@
 #include "Components/ActorComponent.h"
 #include "ConnectIt_ConfigComponent.generated.h"
 
-class UActionLoadOutDataAsset;
+class UActionLoadoutDataAsset;
 class AConnectIt_GridPiece;
 
 
@@ -22,10 +22,10 @@ public:
 	// --- LoadOuts ---
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "ConnectIt|Config")
-	TObjectPtr<UActionLoadOutDataAsset> PlayerLoadout = nullptr;
+	TObjectPtr<UActionLoadoutDataAsset> PlayerLoadout = nullptr;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "ConnectIt|Config")
-	TObjectPtr<UActionLoadOutDataAsset> EnemyLoadout = nullptr;
+	TObjectPtr<UActionLoadoutDataAsset> EnemyLoadout = nullptr;
 
 	// --- Rules ---
 

@@ -72,7 +72,7 @@ void AConnectIt_PlayerController::InitialiseFromBoardManager()
     }
 
     // Get player loadout from board manager config
-    UActionLoadOutDataAsset* Loadout =
+    UActionLoadoutDataAsset* Loadout =
         CachedBoardManager->GetPlayerLoadout();
 
     if (!IsValid(Loadout))

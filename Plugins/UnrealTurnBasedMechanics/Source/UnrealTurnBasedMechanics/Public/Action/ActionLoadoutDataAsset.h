@@ -10,7 +10,7 @@
 
 
 UCLASS(BlueprintType)
-class UNREALTURNBASEDMECHANICS_API UActionLoadOutDataAsset : public UDataAsset
+class UNREALTURNBASEDMECHANICS_API UActionLoadoutDataAsset : public UDataAsset
 {
 	GENERATED_BODY()
 
@@ -45,7 +45,7 @@ public:
 
     // Active during system pause
     // Pushed on top of stack -- stack preserved below
-    // Framework provides UTurnBasedDefaultPauseViewerAction as default
+    // Framework provides UTurnBasedPauseAction as default
     UPROPERTY(EditAnywhere, BlueprintReadOnly,
         Category = "Loadout|System Actions")
     TSubclassOf<UTurnBasedSpectatorAction> PauseViewerActionClass = nullptr;
@@ -98,5 +98,18 @@ public:
     virtual EDataValidationResult IsDataValid(
         FDataValidationContext& Context) const override;
 #endif
-	
+
+private:
+
+    // Shared by the Get*Action vending functions -- returns null if
+    // Class is unset or Outer is invalid
+    template <typename T>
+    static T* CreateSystemAction(TSubclassOf<T> Class, UObject* Outer)
+    {
+        if (!Class || !IsValid(Outer)) return nullptr;
+        return NewObject<T>(Outer, Class);
+    }
+
+    // Shared by GetRequiredActions/GetOptionalActions
+    TArray<UTurnBasedAction*> FilterPermittedActionsByRequired(bool bRequired) const;
 };

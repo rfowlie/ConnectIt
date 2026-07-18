@@ -2,6 +2,8 @@
 
 #include "UnrealTurnBasedMechanics.h"
 
+DEFINE_LOG_CATEGORY(LogTurnBasedMechanics);
+
 #define LOCTEXT_NAMESPACE "FUnrealTurnBasedMechanicsModule"
 
 void FUnrealTurnBasedMechanicsModule::StartupModule()

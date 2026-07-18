@@ -57,7 +57,7 @@ void AConnectIt_AIController::InitialiseFromBoardActor()
     }
 
     // Initialise action component from enemy loadout
-    UActionLoadOutDataAsset* LoadOut = BoardActor->GetEnemyLoadout();
+    UActionLoadoutDataAsset* LoadOut = BoardActor->GetEnemyLoadout();
     if (IsValid(LoadOut))
     {
         ActionComponent->InitialiseFromLoadout(LoadOut);

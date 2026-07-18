@@ -1,6 +1,7 @@
 ﻿// Fill out your copyright notice in the Description page of Project Settings.
 
 #include "Turn/Participant/TurnBasedParticipantComponent.h"
+#include "UnrealTurnBasedMechanics.h"
 #include "TurnBasedMechanicsStructs.h"
 #include "GameFramework/Controller.h"
 #include "GameFramework/GameStateBase.h"
@@ -31,7 +32,7 @@ void UTurnBasedParticipantComponent::ServerSubmitTurnEnd_Implementation()
 {
     if (!bIsMyTurn)
     {
-        UE_LOG(LogTemp, Warning,
+        UE_LOG(LogTurnBasedMechanics, Warning,
             TEXT("TurnBasedParticipantComponent: %s submitted turn end "
                  "but bIsMyTurn is false — ignored"),
             *GetOwner()->GetName());

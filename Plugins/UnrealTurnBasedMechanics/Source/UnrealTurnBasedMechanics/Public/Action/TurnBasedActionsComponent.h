@@ -1,8 +1,5 @@
 ﻿// Fill out your copyright notice in the Description page of Project Settings.
 
-// TurnBasedActionsComponent.h
-
-// TurnBasedActionsComponent.h
 #pragma once
 
 #include "CoreMinimal.h"
@@ -14,7 +11,6 @@
 #include "TurnBasedMechanicsStructs.h"
 #include "TurnBasedActionsComponent.generated.h"
 
-// DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnActionBaseEvent, UTurnBasedActionBase*, Action);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnBoardChangeRequested, const FTurnActionRequest&, Request);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnTurnEndReady);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnTurnEndRequested);
@@ -59,7 +55,7 @@ public:
 
     // Pushed on top of stack during system pause
     // Stack preserved below -- restored exactly on unpause
-    // Framework provides UTurnBasedDefaultPauseViewerAction as default
+    // Framework provides UTurnBasedPauseAction as default
     UPROPERTY(EditDefaultsOnly, BlueprintReadOnly,
         Category = "Turn Based|Behaviour")
     TSubclassOf<UTurnBasedSpectatorAction> PauseViewerActionClass = nullptr;
@@ -73,7 +69,7 @@ public:
     // --- Setup ---
 
     UFUNCTION(BlueprintCallable, Category = "Turn Based|Actions")
-    void InitialiseFromLoadout(UActionLoadOutDataAsset* InLoadout);
+    void InitialiseFromLoadout(UActionLoadoutDataAsset* InLoadout);
 
     // --- Turn Lifecycle ---
     // Called by controller in response to participant component delegates
@@ -242,7 +238,6 @@ protected:
 
     // Override to customise turn end condition
     // Default: all bIsRequired actions have CompletionsThisTurn > 0
-    // Gigafire: override to check unit usage instead
     UFUNCTION(BlueprintNativeEvent, Category = "Turn Based|Actions")
     bool CanAutoEndTurn() const;
 
@@ -272,10 +267,14 @@ private:
     TObjectPtr<UTurnBasedSpectatorAction> PauseViewerAction = nullptr;
 
     UPROPERTY()
-    TObjectPtr<UActionLoadOutDataAsset> Loadout = nullptr;
+    TObjectPtr<UActionLoadoutDataAsset> Loadout = nullptr;
 
     bool bIsInitialised     = false;
     int32 CurrentTurnNumber = 0;
+
+    // Force deactivates and empties the action stack without pushing
+    // a replacement -- shared by ClearAndPush and NotifyMatchEnded
+    void ClearStack();
 
     // --- Initialisation ---
 
@@ -283,6 +282,13 @@ private:
     void CreateSystemActions();
     void BindActionDelegates(UTurnBasedAction* Action);
     void HandleNextActionRequested(TSubclassOf<UTurnBasedAction> NextClass);
+
+    // Logs a warning if a viewer action instance is null -- used by
+    // CreateSystemActions to report unset Idle/Spectator viewer classes
+    void WarnIfViewerActionMissing(
+        const UTurnBasedSpectatorAction* Action,
+        const TCHAR* ClassPropertyName,
+        const TCHAR* Consequence) const;
 
     // --- Completion / Auto End ---
 

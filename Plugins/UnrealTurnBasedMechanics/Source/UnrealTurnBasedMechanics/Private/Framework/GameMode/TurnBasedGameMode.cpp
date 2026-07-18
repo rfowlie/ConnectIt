@@ -2,6 +2,7 @@
 
 
 #include "Framework/GameMode/TurnBasedGameMode.h"
+#include "UnrealTurnBasedMechanics.h"
 #include "Framework/GameState/TurnBasedGameState.h"
 #include "Framework/PlayerState/TurnBasedPlayerState.h"
 #include "Turn/Participant/TurnBasedParticipantManagerComponent.h"
@@ -35,7 +36,7 @@ void ATurnBasedGameMode::PostLogin(APlayerController* NewPlayer)
     // New participant — register
     Manager->RegisterParticipant(NewPlayer, EParticipantType::Human, DisplayName);
 
-    UE_LOG(LogTemp, Log,
+    UE_LOG(LogTurnBasedMechanics, Log,
         TEXT("TurnBasedGameMode: Human participant %s logged in"),
         *DisplayName);
 }

@@ -2,6 +2,7 @@
 
 
 #include "Action/TurnBasedActionsComponent.h"
+#include "UnrealTurnBasedMechanics.h"
 #include "Action/TurnBasedAction.h"
 #include "Action/TurnBasedSpectatorAction.h"
 #include "Action/ActionLoadoutDataAsset.h"
@@ -22,11 +23,11 @@ void UTurnBasedActionsComponent::BeginPlay()
 
 // --- Setup ---
 
-void UTurnBasedActionsComponent::InitialiseFromLoadout(UActionLoadOutDataAsset* InLoadout)
+void UTurnBasedActionsComponent::InitialiseFromLoadout(UActionLoadoutDataAsset* InLoadout)
 {
     if (!IsValid(InLoadout))
     {
-        UE_LOG(LogTemp, Warning,
+        UE_LOG(LogTurnBasedMechanics, Warning,
             TEXT("TurnBasedActionsComponent: InitialiseFromLoadout "
                  "called with null loadout on %s"),
             *GetOwner()->GetName());
@@ -38,7 +39,7 @@ void UTurnBasedActionsComponent::InitialiseFromLoadout(UActionLoadOutDataAsset* 
     CreateSystemActions();
     bIsInitialised = true;
 
-    UE_LOG(LogTemp, Log,
+    UE_LOG(LogTurnBasedMechanics, Log,
         TEXT("TurnBasedActionsComponent: %s initialised — "
              "loadout '%s', %d runtime actions "
              "root: %s, idle: %s, spectator: %s, pause: %s"),
@@ -77,7 +78,7 @@ void UTurnBasedActionsComponent::CloneActionsFromLoadout()
         BindActionDelegates(Clone);
         RuntimeActions.Add(Clone);
 
-        UE_LOG(LogTemp, Log,
+        UE_LOG(LogTurnBasedMechanics, Log,
             TEXT("TurnBasedActionsComponent: Cloned '%s' "
                  "(Required: %s, Cancellable: %s, "
                  "AllowsOptionalInterrupt: %s)"),
@@ -92,7 +93,7 @@ void UTurnBasedActionsComponent::CreateSystemActions()
 {
     if (!IsValid(Loadout))
     {
-        UE_LOG(LogTemp, Warning,
+        UE_LOG(LogTurnBasedMechanics, Warning,
             TEXT("TurnBasedActionsComponent: CreateSystemActions called "
                  "with no loadout on %s"),
             *GetOwner()->GetName());
@@ -113,7 +114,7 @@ void UTurnBasedActionsComponent::CreateSystemActions()
     }
     else
     {
-        UE_LOG(LogTemp, Error,
+        UE_LOG(LogTurnBasedMechanics, Error,
             TEXT("TurnBasedActionsComponent: RootActionClass not set "
                  "in loadout '%s' on %s. "
                  "Root action is mandatory."),
@@ -126,25 +127,26 @@ void UTurnBasedActionsComponent::CreateSystemActions()
     SpectatorViewerAction = Loadout->GetSpectatorAction(this);
     PauseViewerAction     = Loadout->GetPauseAction(this);
 
-    if (!IsValid(IdleViewerAction))
-    {
-        UE_LOG(LogTemp, Warning,
-            TEXT("TurnBasedActionsComponent: No IdleViewerActionClass "
-                 "set in loadout '%s' on %s. "
-                 "Stack will remain unchanged on turn end."),
-            *Loadout->LoadoutName,
-            *GetOwner()->GetName());
-    }
+    WarnIfViewerActionMissing(IdleViewerAction, TEXT("IdleViewerActionClass"),
+        TEXT("Stack will remain unchanged on turn end."));
 
-    if (!IsValid(SpectatorViewerAction))
-    {
-        UE_LOG(LogTemp, Warning,
-            TEXT("TurnBasedActionsComponent: No SpectatorViewerActionClass "
-                 "set in loadout '%s' on %s. "
-                 "Stack will remain unchanged on opponent turn start."),
-            *Loadout->LoadoutName,
-            *GetOwner()->GetName());
-    }
+    WarnIfViewerActionMissing(SpectatorViewerAction, TEXT("SpectatorViewerActionClass"),
+        TEXT("Stack will remain unchanged on opponent turn start."));
+}
+
+void UTurnBasedActionsComponent::WarnIfViewerActionMissing(
+    const UTurnBasedSpectatorAction* Action,
+    const TCHAR* ClassPropertyName,
+    const TCHAR* Consequence) const
+{
+    if (IsValid(Action)) return;
+
+    UE_LOG(LogTurnBasedMechanics, Warning,
+        TEXT("TurnBasedActionsComponent: No %s set in loadout '%s' on %s. %s"),
+        ClassPropertyName,
+        *Loadout->LoadoutName,
+        *GetOwner()->GetName(),
+        Consequence);
 }
 
 void UTurnBasedActionsComponent::BindActionDelegates(UTurnBasedAction* Action)
@@ -181,7 +183,7 @@ void UTurnBasedActionsComponent::HandleNextActionRequested(TSubclassOf<UTurnBase
 
     if (!Found || !IsValid(*Found))
     {
-        UE_LOG(LogTemp, Warning,
+        UE_LOG(LogTurnBasedMechanics, Warning,
             TEXT("TurnBasedActionsComponent: NextAction '%s' not found "
                  "in runtime actions on %s"),
             *NextClass->GetName(),
@@ -210,7 +212,7 @@ void UTurnBasedActionsComponent::NotifyTurnStarted(int32 InTurnNumber)
     // Fire designer hook -- default clears stack and pushes root
     OnTurnStarted(InTurnNumber);
 
-    UE_LOG(LogTemp, Log,
+    UE_LOG(LogTurnBasedMechanics, Log,
         TEXT("TurnBasedActionsComponent: Turn %d started on %s "
              "— stack depth: %d"),
         CurrentTurnNumber,
@@ -226,7 +228,7 @@ void UTurnBasedActionsComponent::NotifyOpponentTurnStarted()
     // Fire designer hook -- default clears stack and pushes spectator
     OnOpponentTurnStarted();
 
-    UE_LOG(LogTemp, Log,
+    UE_LOG(LogTurnBasedMechanics, Log,
         TEXT("TurnBasedActionsComponent: Opponent turn started on %s "
              "— stack depth: %d"),
         *GetOwner()->GetName(),
@@ -237,7 +239,7 @@ void UTurnBasedActionsComponent::NotifyTurnEnded()
 {
     if (!IsValid(IdleViewerAction))
     {
-        UE_LOG(LogTemp, Warning,
+        UE_LOG(LogTurnBasedMechanics, Warning,
             TEXT("TurnBasedActionsComponent: NotifyTurnEnded called but "
                  "IdleViewerActionClass not set on %s"),
             *GetOwner()->GetName());
@@ -248,7 +250,7 @@ void UTurnBasedActionsComponent::NotifyTurnEnded()
     // Idle is appropriate during Updating phase
     ClearAndPush(IdleViewerAction);
 
-    UE_LOG(LogTemp, Log,
+    UE_LOG(LogTurnBasedMechanics, Log,
         TEXT("TurnBasedActionsComponent: Turn ended on %s "
              "— idle viewer active"),
         *GetOwner()->GetName());
@@ -258,7 +260,7 @@ void UTurnBasedActionsComponent::NotifyPaused()
 {
     if (!IsValid(PauseViewerAction))
     {
-        UE_LOG(LogTemp, Warning,
+        UE_LOG(LogTurnBasedMechanics, Warning,
             TEXT("TurnBasedActionsComponent: NotifyPaused called but "
                  "PauseViewerActionClass not set on %s — "
                  "no pause action will be pushed"),
@@ -269,7 +271,7 @@ void UTurnBasedActionsComponent::NotifyPaused()
     // Push pause on top -- stack preserved below
     PushAction(PauseViewerAction);
 
-    UE_LOG(LogTemp, Log,
+    UE_LOG(LogTurnBasedMechanics, Log,
         TEXT("TurnBasedActionsComponent: Paused on %s "
              "— pause viewer pushed, stack depth: %d"),
         *GetOwner()->GetName(),
@@ -281,7 +283,7 @@ void UTurnBasedActionsComponent::NotifyUnpaused()
     // Pop pause viewer -- whatever was below reactivates
     UTurnBasedActionBase* Popped = SafePopAction();
 
-    UE_LOG(LogTemp, Log,
+    UE_LOG(LogTurnBasedMechanics, Log,
         TEXT("TurnBasedActionsComponent: Unpaused on %s "
              "— popped '%s', stack depth: %d"),
         *GetOwner()->GetName(),
@@ -299,17 +301,10 @@ void UTurnBasedActionsComponent::NotifyMatchEnded()
     else
     {
         // No idle set -- just clear everything
-        for (int32 i = ActionStack.Num() - 1; i >= 0; i--)
-        {
-            if (IsValid(ActionStack[i]))
-            {
-                ActionStack[i]->ForceDeactivate();
-            }
-        }
-        ActionStack.Empty();
+        ClearStack();
     }
 
-    UE_LOG(LogTemp, Log,
+    UE_LOG(LogTurnBasedMechanics, Log,
         TEXT("TurnBasedActionsComponent: Match ended on %s "
              "— stack cleared"),
         *GetOwner()->GetName());
@@ -329,7 +324,7 @@ void UTurnBasedActionsComponent::PushAction(UTurnBasedActionBase* Action)
 {
     if (!IsValid(Action))
     {
-        UE_LOG(LogTemp, Warning,
+        UE_LOG(LogTurnBasedMechanics, Warning,
             TEXT("TurnBasedActionsComponent: PushAction called "
                  "with null action on %s"),
             *GetOwner()->GetName());
@@ -346,7 +341,7 @@ void UTurnBasedActionsComponent::PushAction(UTurnBasedActionBase* Action)
     Action->Activate(GetOwningController());
     OnActionPushed.Broadcast(Action);
 
-    UE_LOG(LogTemp, Log,
+    UE_LOG(LogTurnBasedMechanics, Log,
         TEXT("TurnBasedActionsComponent: Pushed '%s' "
              "— stack depth: %d"),
         *Action->ActionTag.ToString(),
@@ -357,7 +352,7 @@ UTurnBasedActionBase* UTurnBasedActionsComponent::SafePopAction()
 {
     if (ActionStack.Num() <= 1)
     {
-        UE_LOG(LogTemp, Warning,
+        UE_LOG(LogTurnBasedMechanics, Warning,
             TEXT("TurnBasedActionsComponent: SafePopAction blocked "
                  "— cannot pop last action in stack on %s"),
             *GetOwner()->GetName());
@@ -379,7 +374,7 @@ UTurnBasedActionBase* UTurnBasedActionsComponent::SafePopAction()
         ActionStack.Last()->Activate(GetOwningController());
     }
 
-    UE_LOG(LogTemp, Log,
+    UE_LOG(LogTurnBasedMechanics, Log,
         TEXT("TurnBasedActionsComponent: Popped '%s' "
              "— stack depth: %d, new top: '%s'"),
         IsValid(Popped) ? *Popped->ActionTag.ToString() : TEXT("null"),
@@ -391,17 +386,8 @@ UTurnBasedActionBase* UTurnBasedActionsComponent::SafePopAction()
     return Popped;
 }
 
-void UTurnBasedActionsComponent::ClearAndPush(UTurnBasedActionBase* NewRoot)
+void UTurnBasedActionsComponent::ClearStack()
 {
-    if (!IsValid(NewRoot))
-    {
-        UE_LOG(LogTemp, Warning,
-            TEXT("TurnBasedActionsComponent: ClearAndPush called "
-                 "with null action on %s"),
-            *GetOwner()->GetName());
-        return;
-    }
-
     // Force deactivate all from top to bottom
     for (int32 i = ActionStack.Num() - 1; i >= 0; i--)
     {
@@ -412,13 +398,27 @@ void UTurnBasedActionsComponent::ClearAndPush(UTurnBasedActionBase* NewRoot)
     }
 
     ActionStack.Empty();
+}
+
+void UTurnBasedActionsComponent::ClearAndPush(UTurnBasedActionBase* NewRoot)
+{
+    if (!IsValid(NewRoot))
+    {
+        UE_LOG(LogTurnBasedMechanics, Warning,
+            TEXT("TurnBasedActionsComponent: ClearAndPush called "
+                 "with null action on %s"),
+            *GetOwner()->GetName());
+        return;
+    }
+
+    ClearStack();
 
     // Push and activate new root
     ActionStack.Add(NewRoot);
     NewRoot->Activate(GetOwningController());
     OnActionPushed.Broadcast(NewRoot);
 
-    UE_LOG(LogTemp, Log,
+    UE_LOG(LogTurnBasedMechanics, Log,
         TEXT("TurnBasedActionsComponent: Stack cleared and '%s' pushed "
              "as new root on %s"),
         *NewRoot->ActionTag.ToString(),
@@ -436,7 +436,7 @@ bool UTurnBasedActionsComponent::TryPushActionByRef(UTurnBasedAction* Action)
 {
     if (!IsValid(Action))
     {
-        UE_LOG(LogTemp, Warning,
+        UE_LOG(LogTurnBasedMechanics, Warning,
             TEXT("TurnBasedActionsComponent: TryPushAction "
                  "called with null action on %s"),
             *GetOwner()->GetName());
@@ -445,7 +445,7 @@ bool UTurnBasedActionsComponent::TryPushActionByRef(UTurnBasedAction* Action)
 
     if (!Action->CanActivate())
     {
-        UE_LOG(LogTemp, Log,
+        UE_LOG(LogTurnBasedMechanics, Log,
             TEXT("TurnBasedActionsComponent: '%s' cannot activate "
                  "— completions: %d/%d, cooldown: %d"),
             *Action->ActionTag.ToString(),
@@ -465,7 +465,7 @@ bool UTurnBasedActionsComponent::TryPushActionByRef(UTurnBasedAction* Action)
             if (TopAction->bIsRequired
                 && !TopAction->bAllowsOptionalInterrupt)
             {
-                UE_LOG(LogTemp, Warning,
+                UE_LOG(LogTurnBasedMechanics, Warning,
                     TEXT("TurnBasedActionsComponent: Optional '%s' "
                          "cannot interrupt required '%s' — "
                          "bAllowsOptionalInterrupt is false"),
@@ -486,7 +486,7 @@ void UTurnBasedActionsComponent::CancelTopAction()
 
     if (!IsValid(TopAction))
     {
-        UE_LOG(LogTemp, Warning,
+        UE_LOG(LogTurnBasedMechanics, Warning,
             TEXT("TurnBasedActionsComponent: CancelTopAction — "
                  "top of stack is not a UTurnBasedAction on %s"),
             *GetOwner()->GetName());
@@ -495,7 +495,7 @@ void UTurnBasedActionsComponent::CancelTopAction()
 
     if (!TopAction->bIsCancellable)
     {
-        UE_LOG(LogTemp, Warning,
+        UE_LOG(LogTurnBasedMechanics, Warning,
             TEXT("TurnBasedActionsComponent: CancelTopAction — "
                  "'%s' is not cancellable"),
             *TopAction->ActionTag.ToString());
@@ -516,7 +516,7 @@ void UTurnBasedActionsComponent::RequestTurnEnd()
 {
     if (!CanEndTurn())
     {
-        UE_LOG(LogTemp, Warning,
+        UE_LOG(LogTurnBasedMechanics, Warning,
             TEXT("TurnBasedActionsComponent: RequestTurnEnd — "
                  "CanAutoEndTurn returned false on %s"),
             *GetOwner()->GetName());
@@ -526,7 +526,7 @@ void UTurnBasedActionsComponent::RequestTurnEnd()
     OnTurnEndRequested.Broadcast();
     OnTurnEndRequested_Native.Broadcast();
 
-    UE_LOG(LogTemp, Log,
+    UE_LOG(LogTurnBasedMechanics, Log,
         TEXT("TurnBasedActionsComponent: Turn end requested on %s"),
         *GetOwner()->GetName());
 }
@@ -589,7 +589,7 @@ void UTurnBasedActionsComponent::OnTurnStarted_Implementation(
 {
     if (!IsValid(RootAction))
     {
-        UE_LOG(LogTemp, Error,
+        UE_LOG(LogTurnBasedMechanics, Error,
             TEXT("TurnBasedActionsComponent: OnTurnStarted — "
                  "RootActionClass not set on %s. "
                  "Root action is mandatory. "
@@ -605,7 +605,7 @@ void UTurnBasedActionsComponent::OnOpponentTurnStarted_Implementation()
 {
     if (!IsValid(SpectatorViewerAction))
     {
-        UE_LOG(LogTemp, Warning,
+        UE_LOG(LogTurnBasedMechanics, Warning,
             TEXT("TurnBasedActionsComponent: OnOpponentTurnStarted — "
                  "SpectatorViewerActionClass not set on %s. "
                  "Stack will remain unchanged."),
@@ -678,7 +678,7 @@ void UTurnBasedActionsComponent::LogActionRecord(UTurnBasedAction* Action, FStri
 
     ActionHistory.Add(Record);
 
-    UE_LOG(LogTemp, Log,
+    UE_LOG(LogTurnBasedMechanics, Log,
         TEXT("TurnBasedActionsComponent: [Turn %d] '%s' — %s"),
         Record.TurnNumber,
         *Record.ActionTag.ToString(),

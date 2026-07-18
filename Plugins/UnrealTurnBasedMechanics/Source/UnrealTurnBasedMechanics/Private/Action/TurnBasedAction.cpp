@@ -1,6 +1,7 @@
 ﻿// Fill out your copyright notice in the Description page of Project Settings.
 
 #include "Action/TurnBasedAction.h"
+#include "UnrealTurnBasedMechanics.h"
 #include "EnhancedInputComponent.h"
 #include "GameFramework/Controller.h"
 #include "Subsystem/GridWorldSubsystem.h"
@@ -19,7 +20,7 @@ void UTurnBasedAction::Complete()
 {
     if (!IsActive())
     {
-        UE_LOG(LogTemp, Warning,
+        UE_LOG(LogTurnBasedMechanics, Warning,
             TEXT("TurnBasedAction: '%s' Complete called but not active"),
             *ActionTag.ToString());
         return;
@@ -36,23 +37,13 @@ void UTurnBasedAction::Complete()
         TurnsUntilAvailable = CooldownTurns;
     }
 
-    // Call base deactivate path without ForceDeactivate
-    // so we fire the right delegates
     OnCompleted();
     OnActionCompleted.Broadcast(this);
     OnActionCompleted_Native.Broadcast(this);
 
-    // Fire base deactivated delegates
-    Deactivate_Internal();
-    OnDeactivated.Broadcast(this);
-    OnDeactivated_Native.Broadcast(this);
+    FinishAction();
 
-    // Clear active state via base
-    // We access bIsActive via ForceDeactivate but we want
-    // different delegates so set manually
-    // Note: bIsActive is private on base -- see note below
-
-    UE_LOG(LogTemp, Log,
+    UE_LOG(LogTurnBasedMechanics, Log,
         TEXT("TurnBasedAction: '%s' completed "
              "(%d completions this turn)"),
         *ActionTag.ToString(),
@@ -64,7 +55,7 @@ void UTurnBasedAction::Cancel()
     if (!IsActive()) return;
     if (!bIsCancellable)
     {
-        UE_LOG(LogTemp, Warning,
+        UE_LOG(LogTurnBasedMechanics, Warning,
             TEXT("TurnBasedAction: '%s' Cancel called "
                  "but bIsCancellable is false"),
             *ActionTag.ToString());
@@ -80,13 +71,19 @@ void UTurnBasedAction::Cancel()
     OnActionCancelled.Broadcast(this);
     OnActionCancelled_Native.Broadcast(this);
 
-    Deactivate_Internal();
-    OnDeactivated.Broadcast(this);
-    OnDeactivated_Native.Broadcast(this);
+    FinishAction();
 
-    UE_LOG(LogTemp, Log,
+    UE_LOG(LogTurnBasedMechanics, Log,
         TEXT("TurnBasedAction: '%s' cancelled"),
         *ActionTag.ToString());
+}
+
+void UTurnBasedAction::FinishAction()
+{
+    Deactivate_Internal();
+    SetIsActive(false);
+    OnDeactivated.Broadcast(this);
+    OnDeactivated_Native.Broadcast(this);
 }
 
 bool UTurnBasedAction::CanActivate() const
@@ -107,7 +104,7 @@ void UTurnBasedAction::TickCooldown(const bool bIsMyTurn)
 
     if (TurnsUntilAvailable <= 0)
     {
-        UE_LOG(LogTemp, Log,
+        UE_LOG(LogTurnBasedMechanics, Log,
             TEXT("TurnBasedAction: '%s' cooldown expired"),
             *ActionTag.ToString());
     }
@@ -122,7 +119,7 @@ void UTurnBasedAction::RequestBoardChange(const FTurnActionRequest& Request)
 {
     if (!Request.IsValid())
     {
-        UE_LOG(LogTemp, Warning,
+        UE_LOG(LogTurnBasedMechanics, Warning,
             TEXT("TurnBasedAction: '%s' fired invalid FTurnActionRequest"),
             *ActionTag.ToString());
         return;
@@ -146,7 +143,7 @@ void UTurnBasedAction::RequestNextAction(TSubclassOf<UTurnBasedAction> NextActio
 {
     if (!NextActionClass)
     {
-        UE_LOG(LogTemp, Warning,
+        UE_LOG(LogTurnBasedMechanics, Warning,
             TEXT("TurnBasedAction: '%s' RequestNextAction called "
                  "with null class"),
             *ActionTag.ToString());
@@ -156,7 +153,7 @@ void UTurnBasedAction::RequestNextAction(TSubclassOf<UTurnBasedAction> NextActio
     OnNextActionRequested.Broadcast(NextActionClass);
     OnNextActionRequested_Native.Broadcast(NextActionClass);
 
-    UE_LOG(LogTemp, Log,
+    UE_LOG(LogTurnBasedMechanics, Log,
         TEXT("TurnBasedAction: '%s' requested next action '%s'"),
         *ActionTag.ToString(),
         *NextActionClass->GetName());

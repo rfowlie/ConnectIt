@@ -1,6 +1,7 @@
 ﻿// Fill out your copyright notice in the Description page of Project Settings.
 
 #include "Action/TurnBasedActionBase.h"
+#include "UnrealTurnBasedMechanics.h"
 #include "GameFramework/Controller.h"
 #include "GameFramework/PlayerController.h"
 
@@ -9,7 +10,7 @@ void UTurnBasedActionBase::Activate(AController* InOwningController)
 {
 	if (bIsActive)
 	{
-		UE_LOG(LogTemp, Warning,
+		UE_LOG(LogTurnBasedMechanics, Warning,
 			TEXT("TurnBasedActionBase: '%s' Activate called "
 				 "but already active"),
 			*ActionTag.ToString());
@@ -23,7 +24,7 @@ void UTurnBasedActionBase::Activate(AController* InOwningController)
 	OnActivated.Broadcast(this);
 	OnActivated_Native.Broadcast(this);
 
-	UE_LOG(LogTemp, Log,
+	UE_LOG(LogTurnBasedMechanics, Log,
 		TEXT("TurnBasedActionBase: '%s' activated"),
 		*ActionTag.ToString());
 }
@@ -39,7 +40,7 @@ void UTurnBasedActionBase::ForceDeactivate()
 	OnForceDeactivated.Broadcast(this);
 	OnForceDeactivated_Native.Broadcast(this);
 
-	UE_LOG(LogTemp, Log,
+	UE_LOG(LogTurnBasedMechanics, Log,
 		TEXT("TurnBasedActionBase: '%s' force deactivated"),
 		*ActionTag.ToString());
 }

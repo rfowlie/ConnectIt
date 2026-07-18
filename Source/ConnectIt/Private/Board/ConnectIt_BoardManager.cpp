@@ -438,13 +438,13 @@ AConnectIt_BoardManager::GetScoringDirections()
 
 // --- Config Accessors ---
 
-UActionLoadOutDataAsset* AConnectIt_BoardManager::GetPlayerLoadout() const
+UActionLoadoutDataAsset* AConnectIt_BoardManager::GetPlayerLoadout() const
 {
     return IsValid(ConnectItConfig)
         ? ConnectItConfig->PlayerLoadout : nullptr;
 }
 
-UActionLoadOutDataAsset* AConnectIt_BoardManager::GetEnemyLoadout() const
+UActionLoadoutDataAsset* AConnectIt_BoardManager::GetEnemyLoadout() const
 {
     return IsValid(ConnectItConfig)
         ? ConnectItConfig->EnemyLoadout : nullptr;

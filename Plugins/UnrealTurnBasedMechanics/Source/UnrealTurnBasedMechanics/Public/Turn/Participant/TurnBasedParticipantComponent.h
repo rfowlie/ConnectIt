@@ -75,10 +75,6 @@ public:
 
     FOnOpponentTurnStarted_Native OnOpponentTurnStarted_Native;
 
-    // --- Called by manager ---
-
-    void NotifyAnyParticipantTurnStarted(bool bIsMyTurn) = delete;
-
 protected:
 
     virtual void BeginPlay() override;

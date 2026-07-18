@@ -2,6 +2,7 @@
 
 
 #include "Action/Spectator/TurnBasedPauseAction.h"
+#include "UnrealTurnBasedMechanics.h"
 #include "GameFramework/PlayerController.h"
 #include "Blueprint/UserWidget.h"
 
@@ -30,8 +31,8 @@ void UTurnBasedPauseAction::ShowPauseWidget()
 	{
 		ActivePauseWidget->AddToViewport();
 
-		UE_LOG(LogTemp, Log,
-			TEXT("TurnBasedDefaultPauseViewerAction: "
+		UE_LOG(LogTurnBasedMechanics, Log,
+			TEXT("TurnBasedPauseAction: "
 				 "Pause widget added to viewport"));
 	}
 }
@@ -43,8 +44,8 @@ void UTurnBasedPauseAction::HidePauseWidget()
 		ActivePauseWidget->RemoveFromParent();
 		ActivePauseWidget = nullptr;
 
-		UE_LOG(LogTemp, Log,
-			TEXT("TurnBasedDefaultPauseViewerAction: "
+		UE_LOG(LogTurnBasedMechanics, Log,
+			TEXT("TurnBasedPauseAction: "
 				 "Pause widget removed from viewport"));
 	}
 }
@@ -56,8 +57,8 @@ void UTurnBasedPauseAction::DisableInput()
 
 	PC->DisableInput(PC);
 
-	UE_LOG(LogTemp, Log,
-		TEXT("TurnBasedDefaultPauseViewerAction: Input disabled"));
+	UE_LOG(LogTurnBasedMechanics, Log,
+		TEXT("TurnBasedPauseAction: Input disabled"));
 }
 
 void UTurnBasedPauseAction::EnableInput()
@@ -67,6 +68,6 @@ void UTurnBasedPauseAction::EnableInput()
 
 	PC->EnableInput(PC);
 
-	UE_LOG(LogTemp, Log,
-		TEXT("TurnBasedDefaultPauseViewerAction: Input enabled"));
+	UE_LOG(LogTurnBasedMechanics, Log,
+		TEXT("TurnBasedPauseAction: Input enabled"));
 }

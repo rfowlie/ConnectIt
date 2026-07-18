@@ -196,6 +196,10 @@ private:
     void BindSelectionInput();
     void UnbindSelectionInput();
 
+    // Shared tail of Complete()/Cancel() -- runs Deactivate_Internal,
+    // clears the active flag, and broadcasts OnDeactivated
+    void FinishAction();
+
     UFUNCTION()
     void OnGridTileHoverChanged(AGridTileBase* NewTile);
 

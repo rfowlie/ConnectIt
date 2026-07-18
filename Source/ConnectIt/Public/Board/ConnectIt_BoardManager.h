@@ -9,7 +9,7 @@
 #include "Board/GridBoardManagerInterface.h"
 #include "ConnectIt_BoardManager.generated.h"
 
-class UActionLoadOutDataAsset;
+class UActionLoadoutDataAsset;
 class UConnectIt_ConfigComponent;
 class UConnectIt_TileStateInterpreter;
 class UConnectIt_PieceSpawnInterpreter;
@@ -84,10 +84,10 @@ public:
     // --- Config Accessors ---
 
     UFUNCTION(BlueprintPure, Category = "ConnectIt|Board")
-    UActionLoadOutDataAsset* GetPlayerLoadout() const;
+    UActionLoadoutDataAsset* GetPlayerLoadout() const;
 
     UFUNCTION(BlueprintPure, Category = "ConnectIt|Board")
-    UActionLoadOutDataAsset* GetEnemyLoadout() const;
+    UActionLoadoutDataAsset* GetEnemyLoadout() const;
 
     UFUNCTION(BlueprintPure, Category = "ConnectIt|Board")
     float GetWinScoreThreshold() const;
