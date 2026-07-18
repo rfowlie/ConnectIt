@@ -153,7 +153,7 @@ private:
     // Broadcasts to all participant components each turn start
     // Each component ticks its own cooldowns
     // Each component fires OnAnyParticipantTurnStarted(bIsMyTurn)
-    void BroadcastTurnStartToAllParticipants(int32 NewActiveIndex);
+    void BroadcastTurnStart(int32 ActiveIndex);
 
     // --- Helpers ---
     

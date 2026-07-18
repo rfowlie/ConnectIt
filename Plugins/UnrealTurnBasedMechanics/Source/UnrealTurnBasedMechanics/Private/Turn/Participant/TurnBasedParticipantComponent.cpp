@@ -46,10 +46,8 @@ void UTurnBasedParticipantComponent::ServerSubmitTurnEnd_Implementation()
 // --- Client RPC ---
 
 void UTurnBasedParticipantComponent::ClientReceiveTurnNotification_Implementation(
-    const FTurnNotification Notification)
+    FTurnNotification Notification)
 {
-    // Update bIsMyTurn based on phase before broadcasting
-    // so subscribers read the correct value when they receive the notification
     if (IsMyTurnStartingPhase(Notification.Phase))
     {
         bIsMyTurn = true;
@@ -63,16 +61,19 @@ void UTurnBasedParticipantComponent::ClientReceiveTurnNotification_Implementatio
     OnTurnNotificationReceived_Native.Broadcast(Notification);
 }
 
-// --- Manager callback ---
+// --- Manager Callback ---
 
-void UTurnBasedParticipantComponent::NotifyAnyParticipantTurnStarted(
-    bool bIsThisMyTurn)
+void UTurnBasedParticipantComponent::ReceiveOpponentTurnStarted(
+    int32 ActiveParticipantSlotIndex)
 {
-    OnAnyParticipantTurnStarted.Broadcast(bIsThisMyTurn);
-    OnAnyParticipantTurnStarted_Native.Broadcast(bIsThisMyTurn);
+    // Not my turn
+    bIsMyTurn = false;
+
+    OnOpponentTurnStarted.Broadcast(ActiveParticipantSlotIndex);
+    OnOpponentTurnStarted_Native.Broadcast(ActiveParticipantSlotIndex);
 }
 
-// --- Static phase helpers ---
+// --- Static Helpers ---
 
 bool UTurnBasedParticipantComponent::IsMyTurnStartingPhase(ETurnPhase Phase)
 {

@@ -1,9 +1,8 @@
 ﻿// Fill out your copyright notice in the Description page of Project Settings.
 
 #include "Action/TurnBasedAction.h"
-#include "GameFramework/Controller.h"
 #include "EnhancedInputComponent.h"
-#include "TurnBasedMechanicsStructs.h"
+#include "GameFramework/Controller.h"
 #include "Subsystem/GridWorldSubsystem.h"
 #include "Tile/GridTileBase.h"
 
@@ -16,48 +15,12 @@ void UTurnBasedAction::InitialiseAction(
     EnhancedInputComponent = InInputComponent;
 }
 
-void UTurnBasedAction::Activate()
+void UTurnBasedAction::Complete()
 {
-    if (!CanActivate())
+    if (!IsActive())
     {
         UE_LOG(LogTemp, Warning,
-            TEXT("TurnBasedAction: %s cannot activate — state: %s"),
-            *ActionTag.ToString(),
-            *UEnum::GetValueAsString(State));
-        return;
-    }
-
-    State = ETurnBasedActionState::Active;
-    UsesThisTurn++;
-
-    if (bRequiresSelection)
-    {
-        BindSelectionInput();
-    }
-
-    OnActivated();
-    OnActionActivated.Broadcast(this);
-    OnActionActivated_Native.Broadcast(this);
-
-    UE_LOG(LogTemp, Log,
-        TEXT("TurnBasedAction: %s activated"),
-        *ActionTag.ToString());
-}
-
-void UTurnBasedAction::Cancel()
-{
-    if (!bIsCancellable)
-    {
-        UE_LOG(LogTemp, Warning,
-            TEXT("TurnBasedAction: %s is not cancellable"),
-            *ActionTag.ToString());
-        return;
-    }
-
-    if (State != ETurnBasedActionState::Active)
-    {
-        UE_LOG(LogTemp, Warning,
-            TEXT("TurnBasedAction: %s cancel called but not active"),
+            TEXT("TurnBasedAction: '%s' Complete called but not active"),
             *ActionTag.ToString());
         return;
     }
@@ -65,83 +28,94 @@ void UTurnBasedAction::Cancel()
     UnbindSelectionInput();
     ClearSelectionState();
 
-    // Refund the use -- cancellation should not consume the action
-    UsesThisTurn = FMath::Max(0, UsesThisTurn - 1);
-    State = ETurnBasedActionState::Cancelled;
+    // Increment completions -- only Complete() does this
+    CompletionsThisTurn++;
+
+    if (CooldownTurns > 0)
+    {
+        TurnsUntilAvailable = CooldownTurns;
+    }
+
+    // Call base deactivate path without ForceDeactivate
+    // so we fire the right delegates
+    OnCompleted();
+    OnActionCompleted.Broadcast(this);
+    OnActionCompleted_Native.Broadcast(this);
+
+    // Fire base deactivated delegates
+    Deactivate_Internal();
+    OnDeactivated.Broadcast(this);
+    OnDeactivated_Native.Broadcast(this);
+
+    // Clear active state via base
+    // We access bIsActive via ForceDeactivate but we want
+    // different delegates so set manually
+    // Note: bIsActive is private on base -- see note below
+
+    UE_LOG(LogTemp, Log,
+        TEXT("TurnBasedAction: '%s' completed "
+             "(%d completions this turn)"),
+        *ActionTag.ToString(),
+        CompletionsThisTurn);
+}
+
+void UTurnBasedAction::Cancel()
+{
+    if (!IsActive()) return;
+    if (!bIsCancellable)
+    {
+        UE_LOG(LogTemp, Warning,
+            TEXT("TurnBasedAction: '%s' Cancel called "
+                 "but bIsCancellable is false"),
+            *ActionTag.ToString());
+        return;
+    }
+
+    UnbindSelectionInput();
+    ClearSelectionState();
+
+    // No CompletionsThisTurn increment on cancel
 
     OnCancelled();
     OnActionCancelled.Broadcast(this);
     OnActionCancelled_Native.Broadcast(this);
 
-    UE_LOG(LogTemp, Log,
-        TEXT("TurnBasedAction: %s cancelled"),
-        *ActionTag.ToString());
-}
-
-void UTurnBasedAction::Complete()
-{
-    UnbindSelectionInput();
-    ClearSelectionState();
-
-    State = ETurnBasedActionState::Completed;
-
-    if (CooldownTurns > 0)
-    {
-        TurnsUntilAvailable = CooldownTurns;
-        State = ETurnBasedActionState::OnCooldown;
-    }
-
-    OnCompleted();
-    OnActionCompleted.Broadcast(this);
-    OnActionCompleted_Native.Broadcast(this);
+    Deactivate_Internal();
+    OnDeactivated.Broadcast(this);
+    OnDeactivated_Native.Broadcast(this);
 
     UE_LOG(LogTemp, Log,
-        TEXT("TurnBasedAction: %s completed"),
+        TEXT("TurnBasedAction: '%s' cancelled"),
         *ActionTag.ToString());
 }
 
 bool UTurnBasedAction::CanActivate() const
 {
-    if (State == ETurnBasedActionState::Active)    return false;
-    if (State == ETurnBasedActionState::OnCooldown) return false;
-    if (TurnsUntilAvailable > 0)                   return false;
-    if (MaxUsesPerTurn > 0 && UsesThisTurn >= MaxUsesPerTurn) return false;
+    if (IsActive()) return false;
+    if (TurnsUntilAvailable > 0) return false;
+    if (MaxCompletionsPerTurn > 0
+        && CompletionsThisTurn >= MaxCompletionsPerTurn) return false;
     return true;
 }
 
-void UTurnBasedAction::TickCooldown(bool bIsOwningParticipantTurn)
+void UTurnBasedAction::TickCooldown(const bool bIsMyTurn)
 {
-    if (!ShouldTickCooldown(bIsOwningParticipantTurn)) return;
+    if (!ShouldTickCooldown(bIsMyTurn)) return;
     if (TurnsUntilAvailable <= 0) return;
 
     TurnsUntilAvailable--;
 
     if (TurnsUntilAvailable <= 0)
     {
-        if (State == ETurnBasedActionState::OnCooldown)
-        {
-            State = ETurnBasedActionState::Available;
-        }
-
         UE_LOG(LogTemp, Log,
-            TEXT("TurnBasedAction: %s cooldown expired — now available"),
+            TEXT("TurnBasedAction: '%s' cooldown expired"),
             *ActionTag.ToString());
     }
 }
 
 void UTurnBasedAction::ResetTurnState()
 {
-    UsesThisTurn = 0;
-
-    // Restore completed non-cooldown actions to available
-    if (State == ETurnBasedActionState::Completed
-        || State == ETurnBasedActionState::Cancelled)
-    {
-        if (CooldownTurns == 0)
-        {
-            State = ETurnBasedActionState::Available;
-        }
-    }
+    CompletionsThisTurn = 0;
 }
 
 void UTurnBasedAction::RequestBoardChange(const FTurnActionRequest& Request)
@@ -149,27 +123,13 @@ void UTurnBasedAction::RequestBoardChange(const FTurnActionRequest& Request)
     if (!Request.IsValid())
     {
         UE_LOG(LogTemp, Warning,
-            TEXT("TurnBasedAction: %s fired invalid FTurnActionRequest"),
+            TEXT("TurnBasedAction: '%s' fired invalid FTurnActionRequest"),
             *ActionTag.ToString());
         return;
     }
 
     OnChangeRequested.Broadcast(Request);
     OnChangeRequested_Native.Broadcast(Request);
-
-    UE_LOG(LogTemp, Log,
-        TEXT("TurnBasedAction: %s requested board change — type: %s"),
-        *ActionTag.ToString(),
-        *Request.RequestType.ToString());
-}
-
-UWorld* UTurnBasedAction::GetWorld() const
-{
-    if (UActorComponent* Comp = GetTypedOuter<UActorComponent>())
-        return Comp->GetWorld();
-    if (AActor* Actor = GetTypedOuter<AActor>())
-        return Actor->GetWorld();
-    return nullptr;
 }
 
 UGridWorldSubsystem* UTurnBasedAction::GetGridSubsystem() const
@@ -178,6 +138,47 @@ UGridWorldSubsystem* UTurnBasedAction::GetGridSubsystem() const
     return IsValid(World)
         ? World->GetSubsystem<UGridWorldSubsystem>()
         : nullptr;
+}
+
+// --- Base overrides ---
+
+void UTurnBasedAction::RequestNextAction(TSubclassOf<UTurnBasedAction> NextActionClass)
+{
+    if (!NextActionClass)
+    {
+        UE_LOG(LogTemp, Warning,
+            TEXT("TurnBasedAction: '%s' RequestNextAction called "
+                 "with null class"),
+            *ActionTag.ToString());
+        return;
+    }
+
+    OnNextActionRequested.Broadcast(NextActionClass);
+    OnNextActionRequested_Native.Broadcast(NextActionClass);
+
+    UE_LOG(LogTemp, Log,
+        TEXT("TurnBasedAction: '%s' requested next action '%s'"),
+        *ActionTag.ToString(),
+        *NextActionClass->GetName());
+}
+
+void UTurnBasedAction::Activate_Internal_Implementation()
+{
+    if (bRequiresSelection) BindSelectionInput();
+}
+
+void UTurnBasedAction::Deactivate_Internal_Implementation()
+{
+    UnbindSelectionInput();
+    ClearSelectionState();
+}
+
+void UTurnBasedAction::ForceDeactivate_Internal_Implementation()
+{
+    // Force deactivate -- no completion increment
+    // Clean up selection state same as cancel
+    UnbindSelectionInput();
+    ClearSelectionState();
 }
 
 // --- Input Binding ---
@@ -220,7 +221,6 @@ void UTurnBasedAction::OnGridTileHoverChanged(AGridTileBase* NewTile)
 {
     AGridTileBase* Previous = CurrentHoveredTile.Get();
 
-    // Clear previous hover state
     if (IsValid(Previous) && Previous != NewTile)
     {
         HandleHoverCleared(Previous);
@@ -242,45 +242,17 @@ void UTurnBasedAction::OnSelectionInputTriggered()
 {
     AGridTileBase* Tile = CurrentHoveredTile.Get();
     if (!IsValid(Tile)) return;
-
-    if (IsValidSelectionTile(Tile))
-    {
-        HandleValidSelection(Tile);
-    }
+    if (IsValidSelectionTile(Tile)) HandleValidSelection(Tile);
 }
 
 // --- Default Virtual Implementations ---
 
-void UTurnBasedAction::OnActivated_Implementation() {}
 void UTurnBasedAction::OnCancelled_Implementation() {}
 void UTurnBasedAction::OnCompleted_Implementation() {}
-
-bool UTurnBasedAction::IsValidHoverTile_Implementation(
-    AGridTileBase* Tile) const
-{
-    return IsValid(Tile);
-}
-
-bool UTurnBasedAction::IsValidSelectionTile_Implementation(
-    AGridTileBase* Tile) const
-{
-    return IsValid(Tile);
-}
-
-void UTurnBasedAction::HandleValidHover_Implementation(
-    AGridTileBase* Tile) {}
-
-void UTurnBasedAction::HandleHoverCleared_Implementation(
-    AGridTileBase* PreviousTile) {}
-
-void UTurnBasedAction::HandleValidSelection_Implementation(
-    AGridTileBase* Tile) {}
-
+bool UTurnBasedAction::IsValidHoverTile_Implementation(AGridTileBase* Tile) const { return IsValid(Tile); }
+bool UTurnBasedAction::IsValidSelectionTile_Implementation(AGridTileBase* Tile) const { return IsValid(Tile); }
+void UTurnBasedAction::HandleValidHover_Implementation(AGridTileBase*) {}
+void UTurnBasedAction::HandleHoverCleared_Implementation(AGridTileBase*) {}
+void UTurnBasedAction::HandleValidSelection_Implementation(AGridTileBase*) {}
 void UTurnBasedAction::ClearSelectionState_Implementation() {}
-
-bool UTurnBasedAction::ShouldTickCooldown_Implementation(
-    bool bIsOwningParticipantTurn) const
-{
-    // Default -- only tick on owning participant's turn
-    return bIsOwningParticipantTurn;
-}
+bool UTurnBasedAction::ShouldTickCooldown_Implementation(bool bIsMyTurn) const { return bIsMyTurn; }

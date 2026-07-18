@@ -7,6 +7,8 @@
 #include "GridMechanicsBaseStructs.h"
 #include "BoardStateComponentBase.generated.h"
 
+class UBoardStateInterpreter;
+
 
 // TODO: move to ConnectIt and rename
 // Extensible tile data — add game specific fields in subclass or directly here

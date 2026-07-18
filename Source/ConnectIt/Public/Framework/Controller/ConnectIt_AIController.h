@@ -51,12 +51,13 @@ private:
 	int32 MySlotIndex = -1;
 
 	void InitialiseFromBoardActor();
-	
+	void HandleOpponentTurnStarted(int32 ActiveParticipantSlotIndex);
+
 
 	// Checks blackboard for forced move modifier
 	// Returns true if a forced move was found and submitted
 	bool CheckAndApplyForcedMove();
 
 	// Submits a move at the given position
-	void SubmitMove(FGridPosition Position) const;
+	void SubmitMove(FGridPosition Position);
 };

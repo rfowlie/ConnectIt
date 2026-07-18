@@ -5,7 +5,7 @@
 #include "Engine/Level.h"
 #include "Engine/World.h"
 #include "EngineUtils.h"
-#include "Board/BoardManager.h"
+#include "Board/GridBoardManagerInterface.h"
 #include "Tile/GridTileRegistryComponent.h"
 #include "Tile/GridTileBase.h"
 
@@ -24,11 +24,14 @@ EDataValidationResult UGridValidatorBase::ValidateLoadedAsset_Implementation(
     if (!IsValid(World)) return EDataValidationResult::NotValidated;
 
     // Find the board actor in the level
-    ABoardManager* BoardActor = nullptr;
-    for (TActorIterator<ABoardManager> It(World); It; ++It)
+    AActor* BoardActor = nullptr;
+    for (TActorIterator<AActor> It(World); It; ++It)
     {
-        BoardActor = *It;
-        break;
+        if (It->Implements<UGridBoardManagerInterface>())
+        {
+            BoardActor = *It;
+            break;
+        }        
     }
 
     if (!IsValid(BoardActor))

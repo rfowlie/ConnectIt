@@ -6,6 +6,8 @@
 #include "Kismet/BlueprintFunctionLibrary.h"
 #include "ConnectIt_GameUtilityLibrary.generated.h"
 
+struct FGridPosition;
+class AGridTileBase;
 class AConnectIt_BoardManager;
 class AConnectIt_GameState;
 class UConnectIt_BoardStateComponent;
@@ -36,11 +38,16 @@ public:
     static UConnectIt_BoardStateComponent* GetBoardStateComponent(
         const UObject* WorldContextObject);
 
-    // Returns the board manager component from the board manager
+    
+    // --- Game Board ---
+
     UFUNCTION(BlueprintPure, Category = "ConnectIt|Utility",
-        meta = (WorldContext = "WorldContextObject"))
-    static UConnectIt_BoardManagerComponent* GetBoardManagerComponent(
-        const UObject* WorldContextObject);
+    meta = (WorldContext = "WorldContextObject"))
+    static bool GetGridPositionForTile(
+        const UObject* WorldContextObject,
+        const AGridTileBase* Tile,
+        FGridPosition& OutPosition);
+
 
     // --- Game State ---
 

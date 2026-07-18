@@ -7,6 +7,7 @@
 #include "Components/ActorComponent.h"
 #include "GridPieceRegistryComponent.generated.h"
 
+class AGridPieceBase;
 class UGridTileRegistryComponent;
 class UGridWorldSubsystem;
 class AGridTileBase;

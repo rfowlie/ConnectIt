@@ -12,13 +12,13 @@
 // Listens to board state changes to drive any observation UI
 // Cannot affect board state
 UCLASS(Blueprintable, BlueprintType, EditInlineNew, DefaultToInstanced)
-class CONNECTIT_API UConnectIt_DefaultViewerAction : public UTurnBasedViewerAction
+class CONNECTIT_API UConnectIt_DefaultViewerAction : public UTurnBasedSpectatorAction
 {
 	GENERATED_BODY()
 
 protected:
-	virtual void OnActivated_Implementation() override;
-	virtual void OnDeactivated_Implementation() override;
+	virtual void Activate_Internal_Implementation() override;
+	virtual void Deactivate_Internal_Implementation() override;
 
 private:
 

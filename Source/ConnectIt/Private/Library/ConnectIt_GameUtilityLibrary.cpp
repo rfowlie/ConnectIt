@@ -11,6 +11,7 @@
 #include "Turn/Participant/TurnBasedParticipantManagerComponent.h"
 #include "Turn/Participant/TurnBasedParticipantComponent.h"
 #include "GameFramework/PlayerController.h"
+#include "Tile/GridTileRegistryComponent.h"
 
 
 AConnectIt_BoardManager* UConnectIt_GameUtilityLibrary::GetBoardManager(
@@ -37,15 +38,19 @@ UConnectIt_BoardStateComponent* UConnectIt_GameUtilityLibrary::GetBoardStateComp
     const UObject* WorldContextObject)
 {
     AConnectIt_BoardManager* BM = GetBoardManager(WorldContextObject);
-    return IsValid(BM) ? BM->ConnectItBoardState : nullptr;
+    if (!IsValid(BM)) return nullptr;
+    return Cast<UConnectIt_BoardStateComponent>(BM->GetBoardState());
 }
 
-UConnectIt_BoardManagerComponent*
-UConnectIt_GameUtilityLibrary::GetBoardManagerComponent(
-    const UObject* WorldContextObject)
+bool UConnectIt_GameUtilityLibrary::GetGridPositionForTile(
+    const UObject* WorldContextObject,
+    const AGridTileBase* Tile,
+    FGridPosition& OutPosition)
 {
     AConnectIt_BoardManager* BM = GetBoardManager(WorldContextObject);
-    return IsValid(BM) ? BM->BoardManager : nullptr;
+    if (!IsValid(BM)) return false;
+    OutPosition = BM->GetTileRegistry()->GetPositionOfTile(Tile);
+    return true;
 }
 
 AConnectIt_GameState* UConnectIt_GameUtilityLibrary::GetConnectItGameState(

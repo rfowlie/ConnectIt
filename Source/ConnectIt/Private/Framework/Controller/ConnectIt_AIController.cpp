@@ -6,8 +6,10 @@
 #include "Turn/Participant/TurnBasedParticipantComponent.h"
 #include "Action/ActionLoadoutDataAsset.h"
 #include "Board/ConnectIt_BoardManager.h"
+#include "Board/ConnectIt_BoardManagerComponent.h"
 #include "Action/TurnBasedActionsComponent.h"
-#include "MinMax/ConnectIt_MinMaxTreeBuilder.h"
+#include "Framework/Subsystem/ConnectIt_BlackboardSubsystem.h"
+#include "Tile/GridTileBase.h"
 
 
 AConnectIt_AIController::AConnectIt_AIController()
@@ -19,19 +21,25 @@ AConnectIt_AIController::AConnectIt_AIController()
     ActionComponent =
         CreateDefaultSubobject<UTurnBasedActionsComponent>(
             TEXT("ActionComponent"));
-    
 }
 
 void AConnectIt_AIController::BeginPlay()
 {
     Super::BeginPlay();
 
-    // Cache slot index for blackboard lookups
+    // AI controller only exists on server
+    if (!HasAuthority()) return;
+
+    // Cache slot index -- may be -1 until registered
     MySlotIndex = ParticipantComponent->CachedSlotIndex;
 
+    // Bind turn notification -- Blueprint subclass implements logic
     ParticipantComponent->OnTurnNotificationReceived.AddDynamic(
         this, &AConnectIt_AIController::HandleTurnNotification);
-    
+
+    // Bind opponent turn -- notify action component
+    ParticipantComponent->OnOpponentTurnStarted.AddDynamic(
+        this, &AConnectIt_AIController::HandleOpponentTurnStarted);
 
     InitialiseFromBoardActor();
 }
@@ -43,7 +51,8 @@ void AConnectIt_AIController::InitialiseFromBoardActor()
     if (!IsValid(BoardActor))
     {
         UE_LOG(LogTemp, Error,
-            TEXT("ConnectItAIController: No AConnectItBoardActor found"));
+            TEXT("ConnectIt_AIController: No AConnectIt_BoardManager "
+                 "found in world"));
         return;
     }
 
@@ -52,77 +61,121 @@ void AConnectIt_AIController::InitialiseFromBoardActor()
     if (IsValid(LoadOut))
     {
         ActionComponent->InitialiseFromLoadout(LoadOut);
-
-        // Wire passthrough to board manager
-        ActionComponent->OnBoardChangeRequested.AddDynamic(
-            BoardActor->BoardManager,
-            &UConnectIt_BoardManagerComponent::ProcessRequest);
+    }
+    else
+    {
+        UE_LOG(LogTemp, Warning,
+            TEXT("ConnectIt_AIController: No enemy loadout set "
+                 "on board manager config"));
     }
 
-    // auto attempt to 
+    // Register as AI participant with game mode
     if (ATurnBasedGameMode* GameMode = Cast<ATurnBasedGameMode>(
         GetWorld()->GetAuthGameMode()))
     {
         GameMode->RegisterAIParticipant(this);
+
+        // Update slot index after registration
+        MySlotIndex = ParticipantComponent->CachedSlotIndex;
+
+        UE_LOG(LogTemp, Log,
+            TEXT("ConnectIt_AIController: Registered as AI participant "
+                 "at slot %d"),
+            MySlotIndex);
     }
     else
     {
         UE_LOG(LogTemp, Error,
-            TEXT("ConnectItAIController: game mode not Turn Based"));
+            TEXT("ConnectIt_AIController: GameMode is not ATurnBasedGameMode"));
         return;
     }
-    
+
     UE_LOG(LogTemp, Log,
-        TEXT("ConnectItAIController: Initialised from board actor"));
+        TEXT("ConnectIt_AIController: Initialised from board manager"));
+}
+
+void AConnectIt_AIController::HandleOpponentTurnStarted(
+    int32 ActiveParticipantSlotIndex)
+{
+    ActionComponent->NotifyOpponentTurnStarted();
+
+    UE_LOG(LogTemp, Log,
+        TEXT("ConnectIt_AIController: Opponent turn started "
+             "— active slot: %d"),
+        ActiveParticipantSlotIndex);
 }
 
 bool AConnectIt_AIController::CheckAndApplyForcedMove()
 {
-    // UConnectItBlackboardSubsystem* Blackboard =
-    //     GetWorld()->GetSubsystem<UConnectItBlackboardSubsystem>();
-    //
-    // if (!IsValid(Blackboard)) return false;
-    // if (!Blackboard->HasModifier(MySlotIndex)) return false;
-    //
-    // const FTurnModifier Modifier = Blackboard->GetModifier(MySlotIndex);
-    // Blackboard->ClearModifier(MySlotIndex);
-    //
-    // if (!IsValid(Modifier.TargetTile))
-    // {
-    //     UE_LOG(LogTemp, Warning,
-    //         TEXT("ConnectItAIController: Forced move modifier has "
-    //              "null TargetTile — ignoring"));
-    //     return false;
-    // }
-    //
-    // const FGridPosition ForcedPosition =
-    //     Modifier.TargetTile->GetGridPosition();
-    //
-    // UE_LOG(LogTemp, Log,
-    //     TEXT("ConnectItAIController: Applying forced move at (%d,%d) "
-    //          "from shard '%s'"),
-    //     ForcedPosition.X, ForcedPosition.Y,
-    //     *Modifier.SourceTag.ToString());
-    //
-    // SubmitMove(ForcedPosition);
+    UConnectIt_BlackboardSubsystem* Blackboard =
+        UConnectIt_GameUtilityLibrary::GetBlackboardSubsystem(this);
+
+    if (!IsValid(Blackboard)) return false;
+    if (!Blackboard->HasModifier(MySlotIndex)) return false;
+
+    const FTurnModifier Modifier = Blackboard->GetModifier(MySlotIndex);
+    Blackboard->ClearModifier(MySlotIndex);
+
+    if (!IsValid(Modifier.TargetTile))
+    {
+        UE_LOG(LogTemp, Warning,
+            TEXT("ConnectIt_AIController: Forced move modifier "
+                 "has null TargetTile — ignoring"));
+        return false;
+    }
+
+    FGridPosition ForcedPosition;
+    UConnectIt_GameUtilityLibrary::GetGridPositionForTile(
+        this, Modifier.TargetTile, ForcedPosition);
+
+    UE_LOG(LogTemp, Log,
+        TEXT("ConnectIt_AIController: Applying forced move at (%d,%d) "
+             "from shard '%s'"),
+        ForcedPosition.X,
+        ForcedPosition.Y,
+        *Modifier.SourceTag.ToString());
+
+    SubmitMove(ForcedPosition);
     return true;
 }
 
-void AConnectIt_AIController::SubmitMove(const FGridPosition Position) const
+void AConnectIt_AIController::SubmitMove(const FGridPosition Position)
 {
-    // Build request identical to what UPlacePieceAction would send
+    // AI is server side -- submit directly to board manager
+    // No ServerRPC needed
+    AConnectIt_BoardManager* BoardManager =
+        UConnectIt_GameUtilityLibrary::GetBoardManager(this);
+
+    if (!IsValid(BoardManager))
+    {
+        UE_LOG(LogTemp, Error,
+            TEXT("ConnectIt_AIController: SubmitMove failed "
+                 "— board manager component not found"));
+        return;
+    }
+
     FTurnActionRequest Request;
-    Request.RequestType =
-        FGameplayTag::RequestGameplayTag("ConnectIt.Board.PlacePiece");
+    Request.RequestType = FGameplayTag::RequestGameplayTag("ConnectIt.Board.PlacePiece");
     Request.Positions.Add(Position);
     Request.FactionID = MySlotIndex;
 
-    // Route through action component ServerRPC
-    // Same path as human player actions -- consistent validation
-    ActionComponent->OnBoardChangeRequested.Broadcast(Request);
+    BoardManager->ProcessRequest(Request);
+
+    // Notify action component turn ended
+    // Cast away const since action component state needs updating
+    if (UTurnBasedActionsComponent* AC =
+        const_cast<AConnectIt_AIController*>(this)->ActionComponent.Get())
+    {
+        AC->NotifyTurnEnded();
+    }
+
+    // Submit turn end
+    ParticipantComponent->ServerSubmitTurnEnd();
 
     UE_LOG(LogTemp, Log,
-        TEXT("ConnectItAIController: Move submitted at (%d,%d)"),
-        Position.X, Position.Y);
+        TEXT("ConnectIt_AIController: Move submitted at (%d,%d) "
+             "faction %d"),
+        Position.X,
+        Position.Y,
+        MySlotIndex);
 }
-

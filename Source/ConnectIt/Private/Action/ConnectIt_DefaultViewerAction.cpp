@@ -6,7 +6,7 @@
 #include "Library/ConnectIt_GameUtilityLibrary.h"
 
 
-void UConnectIt_DefaultViewerAction::OnActivated_Implementation()
+void UConnectIt_DefaultViewerAction::Activate_Internal_Implementation()
 {
     BindToBoardState();
 
@@ -16,7 +16,7 @@ void UConnectIt_DefaultViewerAction::OnActivated_Implementation()
     }
 }
 
-void UConnectIt_DefaultViewerAction::OnDeactivated_Implementation()
+void UConnectIt_DefaultViewerAction::Deactivate_Internal_Implementation()
 {
     UnbindFromBoardState();
 }

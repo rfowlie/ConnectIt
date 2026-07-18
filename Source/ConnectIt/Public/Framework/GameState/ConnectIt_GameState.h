@@ -52,6 +52,7 @@ struct CONNECTIT_API FConnectItMatchResult
 
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnMatchResultUpdated, const FConnectItMatchResult&, Result);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FonMatchPhaseUpdated, EMatchPhase, UpdatedPhase);
 
 UCLASS()
 class CONNECTIT_API AConnectIt_GameState : public ATurnBasedGameState
@@ -74,6 +75,9 @@ public:
     // Fires on all clients when match result is updated
     UPROPERTY(BlueprintAssignable, Category = "ConnectIt|Match")
     FOnMatchResultUpdated OnMatchResultUpdated;
+
+    UPROPERTY(BlueprintAssignable, Category = "ConnectIt|Match")
+    FonMatchPhaseUpdated OnMatchPhaseChanged;
 
     // --- Server API ---
     // Called by AConnectIt_GameMode when game over fires

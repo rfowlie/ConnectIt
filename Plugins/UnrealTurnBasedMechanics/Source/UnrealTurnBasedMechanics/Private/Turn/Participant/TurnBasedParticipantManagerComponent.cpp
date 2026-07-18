@@ -237,16 +237,16 @@ void UTurnBasedParticipantManagerComponent::StartTurn(int32 ParticipantIndex)
         return;
     }
 
-    ActiveParticipantIndex  = ParticipantIndex;
-    ReplicatedTurnDuration  = TurnDuration;
+    ActiveParticipantIndex = ParticipantIndex;
+    ReplicatedTurnDuration = TurnDuration;
     TurnNumber++;
 
-    // Broadcast to all participants before notifying active one
-    // Each participant component ticks cooldowns and fires its own delegate
-    BroadcastTurnStartToAllParticipants(ParticipantIndex);
-
     SetPhase(ETurnPhase::TurnStart);
-    NotifyActiveParticipant(ETurnPhase::TurnStart);
+
+    // Broadcast to all participants
+    // Active participant receives ClientReceiveTurnNotification
+    // All others receive ReceiveOpponentTurnStarted
+    BroadcastTurnStart(ParticipantIndex);
 
     GetWorld()->GetTimerManager().SetTimer(
         TurnTimerHandle,
@@ -409,9 +409,12 @@ void UTurnBasedParticipantManagerComponent::CheckGameOver()
     }
 }
 
-void UTurnBasedParticipantManagerComponent::BroadcastTurnStartToAllParticipants(
-    const int32 NewActiveIndex)
+void UTurnBasedParticipantManagerComponent::BroadcastTurnStart(int32 ActiveIndex)
 {
+    if (!Participants.IsValidIndex(ActiveIndex)) return;
+
+    const int32 ActiveSlotIndex = Participants[ActiveIndex].SlotIndex;
+
     for (int32 i = 0; i < Participants.Num(); i++)
     {
         const FTurnParticipantInfo& Info = Participants[i];
@@ -421,13 +424,19 @@ void UTurnBasedParticipantManagerComponent::BroadcastTurnStartToAllParticipants(
             GetParticipantComponent(Info.Controller.Get());
         if (!IsValid(ParticipantComp)) continue;
 
-        const bool bIsMyTurn = (i == NewActiveIndex);
-
-        // Updated to match renamed function on participant component
-        ParticipantComp->NotifyAnyParticipantTurnStarted(bIsMyTurn);
+        if (i == ActiveIndex)
+        {
+            // Active participant receives full turn notification
+            ParticipantComp->ClientReceiveTurnNotification(
+                BuildNotification(i, ETurnPhase::TurnStart));
+        }
+        else
+        {
+            // All other participants told who is now active
+            ParticipantComp->ReceiveOpponentTurnStarted(ActiveSlotIndex);
+        }
     }
 }
-
 // --- Helpers ---
 
 FTurnParticipantInfo* UTurnBasedParticipantManagerComponent::FindParticipant(
