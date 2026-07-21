@@ -157,7 +157,7 @@ void UTurnBasedParticipantManagerComponent::NotifyParticipantDisconnected(
     {
         GetWorld()->GetTimerManager().ClearTimer(TurnTimerHandle);
         DisconnectedParticipantIndex = DisconnectedIndex;
-        SetPhase(ETurnPhase::Paused);
+        SetPhase(ETurnPhase::TurnPaused);
 
         GetWorld()->GetTimerManager().SetTimer(
             ReconnectTimerHandle,
@@ -189,7 +189,7 @@ void UTurnBasedParticipantManagerComponent::NotifyParticipantReconnected(
         *Info->DisplayName);
 
     if (ReconnectedIndex == DisconnectedParticipantIndex
-        && CurrentPhase == ETurnPhase::Paused)
+        && CurrentPhase == ETurnPhase::TurnPaused)
     {
         GetWorld()->GetTimerManager().ClearTimer(ReconnectTimerHandle);
         DisconnectedParticipantIndex = -1;
@@ -307,7 +307,7 @@ void UTurnBasedParticipantManagerComponent::AdvanceToNextParticipant()
 
     const int32 NextIndex =
         ITurnOrderInterface::Execute_GetNextParticipantIndex(
-            TurnOrderStrategy,
+            TurnOrderStrategy.GetObject(),
             Participants,
             ActiveParticipantIndex
         );
@@ -387,7 +387,7 @@ void UTurnBasedParticipantManagerComponent::CheckReadyStatus()
 
         const int32 FirstIndex =
             ITurnOrderInterface::Execute_GetFirstParticipantIndex(
-                TurnOrderStrategy, Participants);
+                TurnOrderStrategy.GetObject(), Participants);
 
         StartTurn(FirstIndex);
     }

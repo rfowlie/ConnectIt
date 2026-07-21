@@ -29,16 +29,16 @@ class UNREALGRIDMECHANICS_API IGridBoardManagerInterface
 	// Add interface functions to this class. This is the class that will be inherited to implement this interface.
 public:
 
-	UFUNCTION(BlueprintNativeEvent, BlueprintPure, Category = "Grid|Board")
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "Grid|Board")
 	UGridTileRegistryComponent* GetTileRegistry() const;
 
-	UFUNCTION(BlueprintNativeEvent, BlueprintPure, Category = "Grid|Board")
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "Grid|Board")
 	UGridPieceRegistryComponent* GetPieceRegistry() const;
 	
-	UFUNCTION(BlueprintNativeEvent, BlueprintPure, Category = "Grid|Board")
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "Grid|Board")
 	UBoardStateComponentBase* GetBoardState() const;
 
-	UFUNCTION(BlueprintNativeEvent, BlueprintPure, Category = "Grid|Board")
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "Grid|Board")
 	UBoardShiftComponent* GetShiftComponent() const;
 	
 };

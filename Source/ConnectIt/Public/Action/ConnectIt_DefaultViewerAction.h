@@ -3,7 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "Action/TurnBasedViewerAction.h"
+#include "Action/TurnBasedSpectatorAction.h"
 #include "ConnectIt_DefaultViewerAction.generated.h"
 
 

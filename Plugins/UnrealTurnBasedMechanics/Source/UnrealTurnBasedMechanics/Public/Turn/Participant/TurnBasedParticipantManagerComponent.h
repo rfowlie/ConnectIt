@@ -51,7 +51,7 @@ public:
     // Turn order strategy -- must implement ITurnOrderInterface
     // Instanced inline in Details panel
     // Defaults to USequentialTurnOrderStrategy if not set
-    UPROPERTY(EditAnywhere, Instanced, BlueprintReadOnly, Category = "Turn Based|Config",
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Turn Based|Config",
         meta = (MustImplement = "/Script/UnrealTurnBasedMechanics.TurnOrderInterface"))
     TScriptInterface<ITurnOrderInterface> TurnOrderStrategy;
 
