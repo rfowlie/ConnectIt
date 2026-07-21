@@ -1,10 +1,10 @@
 ﻿// Fill out your copyright notice in the Description page of Project Settings.
 
 #include "Framework/GameState/ConnectIt_GameState.h"
-#include "EngineUtils.h"
 #include "Net/UnrealNetwork.h"
-#include "Board/ConnectIt_BoardStateComponent.h"
+#include "TurnBasedMechanicsStructs.h"
 #include "Board/ConnectIt_BoardManager.h"
+#include "Board/ConnectIt_BoardStateComponent.h"
 #include "Library/ConnectIt_GameUtilityLibrary.h"
 #include "Turn/Participant/TurnBasedParticipantManagerComponent.h"
 
@@ -131,7 +131,7 @@ FString AConnectIt_GameState::GetActiveParticipantName() const
     if (!Participants.IsValidIndex(ActiveIndex))
         return TEXT("Unknown");
 
-    return Participants[ActiveIndex].DisplayName;
+    return Participants[ActiveIndex].GetDisplayName();
 }
 
 bool AConnectIt_GameState::IsLocalPlayerTurn() const
@@ -143,14 +143,8 @@ bool AConnectIt_GameState::IsLocalPlayerTurn() const
         GetWorld()->GetFirstPlayerController();
     if (!IsValid(LocalPC)) return false;
 
-    const TArray<FTurnParticipantInfo>& Participants =
-        ParticipantManager->Participants;
-
-    const int32 ActiveIndex = ParticipantManager->ActiveParticipantIndex;
-
-    if (!Participants.IsValidIndex(ActiveIndex)) return false;
-
-    return Participants[ActiveIndex].Controller == LocalPC;
+    return ParticipantManager->GetControllerAtIndex(
+        ParticipantManager->ActiveParticipantIndex) == LocalPC;
 }
 
 // --- RepNotify ---

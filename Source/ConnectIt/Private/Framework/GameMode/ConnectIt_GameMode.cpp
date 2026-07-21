@@ -88,12 +88,7 @@ void AConnectIt_GameMode::InitialiseBoard()
     }
 
     // Bind game over handler before initialising
-    // Board manager fires this when win condition is met
-    if (IsValid(Board->BoardManager))
-    {
-        Board->BoardManager->OnPlayerWin.AddDynamic(
-            this, &AConnectIt_GameMode::HandleGameOver);
-    }
+    Board->OnPlayerWin.AddDynamic(this, &AConnectIt_GameMode::HandleGameOver);
 
     // Initialise board state from registered tile positions
     Board->InitialiseBoard(NumFactions);

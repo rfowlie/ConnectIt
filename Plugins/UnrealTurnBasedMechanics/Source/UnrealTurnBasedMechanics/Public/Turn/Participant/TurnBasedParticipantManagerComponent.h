@@ -14,6 +14,7 @@ class UTurnBasedParticipantComponent;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnTurnPhaseChanged, ETurnPhase, NewPhase);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnParticipantForfeited, const FTurnParticipantInfo&, ParticipantInfo);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnActiveControllerChanged, AController*, NewActiveController);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnAllParticipantsReady);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnTurnResolutionStarted);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnGameOver);
@@ -66,9 +67,11 @@ public:
     UPROPERTY(BlueprintReadOnly, Replicated, Category = "Turn Based|State")
     int32 TurnNumber = 0;
 
+    // Replicated -- what clients need to see
     UPROPERTY(BlueprintReadOnly, Replicated, Category = "Turn Based|State")
     TArray<FTurnParticipantInfo> Participants;
-
+    
+    
     // Replicated once per turn start -- clients start local timer from this
     UPROPERTY(BlueprintReadOnly, Replicated, Category = "Turn Based|State")
     float ReplicatedTurnDuration = 0.f;
@@ -81,10 +84,7 @@ public:
         const FString& DisplayName);
 
     UFUNCTION(BlueprintPure, Category = "Turn Based")
-    bool IsParticipantRegistered(AController* Controller) const
-    {
-        return FindParticipantIndex(Controller) != INDEX_NONE;
-    }
+    bool IsParticipantRegistered(AController* Controller) const;
 
     void BeginReadyCheck();
 
@@ -103,6 +103,9 @@ public:
     FOnTurnPhaseChanged OnTurnPhaseChanged;
 
     UPROPERTY(BlueprintAssignable, Category = "Turn Based")
+    FOnActiveControllerChanged OnActiveControllerChanged;
+    
+    UPROPERTY(BlueprintAssignable, Category = "Turn Based")
     FOnParticipantForfeited OnParticipantForfeited;
 
     UPROPERTY(BlueprintAssignable, Category = "Turn Based")
@@ -117,6 +120,11 @@ public:
     UPROPERTY(BlueprintAssignable, Category = "Turn Based")
     FOnGameOver OnGameOver;
 
+    // --- Helpers ---
+    
+    // returns null on clients
+    AController* GetControllerAtIndex(int32 Index) const;
+    
     virtual void GetLifetimeReplicatedProps(
         TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
@@ -126,6 +134,10 @@ protected:
 
 private:
 
+    // Server only -- index matched to Participants
+    // Never replicated -- controllers are not network relevant to other clients
+    TArray<TWeakObjectPtr<AController>> ServerControllers;
+    
     // --- Timers ---
     FTimerHandle TurnTimerHandle;
     FTimerHandle ResolutionTimerHandle;
@@ -138,6 +150,7 @@ private:
     void SetPhase(ETurnPhase NewPhase);
     void StartTurn(int32 ParticipantIndex);
     void EndTurn(ETurnEndReason Reason);
+   
     void AdvanceToNextParticipant();
     void HandleTurnTimeout();
     void HandleResolutionComplete();
@@ -149,7 +162,8 @@ private:
     // Each component ticks its own cooldowns
     // Each component fires OnAnyParticipantTurnStarted(bIsMyTurn)
     void BroadcastTurnStart(int32 ActiveIndex);
-
+    void BroadcastControllerChanged(int32 ActiveIndex);
+    
     // --- Helpers ---
     
     FTurnParticipantInfo* FindParticipant(AController* Controller);

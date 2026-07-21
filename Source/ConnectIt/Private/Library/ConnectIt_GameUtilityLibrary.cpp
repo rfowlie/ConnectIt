@@ -97,7 +97,7 @@ int32 UConnectIt_GameUtilityLibrary::GetLocalPlayerSlotIndex(
         PC->FindComponentByClass<UTurnBasedParticipantComponent>();
 
     return IsValid(ParticipantComp)
-        ? ParticipantComp->CachedSlotIndex
+        ? ParticipantComp->GetActiveParticipantSlotIndex()
         : -1;
 }
 

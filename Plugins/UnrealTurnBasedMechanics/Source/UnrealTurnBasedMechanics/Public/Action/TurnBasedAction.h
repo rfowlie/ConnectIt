@@ -142,11 +142,9 @@ protected:
 
     UFUNCTION(BlueprintNativeEvent, Category = "Action")
     void OnCancelled();
-    virtual void OnCancelled_Implementation();
 
     UFUNCTION(BlueprintNativeEvent, Category = "Action")
     void OnCompleted();
-    virtual void OnCompleted_Implementation();
 
     // --- Selection Hooks ---
 

@@ -204,7 +204,7 @@ void AConnectIt_PlayerController::ServerRouteBoardChangeRequest_Implementation(
     // Stamp faction ID if not set by action
     if (Request.FactionID < 0)
     {
-        Request.FactionID = ParticipantComponent->CachedSlotIndex;
+        Request.FactionID = ParticipantComponent->GetActiveParticipantSlotIndex();
     }
 
     // Route to board manager component

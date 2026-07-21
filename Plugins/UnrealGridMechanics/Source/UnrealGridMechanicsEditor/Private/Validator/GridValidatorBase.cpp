@@ -27,11 +27,11 @@ EDataValidationResult UGridValidatorBase::ValidateLoadedAsset_Implementation(
     AActor* BoardActor = nullptr;
     for (TActorIterator<AActor> It(World); It; ++It)
     {
-        if (It->Implements<UGridBoardManagerInterface>())
-        {
-            BoardActor = *It;
-            break;
-        }        
+        // if (It->Implements<UGridBoardManagerInterface>())
+        // {
+        //     BoardActor = *It;
+        //     break;
+        // }        
     }
 
     if (!IsValid(BoardActor))

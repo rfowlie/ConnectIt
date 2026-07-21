@@ -45,25 +45,17 @@ public:
 
 protected:
 
-    virtual void OnActivated_Implementation() override;
+    // base internal
+    virtual void Activate_Internal_Implementation() override;
+
+    // turn internal
     virtual void OnCancelled_Implementation() override;
     virtual void OnCompleted_Implementation() override;
-
-    virtual bool IsValidHoverTile_Implementation(
-        AGridTileBase* Tile) const override;
-
-    virtual bool IsValidSelectionTile_Implementation(
-        AGridTileBase* Tile) const override;
-
-    virtual void HandleValidHover_Implementation(
-        AGridTileBase* Tile) override;
-
-    virtual void HandleHoverCleared_Implementation(
-        AGridTileBase* PreviousTile) override;
-
-    virtual void HandleValidSelection_Implementation(
-        AGridTileBase* Tile) override;
-
+    virtual bool IsValidHoverTile_Implementation(AGridTileBase* Tile) const override;
+    virtual bool IsValidSelectionTile_Implementation(AGridTileBase* Tile) const override;
+    virtual void HandleValidHover_Implementation(AGridTileBase* Tile) override;
+    virtual void HandleHoverCleared_Implementation(AGridTileBase* PreviousTile) override;
+    virtual void HandleValidSelection_Implementation(AGridTileBase* Tile) override;
     virtual void ClearSelectionState_Implementation() override;
 
 private:

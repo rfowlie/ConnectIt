@@ -28,6 +28,7 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnShiftApplied,
 UCLASS(Blueprintable, BlueprintType)
 class CONNECTIT_API AConnectIt_BoardManager : public AActor, public IGridBoardManagerInterface
 {
+    
     GENERATED_BODY()
 
 public:
@@ -93,9 +94,13 @@ public:
     float GetWinScoreThreshold() const;
 
 protected:
-
+    
     virtual void BeginPlay() override;
 
+    UFUNCTION()
+    void HandleActiveControllerChanged(AController* NewActiveController);
+    void BindParticipantManager();
+    
     // --- Components ---
 
     UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly,

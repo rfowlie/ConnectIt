@@ -13,18 +13,18 @@
 UConnectIt_PlacePieceAction::UConnectIt_PlacePieceAction()
 {
     // Required -- turn cannot end without placing a piece
-    bIsRequired        = true;
+    bIsRequired = true;
 
     // Cancellable -- shard or power activation cancels this
     // and it reactivates after the optional action completes
-    bIsCancellable     = true;
+    bIsCancellable = true;
 
     bRequiresSelection = true;
-    MaxUsesPerTurn     = 1;
-    CooldownTurns      = 0;
+    MaxCompletionsPerTurn = 1;
+    CooldownTurns = 0;
 }
 
-void UConnectIt_PlacePieceAction::OnActivated_Implementation()
+void UConnectIt_PlacePieceAction::Activate_Internal_Implementation()
 {
     UE_LOG(LogTemp, Log,
         TEXT("PlacePieceAction: Activated — awaiting tile selection"));
@@ -128,6 +128,6 @@ int32 UConnectIt_PlacePieceAction::GetOwningFactionID() const
         OwningController->FindComponentByClass<UTurnBasedParticipantComponent>();
 
     return IsValid(ParticipantComp)
-        ? ParticipantComp->CachedSlotIndex
+        ? ParticipantComp->GetActiveParticipantSlotIndex()
         : -1;
 }

@@ -20,18 +20,20 @@ class UNREALTURNBASEDMECHANICS_API UTurnBasedParticipantComponent : public UActo
 {
     GENERATED_BODY()
 
+    friend class UTurnBasedParticipantManagerComponent;
+
 public:
 
     UTurnBasedParticipantComponent();
 
     // --- State ---
 
-    UPROPERTY(BlueprintReadOnly, Category = "Turn Based|Participant")
-    int32 CachedSlotIndex = -1;
-
-    UPROPERTY(BlueprintReadOnly, Category = "Turn Based|Participant")
-    EParticipantType ParticipantType = EParticipantType::Human;
-
+    UFUNCTION(BlueprintPure, Category = "Turn Based|Participant")
+    int32 GetActiveParticipantSlotIndex() const { return CachedSlotIndex; }
+    
+    UFUNCTION(BlueprintPure, Category = "Turn Based|Participant")
+    EParticipantType GetParticipantType() const { return ParticipantType; }
+    
     UFUNCTION(BlueprintPure, Category = "Turn Based|Participant")
     bool IsMyTurn() const { return bIsMyTurn; }
 
@@ -80,7 +82,9 @@ protected:
     virtual void BeginPlay() override;
 
 private:
-
+    
+    int32 CachedSlotIndex = -1;
+    EParticipantType ParticipantType = EParticipantType::Human;
     bool bIsMyTurn = false;
 
     static bool IsMyTurnStartingPhase(ETurnPhase Phase);

@@ -10,8 +10,10 @@
 #include "Interpreter/ConnectIt_ScoreInterpreter.h"
 #include "Interpreter/ConnectIt_TileStateInterpreter.h"
 #include "Board/Shift/BoardShiftComponent.h"
+#include "Library/ConnectIt_GameUtilityLibrary.h"
 #include "Piece/GridPieceRegistryComponent.h"
 #include "Tile/GridTileRegistryComponent.h"
+#include "Turn/Participant/TurnBasedParticipantManagerComponent.h"
 
 
 namespace ConnectItRequestTags
@@ -90,7 +92,8 @@ void AConnectIt_BoardManager::BeginPlay()
     if (HasAuthority())
     {
         BindShiftComponent();
-
+        BindParticipantManager();
+        
         // Sync rules from config to actor
         if (IsValid(ConnectItConfig))
         {
@@ -98,6 +101,19 @@ void AConnectIt_BoardManager::BeginPlay()
             ConnectLength     = ConnectItConfig->ConnectLength;
         }
     }
+}
+
+void AConnectIt_BoardManager::HandleActiveControllerChanged(AController* NewActiveController)
+{
+    if (!HasAuthority()) return;
+
+    SetOwner(NewActiveController);
+
+    UE_LOG(LogTemp, Log,
+        TEXT("ConnectIt_BoardManager: Ownership transferred to %s"),
+        IsValid(NewActiveController)
+            ? *NewActiveController->GetName()
+            : TEXT("none"));
 }
 
 void AConnectIt_BoardManager::BindInterpreters()
@@ -454,4 +470,14 @@ float AConnectIt_BoardManager::GetWinScoreThreshold() const
 {
     return IsValid(ConnectItConfig)
         ? ConnectItConfig->WinScoreThreshold : 100.f;
+}
+
+void AConnectIt_BoardManager::BindParticipantManager()
+{
+    if (UTurnBasedParticipantManagerComponent* PM =
+        UConnectIt_GameUtilityLibrary::GetParticipantManager(this))
+    {
+        PM->OnActiveControllerChanged.AddDynamic(
+            this, &AConnectIt_BoardManager::HandleActiveControllerChanged);
+    }
 }

@@ -41,9 +41,13 @@ public class UnrealTurnBasedMechanics : ModuleRules
 				"Engine",
 				"Slate",
 				"SlateCore",
-				"EnhancedInput", 
+				"UMG",
+				"EnhancedInput",
+				"AIModule",
+				
+				// ... add private dependencies that you statically link with here ...
 				"UnrealGridMechanics"
-				// ... add private dependencies that you statically link with here ...	
+					
 			}
 			);
 		
