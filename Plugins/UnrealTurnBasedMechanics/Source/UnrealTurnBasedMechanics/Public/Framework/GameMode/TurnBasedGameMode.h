@@ -39,6 +39,7 @@ public:
 
 	virtual void PostLogin(APlayerController* NewPlayer) override;
 	virtual void Logout(AController* Exiting) override;
+	// virtual void SwapPlayerControllers(APlayerController* OldPC, APlayerController* NewPC) override;
 	virtual void HandleMatchHasStarted() override;
 
 	// --- Game Setup ---

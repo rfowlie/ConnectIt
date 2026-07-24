@@ -20,12 +20,7 @@ void ATurnBasedGameMode::PostLogin(APlayerController* NewPlayer)
 
     UTurnBasedParticipantManagerComponent* Manager = GetParticipantManager();
     if (!Manager) return;
-
-    // Check if this is a reconnect
-    const FString DisplayName = NewPlayer->GetPlayerState<APlayerState>()
-        ? NewPlayer->GetPlayerState<APlayerState>()->GetPlayerName()
-        : TEXT("Player");
-
+    
     // Check if already registered (reconnect case)
     if (Manager->IsParticipantRegistered(NewPlayer))
     {
@@ -34,8 +29,13 @@ void ATurnBasedGameMode::PostLogin(APlayerController* NewPlayer)
     }
 
     // New participant — register
-    Manager->RegisterParticipant(NewPlayer, EParticipantType::Human, DisplayName);
+    Manager->RegisterParticipant(NewPlayer, EParticipantType::Human);
 
+    // Check if this is a reconnect
+    const FString DisplayName = NewPlayer->GetPlayerState<APlayerState>()
+        ? NewPlayer->GetPlayerState<APlayerState>()->GetPlayerName()
+        : TEXT("Player");
+    
     UE_LOG(LogTurnBasedMechanics, Log,
         TEXT("TurnBasedGameMode: Human participant %s logged in"),
         *DisplayName);
@@ -73,7 +73,17 @@ void ATurnBasedGameMode::RegisterAIParticipant(
     UTurnBasedParticipantManagerComponent* Manager = GetParticipantManager();
     if (!Manager) return;
 
-    Manager->RegisterParticipant(AIController, EParticipantType::AI, DisplayName);
+    if (Manager->IsParticipantRegistered(AIController))
+    {
+        Manager->NotifyParticipantReconnected(AIController);
+        return;
+    }
+    
+    Manager->RegisterParticipant(AIController, EParticipantType::AI);
+
+    UE_LOG(LogTurnBasedMechanics, Log,
+        TEXT("TurnBasedGameMode: AI participant %s registered"),
+        *DisplayName);
 }
 
 void ATurnBasedGameMode::StartReadyCheck()

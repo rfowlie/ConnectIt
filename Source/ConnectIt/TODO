@@ -1,0 +1,4 @@
+﻿- Update ConnectIt_PlayerController to inherit from TurnBasedController (claude)
+- Check setup for all ConnectIt Framework Actors
+- Turn facade into board query object that can be accessed through the ConnectIt Function Library
+- make abstract grid cursor manager

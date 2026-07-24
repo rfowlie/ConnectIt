@@ -54,23 +54,6 @@ void AConnectIt_AIController::InitialiseFromBoardManager()
     }
 }
 
-void AConnectIt_AIController::HandleTurnNotification_Implementation(
-    const FTurnNotification& Notification)
-{
-    // Base handles action component lifecycle
-    Super::HandleTurnNotification_Implementation(Notification);
-
-    // Add ConnectIt AI logic on turn start
-    if (Notification.Phase == ETurnPhase::TurnStart
-        || Notification.Phase == ETurnPhase::TurnActive)
-    {
-        if (CheckAndApplyForcedMove()) return;
-
-        // No forced move -- let subclass run its intelligence
-        BeginAIDecisionMaking();
-    }
-}
-
 bool AConnectIt_AIController::CheckAndApplyForcedMove()
 {
     // Blackboard forced move logic here

@@ -75,10 +75,7 @@ public:
     // Fires on all clients when match result is updated
     UPROPERTY(BlueprintAssignable, Category = "ConnectIt|Match")
     FOnMatchResultUpdated OnMatchResultUpdated;
-
-    UPROPERTY(BlueprintAssignable, Category = "ConnectIt|Match")
-    FonMatchPhaseUpdated OnMatchPhaseChanged;
-
+    
     // --- Server API ---
     // Called by AConnectIt_GameMode when game over fires
 

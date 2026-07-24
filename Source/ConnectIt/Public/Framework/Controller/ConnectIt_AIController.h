@@ -24,14 +24,10 @@ protected:
 
 	virtual void BeginPlay() override;
 
-	// Override to add ConnectIt AI decision-making after base handling
-	virtual void HandleTurnNotification_Implementation(
-		const FTurnNotification& Notification) override;
-
 	// Called when it is our turn and no forced move exists
 	// Subclasses of this controller implement actual intelligence
 	UFUNCTION(BlueprintImplementableEvent, Category = "ConnectIt|AI")
-	void BeginAIDecisionMaking();
+	void BeginMakeDecision();
 	
 private:
 

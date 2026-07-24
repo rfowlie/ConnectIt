@@ -9,6 +9,7 @@
 #include "Turn/Order/TurnOrderInterface.h"
 #include "TurnBasedParticipantManagerComponent.generated.h"
 
+class ATurnBasedGameState;
 class UTurnBasedParticipantComponent;
 
 
@@ -78,10 +79,7 @@ public:
 
     // --- Setup --- Server only ---
 
-    void RegisterParticipant(
-        AController* Controller,
-        EParticipantType Type,
-        const FString& DisplayName);
+    void RegisterParticipant(AController* Controller, EParticipantType Type);
 
     UFUNCTION(BlueprintPure, Category = "Turn Based")
     bool IsParticipantRegistered(AController* Controller) const;
@@ -156,7 +154,7 @@ private:
     void HandleResolutionComplete();
     void HandleReconnectTimeout();
     void CheckReadyStatus();
-    void CheckGameOver();
+    bool CheckGameOver() const;
 
     // Broadcasts to all participant components each turn start
     // Each component ticks its own cooldowns
@@ -165,8 +163,13 @@ private:
     void BroadcastControllerChanged(int32 ActiveIndex);
     
     // --- Helpers ---
+
+    ATurnBasedGameState* GetOwningGameState() const;
+    
+    void SetMatchPhase(EMatchPhase NewPhase) const;
     
     FTurnParticipantInfo* FindParticipant(AController* Controller);
+    const FTurnParticipantInfo* FindParticipant(AController* Controller) const;
     int32 FindParticipantIndex(AController* Controller) const;
     UTurnBasedParticipantComponent* GetParticipantComponent(
         AController* Controller) const;
