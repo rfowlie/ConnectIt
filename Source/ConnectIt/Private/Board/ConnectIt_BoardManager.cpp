@@ -2,6 +2,8 @@
 
 
 #include "Board/ConnectIt_BoardManager.h"
+
+#include "ConnectIt_GameplayTags.h"
 #include "GameplayTagContainer.h"
 #include "TurnBasedMechanicsStructs.h"
 #include "Board/ConnectIt_BoardStateComponent.h"
@@ -15,12 +17,6 @@
 #include "Tile/GridTileRegistryComponent.h"
 #include "Turn/Participant/TurnBasedParticipantManagerComponent.h"
 
-
-namespace ConnectItRequestTags
-{
-    const FGameplayTag PlacePiece =
-        FGameplayTag::RequestGameplayTag("ConnectIt.Board.PlacePiece");
-}
 
 AConnectIt_BoardManager::AConnectIt_BoardManager()
 {
@@ -216,7 +212,7 @@ void AConnectIt_BoardManager::ProcessRequest(
         return;
     }
 
-    if (Request.RequestType == ConnectItRequestTags::PlacePiece)
+    if (Request.RequestType == ConnectIt_Game_PlacePiece)
     {
         HandlePlacePieceRequest(Request);
         return;

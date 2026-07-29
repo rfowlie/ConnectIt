@@ -103,6 +103,11 @@ void UTurnBasedParticipantManagerComponent::RegisterParticipant(
         Type == EParticipantType::AI ? TEXT("AI") : TEXT("Human"),
         *PS->GetPlayerName(),
         NewSlotIndex);
+
+    // if (CheckAllParticipantsRegistered())
+    // {
+    //     SetMatchPhase(EMatchPhase::WaitingForReady);
+    // }
 }
 
 bool UTurnBasedParticipantManagerComponent::IsParticipantRegistered(
@@ -449,8 +454,7 @@ bool UTurnBasedParticipantManagerComponent::CheckGameOver() const
     return true;
 }
 
-void UTurnBasedParticipantManagerComponent::BroadcastTurnStart(
-    int32 ActiveIndex)
+void UTurnBasedParticipantManagerComponent::BroadcastTurnStart(int32 ActiveIndex)
 {
     if (!Participants.IsValidIndex(ActiveIndex)) return;
 
@@ -472,7 +476,7 @@ void UTurnBasedParticipantManagerComponent::BroadcastTurnStart(
         }
         else
         {
-            Comp->ReceiveOpponentTurnStarted(ActiveSlotIndex);
+            Comp->ClientReceiveOpponentTurnStarted(ActiveSlotIndex);
         }
     }
 

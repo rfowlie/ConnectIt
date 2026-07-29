@@ -3,6 +3,7 @@
 #include "Framework/GameState/TurnBasedGameState.h"
 #include "Turn/Participant/TurnBasedParticipantManagerComponent.h"
 #include "Net/UnrealNetwork.h"
+#include "Turn/Participant/TurnBasedParticipantComponent.h"
 
 
 ATurnBasedGameState::ATurnBasedGameState()

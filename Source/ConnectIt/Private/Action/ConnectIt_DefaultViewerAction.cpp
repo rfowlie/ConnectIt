@@ -26,7 +26,7 @@ void UConnectIt_DefaultViewerAction::BindToBoardState()
     // Pass this as WorldContextObject
     // GetWorld() resolves via outer chain from the component this lives on
     UConnectIt_BoardStateComponent* BSC =
-        UConnectIt_GameUtilityLibrary::GetBoardStateComponent(this);
+        UConnectIt_GameUtilityLibrary::GetBoardStateComponent(GetPlayerController());
 
     if (!IsValid(BSC)) return;
 
@@ -38,7 +38,7 @@ void UConnectIt_DefaultViewerAction::BindToBoardState()
 void UConnectIt_DefaultViewerAction::UnbindFromBoardState()
 {
     UConnectIt_BoardStateComponent* BSC =
-        UConnectIt_GameUtilityLibrary::GetBoardStateComponent(this);
+        UConnectIt_GameUtilityLibrary::GetBoardStateComponent(GetPlayerController());
 
     if (!IsValid(BSC)) return;
 

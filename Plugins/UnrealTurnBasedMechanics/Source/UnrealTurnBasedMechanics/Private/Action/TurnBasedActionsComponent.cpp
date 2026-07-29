@@ -417,7 +417,7 @@ void UTurnBasedActionsComponent::ClearAndPush(UTurnBasedActionBase* NewRoot)
     ActionStack.Add(NewRoot);
     NewRoot->Activate(GetOwningController());
     OnActionPushed.Broadcast(NewRoot);
-
+    
     UE_LOG(LogTurnBasedMechanics, Log,
         TEXT("TurnBasedActionsComponent: Stack cleared and '%s' pushed "
              "as new root on %s"),

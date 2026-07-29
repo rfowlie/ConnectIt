@@ -39,12 +39,10 @@ public:
 
     // --- Server RPCs ---
 
-    UFUNCTION(Server, Reliable, BlueprintCallable,
-        Category = "Turn Based|Participant")
+    UFUNCTION(Server, Reliable, BlueprintCallable, Category = "Turn Based|Participant")
     void ServerNotifyReady();
 
-    UFUNCTION(Server, Reliable, BlueprintCallable,
-        Category = "Turn Based|Participant")
+    UFUNCTION(Server, Reliable, BlueprintCallable, Category = "Turn Based|Participant")
     void ServerSubmitTurnEnd();
 
     // --- Client RPC ---
@@ -59,7 +57,8 @@ public:
     // Not an RPC -- fires local delegate only
     // Manager calls this server side, replication not needed here
     // since participant components exist on each machine independently
-    void ReceiveOpponentTurnStarted(int32 ActiveParticipantSlotIndex);
+    UFUNCTION(Client, Reliable)
+    void ClientReceiveOpponentTurnStarted(int32 ActiveParticipantSlotIndex);
 
     // --- Delegates ---
 
@@ -82,9 +81,13 @@ protected:
     virtual void BeginPlay() override;
 
 private:
-    
+
+    UPROPERTY()
     int32 CachedSlotIndex = -1;
     EParticipantType ParticipantType = EParticipantType::Human;
+
+    // Client-side only -- set by ClientReceiveTurnNotification
+    // Never valid on server -- use manager ActiveParticipantIndex instead
     bool bIsMyTurn = false;
 
     static bool IsMyTurnStartingPhase(ETurnPhase Phase);

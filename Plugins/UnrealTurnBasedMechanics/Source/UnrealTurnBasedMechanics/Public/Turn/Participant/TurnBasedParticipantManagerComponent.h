@@ -79,6 +79,9 @@ public:
 
     // --- Setup --- Server only ---
 
+    UFUNCTION(BlueprintImplementableEvent, Category = "Turn Based|State")
+    bool CheckAllParticipantsRegistered();
+    
     void RegisterParticipant(AController* Controller, EParticipantType Type);
 
     UFUNCTION(BlueprintPure, Category = "Turn Based")

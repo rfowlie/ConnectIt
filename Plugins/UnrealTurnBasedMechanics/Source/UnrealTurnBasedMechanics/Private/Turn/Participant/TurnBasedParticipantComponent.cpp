@@ -14,6 +14,15 @@ UTurnBasedParticipantComponent::UTurnBasedParticipantComponent()
     SetIsReplicatedByDefault(true);
 }
 
+void UTurnBasedParticipantComponent::ClientReceiveOpponentTurnStarted_Implementation(int32 ActiveParticipantSlotIndex)
+{
+    // Not my turn
+    bIsMyTurn = false;
+
+    OnOpponentTurnStarted.Broadcast(ActiveParticipantSlotIndex);
+    OnOpponentTurnStarted_Native.Broadcast(ActiveParticipantSlotIndex);
+}
+
 void UTurnBasedParticipantComponent::BeginPlay()
 {
     Super::BeginPlay();
@@ -30,17 +39,13 @@ void UTurnBasedParticipantComponent::ServerNotifyReady_Implementation()
 
 void UTurnBasedParticipantComponent::ServerSubmitTurnEnd_Implementation()
 {
-    if (!bIsMyTurn)
-    {
-        UE_LOG(LogTurnBasedMechanics, Warning,
-            TEXT("TurnBasedParticipantComponent: %s submitted turn end "
-                 "but bIsMyTurn is false — ignored"),
-            *GetOwner()->GetName());
-        return;
-    }
+    // Do not check bIsMyTurn here -- that is a client-side variable
+    // and will always be false on the server
+    // The manager validates authority by checking ActiveParticipantIndex
 
     UTurnBasedParticipantManagerComponent* Manager = GetParticipantManager();
     if (!IsValid(Manager)) return;
+
     Manager->NotifyTurnEndSubmitted(GetOwner<AController>());
 }
 
@@ -60,18 +65,6 @@ void UTurnBasedParticipantComponent::ClientReceiveTurnNotification_Implementatio
 
     OnTurnNotificationReceived.Broadcast(Notification);
     OnTurnNotificationReceived_Native.Broadcast(Notification);
-}
-
-// --- Manager Callback ---
-
-void UTurnBasedParticipantComponent::ReceiveOpponentTurnStarted(
-    int32 ActiveParticipantSlotIndex)
-{
-    // Not my turn
-    bIsMyTurn = false;
-
-    OnOpponentTurnStarted.Broadcast(ActiveParticipantSlotIndex);
-    OnOpponentTurnStarted_Native.Broadcast(ActiveParticipantSlotIndex);
 }
 
 // --- Static Helpers ---

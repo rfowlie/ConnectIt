@@ -62,8 +62,7 @@ public:
 
     // When true RequestTurnEnd fires automatically when
     // CanAutoEndTurn() returns true after an action completes
-    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly,
-        Category = "Turn Based|Behaviour")
+    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Turn Based|Behaviour")
     bool bAutoEndTurnOnAllRequiredActionsCompleted = false;
 
     // --- Setup ---

@@ -98,13 +98,13 @@ EDataValidationResult UActionLoadoutDataAsset::IsDataValid(
     }
 
     // Warn if no required actions
-    if (GetRequiredActions().IsEmpty())
-    {
-        Context.AddWarning(FText::FromString(FString::Printf(
-            TEXT("ActionLoadoutDataAsset '%s': No required actions. "
-                 "Turn end will always be available immediately."),
-            *LoadoutName)));
-    }
+    // if (GetRequiredActions().IsEmpty())
+    // {
+    //     Context.AddWarning(FText::FromString(FString::Printf(
+    //         TEXT("ActionLoadoutDataAsset '%s': No required actions. "
+    //              "Turn end will always be available immediately."),
+    //         *LoadoutName)));
+    // }
 
     // Warn on duplicate tags
     TSet<FGameplayTag> SeenTags;

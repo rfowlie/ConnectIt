@@ -37,9 +37,10 @@ AConnectIt_BoardManager* UConnectIt_GameUtilityLibrary::GetBoardManager(
 UConnectIt_BoardStateComponent* UConnectIt_GameUtilityLibrary::GetBoardStateComponent(
     const UObject* WorldContextObject)
 {
-    AConnectIt_BoardManager* BM = GetBoardManager(WorldContextObject);
-    if (!IsValid(BM)) return nullptr;
-    return Cast<UConnectIt_BoardStateComponent>(BM->GetBoardState());
+    const AConnectIt_BoardManager* BoardManager = GetBoardManager(WorldContextObject);
+    if (!IsValid(BoardManager)) return nullptr;
+    return Cast<UConnectIt_BoardStateComponent>(
+        IGridBoardManagerInterface::Execute_GetBoardState(BoardManager));
 }
 
 bool UConnectIt_GameUtilityLibrary::GetGridPositionForTile(

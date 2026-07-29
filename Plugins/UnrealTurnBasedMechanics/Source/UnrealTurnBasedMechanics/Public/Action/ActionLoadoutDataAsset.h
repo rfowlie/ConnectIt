@@ -9,6 +9,8 @@
 #include "ActionLoadoutDataAsset.generated.h"
 
 
+class UTurnBasedSpectatorAction;
+
 UCLASS(BlueprintType)
 class UNREALTURNBASEDMECHANICS_API UActionLoadoutDataAsset : public UDataAsset
 {

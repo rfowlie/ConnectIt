@@ -4,7 +4,6 @@
 
 #include "CoreMinimal.h"
 #include "UObject/Object.h"
-#include "GameplayTagContainer.h"
 #include "TurnBasedActionBase.h"
 #include "TurnBasedSpectatorAction.generated.h"
 
