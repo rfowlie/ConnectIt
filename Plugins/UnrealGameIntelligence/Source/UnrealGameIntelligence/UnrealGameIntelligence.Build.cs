@@ -27,6 +27,9 @@ public class UnrealGameIntelligence : ModuleRules
 			{
 				"Core",
 				// ... add other public dependencies that you statically link with here ...
+				"GameplayTags",
+				"UMG",
+				"SlateCore"
 			}
 			);
 			
@@ -38,7 +41,7 @@ public class UnrealGameIntelligence : ModuleRules
 				"Engine",
 				"Slate",
 				"SlateCore",
-				// ... add private dependencies that you statically link with here ...	
+				// ... add private dependencies that you statically link with here ... 
 			}
 			);
 		
