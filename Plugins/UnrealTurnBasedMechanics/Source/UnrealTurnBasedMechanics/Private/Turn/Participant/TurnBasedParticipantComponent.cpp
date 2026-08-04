@@ -54,6 +54,12 @@ void UTurnBasedParticipantComponent::ServerSubmitTurnEnd_Implementation()
 void UTurnBasedParticipantComponent::ClientReceiveTurnNotification_Implementation(
     FTurnNotification Notification)
 {
+    UE_LOG(LogTemp, Log,
+        TEXT("ParticipantComponent: ClientReceiveTurnNotification "
+             "fired on %s phase %s"),
+        *GetOwner()->GetName(),
+        *UEnum::GetValueAsString(Notification.Phase));
+
     if (IsMyTurnStartingPhase(Notification.Phase))
     {
         bIsMyTurn = true;

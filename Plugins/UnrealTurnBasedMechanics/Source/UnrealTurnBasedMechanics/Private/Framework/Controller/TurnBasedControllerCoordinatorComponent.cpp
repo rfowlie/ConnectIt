@@ -109,7 +109,9 @@ void UTurnBasedControllerCoordinatorComponent::BindGameStateToActions()
     {
         UE_LOG(LogTemp, Warning,
             TEXT("TurnBasedCoordinator: %s could not find "
-                 "ATurnBasedGameState — match phase routing disabled"),
+                 "ATurnBasedGameState — match phase routing disabled. "
+                 "This can happen on listen server if coordinator "
+                 "BeginPlay fires before GameState exists."),
             *GetOwner()->GetName());
         return;
     }
