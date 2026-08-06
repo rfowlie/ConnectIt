@@ -3,15 +3,15 @@
 #include "CoreMinimal.h"
 #include "Subsystems/WorldSubsystem.h"
 #include "GameplayTagContainer.h"
-#include "GI_InfluenceMapTypes.h"
 #include "GI_InfluenceMapSubsystem.generated.h"
 
 class UGI_InfluenceMapWidget;
+class IGI_InfluenceMapVisualiser;
 
-// Broadcasts when a map is selected via the debug UI or programmatically.
-// Tag identifies which map was selected; Index is its position in the registry.
+// Broadcasts when a visualiser is selected via the debug UI or programmatically.
+// Tag identifies which visualiser was selected; Index is its position in the registry.
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(
-    FGI_OnInfluenceMapSelected,
+    FGI_OnInfluenceMapVisualiserSelected,
     FGameplayTag, Tag,
     int32,        Index);
 
@@ -19,15 +19,22 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(
  * Central subsystem for the GI Influence Map plugin.
  *
  * Responsibilities:
- *   - Maintains the registry of all registered influence maps and their visualisers
- *   - Broadcasts selection events when the debug UI or project code selects a map
- *   - Manages the lifetime of the debug UI widget
- *   - Provides query access to registered maps by tag or index
+ *   - Maintains the registry of all registered influence map visualisers
+ *   - Manages active visualiser state (Activate / Deactivate)
+ *   - Broadcasts selection events when the debug UI or project code selects a visualiser
+ *   - Manages the lifetime and visibility of the debug UI widget
  *
  * Access via: GetWorld()->GetSubsystem<UGI_InfluenceMapSubsystem>()
  *
- * Maps are registered by the project at startup (BeginPlay or game mode init).
- * The subsystem does not own registered maps — lifetime is the caller's responsibility.
+ * The subsystem is intentionally unaware of influence maps and data providers.
+ * It operates entirely on IGI_InfluenceMapVisualiser. The project is responsible
+ * for wiring maps to visualisers before registration.
+ *
+ * --- UI Lifetime ---
+ *   CreateDebugUI  → creates widget, adds to viewport, visibility = Collapsed
+ *   ShowDebugUI    → sets visibility = Visible
+ *   HideDebugUI    → sets visibility = Collapsed
+ *   DestroyDebugUI → removes from viewport, nulls the instance
  */
 UCLASS()
 class UNREALGAMEINTELLIGENCE_API UGI_InfluenceMapSubsystem : public UWorldSubsystem
@@ -44,95 +51,102 @@ public:
     // -- Registration --------------------------------------------------------
 
     /**
-     * Registers an influence map with an optional paired visualiser.
-     * The entry's Tag must be valid and unique within the registry.
-     * Returns true if registration succeeded, false if the tag is already registered
-     * or the entry is invalid.
+     * Registers a visualiser with the subsystem.
+     * The visualiser's Tag must be valid and unique within the registry.
+     * Returns true if registration succeeded.
+     * If the debug UI is currently created, the button list will refresh automatically.
      */
     UFUNCTION(BlueprintCallable, Category = "GI|InfluenceMaps")
-    bool RegisterMap(const FGI_InfluenceMapEntry& Entry);
+    bool RegisterVisualiser(TScriptInterface<IGI_InfluenceMapVisualiser> Visualiser);
 
     /**
-     * Removes a map from the registry by tag.
-     * If the map's visualiser is currently active, it will be deactivated first.
-     * Returns true if the map was found and removed.
+     * Removes a visualiser from the registry by tag.
+     * If the visualiser is currently active it will be deactivated first.
+     * Returns true if the visualiser was found and removed.
      */
     UFUNCTION(BlueprintCallable, Category = "GI|InfluenceMaps")
-    bool UnregisterMap(FGameplayTag Tag);
+    bool UnregisterVisualiser(FGameplayTag Tag);
 
     // -- Selection -----------------------------------------------------------
 
     /**
-     * Selects a map by tag. Deactivates the currently active visualiser,
-     * activates the newly selected map's visualiser, and broadcasts
-     * OnInfluenceMapSelected. Safe to call with an unregistered tag —
-     * logs a warning and returns false.
+     * Selects a visualiser by tag.
+     * Deactivates the currently active visualiser, activates the selected one,
+     * and broadcasts OnVisualiserSelected.
+     * Returns false and logs a warning if the tag is not registered.
      */
     UFUNCTION(BlueprintCallable, Category = "GI|InfluenceMaps")
-    bool SelectMap(FGameplayTag Tag);
+    bool SelectVisualiser(FGameplayTag Tag);
 
     /**
-     * Selects a map by its index in the registry.
+     * Selects a visualiser by its index in the registry.
      * Convenience overload for UI callbacks that operate on index.
      */
     UFUNCTION(BlueprintCallable, Category = "GI|InfluenceMaps")
-    bool SelectMapByIndex(int32 Index);
+    bool SelectVisualiserByIndex(int32 Index);
 
-    /** Deactivates the currently active visualiser without selecting another. */
+    /**
+     * Deactivates the currently active visualiser without selecting another.
+     * Safe to call when nothing is selected.
+     */
     UFUNCTION(BlueprintCallable, Category = "GI|InfluenceMaps")
     void ClearSelection();
 
     // -- Queries -------------------------------------------------------------
 
-    /** Returns the entry for a given tag, or an invalid entry if not found. */
-    UFUNCTION(BlueprintCallable, Category = "GI|InfluenceMaps")
-    FGI_InfluenceMapEntry GetEntryByTag(FGameplayTag Tag) const;
-
     /** Returns all registered tags in registry order. Used to populate the UI. */
     UFUNCTION(BlueprintCallable, Category = "GI|InfluenceMaps")
     TArray<FGameplayTag> GetRegisteredTags() const;
 
-    /** Returns all display text in registry order. Used to populate the UI. */
+    /** Returns the number of registered visualisers. */
     UFUNCTION(BlueprintCallable, Category = "GI|InfluenceMaps")
-    TArray<FText> GetRegisteredText() const;
-    
-    /** Returns the number of registered maps. */
-    UFUNCTION(BlueprintCallable, Category = "GI|InfluenceMaps")
-    int32 GetRegisteredMapCount() const { return Registry.Num(); }
+    int32 GetRegisteredVisualiserCount() const { return Registry.Num(); }
 
-    /** Returns the tag of the currently selected map, or an invalid tag if none. */
+    /** Returns the tag of the currently active visualiser, or an invalid tag if none. */
     UFUNCTION(BlueprintCallable, Category = "GI|InfluenceMaps")
     FGameplayTag GetActiveTag() const { return ActiveTag; }
+
+    /** Returns true if the debug UI widget has been created. */
+    UFUNCTION(BlueprintCallable, Category = "GI|InfluenceMaps|UI")
+    bool IsDebugUICreated() const { return ActiveWidget != nullptr; }
 
     // -- UI ------------------------------------------------------------------
 
     /**
-     * Creates and displays the debug widget using the provided widget class.
-     * If a widget is already showing it will be removed and replaced.
-     * The subsystem wires the widget's selection delegate internally.
-     *
-     * WidgetClass must implement the UGI_InfluenceMapWidget contract.
-     * Pass a null class to remove the widget without replacing it.
+     * Creates the debug widget and adds it to the viewport with Collapsed visibility.
+     * Call ShowDebugUI to make it visible.
+     * If a widget already exists it will be destroyed and replaced.
+     * WidgetClass must be a subclass of UGI_InfluenceMapWidget.
      */
+    UFUNCTION(BlueprintCallable, Category = "GI|InfluenceMaps|UI")
+    void CreateDebugUI(TSubclassOf<UGI_InfluenceMapWidget> WidgetClass, APlayerController* OwningPlayer);
 
+    /**
+     * Removes the debug widget from the viewport and nulls the instance.
+     * Safe to call when no widget exists.
+     */
     UFUNCTION(BlueprintCallable, Category = "GI|InfluenceMaps|UI")
     void DestroyDebugUI();
-    
-    UFUNCTION(BlueprintCallable, Category = "GI|InfluenceMaps|UI")
-    void CreateDebugWidget(TSubclassOf<UGI_InfluenceMapWidget> WidgetClass, APlayerController* OwningPlayer);
-    
-    UFUNCTION(BlueprintCallable, Category = "GI|InfluenceMaps|UI")
-    void ShowDebugUI() const;
 
-    /** Removes the debug widget from the viewport if one is showing. */
+    /**
+     * Sets the debug widget visibility to Visible.
+     * CreateDebugUI must have been called first.
+     */
     UFUNCTION(BlueprintCallable, Category = "GI|InfluenceMaps|UI")
-    void HideDebugUI() const;
+    void ShowDebugUI();
+
+    /**
+     * Sets the debug widget visibility to Collapsed.
+     * The widget instance is kept alive — call DestroyDebugUI to fully remove it.
+     */
+    UFUNCTION(BlueprintCallable, Category = "GI|InfluenceMaps|UI")
+    void HideDebugUI();
 
     // -- Delegates -----------------------------------------------------------
 
-    /** Fired when a map is selected via UI or programmatic call. */
+    /** Fired when a visualiser is selected via UI or programmatic call. */
     UPROPERTY(BlueprintAssignable, Category = "GI|InfluenceMaps")
-    FGI_OnInfluenceMapSelected OnInfluenceMapSelected;
+    FGI_OnInfluenceMapVisualiserSelected OnVisualiserSelected;
 
 private:
 
@@ -141,15 +155,17 @@ private:
     UFUNCTION()
     void OnWidgetSelectionChanged(FGameplayTag Tag, int32 Index);
 
-    int32 FindEntryIndexByTag(FGameplayTag Tag) const;
+    int32 FindVisualiserIndexByTag(FGameplayTag Tag) const;
 
-    // Ordered registry — order determines UI button order
-    TArray<FGI_InfluenceMapEntry> Registry;
+    void RefreshWidgetButtons();
 
-    // Tag of the currently active (selected) map
+    // Ordered registry — insertion order determines UI button order
+    TArray<TScriptInterface<IGI_InfluenceMapVisualiser>> Registry;
+
+    // Tag of the currently active visualiser
     FGameplayTag ActiveTag;
 
-    // Currently displayed debug widget — subsystem owns this instance
+    // Currently active debug widget — subsystem owns this instance
     UPROPERTY()
     TObjectPtr<UGI_InfluenceMapWidget> ActiveWidget;
 };

@@ -1,8 +1,7 @@
 #include "InfluenceMap/GI_InfluenceMapSubsystem.h"
 #include "InfluenceMap/GI_InfluenceMapWidget.h"
-#include "InfluenceMap/GI_InfluenceMapTypes.h"
 #include "InfluenceMap/GI_InfluenceMapVisualiserInterface.h"
-
+#include "Blueprint/UserWidget.h"
 
 // -- Lifecycle ---------------------------------------------------------------
 
@@ -10,133 +9,116 @@ void UGI_InfluenceMapSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 {
     Super::Initialize(Collection);
     Registry.Reset();
-    ActiveTag = FGameplayTag::EmptyTag;
+    ActiveTag    = FGameplayTag::EmptyTag;
     ActiveWidget = nullptr;
 }
 
 void UGI_InfluenceMapSubsystem::Deinitialize()
 {
-    HideDebugUI();
     ClearSelection();
+    DestroyDebugUI();
     Registry.Reset();
     Super::Deinitialize();
 }
 
 // -- Registration ------------------------------------------------------------
 
-bool UGI_InfluenceMapSubsystem::RegisterMap(const FGI_InfluenceMapEntry& Entry)
+bool UGI_InfluenceMapSubsystem::RegisterVisualiser(
+    TScriptInterface<IGI_InfluenceMapVisualiser> Visualiser)
 {
-    if (!Entry.IsValid())
+    if (!Visualiser)
     {
         UE_LOG(LogTemp, Warning,
-            TEXT("GI_InfluenceMapSubsystem::RegisterMap — Entry is invalid. "
-                 "Tag must be set and Map must not be null."));
+            TEXT("GI_InfluenceMapSubsystem::RegisterVisualiser — Visualiser is null."));
         return false;
     }
 
-    if (FindEntryIndexByTag(Entry.Tag) != INDEX_NONE)
+    const FGameplayTag Tag = Visualiser->GetTag();
+    if (!Tag.IsValid())
     {
         UE_LOG(LogTemp, Warning,
-            TEXT("GI_InfluenceMapSubsystem::RegisterMap — Tag '%s' is already registered. "
-                 "Unregister the existing entry first."),
-            *Entry.Tag.ToString());
+            TEXT("GI_InfluenceMapSubsystem::RegisterVisualiser — Visualiser has an invalid tag."));
         return false;
     }
 
-    Registry.Add(Entry);
-
-    // If the widget is currently showing, refresh it to include the new entry
-    if (ActiveWidget)
-    {
-        ActiveWidget->SetupButtons(GetRegisteredTags());
-    }
-
-    return true;
-}
-
-bool UGI_InfluenceMapSubsystem::UnregisterMap(FGameplayTag Tag)
-{
-    const int32 Index = FindEntryIndexByTag(Tag);
-    if (Index == INDEX_NONE)
+    if (FindVisualiserIndexByTag(Tag) != INDEX_NONE)
     {
         UE_LOG(LogTemp, Warning,
-            TEXT("GI_InfluenceMapSubsystem::UnregisterMap — Tag '%s' is not registered."),
+            TEXT("GI_InfluenceMapSubsystem::RegisterVisualiser — Tag '%s' is already registered. "
+                 "Unregister the existing visualiser first."),
             *Tag.ToString());
         return false;
     }
 
-    // Deactivate the visualiser if this map is currently selected
+    Registry.Add(Visualiser);
+    RefreshWidgetButtons();
+    return true;
+}
+
+bool UGI_InfluenceMapSubsystem::UnregisterVisualiser(FGameplayTag Tag)
+{
+    const int32 Index = FindVisualiserIndexByTag(Tag);
+    if (Index == INDEX_NONE)
+    {
+        UE_LOG(LogTemp, Warning,
+            TEXT("GI_InfluenceMapSubsystem::UnregisterVisualiser — Tag '%s' is not registered."),
+            *Tag.ToString());
+        return false;
+    }
+
     if (ActiveTag == Tag)
     {
         ClearSelection();
     }
 
     Registry.RemoveAt(Index);
-
-    // Refresh the widget if showing
-    if (ActiveWidget)
-    {
-        ActiveWidget->SetupButtons(GetRegisteredTags());
-    }
-
+    RefreshWidgetButtons();
     return true;
 }
 
 // -- Selection ---------------------------------------------------------------
 
-bool UGI_InfluenceMapSubsystem::SelectMap(FGameplayTag Tag)
+bool UGI_InfluenceMapSubsystem::SelectVisualiser(FGameplayTag Tag)
 {
-    const int32 Index = FindEntryIndexByTag(Tag);
+    const int32 Index = FindVisualiserIndexByTag(Tag);
     if (Index == INDEX_NONE)
     {
         UE_LOG(LogTemp, Warning,
-            TEXT("GI_InfluenceMapSubsystem::SelectMap — Tag '%s' is not registered."),
+            TEXT("GI_InfluenceMapSubsystem::SelectVisualiser — Tag '%s' is not registered."),
             *Tag.ToString());
         return false;
     }
 
-    // Deactivate current visualiser before switching
     ClearSelection();
 
     ActiveTag = Tag;
-
-    // Activate the new visualiser if one is paired with this map
-    const FGI_InfluenceMapEntry& Entry = Registry[Index];
-    if (Entry.Visualiser != nullptr)
-    {
-        Entry.Visualiser->Activate();
-    }
-
-    OnInfluenceMapSelected.Broadcast(Tag, Index);
+    Registry[Index]->Activate();
+    OnVisualiserSelected.Broadcast(Tag, Index);
     return true;
 }
 
-bool UGI_InfluenceMapSubsystem::SelectMapByIndex(int32 Index)
+bool UGI_InfluenceMapSubsystem::SelectVisualiserByIndex(int32 Index)
 {
     if (!Registry.IsValidIndex(Index))
     {
         UE_LOG(LogTemp, Warning,
-            TEXT("GI_InfluenceMapSubsystem::SelectMapByIndex — Index %d is out of range. "
+            TEXT("GI_InfluenceMapSubsystem::SelectVisualiserByIndex — Index %d out of range. "
                  "Registry contains %d entries."),
             Index, Registry.Num());
         return false;
     }
 
-    return SelectMap(Registry[Index].Tag);
+    return SelectVisualiser(Registry[Index]->GetTag());
 }
 
 void UGI_InfluenceMapSubsystem::ClearSelection()
 {
     if (!ActiveTag.IsValid()) { return; }
 
-    const int32 Index = FindEntryIndexByTag(ActiveTag);
-    if (Index != INDEX_NONE)
+    const int32 Index = FindVisualiserIndexByTag(ActiveTag);
+    if (Index != INDEX_NONE && Registry[Index]->IsActive())
     {
-        const FGI_InfluenceMapEntry& Entry = Registry[Index];
-        if (Entry.Visualiser != nullptr && Entry.Visualiser->IsActive())
-        {
-            Entry.Visualiser->Deactivate();
-        }
+        Registry[Index]->Deactivate();
     }
 
     ActiveTag = FGameplayTag::EmptyTag;
@@ -144,50 +126,59 @@ void UGI_InfluenceMapSubsystem::ClearSelection()
 
 // -- Queries -----------------------------------------------------------------
 
-FGI_InfluenceMapEntry UGI_InfluenceMapSubsystem::GetEntryByTag(FGameplayTag Tag) const
-{
-    const int32 Index = FindEntryIndexByTag(Tag);
-    if (Index == INDEX_NONE)
-    {
-        UE_LOG(LogTemp, Warning,
-            TEXT("GI_InfluenceMapSubsystem::GetEntryByTag — Tag '%s' is not registered."),
-            *Tag.ToString());
-        return FGI_InfluenceMapEntry{};
-    }
-
-    return Registry[Index];
-}
-
 TArray<FGameplayTag> UGI_InfluenceMapSubsystem::GetRegisteredTags() const
 {
-    TArray<FGameplayTag> Out;
-    Out.Reserve(Registry.Num());
-    for (const FGI_InfluenceMapEntry& Entry : Registry)
+    TArray<FGameplayTag> Tags;
+    Tags.Reserve(Registry.Num());
+    for (const TScriptInterface<IGI_InfluenceMapVisualiser>& Visualiser : Registry)
     {
-        Out.Add(Entry.Tag);
+        Tags.Add(Visualiser->GetTag());
     }
-    return Out;
-}
-
-TArray<FText> UGI_InfluenceMapSubsystem::GetRegisteredText() const
-{
-    TArray<FText> Out;
-    Out.Reserve(Registry.Num());
-    for (const FGI_InfluenceMapEntry& Entry : Registry)
-    {
-        Out.Add(Entry.DisplayName);
-    }
-    return Out;
+    return Tags;
 }
 
 // -- UI ----------------------------------------------------------------------
+
+void UGI_InfluenceMapSubsystem::CreateDebugUI(
+    TSubclassOf<UGI_InfluenceMapWidget> WidgetClass,
+    APlayerController*                  OwningPlayer)
+{
+    DestroyDebugUI();
+
+    if (!WidgetClass)
+    {
+        UE_LOG(LogTemp, Warning,
+            TEXT("GI_InfluenceMapSubsystem::CreateDebugUI — WidgetClass is null."));
+        return;
+    }
+
+    if (!OwningPlayer)
+    {
+        UE_LOG(LogTemp, Warning,
+            TEXT("GI_InfluenceMapSubsystem::CreateDebugUI — OwningPlayer is null."));
+        return;
+    }
+
+    ActiveWidget = CreateWidget<UGI_InfluenceMapWidget>(OwningPlayer, WidgetClass);
+    if (!ActiveWidget)
+    {
+        UE_LOG(LogTemp, Error,
+            TEXT("GI_InfluenceMapSubsystem::CreateDebugUI — Failed to create widget."));
+        return;
+    }
+
+    ActiveWidget->OnSelectionChanged.AddDynamic(
+        this, &UGI_InfluenceMapSubsystem::OnWidgetSelectionChanged);
+
+    ActiveWidget->SetupButtons(GetRegisteredTags());
+    ActiveWidget->AddToViewport();
+    ActiveWidget->SetVisibility(ESlateVisibility::Collapsed);
+}
 
 void UGI_InfluenceMapSubsystem::DestroyDebugUI()
 {
     if (!ActiveWidget) { return; }
 
-    HideDebugUI();
-    
     ActiveWidget->OnSelectionChanged.RemoveDynamic(
         this, &UGI_InfluenceMapSubsystem::OnWidgetSelectionChanged);
 
@@ -195,55 +186,29 @@ void UGI_InfluenceMapSubsystem::DestroyDebugUI()
     ActiveWidget = nullptr;
 }
 
-void UGI_InfluenceMapSubsystem::CreateDebugWidget(
-    const TSubclassOf<UGI_InfluenceMapWidget> WidgetClass, APlayerController* OwningPlayer)
+void UGI_InfluenceMapSubsystem::ShowDebugUI()
 {
-    if (!WidgetClass)
-    {
-        UE_LOG(LogTemp, Warning,
-            TEXT("GI_InfluenceMapSubsystem::ShowDebugUI — WidgetClass is null. "
-                 "Pass a valid UGI_InfluenceMapWidget subclass."));
-        return;
-    }
-
-    if (!OwningPlayer)
-    {
-        UE_LOG(LogTemp, Warning,
-            TEXT("GI_InfluenceMapSubsystem::ShowDebugUI — OwningPlayer is null."));
-        return;
-    }
-    
-    DestroyDebugUI();
-
-    ActiveWidget = CreateWidget<UGI_InfluenceMapWidget>(OwningPlayer, WidgetClass);
     if (!ActiveWidget)
     {
-        UE_LOG(LogTemp, Error,
-            TEXT("GI_InfluenceMapSubsystem::ShowDebugUI — Failed to create widget."));
+        UE_LOG(LogTemp, Warning,
+            TEXT("GI_InfluenceMapSubsystem::ShowDebugUI — No widget exists. "
+                 "Call CreateDebugUI first."));
         return;
     }
 
-    // Wire the widget's selection delegate to the subsystem's handler
-    ActiveWidget->OnSelectionChanged.AddDynamic(this, &UGI_InfluenceMapSubsystem::OnWidgetSelectionChanged);
-
-    // Populate buttons from the current registry
-    ActiveWidget->SetupButtons(GetRegisteredTags());
-
-    ActiveWidget->AddToViewport();
-    ActiveWidget->SetVisibility(ESlateVisibility::Collapsed);
-}
-
-void UGI_InfluenceMapSubsystem::ShowDebugUI() const
-{
-    if (!ActiveWidget) { return; }
-    
     ActiveWidget->SetVisibility(ESlateVisibility::Visible);
 }
 
-void UGI_InfluenceMapSubsystem::HideDebugUI() const
+void UGI_InfluenceMapSubsystem::HideDebugUI()
 {
-    if (!ActiveWidget) { return; }
-
+    if (!ActiveWidget) 
+    {
+        UE_LOG(LogTemp, Warning,
+            TEXT("GI_InfluenceMapSubsystem::HideDebugUI — No widget exists. "
+                 "Call CreateDebugUI first."));
+        return;
+    }
+    
     ActiveWidget->SetVisibility(ESlateVisibility::Collapsed);
 }
 
@@ -251,13 +216,20 @@ void UGI_InfluenceMapSubsystem::HideDebugUI() const
 
 void UGI_InfluenceMapSubsystem::OnWidgetSelectionChanged(FGameplayTag Tag, int32 Index)
 {
-    SelectMap(Tag);
+    SelectVisualiser(Tag);
 }
 
-int32 UGI_InfluenceMapSubsystem::FindEntryIndexByTag(FGameplayTag Tag) const
+int32 UGI_InfluenceMapSubsystem::FindVisualiserIndexByTag(FGameplayTag Tag) const
 {
-    return Registry.IndexOfByPredicate([&Tag](const FGI_InfluenceMapEntry& Entry)
-    {
-        return Entry.Tag == Tag;
-    });
+    return Registry.IndexOfByPredicate(
+        [&Tag](const TScriptInterface<IGI_InfluenceMapVisualiser>& Visualiser)
+        {
+            return Visualiser->GetTag() == Tag;
+        });
+}
+
+void UGI_InfluenceMapSubsystem::RefreshWidgetButtons()
+{
+    if (!ActiveWidget) { return; }
+    ActiveWidget->SetupButtons(GetRegisteredTags());
 }
