@@ -47,6 +47,9 @@ struct FConnectItBoardState
     TArray<FConnectItTileData> TileDataArray;
 
     UPROPERTY(BlueprintReadOnly)
+    int32 FactionTurn = -1;
+    
+    UPROPERTY(BlueprintReadOnly)
     TArray<float> ScoreBoard;
 
     UPROPERTY(BlueprintReadOnly)
