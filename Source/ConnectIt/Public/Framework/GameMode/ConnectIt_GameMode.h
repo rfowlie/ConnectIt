@@ -72,9 +72,12 @@ protected:
     // Called from HandleMatchHasStarted after tiles have registered
     void InitialiseBoard();
 
-    // Called when the board manager fires OnGameOver
+    // Bound to UGameEventTaskSubsystem's ConnectIt_Event_PlayerWin tag
+    // completing (see InitialiseBoard). Reads the winning faction from
+    // BoardStateComponent's persistent CurrentState rather than a delegate
+    // parameter -- the tag signal itself carries no payload.
     UFUNCTION()
-    void HandleGameOver(int32 WinningFactionSlot);
+    void HandleGameOver();
 
 private:
 

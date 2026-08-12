@@ -9,7 +9,7 @@
 #include "Board/ConnectIt_BoardStateComponent.h"
 #include "Framework/Data/ConnectIt_ConfigComponent.h"
 #include "Framework/Subsystem/ConnectIt_BoardManagerSubsystem.h"
-#include "Framework/Subsystem/ConnectIt_GameEventSubsystem.h"
+#include "GameEvent/GameEventTaskSubsystem.h"
 #include "Interpreter/ConnectIt_PieceSpawnInterpreter.h"
 #include "Interpreter/ConnectIt_ScoreInterpreter.h"
 #include "Interpreter/ConnectIt_TileStateInterpreter.h"
@@ -96,16 +96,14 @@ void AConnectIt_BoardManager::BeginPlay()
     }
 
     // Board state changes replicate identically to server and client via
-    // BoardStateComponent's OnRep -- listen here, on both machines, so
-    // OnPiecePlaced/OnLineScored/OnPlayerWin and the gated visual sequence
-    // fire the same way everywhere instead of only on the server
+    // BoardStateComponent's OnRep -- listen here, on both machines, so the
+    // gated visual sequence (UGameEventTaskSubsystem tags) fires the same
+    // way everywhere instead of only on the server
     if (IsValid(BoardStateComponent))
     {
         BoardStateComponent->OnBoardStateChanged.AddDynamic(
             this, &AConnectIt_BoardManager::HandleBoardStateChanged);
     }
-
-    BindGameEventSequencing();
 
     if (HasAuthority())
     {
@@ -504,120 +502,57 @@ void AConnectIt_BoardManager::HandleBoardStateChanged()
     TryStartNextSequence();
 }
 
-void AConnectIt_BoardManager::BindGameEventSequencing()
-{
-    UConnectIt_GameEventSubsystem* GameEventSubsystem =
-        GetWorld() ? GetWorld()->GetSubsystem<UConnectIt_GameEventSubsystem>() : nullptr;
-
-    if (!IsValid(GameEventSubsystem)) return;
-
-    GameEventSubsystem->BindOnTagComplete(
-        ConnectIt_Event_PiecePlaced, this,
-        GET_FUNCTION_NAME_CHECKED(AConnectIt_BoardManager, HandlePiecePlacedSequenceComplete));
-
-    GameEventSubsystem->BindOnTagComplete(
-        ConnectIt_Event_LineScored, this,
-        GET_FUNCTION_NAME_CHECKED(AConnectIt_BoardManager, HandleLineScoredSequenceComplete));
-
-    GameEventSubsystem->BindOnTagComplete(
-        ConnectIt_Event_PlayerWin, this,
-        GET_FUNCTION_NAME_CHECKED(AConnectIt_BoardManager, HandlePlayerWinSequenceComplete));
-}
-
 void AConnectIt_BoardManager::TryStartNextSequence()
 {
     if (bSequenceInFlight) return;
     if (PendingChangeEventQueue.IsEmpty()) return;
 
+    bSequenceInFlight = true;
     ActiveChangeEvent = PendingChangeEventQueue[0];
     PendingChangeEventQueue.RemoveAt(0);
-    bSequenceInFlight = true;
 
-    UConnectIt_GameEventSubsystem* GameEventSubsystem =
-        GetWorld() ? GetWorld()->GetSubsystem<UConnectIt_GameEventSubsystem>() : nullptr;
-
-    // "Just tell me now" listeners (e.g. UConnectIt_BoardManagerSubsystem's
-    // relay) fire immediately here, strictly before the gated visual step
-    // for this event even starts
-    OnPiecePlaced.Broadcast(ActiveChangeEvent.PlacedPosition);
-
-    if (IsValid(GameEventSubsystem))
+    // Build the step list -- always PiecePlaced, then conditionally
+    // LineScored and/or PlayerWin, in that order. Empty steps are simply
+    // omitted rather than included and skipped.
+    TArray<FGameplayTagContainer> Steps;
+    if (ActiveChangeEvent.bPiecePlaced)
     {
-        GameEventSubsystem->TriggerTag(ConnectIt_Event_PiecePlaced);
+        Steps.Add(FGameplayTagContainer(ConnectIt_Event_PiecePlaced));
     }
-    else
-    {
-        // No subsystem to gate on -- fall through immediately so the
-        // sequence still completes
-        HandlePiecePlacedSequenceComplete();
-    }
-}
-
-void AConnectIt_BoardManager::HandlePiecePlacedSequenceComplete()
-{
-    UConnectIt_GameEventSubsystem* GameEventSubsystem =
-        GetWorld() ? GetWorld()->GetSubsystem<UConnectIt_GameEventSubsystem>() : nullptr;
-
     if (ActiveChangeEvent.bLineScored)
     {
-        OnLineScored.Broadcast(
-            ActiveChangeEvent.ScoringFactionSlot, ActiveChangeEvent.PointsScored);
-
-        if (IsValid(GameEventSubsystem))
-        {
-            GameEventSubsystem->TriggerTag(ConnectIt_Event_LineScored);
-        }
-        else
-        {
-            HandleLineScoredSequenceComplete();
-        }
+        Steps.Add(FGameplayTagContainer(ConnectIt_Event_LineScored));
     }
-    else if (ActiveChangeEvent.bGameWon)
-    {
-        OnPlayerWin.Broadcast(ActiveChangeEvent.WinningFactionSlot);
-
-        if (IsValid(GameEventSubsystem))
-        {
-            GameEventSubsystem->TriggerTag(ConnectIt_Event_PlayerWin);
-        }
-        else
-        {
-            HandlePlayerWinSequenceComplete();
-        }
-    }
-    else
-    {
-        bSequenceInFlight = false;
-        TryStartNextSequence();
-    }
-}
-
-void AConnectIt_BoardManager::HandleLineScoredSequenceComplete()
-{
     if (ActiveChangeEvent.bGameWon)
     {
-        OnPlayerWin.Broadcast(ActiveChangeEvent.WinningFactionSlot);
-
-        UConnectIt_GameEventSubsystem* GameEventSubsystem =
-            GetWorld() ? GetWorld()->GetSubsystem<UConnectIt_GameEventSubsystem>() : nullptr;
-
-        if (IsValid(GameEventSubsystem))
-        {
-            GameEventSubsystem->TriggerTag(ConnectIt_Event_PlayerWin);
-        }
-        else
-        {
-            HandlePlayerWinSequenceComplete();
-        }
+        Steps.Add(FGameplayTagContainer(ConnectIt_Event_PlayerWin));
     }
-    else
+
+    UGameEventTaskSubsystem* GameEventSubsystem =
+        GetWorld() ? GetWorld()->GetSubsystem<UGameEventTaskSubsystem>() : nullptr;
+
+    if (!IsValid(GameEventSubsystem))
     {
-        bSequenceInFlight = false;
-        TryStartNextSequence();
+        // No subsystem to trigger tags on -- nothing left to notify (no
+        // typed delegates exist any more; listeners bind directly to the
+        // subsystem), so just consider this sequence done and drain the
+        // next queued change event, if any
+        HandleSequenceComplete();
+        return;
     }
+
+    // No OnStepComplete handler needed -- there are no typed delegates left
+    // for this board manager to fire per-step. "Tell me now" listeners bind
+    // UGameEventTaskSubsystem::BindOnTagBegin directly (fires the instant
+    // TriggerTag runs, before any registered task executes); anyone needing
+    // payload data reads BoardStateComponent->GetChangeEvent().
+    FOnTagSequenceComplete CompleteDelegate;
+    CompleteDelegate.BindDynamic(this, &AConnectIt_BoardManager::HandleSequenceComplete);
+
+    GameEventSubsystem->QueueTagSequence(Steps, FOnTagSequenceStepComplete(), CompleteDelegate);
 }
 
-void AConnectIt_BoardManager::HandlePlayerWinSequenceComplete()
+void AConnectIt_BoardManager::HandleSequenceComplete()
 {
     bSequenceInFlight = false;
     TryStartNextSequence();

@@ -18,9 +18,15 @@ class UGridTileRegistryComponent;
 class UGridPieceRegistryComponent;
 class UBoardShiftComponent;
 
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnPiecePlaced,FGridPosition, Position);
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnLineScored,int32, FactionSlot, float, PointsScored);
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnPlayerWin,int32, WinningFactionSlot);
+// NOTE: OnPiecePlaced/OnLineScored/OnPlayerWin used to live here as their
+// own delegates. Removed -- listeners now bind to UGameEventTaskSubsystem's
+// ConnectIt_Event_PiecePlaced/LineScored/PlayerWin tags instead (see
+// Workflows/GameEventSubsystem_Workflow.txt). This board manager triggers
+// which tag fires when; it doesn't also maintain a parallel notification
+// API for the same events.
+//
+// OnShiftApplied stays as a direct delegate for now -- its tag-based
+// equivalent is deferred (see HandleShiftResult).
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnShiftApplied, const FShiftOperation&, Operation, const FShiftResult&, Result);
 
 UCLASS(Blueprintable, BlueprintType)
@@ -69,15 +75,6 @@ public:
     // --- Delegates ---
 
     UPROPERTY(BlueprintAssignable, Category = "ConnectIt|Board")
-    FOnPiecePlaced OnPiecePlaced;
-
-    UPROPERTY(BlueprintAssignable, Category = "ConnectIt|Board")
-    FOnLineScored OnLineScored;
-
-    UPROPERTY(BlueprintAssignable, Category = "ConnectIt|Board")
-    FOnPlayerWin OnPlayerWin;
-
-    UPROPERTY(BlueprintAssignable, Category = "ConnectIt|Board")
     FOnShiftApplied OnShiftApplied;
 
     // --- Config Accessors ---
@@ -102,9 +99,9 @@ protected:
     // Bound to BoardStateComponent->OnBoardStateChanged in BeginPlay, on
     // both server and client -- that signal already fires symmetrically on
     // both machines (server: ApplyAndBroadcast, client: OnRep_BoardSnapshot),
-    // so reading BoardSnapshot.ChangeEvent here is what drives OnPiecePlaced/
-    // OnLineScored/OnPlayerWin and the gated visual sequence identically on
-    // every machine, instead of the old pattern of broadcasting them
+    // so reading BoardSnapshot.ChangeEvent here is what drives the gated
+    // visual sequence (via UGameEventTaskSubsystem tags) identically on
+    // every machine, instead of the old pattern of broadcasting delegates
     // directly from server-only request handlers.
     UFUNCTION()
     void HandleBoardStateChanged();
@@ -177,28 +174,40 @@ private:
 
     // --- Gated Visual Sequencing ---
     // Drives ConnectIt_Event_PiecePlaced -> ConnectIt_Event_LineScored ->
-    // ConnectIt_Event_PlayerWin in strict order via UConnectIt_GameEventSubsystem,
-    // each step gated on the previous fully completing. See
-    // HandleBoardStateChanged for the entry point.
+    // ConnectIt_Event_PlayerWin in strict order via UGameEventTaskSubsystem's
+    // QueueTagSequence, each step gated on the previous fully completing.
+    // See HandleBoardStateChanged for the entry point.
+    //
+    // NOTE (known, deferred limitation): nothing here gates
+    // UTurnBasedParticipantManagerComponent's resolution-phase timer on this
+    // sequence completing -- that timer is fixed-duration with no external
+    // hold/extend mechanism, and TurnBasedPauseAction/NotifyPaused is
+    // client-side input-blocking only, with no effect on it. A slow win/
+    // score sequence can still be running when the next turn starts. See
+    // Workflows/GameEventSubsystem_Workflow.txt for the follow-up plan.
 
-    // Binds the three sequence-complete handlers to their tags, once
-    void BindGameEventSequencing();
-
-    // Starts the next queued sequence if one isn't already running
+    // Starts the next queued change event's sequence if one isn't already
+    // running -- pops PendingChangeEventQueue into ActiveChangeEvent, builds
+    // the step list from its flags, and calls QueueTagSequence once. No
+    // typed delegates are fired from here or anywhere in this sequencing --
+    // listeners bind directly to UGameEventTaskSubsystem (BindOnTagBegin for
+    // "tell me now", a registered UGameEventTask_Async for "wait for my
+    // visual to finish") and read UConnectIt_BoardStateComponent::
+    // GetChangeEvent() for payload data.
     void TryStartNextSequence();
 
+    // Bound as QueueTagSequence's OnComplete -- the whole sequence for
+    // ActiveChangeEvent finished, drain the next queued change event
     UFUNCTION()
-    void HandlePiecePlacedSequenceComplete();
-
-    UFUNCTION()
-    void HandleLineScoredSequenceComplete();
-
-    UFUNCTION()
-    void HandlePlayerWinSequenceComplete();
+    void HandleSequenceComplete();
 
     // Change events awaiting sequencing -- a new event arriving while a
     // sequence is already in flight is queued rather than dropped or
-    // interleaved with the one currently running
+    // interleaved with the one currently running. This is separate from
+    // (and in addition to) UGameEventTaskSubsystem's own internal queue --
+    // that queue only serializes WHICH sequence runs when; this one is what
+    // lets HandleSequenceComplete know a new ChangeEvent is waiting once the
+    // current one finishes.
     UPROPERTY()
     TArray<FConnectItBoardChangeEvent> PendingChangeEventQueue;
 

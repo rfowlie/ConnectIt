@@ -4,11 +4,13 @@
 #include "Framework/GameMode/ConnectIt_GameMode.h"
 #include "EngineUtils.h"
 #include "Board/ConnectIt_BoardManager.h"
+#include "Board/ConnectIt_BoardStateComponent.h"
+#include "ConnectIt_GameplayTags.h"
 #include "Framework/Controller/ConnectIt_AIController.h"
 #include "Framework/GameState/ConnectIt_GameState.h"
 #include "Framework/GameState/TurnBasedGameState.h"
 #include "Framework/PlayerState/TurnBasedPlayerState.h"
-#include "Framework/Subsystem/ConnectIt_BoardManagerSubsystem.h"
+#include "GameEvent/GameEventTaskSubsystem.h"
 #include "Library/ConnectIt_GameUtilityLibrary.h"
 
 
@@ -88,13 +90,15 @@ void AConnectIt_GameMode::InitialiseBoard()
         return;
     }
 
-    // Bind game over handler via the subsystem relay rather than the board
+    // Bind game over handler to the tag subsystem rather than the board
     // manager directly -- the binding then doesn't depend on Board having
     // already been resolved above
-    if (UConnectIt_BoardManagerSubsystem* Subsystem =
-        GetWorld()->GetSubsystem<UConnectIt_BoardManagerSubsystem>())
+    if (UGameEventTaskSubsystem* GameEventSubsystem =
+        GetWorld()->GetSubsystem<UGameEventTaskSubsystem>())
     {
-        Subsystem->OnPlayerWin.AddDynamic(this, &AConnectIt_GameMode::HandleGameOver);
+        GameEventSubsystem->BindOnTagComplete(
+            ConnectIt_Event_PlayerWin, this,
+            GET_FUNCTION_NAME_CHECKED(AConnectIt_GameMode, HandleGameOver));
     }
 
     // Initialise board state from registered tile positions
@@ -147,8 +151,17 @@ void AConnectIt_GameMode::SpawnAndRegisterAI()
 
 // --- Game Over ---
 
-void AConnectIt_GameMode::HandleGameOver(int32 WinningFactionSlot)
+void AConnectIt_GameMode::HandleGameOver()
 {
+    // The tag signal carries no payload -- WinningFactionSlot is a
+    // persistent field CheckWinCondition already set on CurrentState, no
+    // need to route it through a delegate parameter
+    const UConnectIt_BoardStateComponent* BoardState =
+        UConnectIt_GameUtilityLibrary::GetBoardStateComponent(this);
+
+    const int32 WinningFactionSlot = IsValid(BoardState)
+        ? BoardState->GetCurrentState().WinningFactionSlot : -1;
+
     UE_LOG(LogTemp, Log,
        TEXT("ConnectIt_GameMode: Game over — faction %d wins"),
        WinningFactionSlot);

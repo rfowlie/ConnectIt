@@ -9,14 +9,17 @@
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnBoardManagerReady, AConnectIt_BoardManager*, BoardManager);
 
-// Per-world cache and event relay for the single AConnectIt_BoardManager in
-// the level. Avoids repeated TActorIterator world scans from hot-path
-// Blueprint call sites (see UConnectIt_GameUtilityLibrary::GetBoardManager),
-// and lets listeners bind to board events without needing to check for or
-// wait on the board manager's existence first -- this subsystem always
-// exists, binds to the board manager itself once it registers, and relays
-// its events through. Populated by AConnectIt_BoardManager::BeginPlay on
-// both server and client.
+// Per-world cache for the single AConnectIt_BoardManager in the level.
+// Avoids repeated TActorIterator world scans from hot-path Blueprint call
+// sites (see UConnectIt_GameUtilityLibrary::GetBoardManager). Populated by
+// AConnectIt_BoardManager::BeginPlay on both server and client.
+//
+// Also relays OnShiftApplied -- the one board event that still fires as a
+// direct delegate (its tag-based equivalent, on UGameEventTaskSubsystem,
+// is deferred; see ConnectIt_BoardManager.h). Every other board event
+// (piece placed, line scored, player win) is a UGameEventTaskSubsystem tag
+// now -- this subsystem does not relay those, bind to the tag subsystem
+// directly instead (see Workflows/GameEventSubsystem_Workflow.txt).
 UCLASS()
 class CONNECTIT_API UConnectIt_BoardManagerSubsystem : public UWorldSubsystem
 {
@@ -47,19 +50,11 @@ public:
 	FOnBoardManagerReady OnBoardManagerReady;
 
 	// --- Board Event Relay ---
-	// Mirrors AConnectIt_BoardManager's own delegates. Bind here instead of
-	// on the board manager directly -- this subsystem always exists, so
-	// there is no need to check for or wait on the board manager's
-	// existence before binding to it.
-
-	UPROPERTY(BlueprintAssignable, Category = "ConnectIt|Board")
-	FOnPiecePlaced OnPiecePlaced;
-
-	UPROPERTY(BlueprintAssignable, Category = "ConnectIt|Board")
-	FOnLineScored OnLineScored;
-
-	UPROPERTY(BlueprintAssignable, Category = "ConnectIt|Board")
-	FOnPlayerWin OnPlayerWin;
+	// Mirrors AConnectIt_BoardManager's OnShiftApplied -- the one board
+	// event still fired as a direct delegate (deferred tag migration, see
+	// ConnectIt_BoardManager.h). Bind here instead of on the board manager
+	// directly -- this subsystem always exists, so there is no need to
+	// check for or wait on the board manager's existence before binding.
 
 	UPROPERTY(BlueprintAssignable, Category = "ConnectIt|Board")
 	FOnShiftApplied OnShiftApplied;
@@ -71,15 +66,6 @@ private:
 
 	void BindToBoardManager(AConnectIt_BoardManager* InBoardManager);
 	void UnbindFromBoardManager();
-
-	UFUNCTION()
-	void HandlePiecePlaced(FGridPosition Position);
-
-	UFUNCTION()
-	void HandleLineScored(int32 FactionSlot, float PointsScored);
-
-	UFUNCTION()
-	void HandlePlayerWin(int32 WinningFactionSlot);
 
 	UFUNCTION()
 	void HandleShiftApplied(const FShiftOperation& Operation, const FShiftResult& Result);

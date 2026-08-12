@@ -32,8 +32,8 @@ public:
     // alongside the state it describes.
     // Fires OnBoardStateChanged on server immediately
     // Clients receive via OnRep -- AConnectIt_BoardManager reads ChangeEvent
-    // from that same signal on both machines to drive typed delegates and
-    // gated visual sequencing (see HandleBoardStateChanged)
+    // from that same signal on both machines to drive gated visual
+    // sequencing (see HandleBoardStateChanged)
     void ApplyAndBroadcast(
         const FConnectItBoardState& NewState,
         const FConnectItBoardChangeEvent& ChangeEvent);
@@ -58,6 +58,17 @@ public:
     const FConnectItBoardState& GetPreviousState() const
     {
         return BoardSnapshot.PreviousState;
+    }
+
+    // What specifically changed on the most recent ApplyAndBroadcast call.
+    // Listeners bound to a UGameEventTaskSubsystem board event tag (which
+    // carries no parameters) call this to read payload data -- position,
+    // faction, points scored, winner -- instead of it being threaded
+    // through a delegate parameter
+    UFUNCTION(BlueprintPure, Category = "Board State")
+    const FConnectItBoardChangeEvent& GetChangeEvent() const
+    {
+        return BoardSnapshot.ChangeEvent;
     }
 
     // Convenience -- reads from current state

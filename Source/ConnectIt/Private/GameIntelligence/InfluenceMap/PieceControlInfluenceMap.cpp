@@ -1,6 +1,5 @@
 ﻿// Fill out your copyright notice in the Description page of Project Settings.
 
-
 #include "GameIntelligence/InfluenceMap/PieceControlInfluenceMap.h"
 #include "GridMechanics_GridLibrary.h"
 #include "Board/ConnectIt_BoardStateComponent.h"
