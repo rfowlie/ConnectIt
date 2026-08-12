@@ -47,6 +47,9 @@ struct FConnectItBoardState
     TArray<FConnectItTileData> TileDataArray;
 
     UPROPERTY(BlueprintReadOnly)
+    int32 FactionTurn = -1;
+    
+    UPROPERTY(BlueprintReadOnly)
     TArray<float> ScoreBoard;
 
     UPROPERTY(BlueprintReadOnly)
@@ -138,6 +141,46 @@ struct FConnectItBoardState
     }
 };
 
+// Describes what specifically happened on the most recent ApplyAndBroadcast
+// call -- rides along inside FConnectItBoardStateSnapshot so it replicates
+// atomically with the state it describes. Consumed by AConnectIt_BoardManager
+// to drive typed delegates and gated visual sequencing identically on server
+// and client (see HandleBoardStateChanged), instead of the old pattern of
+// firing gameplay delegates directly from server-only request handlers.
+//
+// bGameWon is edge-triggered -- true only on the transition into game-over,
+// not "the game is currently over" (FConnectItBoardState::bGameOver stays
+// true on every snapshot after the win).
+USTRUCT(BlueprintType)
+struct FConnectItBoardChangeEvent
+{
+    GENERATED_BODY()
+
+    UPROPERTY(BlueprintReadOnly)
+    bool bPiecePlaced = false;
+
+    UPROPERTY(BlueprintReadOnly)
+    FGridPosition PlacedPosition;
+
+    UPROPERTY(BlueprintReadOnly)
+    int32 PlacingFactionSlot = -1;
+
+    UPROPERTY(BlueprintReadOnly)
+    bool bLineScored = false;
+
+    UPROPERTY(BlueprintReadOnly)
+    int32 ScoringFactionSlot = -1;
+
+    UPROPERTY(BlueprintReadOnly)
+    float PointsScored = 0.f;
+
+    UPROPERTY(BlueprintReadOnly)
+    bool bGameWon = false;
+
+    UPROPERTY(BlueprintReadOnly)
+    int32 WinningFactionSlot = -1;
+};
+
 // Snapshot -- the ONE replicated property on UConnectItBoardStateComponent
 // Previous and current arrive atomically
 // Interpreters read both via GetBoardSnapshot()
@@ -159,4 +202,8 @@ struct FConnectItBoardStateSnapshot
     // Current authoritative state
     UPROPERTY(BlueprintReadWrite)
     FConnectItBoardState CurrentState;
+
+    // What specifically changed on this update -- see FConnectItBoardChangeEvent
+    UPROPERTY(BlueprintReadWrite)
+    FConnectItBoardChangeEvent ChangeEvent;
 };

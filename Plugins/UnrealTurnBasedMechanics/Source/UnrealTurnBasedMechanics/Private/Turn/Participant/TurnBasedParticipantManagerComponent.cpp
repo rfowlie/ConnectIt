@@ -1,7 +1,8 @@
 ﻿// Fill out your copyright notice in the Description page of Project Settings.
 
-
 #include "Turn/Participant/TurnBasedParticipantManagerComponent.h"
+#include "UnrealTurnBasedMechanics.h"
+#include "Framework/GameState/TurnBasedGameState.h"
 #include "Net/UnrealNetwork.h"
 #include "Framework/PlayerState/TurnBasedPlayerState.h"
 #include "Turn/Order/SequentialTurnOrderStrategy.h"
@@ -18,13 +19,12 @@ void UTurnBasedParticipantManagerComponent::BeginPlay()
 {
     Super::BeginPlay();
 
-    // Default to Sequential if no strategy set in editor
-    if (!IsValid(TurnOrderStrategy))
+    if (!TurnOrderStrategy.GetObject())
     {
         TurnOrderStrategy = NewObject<USequentialTurnOrderStrategy>(
             this, USequentialTurnOrderStrategy::StaticClass());
 
-        UE_LOG(LogTemp, Log,
+        UE_LOG(LogTurnBasedMechanics, Log,
             TEXT("TurnBasedParticipantManager: No strategy set "
                  "— defaulting to Sequential"));
     }
@@ -46,42 +46,74 @@ void UTurnBasedParticipantManagerComponent::GetLifetimeReplicatedProps(
 
 void UTurnBasedParticipantManagerComponent::RegisterParticipant(
     AController* Controller,
-    const EParticipantType Type,
-    const FString& DisplayName)
+    const EParticipantType Type)
 {
     check(!IsRunningClientOnly());
-
     if (!IsValid(Controller)) return;
 
-    // Warn on duplicate
-    if (FindParticipant(Controller))
+    ATurnBasedPlayerState* PS =
+        Controller->GetPlayerState<ATurnBasedPlayerState>();
+
+    if (!IsValid(PS))
     {
-        UE_LOG(LogTemp, Warning,
+        UE_LOG(LogTurnBasedMechanics, Error,
+            TEXT("TurnBasedParticipantManager: %s has no "
+                 "ATurnBasedPlayerState — cannot register. "
+                 "AI controllers must have PlayerState created "
+                 "before registering."),
+            *Controller->GetName());
+        return;
+    }
+
+    if (IsParticipantRegistered(Controller))
+    {
+        UE_LOG(LogTurnBasedMechanics, Warning,
             TEXT("TurnBasedParticipantManager: %s already registered"),
             *Controller->GetName());
         return;
     }
 
+    const int32 NewSlotIndex = Participants.Num();
+
+    PS->SetSlotIndex(NewSlotIndex);
+    PS->SetParticipantType(Type);
+    PS->SetReady(Type == EParticipantType::AI);
+
     FTurnParticipantInfo Info;
-    Info.Controller      = Controller;
+    Info.PlayerState     = PS;
     Info.ParticipantType = Type;
-    Info.DisplayName     = DisplayName;
-    Info.SlotIndex       = Participants.Num();
-    Info.bReady          = (Type == EParticipantType::AI); // AI auto-confirms
+    Info.SlotIndex       = NewSlotIndex;
     Info.bConnected      = true;
 
     Participants.Add(Info);
+    ServerControllers.Add(Controller);
 
-    if (UTurnBasedParticipantComponent* Comp = GetParticipantComponent(Controller))
+    if (UTurnBasedParticipantComponent* Comp =
+        GetParticipantComponent(Controller))
     {
+        Comp->CachedSlotIndex = NewSlotIndex;
         Comp->ParticipantType = Type;
-        Comp->CachedSlotIndex = Info.SlotIndex;
     }
 
-    UE_LOG(LogTemp, Log,
+    // Match is still gathering participants
+    SetMatchPhase(EMatchPhase::WaitingForParticipants);
+
+    UE_LOG(LogTurnBasedMechanics, Log,
         TEXT("TurnBasedParticipantManager: Registered %s '%s' at slot %d"),
         Type == EParticipantType::AI ? TEXT("AI") : TEXT("Human"),
-        *DisplayName, Info.SlotIndex);
+        *PS->GetPlayerName(),
+        NewSlotIndex);
+
+    // if (CheckAllParticipantsRegistered())
+    // {
+    //     SetMatchPhase(EMatchPhase::WaitingForReady);
+    // }
+}
+
+bool UTurnBasedParticipantManagerComponent::IsParticipantRegistered(
+    AController* Controller) const
+{
+    return FindParticipantIndex(Controller) != INDEX_NONE;
 }
 
 void UTurnBasedParticipantManagerComponent::NotifyParticipantReady(
@@ -89,14 +121,19 @@ void UTurnBasedParticipantManagerComponent::NotifyParticipantReady(
 {
     check(!IsRunningClientOnly());
 
-    FTurnParticipantInfo* Info = FindParticipant(Controller);
+    const FTurnParticipantInfo* Info = FindParticipant(Controller);
     if (!Info) return;
+    if (!IsValid(Info->PlayerState)) return;
 
-    Info->bReady = true;
+    if (ATurnBasedPlayerState* PS =
+        Cast<ATurnBasedPlayerState>(Info->PlayerState))
+    {
+        PS->SetReady(true);
+    }
 
-    UE_LOG(LogTemp, Log,
+    UE_LOG(LogTurnBasedMechanics, Log,
         TEXT("TurnBasedParticipantManager: %s confirmed ready"),
-        *Info->DisplayName);
+        *Info->GetDisplayName());
 
     CheckReadyStatus();
 }
@@ -104,7 +141,8 @@ void UTurnBasedParticipantManagerComponent::NotifyParticipantReady(
 void UTurnBasedParticipantManagerComponent::BeginReadyCheck()
 {
     check(!IsRunningClientOnly());
-    SetPhase(ETurnPhase::WaitingForReady);
+
+    SetMatchPhase(EMatchPhase::WaitingForReady);
     CheckReadyStatus();
 }
 
@@ -117,7 +155,7 @@ void UTurnBasedParticipantManagerComponent::NotifyTurnEndSubmitted(
 
     if (CurrentPhase != ETurnPhase::TurnActive)
     {
-        UE_LOG(LogTemp, Warning,
+        UE_LOG(LogTurnBasedMechanics, Warning,
             TEXT("TurnBasedParticipantManager: TurnEnd submitted outside "
                  "TurnActive phase — ignored"));
         return;
@@ -126,7 +164,7 @@ void UTurnBasedParticipantManagerComponent::NotifyTurnEndSubmitted(
     const int32 SubmitterIndex = FindParticipantIndex(Controller);
     if (SubmitterIndex != ActiveParticipantIndex)
     {
-        UE_LOG(LogTemp, Warning,
+        UE_LOG(LogTurnBasedMechanics, Warning,
             TEXT("TurnBasedParticipantManager: TurnEnd submitted by "
                  "non-active participant — ignored"));
         return;
@@ -146,17 +184,18 @@ void UTurnBasedParticipantManagerComponent::NotifyParticipantDisconnected(
     Info->bConnected = false;
     const int32 DisconnectedIndex = FindParticipantIndex(Controller);
 
-    UE_LOG(LogTemp, Log,
+    UE_LOG(LogTurnBasedMechanics, Log,
         TEXT("TurnBasedParticipantManager: %s disconnected"),
-        *Info->DisplayName);
+        *Info->GetDisplayName());
 
-    // Only pause if it is this participant's turn
     if (DisconnectedIndex == ActiveParticipantIndex
         && CurrentPhase == ETurnPhase::TurnActive)
     {
         GetWorld()->GetTimerManager().ClearTimer(TurnTimerHandle);
         DisconnectedParticipantIndex = DisconnectedIndex;
-        SetPhase(ETurnPhase::Paused);
+
+        SetPhase(ETurnPhase::TurnPaused);
+        SetMatchPhase(EMatchPhase::Paused);
 
         GetWorld()->GetTimerManager().SetTimer(
             ReconnectTimerHandle,
@@ -166,8 +205,9 @@ void UTurnBasedParticipantManagerComponent::NotifyParticipantDisconnected(
             false
         );
 
-        UE_LOG(LogTemp, Log,
-            TEXT("TurnBasedParticipantManager: Paused — waiting %.1fs for reconnect"),
+        UE_LOG(LogTurnBasedMechanics, Log,
+            TEXT("TurnBasedParticipantManager: Paused — "
+                 "waiting %.1fs for reconnect"),
             ReconnectTimeout);
     }
 }
@@ -183,19 +223,19 @@ void UTurnBasedParticipantManagerComponent::NotifyParticipantReconnected(
     Info->bConnected = true;
     const int32 ReconnectedIndex = FindParticipantIndex(Controller);
 
-    UE_LOG(LogTemp, Log,
+    UE_LOG(LogTurnBasedMechanics, Log,
         TEXT("TurnBasedParticipantManager: %s reconnected"),
-        *Info->DisplayName);
+        *Info->GetDisplayName());
 
     if (ReconnectedIndex == DisconnectedParticipantIndex
-        && CurrentPhase == ETurnPhase::Paused)
+        && CurrentPhase == ETurnPhase::TurnPaused)
     {
         GetWorld()->GetTimerManager().ClearTimer(ReconnectTimerHandle);
         DisconnectedParticipantIndex = -1;
 
         SetPhase(ETurnPhase::TurnActive);
+        SetMatchPhase(EMatchPhase::InProgress);
 
-        // Single RPC call -- old ClientNotifyTurnResumed removed
         if (UTurnBasedParticipantComponent* Comp =
             GetParticipantComponent(Controller))
         {
@@ -220,8 +260,8 @@ void UTurnBasedParticipantManagerComponent::SetPhase(ETurnPhase NewPhase)
     CurrentPhase = NewPhase;
     OnTurnPhaseChanged.Broadcast(NewPhase);
 
-    UE_LOG(LogTemp, Log,
-        TEXT("TurnBasedParticipantManager: Phase -> %s"),
+    UE_LOG(LogTurnBasedMechanics, Log,
+        TEXT("TurnBasedParticipantManager: Turn phase -> %s"),
         *UEnum::GetValueAsString(NewPhase));
 }
 
@@ -231,22 +271,22 @@ void UTurnBasedParticipantManagerComponent::StartTurn(int32 ParticipantIndex)
 
     if (!Participants.IsValidIndex(ParticipantIndex))
     {
-        UE_LOG(LogTemp, Error,
+        UE_LOG(LogTurnBasedMechanics, Error,
             TEXT("TurnBasedParticipantManager: StartTurn — invalid index %d"),
             ParticipantIndex);
         return;
     }
 
-    ActiveParticipantIndex  = ParticipantIndex;
-    ReplicatedTurnDuration  = TurnDuration;
+    ActiveParticipantIndex = ParticipantIndex;
+    ReplicatedTurnDuration = TurnDuration;
     TurnNumber++;
 
-    // Broadcast to all participants before notifying active one
-    // Each participant component ticks cooldowns and fires its own delegate
-    BroadcastTurnStartToAllParticipants(ParticipantIndex);
+    // Match is now actively running a turn
+    // Fired before turn notifications so clients know updating has ended
+    SetMatchPhase(EMatchPhase::InProgress);
 
     SetPhase(ETurnPhase::TurnStart);
-    NotifyActiveParticipant(ETurnPhase::TurnStart);
+    BroadcastTurnStart(ParticipantIndex);
 
     GetWorld()->GetTimerManager().SetTimer(
         TurnTimerHandle,
@@ -258,10 +298,10 @@ void UTurnBasedParticipantManagerComponent::StartTurn(int32 ParticipantIndex)
 
     SetPhase(ETurnPhase::TurnActive);
 
-    UE_LOG(LogTemp, Log,
+    UE_LOG(LogTurnBasedMechanics, Log,
         TEXT("TurnBasedParticipantManager: Turn %d started for %s"),
         TurnNumber,
-        *Participants[ParticipantIndex].DisplayName);
+        *Participants[ParticipantIndex].GetDisplayName());
 }
 
 void UTurnBasedParticipantManagerComponent::EndTurn(ETurnEndReason Reason)
@@ -269,22 +309,18 @@ void UTurnBasedParticipantManagerComponent::EndTurn(ETurnEndReason Reason)
     check(!IsRunningClientOnly());
 
     GetWorld()->GetTimerManager().ClearTimer(TurnTimerHandle);
+
     SetPhase(ETurnPhase::TurnEnd);
     NotifyActiveParticipant(ETurnPhase::TurnEnd, Reason);
 
-    UE_LOG(LogTemp, Log,
+    UE_LOG(LogTurnBasedMechanics, Log,
         TEXT("TurnBasedParticipantManager: Turn %d ended — %s"),
         TurnNumber, *UEnum::GetValueAsString(Reason));
 
-    // Enter resolution phase
-    // External systems bind to OnTurnResolutionStarted for
-    // cinematics, scoring visuals, dialogue etc.
-    SetPhase(ETurnPhase::TurnResolution);
+    // Enter updating -- all clients suspend input while resolution plays
+    SetMatchPhase(EMatchPhase::Updating);
     OnTurnResolutionStarted.Broadcast();
 
-    // Auto-advance after resolution duration
-    // External systems that need longer can bind and call
-    // AdvanceToNextParticipant directly if needed in future
     GetWorld()->GetTimerManager().SetTimer(
         ResolutionTimerHandle,
         this,
@@ -302,64 +338,56 @@ void UTurnBasedParticipantManagerComponent::HandleResolutionComplete()
 void UTurnBasedParticipantManagerComponent::AdvanceToNextParticipant()
 {
     check(!IsRunningClientOnly());
-    check(IsValid(TurnOrderStrategy));
-    check(TurnOrderStrategy->Implements<UTurnOrderInterface>());
+    check(TurnOrderStrategy.GetInterface() != nullptr);
+
+    // Check game over before selecting next participant
+    if (CheckGameOver()) return;
 
     const int32 NextIndex =
         ITurnOrderInterface::Execute_GetNextParticipantIndex(
-            TurnOrderStrategy,
+            TurnOrderStrategy.GetObject(),
             Participants,
             ActiveParticipantIndex
         );
 
-    if (NextIndex == -1)
+    if (NextIndex == INDEX_NONE)
     {
-        SetPhase(ETurnPhase::GameOver);
+        SetMatchPhase(EMatchPhase::GameOver);
         OnGameOver.Broadcast();
         return;
     }
 
-    CheckGameOver();
     StartTurn(NextIndex);
 }
 
 void UTurnBasedParticipantManagerComponent::HandleTurnTimeout()
 {
     check(!IsRunningClientOnly());
-
-    SetPhase(ETurnPhase::TurnTimeout);
-
     if (!Participants.IsValidIndex(ActiveParticipantIndex)) return;
 
-    FTurnParticipantInfo& Info = Participants[ActiveParticipantIndex];
-    Info.TurnsMissed++;
+    ATurnBasedPlayerState* PS = Cast<ATurnBasedPlayerState>(
+        Participants[ActiveParticipantIndex].PlayerState);
 
-    NotifyActiveParticipant(ETurnPhase::TurnTimeout, ETurnEndReason::TimedOut);
-
-    if (AController* Controller = Info.Controller.Get())
+    if (IsValid(PS))
     {
-        if (ATurnBasedPlayerState* PS =
-            Controller->GetPlayerState<ATurnBasedPlayerState>())
+        PS->IncrementTurnsMissed();
+
+        if (PS->GetTurnsMissed() >= ForfeitThreshold)
         {
-            PS->Server_IncrementTurnsMissed();
+            PS->SetForfeited(true);
+            OnParticipantForfeited.Broadcast(
+                Participants[ActiveParticipantIndex]);
 
-            if (Info.TurnsMissed >= ForfeitThreshold)
-            {
-                Info.bForfeited = true;
-                PS->Server_SetForfeited();
-
-                NotifyActiveParticipant(
-                    ETurnPhase::TurnEnd, ETurnEndReason::Forfeited);
-                OnParticipantForfeited.Broadcast(Info);
-
-                UE_LOG(LogTemp, Log,
-                    TEXT("TurnBasedParticipantManager: %s forfeited "
-                         "after %d missed turns"),
-                    *Info.DisplayName, Info.TurnsMissed);
-            }
+            UE_LOG(LogTurnBasedMechanics, Log,
+                TEXT("TurnBasedParticipantManager: %s forfeited "
+                     "after %d missed turns"),
+                *Participants[ActiveParticipantIndex].GetDisplayName(),
+                PS->GetTurnsMissed());
         }
     }
 
+    SetPhase(ETurnPhase::TurnTimeout);
+    NotifyActiveParticipant(ETurnPhase::TurnTimeout, ETurnEndReason::TimedOut);
     EndTurn(ETurnEndReason::TimedOut);
 }
 
@@ -373,28 +401,39 @@ void UTurnBasedParticipantManagerComponent::CheckReadyStatus()
 {
     check(!IsRunningClientOnly());
 
-    const bool bAllReady = !Participants.FindByPredicate(
-        [](const FTurnParticipantInfo& Info){ return !Info.bReady; });
+    const bool bAllReady = !Participants.ContainsByPredicate(
+        [](const FTurnParticipantInfo& Info)
+        {
+            const ATurnBasedPlayerState* PS =
+                Cast<ATurnBasedPlayerState>(Info.PlayerState);
+            return !IsValid(PS) || !PS->IsReady();
+        });
 
-    if (bAllReady && !Participants.IsEmpty())
+    if (!bAllReady || Participants.IsEmpty()) return;
+
+    UE_LOG(LogTurnBasedMechanics, Log,
+        TEXT("TurnBasedParticipantManager: All participants ready"));
+
+    OnAllParticipantsReady.Broadcast();
+
+    check(TurnOrderStrategy.GetInterface() != nullptr);
+
+    const int32 FirstIndex =
+        ITurnOrderInterface::Execute_GetFirstParticipantIndex(
+            TurnOrderStrategy.GetObject(), Participants);
+
+    if (FirstIndex == INDEX_NONE)
     {
-        UE_LOG(LogTemp, Log,
-            TEXT("TurnBasedParticipantManager: All participants ready"));
-
-        OnAllParticipantsReady.Broadcast();
-
-        check(IsValid(TurnOrderStrategy));
-        check(TurnOrderStrategy->Implements<UTurnOrderInterface>());
-
-        const int32 FirstIndex =
-            ITurnOrderInterface::Execute_GetFirstParticipantIndex(
-                TurnOrderStrategy, Participants);
-
-        StartTurn(FirstIndex);
+        UE_LOG(LogTurnBasedMechanics, Error,
+            TEXT("TurnBasedParticipantManager: Turn order strategy "
+                 "returned no valid first participant"));
+        return;
     }
+
+    StartTurn(FirstIndex);
 }
 
-void UTurnBasedParticipantManagerComponent::CheckGameOver()
+bool UTurnBasedParticipantManagerComponent::CheckGameOver() const
 {
     const int32 ActiveCount = Participants.FilterByPredicate(
         [](const FTurnParticipantInfo& Info)
@@ -402,51 +441,94 @@ void UTurnBasedParticipantManagerComponent::CheckGameOver()
             return Info.IsActiveParticipant();
         }).Num();
 
-    if (ActiveCount <= 1)
-    {
-        SetPhase(ETurnPhase::GameOver);
-        OnGameOver.Broadcast();
-    }
+    if (ActiveCount > 1) return false;
+
+    SetMatchPhase(EMatchPhase::GameOver);
+    OnGameOver.Broadcast();
+
+    UE_LOG(LogTurnBasedMechanics, Log,
+        TEXT("TurnBasedParticipantManager: Game over — "
+             "%d active participants remaining"),
+        ActiveCount);
+
+    return true;
 }
 
-void UTurnBasedParticipantManagerComponent::BroadcastTurnStartToAllParticipants(
-    const int32 NewActiveIndex)
+void UTurnBasedParticipantManagerComponent::BroadcastTurnStart(int32 ActiveIndex)
 {
+    if (!Participants.IsValidIndex(ActiveIndex)) return;
+
+    const int32 ActiveSlotIndex = Participants[ActiveIndex].SlotIndex;
+
     for (int32 i = 0; i < Participants.Num(); i++)
     {
-        const FTurnParticipantInfo& Info = Participants[i];
-        if (!IsValid(Info.Controller)) continue;
+        AController* Controller = GetControllerAtIndex(i);
+        if (!IsValid(Controller)) continue;
 
-        UTurnBasedParticipantComponent* ParticipantComp =
-            GetParticipantComponent(Info.Controller.Get());
-        if (!IsValid(ParticipantComp)) continue;
+        UTurnBasedParticipantComponent* Comp =
+            GetParticipantComponent(Controller);
+        if (!IsValid(Comp)) continue;
 
-        const bool bIsMyTurn = (i == NewActiveIndex);
-
-        // Updated to match renamed function on participant component
-        ParticipantComp->NotifyAnyParticipantTurnStarted(bIsMyTurn);
+        if (i == ActiveIndex)
+        {
+            Comp->ClientReceiveTurnNotification(
+                BuildNotification(i, ETurnPhase::TurnStart));
+        }
+        else
+        {
+            Comp->ClientReceiveOpponentTurnStarted(ActiveSlotIndex);
+        }
     }
+
+    // Notify listeners that board ownership should transfer
+    OnActiveControllerChanged.Broadcast(GetControllerAtIndex(ActiveIndex));
 }
 
 // --- Helpers ---
 
+AController* UTurnBasedParticipantManagerComponent::GetControllerAtIndex(
+    int32 Index) const
+{
+    if (!ServerControllers.IsValidIndex(Index)) return nullptr;
+    return ServerControllers[Index].Get();
+}
+
+ATurnBasedGameState*
+UTurnBasedParticipantManagerComponent::GetOwningGameState() const
+{
+    return GetOwner<ATurnBasedGameState>();
+}
+
+void UTurnBasedParticipantManagerComponent::SetMatchPhase(
+    EMatchPhase NewPhase) const
+{
+    if (ATurnBasedGameState* GS = GetOwningGameState())
+    {
+        GS->SetMatchPhase(NewPhase);
+    }
+}
+
 FTurnParticipantInfo* UTurnBasedParticipantManagerComponent::FindParticipant(
     AController* Controller)
 {
-    return Participants.FindByPredicate(
-        [Controller](const FTurnParticipantInfo& Info)
-        {
-            return Info.Controller == Controller;
-        });
+    const int32 Index = FindParticipantIndex(Controller);
+    return Participants.IsValidIndex(Index) ? &Participants[Index] : nullptr;
+}
+
+const FTurnParticipantInfo* UTurnBasedParticipantManagerComponent::FindParticipant(
+    AController* Controller) const
+{
+    const int32 Index = FindParticipantIndex(Controller);
+    return Participants.IsValidIndex(Index) ? &Participants[Index] : nullptr;
 }
 
 int32 UTurnBasedParticipantManagerComponent::FindParticipantIndex(
     AController* Controller) const
 {
-    return Participants.IndexOfByPredicate(
-        [Controller](const FTurnParticipantInfo& Info)
+    return ServerControllers.IndexOfByPredicate(
+        [Controller](const TWeakObjectPtr<AController>& Weak)
         {
-            return Info.Controller == Controller;
+            return Weak.Get() == Controller;
         });
 }
 
@@ -463,19 +545,25 @@ void UTurnBasedParticipantManagerComponent::NotifyActiveParticipant(
     if (!Participants.IsValidIndex(ActiveParticipantIndex)) return;
 
     UTurnBasedParticipantComponent* Comp = GetParticipantComponent(
-        Participants[ActiveParticipantIndex].Controller.Get());
+        GetControllerAtIndex(ActiveParticipantIndex));
+
     if (!IsValid(Comp)) return;
 
-    Comp->ClientReceiveTurnNotification(BuildNotification(ActiveParticipantIndex, Phase, Reason));
+    Comp->ClientReceiveTurnNotification(
+        BuildNotification(ActiveParticipantIndex, Phase, Reason));
 }
 
 FTurnNotification UTurnBasedParticipantManagerComponent::BuildNotification(
-    const int32 ParticipantIndex, const ETurnPhase Phase, const ETurnEndReason Reason) const
+    const int32 ParticipantIndex,
+    const ETurnPhase Phase,
+    const ETurnEndReason Reason) const
 {
     FTurnNotification Notification;
 
     if (Participants.IsValidIndex(ParticipantIndex))
+    {
         Notification.ParticipantInfo = Participants[ParticipantIndex];
+    }
 
     Notification.Phase        = Phase;
     Notification.EndReason    = Reason;
@@ -494,6 +582,5 @@ void UTurnBasedParticipantManagerComponent::OnRep_CurrentPhase()
 
 void UTurnBasedParticipantManagerComponent::OnRep_ActiveParticipantIndex()
 {
-    // Clients react to active participant changing here
-    // e.g. highlight active player in UI
+    // Clients react here -- e.g. highlight active player in UI
 }

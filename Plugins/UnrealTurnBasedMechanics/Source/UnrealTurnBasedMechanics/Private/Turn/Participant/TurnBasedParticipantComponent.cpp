@@ -1,6 +1,7 @@
 ﻿// Fill out your copyright notice in the Description page of Project Settings.
 
 #include "Turn/Participant/TurnBasedParticipantComponent.h"
+#include "UnrealTurnBasedMechanics.h"
 #include "TurnBasedMechanicsStructs.h"
 #include "GameFramework/Controller.h"
 #include "GameFramework/GameStateBase.h"
@@ -11,6 +12,15 @@ UTurnBasedParticipantComponent::UTurnBasedParticipantComponent()
 {
     PrimaryComponentTick.bCanEverTick = false;
     SetIsReplicatedByDefault(true);
+}
+
+void UTurnBasedParticipantComponent::ClientReceiveOpponentTurnStarted_Implementation(int32 ActiveParticipantSlotIndex)
+{
+    // Not my turn
+    bIsMyTurn = false;
+
+    OnOpponentTurnStarted.Broadcast(ActiveParticipantSlotIndex);
+    OnOpponentTurnStarted_Native.Broadcast(ActiveParticipantSlotIndex);
 }
 
 void UTurnBasedParticipantComponent::BeginPlay()
@@ -29,27 +39,27 @@ void UTurnBasedParticipantComponent::ServerNotifyReady_Implementation()
 
 void UTurnBasedParticipantComponent::ServerSubmitTurnEnd_Implementation()
 {
-    if (!bIsMyTurn)
-    {
-        UE_LOG(LogTemp, Warning,
-            TEXT("TurnBasedParticipantComponent: %s submitted turn end "
-                 "but bIsMyTurn is false — ignored"),
-            *GetOwner()->GetName());
-        return;
-    }
+    // Do not check bIsMyTurn here -- that is a client-side variable
+    // and will always be false on the server
+    // The manager validates authority by checking ActiveParticipantIndex
 
     UTurnBasedParticipantManagerComponent* Manager = GetParticipantManager();
     if (!IsValid(Manager)) return;
+
     Manager->NotifyTurnEndSubmitted(GetOwner<AController>());
 }
 
 // --- Client RPC ---
 
 void UTurnBasedParticipantComponent::ClientReceiveTurnNotification_Implementation(
-    const FTurnNotification Notification)
+    FTurnNotification Notification)
 {
-    // Update bIsMyTurn based on phase before broadcasting
-    // so subscribers read the correct value when they receive the notification
+    UE_LOG(LogTemp, Log,
+        TEXT("ParticipantComponent: ClientReceiveTurnNotification "
+             "fired on %s phase %s"),
+        *GetOwner()->GetName(),
+        *UEnum::GetValueAsString(Notification.Phase));
+
     if (IsMyTurnStartingPhase(Notification.Phase))
     {
         bIsMyTurn = true;
@@ -63,16 +73,7 @@ void UTurnBasedParticipantComponent::ClientReceiveTurnNotification_Implementatio
     OnTurnNotificationReceived_Native.Broadcast(Notification);
 }
 
-// --- Manager callback ---
-
-void UTurnBasedParticipantComponent::NotifyAnyParticipantTurnStarted(
-    bool bIsThisMyTurn)
-{
-    OnAnyParticipantTurnStarted.Broadcast(bIsThisMyTurn);
-    OnAnyParticipantTurnStarted_Native.Broadcast(bIsThisMyTurn);
-}
-
-// --- Static phase helpers ---
+// --- Static Helpers ---
 
 bool UTurnBasedParticipantComponent::IsMyTurnStartingPhase(ETurnPhase Phase)
 {

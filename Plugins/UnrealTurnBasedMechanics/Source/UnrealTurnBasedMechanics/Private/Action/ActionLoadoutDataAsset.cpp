@@ -2,10 +2,35 @@
 
 
 #include "Action/ActionLoadoutDataAsset.h"
+#include "Action/TurnBasedSpectatorAction.h"
 #include "Misc/DataValidation.h"
 
 
-TArray<UTurnBasedAction*> UActionLoadOutDataAsset::GetPermittedActions() const
+// --- System Action Vending ---
+
+UTurnBasedAction* UActionLoadoutDataAsset::GetRootAction(UObject* Outer) const
+{
+    return CreateSystemAction<UTurnBasedAction>(RootActionClass, Outer);
+}
+
+UTurnBasedSpectatorAction* UActionLoadoutDataAsset::GetIdleViewerAction(UObject* Outer) const
+{
+    return CreateSystemAction<UTurnBasedSpectatorAction>(IdleViewerActionClass, Outer);
+}
+
+UTurnBasedSpectatorAction* UActionLoadoutDataAsset::GetSpectatorAction(UObject* Outer) const
+{
+    return CreateSystemAction<UTurnBasedSpectatorAction>(SpectatorViewerActionClass, Outer);
+}
+
+UTurnBasedSpectatorAction* UActionLoadoutDataAsset::GetPauseAction(UObject* Outer) const
+{
+    return CreateSystemAction<UTurnBasedSpectatorAction>(PauseViewerActionClass, Outer);
+}
+
+// --- Turn Action Accessors ---
+
+TArray<UTurnBasedAction*> UActionLoadoutDataAsset::GetPermittedActions() const
 {
     TArray<UTurnBasedAction*> Permitted;
     Permitted.Reserve(Actions.Num());
@@ -20,37 +45,32 @@ TArray<UTurnBasedAction*> UActionLoadOutDataAsset::GetPermittedActions() const
     return Permitted;
 }
 
-TArray<UTurnBasedAction*> UActionLoadOutDataAsset::GetRequiredActions() const
+TArray<UTurnBasedAction*> UActionLoadoutDataAsset::GetRequiredActions() const
 {
-    TArray<UTurnBasedAction*> Required;
+    return FilterPermittedActionsByRequired(true);
+}
+
+TArray<UTurnBasedAction*> UActionLoadoutDataAsset::GetOptionalActions() const
+{
+    return FilterPermittedActionsByRequired(false);
+}
+
+TArray<UTurnBasedAction*> UActionLoadoutDataAsset::FilterPermittedActionsByRequired(bool bRequired) const
+{
+    TArray<UTurnBasedAction*> Out;
 
     for (UTurnBasedAction* Action : GetPermittedActions())
     {
-        if (Action->bIsRequired)
+        if (IsValid(Action) && Action->bIsRequired == bRequired)
         {
-            Required.Add(Action);
+            Out.Add(Action);
         }
     }
 
-    return Required;
+    return Out;
 }
 
-TArray<UTurnBasedAction*> UActionLoadOutDataAsset::GetOptionalActions() const
-{
-    TArray<UTurnBasedAction*> Optional;
-
-    for (UTurnBasedAction* Action : GetPermittedActions())
-    {
-        if (!Action->bIsRequired)
-        {
-            Optional.Add(Action);
-        }
-    }
-
-    return Optional;
-}
-
-bool UActionLoadOutDataAsset::IsActionPermitted(FGameplayTag ActionTag) const
+bool UActionLoadoutDataAsset::IsActionPermitted(FGameplayTag ActionTag) const
 {
     if (BannedActionTags.HasTag(ActionTag)) return false;
 
@@ -62,29 +82,41 @@ bool UActionLoadOutDataAsset::IsActionPermitted(FGameplayTag ActionTag) const
 }
 
 #if WITH_EDITOR
-EDataValidationResult UActionLoadOutDataAsset::IsDataValid(
+EDataValidationResult UActionLoadoutDataAsset::IsDataValid(
     FDataValidationContext& Context) const
 {
-    EDataValidationResult Result = Super::IsDataValid(Context);
+    const EDataValidationResult Result = Super::IsDataValid(Context);
 
-    // Warn if no required actions are defined
-    if (GetRequiredActions().IsEmpty())
+    // Warn if no root action set
+    if (!RootActionClass)
     {
         Context.AddWarning(FText::FromString(FString::Printf(
-            TEXT("ActionLoadoutDataAsset '%s' has no required actions. "
-                 "Turn end will be available immediately."),
+            TEXT("ActionLoadoutDataAsset '%s': No RootActionClass set. "
+                 "Root action is mandatory -- create a do-nothing action "
+                 "if your game has no turn idle state."),
             *LoadoutName)));
     }
 
-    // Warn on duplicate action tags
+    // Warn if no required actions
+    // if (GetRequiredActions().IsEmpty())
+    // {
+    //     Context.AddWarning(FText::FromString(FString::Printf(
+    //         TEXT("ActionLoadoutDataAsset '%s': No required actions. "
+    //              "Turn end will always be available immediately."),
+    //         *LoadoutName)));
+    // }
+
+    // Warn on duplicate tags
     TSet<FGameplayTag> SeenTags;
     for (const UTurnBasedAction* Action : Actions)
     {
         if (!IsValid(Action)) continue;
+
         if (!Action->ActionTag.IsValid())
         {
             Context.AddWarning(FText::FromString(FString::Printf(
-                TEXT("ActionLoadoutDataAsset '%s': An action has no ActionTag set."),
+                TEXT("ActionLoadoutDataAsset '%s': "
+                     "An action has no ActionTag set."),
                 *LoadoutName)));
             continue;
         }
@@ -92,7 +124,8 @@ EDataValidationResult UActionLoadOutDataAsset::IsDataValid(
         if (SeenTags.Contains(Action->ActionTag))
         {
             Context.AddWarning(FText::FromString(FString::Printf(
-                TEXT("ActionLoadoutDataAsset '%s': Duplicate ActionTag '%s' detected."),
+                TEXT("ActionLoadoutDataAsset '%s': "
+                     "Duplicate ActionTag '%s' found."),
                 *LoadoutName,
                 *Action->ActionTag.ToString())));
         }

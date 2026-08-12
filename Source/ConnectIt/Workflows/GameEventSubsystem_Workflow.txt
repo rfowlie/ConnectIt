@@ -1,0 +1,110 @@
+ConnectIt Game Event Subsystem — Workflow
+===========================================
+
+WHAT THIS IS
+------------
+UConnectIt_GameEventSubsystem (Source/ConnectIt/Public|Private/Framework/Subsystem/
+ConnectIt_GameEventSubsystem.h/.cpp) is a per-world UWorldSubsystem that holds a
+gameplay-tag-keyed registry of UGameEventTaskManager instances (UGameEventTaskManager
+lives in the UnrealGameMechanics plugin).
+
+A UGameEventTaskManager lets multiple listeners register gated, phase-ordered work
+against a trigger, and only reports "done" once every registered task has actually
+finished (not just been kicked off). This subsystem is what lets ConnectIt's board
+events force real visual ordering -- e.g. the piece-drop animation fully finishes
+before the score VFX plays, which fully finishes before the win banner shows --
+instead of everything firing at once and looking wrong.
+
+You never touch a UGameEventTaskManager directly. Everything goes through this
+subsystem's pass-through functions, keyed by FGameplayTag.
+
+
+WHY IT EXISTS
+-------------
+Before this, ConnectIt's board events (piece placed, line scored, player win) fired
+as plain delegate broadcasts directly from server-only code in AConnectIt_BoardManager
+-- which meant real remote clients never saw them at all (dynamic delegate broadcasts
+are local function calls, not RPCs). See BoardManagerSubsystem_Workflow.txt and
+AConnectIt_BoardManager::HandleBoardStateChanged for how that got fixed by moving
+event firing onto the already-correctly-replicated BoardStateComponent signal.
+
+Fixing *that* still left everything firing simultaneously with no way to sequence
+visual responses. This subsystem is the general-purpose mechanism for that: register
+your visual/audio/UI response against the relevant tag, and it only runs (and the
+next thing in the chain only starts) once your response says it's actually done.
+
+
+THE THREE BOARD EVENT TAGS
+----------------------------
+Declared in ConnectIt_GameplayTags.h/.cpp, fired in this order by
+AConnectIt_BoardManager for every piece placement, each one gated on the previous
+fully completing:
+
+  ConnectIt_Event_PiecePlaced   "ConnectIt.Event.PiecePlaced"
+  ConnectIt_Event_LineScored    "ConnectIt.Event.LineScored"   (skipped if nothing scored)
+  ConnectIt_Event_PlayerWin     "ConnectIt.Event.PlayerWin"    (skipped if nobody won)
+
+If nothing is registered against a tag yet, that tag's manager completes with zero
+phases immediately, and the chain falls through to the next step synchronously --
+so the sequencing is opt-in per listener, not something you have to wire up before
+the game functions.
+
+If a new placement arrives while the previous one's sequence is still running (e.g.
+a slow win animation still playing), it's queued and runs after the current one
+finishes -- see PendingChangeEventQueue in AConnectIt_BoardManager. Nothing gets
+dropped or interleaved.
+
+
+HOW TO REGISTER A GATED VISUAL RESPONSE
+------------------------------------------
+1. Create a UGameEventTask_Async (Plugins/UnrealGameMechanics/.../GameEventTask_Async.h).
+2. Bind its OnExecuteDelegate to your actual work (start the animation, play the
+   VFX, whatever needs to run).
+3. Call your work's completion -> Task->OnComplete.Broadcast(Task) when it's
+   genuinely finished (after the montage ends, the widget animation completes, etc).
+4. Register it:
+
+     GameEventSubsystem->RegisterAsyncTask(ConnectIt_Event_LineScored, Task, Phase);
+
+   Phase is an integer ordering key within that tag (0 by default) -- multiple
+   systems responding to the same tag can use different phases if one must finish
+   before another starts; same-phase tasks all run in parallel and are waited on
+   together.
+
+Mark Task->bIsPersistentTask = true if you want this to automatically re-register
+for every future trigger of that tag (e.g. a permanent VFX manager bound once at
+BeginPlay), instead of having to re-register after every single event.
+
+
+HOW TO BIND TO A TAG'S BEGIN/COMPLETE (WITHOUT TOUCHING THE MANAGER)
+------------------------------------------------------------------------
+    GameEventSubsystem->BindOnTagComplete(Tag, this, GET_FUNCTION_NAME_CHECKED(...));
+    GameEventSubsystem->BindOnTagBegin(Tag, this, GET_FUNCTION_NAME_CHECKED(...));
+
+Both take a (Listener, FunctionName) pair -- the same mechanism Blueprint's "Bind
+Event to X" nodes use. This is how AConnectIt_BoardManager itself chains the three
+board event tags together (HandlePiecePlacedSequenceComplete etc.) -- it never
+holds a UGameEventTaskManager* either.
+
+
+WHEN TO USE THIS VS. THE TYPED DELEGATES / SUBSYSTEM RELAY
+----------------------------------------------------------------
+  "Just tell me this happened, right now, no waiting"
+      -> Bind to AConnectIt_BoardManager's OnPiecePlaced/OnLineScored/OnPlayerWin,
+         or their relay on UConnectIt_BoardManagerSubsystem. These fire immediately,
+         strictly before the gated visual step for that same event even starts.
+
+  "I need to run something and have the NEXT step wait until I'm done"
+      -> Register a UGameEventTask_Async against the matching tag on this subsystem.
+
+
+FILES INVOLVED
+---------------
+  Source/ConnectIt/Public/Framework/Subsystem/ConnectIt_GameEventSubsystem.h
+  Source/ConnectIt/Private/Framework/Subsystem/ConnectIt_GameEventSubsystem.cpp
+  Source/ConnectIt/Public/ConnectIt_GameplayTags.h (the three tags)
+  Source/ConnectIt/Public/Board/ConnectIt_BoardManager.h (sequencing state/handlers)
+  Source/ConnectIt/Private/Board/ConnectIt_BoardManager.cpp (HandleBoardStateChanged,
+      BindGameEventSequencing, TryStartNextSequence, the three *SequenceComplete handlers)
+  Plugins/UnrealGameMechanics/Source/UnrealGameMechanics/Public+Private/GameEvent/
+      GameEventTaskManager.h/.cpp (the underlying phase-barrier executor)

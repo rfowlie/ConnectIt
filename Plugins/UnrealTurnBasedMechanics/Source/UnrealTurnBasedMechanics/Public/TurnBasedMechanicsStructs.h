@@ -7,45 +7,38 @@
 #include "TurnBasedMechanicsEnums.h"
 #include "TurnBasedMechanicsStructs.generated.h"
 
+class ATurnBasedPlayerState;
 class AGridTileBase;
-
 
 
 // Snapshot of one participant's state — replicated in TArray on GameState
 USTRUCT(BlueprintType)
-struct FTurnParticipantInfo
+struct UNREALTURNBASEDMECHANICS_API FTurnParticipantInfo
 {
     GENERATED_BODY()
-
+    
+    // Replicates properly to all clients unlike AController
+    // Valid for both human and AI participants
     UPROPERTY(BlueprintReadOnly)
-    TObjectPtr<AController> Controller = nullptr;
+    TObjectPtr<ATurnBasedPlayerState> PlayerState = nullptr;
 
     UPROPERTY(BlueprintReadOnly)
     EParticipantType ParticipantType = EParticipantType::Human;
 
-    // Stable across the game — doubles as FactionID for 1v1
+    // Stable for lifetime of match -- doubles as FactionID
     UPROPERTY(BlueprintReadOnly)
     int32 SlotIndex = -1;
 
     UPROPERTY(BlueprintReadOnly)
-    FString DisplayName = TEXT("Unknown");
-
-    UPROPERTY(BlueprintReadOnly)
-    int32 TurnsMissed = 0;
-
-    UPROPERTY(BlueprintReadOnly)
-    bool bForfeited = false;
-
-    UPROPERTY(BlueprintReadOnly)
-    bool bReady = false;
-
-    UPROPERTY(BlueprintReadOnly)
     bool bConnected = true;
 
-    bool IsActiveParticipant() const
-    {
-        return !bForfeited && bConnected;
-    }
+    // Per-player mutable state lives on ATurnBasedPlayerState
+    // Read via cast when needed
+    bool IsActiveParticipant() const;
+
+    // Convenience -- reads from PlayerState
+    FString GetDisplayName() const;
+    
 };
 
 // Notification payload sent to participants on turn events

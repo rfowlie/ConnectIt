@@ -1,10 +1,11 @@
 ﻿// Fill out your copyright notice in the Description page of Project Settings.
 
 #include "Framework/GameState/ConnectIt_GameState.h"
-#include "EngineUtils.h"
 #include "Net/UnrealNetwork.h"
-#include "Board/ConnectItBoardStateComponent.h"
-#include "Framework/Manager/ConnectIt_BoardManager.h"
+#include "TurnBasedMechanicsStructs.h"
+#include "Board/ConnectIt_BoardManager.h"
+#include "Board/ConnectIt_BoardStateComponent.h"
+#include "Library/ConnectIt_GameUtilityLibrary.h"
 #include "Turn/Participant/TurnBasedParticipantManagerComponent.h"
 
 
@@ -29,7 +30,7 @@ void AConnectIt_GameState::SetMatchResult(
 {
     check(GetOwner() == nullptr || HasAuthority());
 
-    UConnectItBoardStateComponent* BSC = GetBoardStateComponent();
+    UConnectIt_BoardStateComponent* BSC = GetBoardStateComponent();
     check(BSC != nullptr);
     
     // Read final scores from board state at time of game over
@@ -62,7 +63,7 @@ void AConnectIt_GameState::SetMatchResult(
 
 float AConnectIt_GameState::GetFactionScore(int32 FactionSlot) const
 {
-    UConnectItBoardStateComponent* BSC = GetBoardStateComponent();
+    UConnectIt_BoardStateComponent* BSC = GetBoardStateComponent();
     check(BSC != nullptr);
     
     // Read final scores from board state at time of game over
@@ -77,7 +78,7 @@ float AConnectIt_GameState::GetFactionScore(int32 FactionSlot) const
 
 TArray<float> AConnectIt_GameState::GetAllScores() const
 {
-    UConnectItBoardStateComponent* BSC = GetBoardStateComponent();
+    UConnectIt_BoardStateComponent* BSC = GetBoardStateComponent();
     check(BSC != nullptr);
 
     if (const FConnectItBoardState* Current = BSC->GetBoardSnapShotCurrent())
@@ -90,7 +91,7 @@ TArray<float> AConnectIt_GameState::GetAllScores() const
 
 bool AConnectIt_GameState::IsTileOccupied(FGridPosition Position) const
 {
-    if (UConnectItBoardStateComponent* BSC = GetBoardStateComponent())
+    if (UConnectIt_BoardStateComponent* BSC = GetBoardStateComponent())
     {
         return BSC->GetCurrentState().IsTileOccupied(Position);
     }
@@ -100,7 +101,7 @@ bool AConnectIt_GameState::IsTileOccupied(FGridPosition Position) const
 bool AConnectIt_GameState::IsTileValidForPlacement(
     FGridPosition Position) const
 {
-    if (UConnectItBoardStateComponent* BSC = GetBoardStateComponent())
+    if (UConnectIt_BoardStateComponent* BSC = GetBoardStateComponent())
     {
         return BSC->IsTileValidForPlacement(Position);
     }
@@ -109,7 +110,7 @@ bool AConnectIt_GameState::IsTileValidForPlacement(
 
 FConnectItBoardStateSnapshot AConnectIt_GameState::GetBoardSnapshot() const
 {
-    if (const UConnectItBoardStateComponent* BSC = GetBoardStateComponent())
+    if (const UConnectIt_BoardStateComponent* BSC = GetBoardStateComponent())
     {
         return *BSC->GetBoardSnapshot();
     }
@@ -130,7 +131,7 @@ FString AConnectIt_GameState::GetActiveParticipantName() const
     if (!Participants.IsValidIndex(ActiveIndex))
         return TEXT("Unknown");
 
-    return Participants[ActiveIndex].DisplayName;
+    return Participants[ActiveIndex].GetDisplayName();
 }
 
 bool AConnectIt_GameState::IsLocalPlayerTurn() const
@@ -142,14 +143,8 @@ bool AConnectIt_GameState::IsLocalPlayerTurn() const
         GetWorld()->GetFirstPlayerController();
     if (!IsValid(LocalPC)) return false;
 
-    const TArray<FTurnParticipantInfo>& Participants =
-        ParticipantManager->Participants;
-
-    const int32 ActiveIndex = ParticipantManager->ActiveParticipantIndex;
-
-    if (!Participants.IsValidIndex(ActiveIndex)) return false;
-
-    return Participants[ActiveIndex].Controller == LocalPC;
+    return ParticipantManager->GetControllerAtIndex(
+        ParticipantManager->ActiveParticipantIndex) == LocalPC;
 }
 
 // --- RepNotify ---
@@ -166,16 +161,12 @@ void AConnectIt_GameState::OnRep_MatchResult()
 
 // --- Helpers ---
 
-UConnectItBoardStateComponent* AConnectIt_GameState::GetBoardStateComponent() const
+UConnectIt_BoardStateComponent* AConnectIt_GameState::GetBoardStateComponent() const
 {
-    if (IsValid(CachedBoardStateComponent))
-        return CachedBoardStateComponent;
-
-    for (TActorIterator<AConnectIt_BoardManager> It(GetWorld()); It; ++It)
+    if (!IsValid(CachedBoardStateComponent))
     {
-        CachedBoardStateComponent = It->GetConnectItBoardState();
-        return CachedBoardStateComponent;
+        CachedBoardStateComponent = UConnectIt_GameUtilityLibrary::GetBoardStateComponent(this);
     }
 
-    return nullptr;
+    return CachedBoardStateComponent;
 }

@@ -1,23 +1,23 @@
 ﻿// Fill out your copyright notice in the Description page of Project Settings.
 
-// TurnBasedActionsComponent.h
 #pragma once
 
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
-#include "TurnBasedAction.h"
-#include "ActionLoadoutDataAsset.h"
+#include "Action/TurnBasedActionBase.h"
+#include "Action/TurnBasedAction.h"
+#include "Action/TurnBasedSpectatorAction.h"
+#include "Action/ActionLoadoutDataAsset.h"
 #include "TurnBasedMechanicsStructs.h"
 #include "TurnBasedActionsComponent.generated.h"
 
-class UActionLoadOutDataAsset;
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnBoardChangeRequested, const FTurnActionRequest&, Request);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnTurnEndReady);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnTurnEndRequested);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnTurnActionsEvent, UTurnBasedAction*, Action);
 
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnActionsEvent, UTurnBasedAction*, Action);
-DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnActionTurnEndReady);
-DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnActionTurnEndRequested);
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnActionBoardChangeRequested, const FTurnActionRequest&, Request);
-
-DECLARE_MULTICAST_DELEGATE_OneParam(FOnBoardChangeRequested_Native, const FTurnActionRequest&);
+DECLARE_MULTICAST_DELEGATE_OneParam(FOnBoardChangeRequested_Native,
+    const FTurnActionRequest&);
 DECLARE_MULTICAST_DELEGATE(FOnTurnEndRequested_Native);
 
 UCLASS(ClassGroup=(TurnBased), meta=(BlueprintSpawnableComponent))
@@ -30,74 +30,123 @@ public:
 
     UTurnBasedActionsComponent();
 
-    // --- Behaviour Flags ---
+    // --- Behaviour Config ---
 
-    // Action that is always active when no other action is running
-    // Activated on turn start and after any action completes or cancels
-    // Cannot be cancelled by the player -- only interrupted by other actions
-    // Leave null if your game has no meaningful idle/default state
-    // Example Gigafire: UNavigateSceneAction (camera, cursor, hover)
-    // Example ConnectIt: null (PlacePiece auto-activates instead)
-    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Turn Based|Behaviour")
+    // Sits at bottom of stack during your turn
+    // Cannot be popped -- only replaced via ClearAndPush
+    // Mandatory -- designers create a do-nothing action if needed
+    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly,
+        Category = "Turn Based|Behaviour")
     TSubclassOf<UTurnBasedAction> RootActionClass = nullptr;
 
-    // When true required actions auto-activate over the root action
-    // in loadout array order
-    // When false caller drives all activation explicitly
-    // Designers: order your required actions intentionally in the loadout
+    // Pushed onto stack immediately after your turn ends
+    // Active during Updating phase while resolution plays
+    // Replaced by SpectatorViewerActionClass when opponent turn starts
     UPROPERTY(EditDefaultsOnly, BlueprintReadOnly,
         Category = "Turn Based|Behaviour")
-    bool bAutoActivateRequiredActions = false;
+    TSubclassOf<UTurnBasedSpectatorAction> IdleViewerActionClass = nullptr;
 
-    // When true turn end is requested automatically when all required
-    // actions complete
-    // When false caller must call RequestTurnEnd explicitly
+    // Pushed onto stack when opponent turn starts
+    // Active for duration of opponent turn
+    // Replaced by RootAction when your turn starts again
     UPROPERTY(EditDefaultsOnly, BlueprintReadOnly,
         Category = "Turn Based|Behaviour")
+    TSubclassOf<UTurnBasedSpectatorAction> SpectatorViewerActionClass = nullptr;
+
+    // Pushed on top of stack during system pause
+    // Stack preserved below -- restored exactly on unpause
+    // Framework provides UTurnBasedPauseAction as default
+    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly,
+        Category = "Turn Based|Behaviour")
+    TSubclassOf<UTurnBasedSpectatorAction> PauseViewerActionClass = nullptr;
+
+    // When true RequestTurnEnd fires automatically when
+    // CanAutoEndTurn() returns true after an action completes
+    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Turn Based|Behaviour")
     bool bAutoEndTurnOnAllRequiredActionsCompleted = false;
 
     // --- Setup ---
 
-    // set the available actions, can be helpful for forcing actions, tutorials, etc.
     UFUNCTION(BlueprintCallable, Category = "Turn Based|Actions")
-    void InitialiseFromLoadout(UActionLoadOutDataAsset* InLoadout);
+    void InitialiseFromLoadout(UActionLoadoutDataAsset* InLoadout);
 
     // --- Turn Lifecycle ---
-    // Caller drives these -- no internal bindings to other components
+    // Called by controller in response to participant component delegates
 
+    // Called when this participant's turn starts
+    // Fires OnTurnStarted BlueprintNativeEvent
+    // Default implementation clears stack and pushes RootAction
     UFUNCTION(BlueprintCallable, Category = "Turn Based|Actions")
     void NotifyTurnStarted(int32 InTurnNumber);
 
+    // Called when opponent's turn starts
+    // Fires OnOpponentTurnStarted BlueprintNativeEvent
+    // Default implementation clears stack and pushes SpectatorViewerAction
+    UFUNCTION(BlueprintCallable, Category = "Turn Based|Actions")
+    void NotifyOpponentTurnStarted();
+
+    // Called when this participant's turn ends
+    // Clears stack and pushes IdleViewerAction
     UFUNCTION(BlueprintCallable, Category = "Turn Based|Actions")
     void NotifyTurnEnded();
 
+    // Called on system pause -- pushes PauseViewerAction on top of stack
+    // Stack below is preserved and restored on unpause
     UFUNCTION(BlueprintCallable, Category = "Turn Based|Actions")
-    void NotifyTurnPaused();
+    void NotifyPaused();
 
+    // Called when system pause ends -- pops PauseViewerAction
+    // Whatever was below reactivates exactly
     UFUNCTION(BlueprintCallable, Category = "Turn Based|Actions")
-    void NotifyTurnResumed();
+    void NotifyUnpaused();
 
+    // Called when match ends
+    // Clears stack and pushes IdleViewerAction as safe end state
     UFUNCTION(BlueprintCallable, Category = "Turn Based|Actions")
+    void NotifyMatchEnded();
+
+    // Tick cooldowns on all runtime actions
+    // Called internally by NotifyTurnStarted and NotifyOpponentTurnStarted
+    // bIsMyTurn drives ShouldTickCooldown per action
     void TickCooldowns(bool bIsMyTurn);
-    
+
+    // --- Stack Control ---
+
+    // Push any action onto the stack
+    // Force deactivates current top without popping
+    // Activates new top
+    UFUNCTION(BlueprintCallable, Category = "Turn Based|Actions")
+    void PushAction(UTurnBasedActionBase* Action);
+
+    // Pop top action from stack
+    // Reactivates new top
+    // Guards against popping last item -- stack never empties during match
+    // Returns popped action or null if pop was blocked
+    UFUNCTION(BlueprintCallable, Category = "Turn Based|Actions")
+    UTurnBasedActionBase* SafePopAction();
+
+    // Clear entire stack and push a new root
+    // Used when ownership changes (turn start, turn end, match end)
+    UFUNCTION(BlueprintCallable, Category = "Turn Based|Actions")
+    void ClearAndPush(UTurnBasedActionBase* NewRoot);
+
     // --- Action Control ---
 
-    // Attempts to activate an action by tag
-    // If a root action is active it will be interrupted
-    // If a non-root non-cancellable action is active this fails
+    // Push a runtime action by tag onto the stack
     UFUNCTION(BlueprintCallable, Category = "Turn Based|Actions")
-    bool TryActivateActionByTag(FGameplayTag ActionTag);
+    bool TryPushAction(FGameplayTag ActionTag);
 
+    // Push a specific runtime action instance onto the stack
     UFUNCTION(BlueprintCallable, Category = "Turn Based|Actions")
-    bool TryActivateActionByRef(UTurnBasedAction* Action);
+    bool TryPushActionByRef(UTurnBasedAction* Action);
 
-    // Cancels the active action and returns to root
-    // Has no effect if root action is currently active
+    // Cancel and pop the top action if it is cancellable
+    // Returns to whatever is below
     UFUNCTION(BlueprintCallable, Category = "Turn Based|Actions")
-    void CancelActiveAction();
+    void CancelTopAction();
 
-    // Returns true when all required actions complete
-    // or when loadout has no required actions
+    // Whether turn can end
+    // Calls CanAutoEndTurn() -- designers override that function
     UFUNCTION(BlueprintPure, Category = "Turn Based|Actions")
     bool CanEndTurn() const;
 
@@ -107,25 +156,20 @@ public:
 
     // --- Queries ---
 
-    // Returns active action -- never null after turn starts if root is set
     UFUNCTION(BlueprintPure, Category = "Turn Based|Actions")
-    UTurnBasedAction* GetActiveAction() const { return ActiveAction; }
-
-    // Returns true if root action is currently active
-    UFUNCTION(BlueprintPure, Category = "Turn Based|Actions")
-    bool IsRootActionActive() const
-    {
-        return IsValid(RootAction) && ActiveAction == RootAction;
-    }
+    UTurnBasedActionBase* GetTopAction() const;
 
     UFUNCTION(BlueprintPure, Category = "Turn Based|Actions")
-    UTurnBasedAction* GetRootAction() const { return RootAction; }
+    UTurnBasedActionBase* GetRootAction() const { return RootAction; }
 
     UFUNCTION(BlueprintPure, Category = "Turn Based|Actions")
-    TArray<UTurnBasedAction*> GetAllActions() const;
+    bool IsRootOnTop() const;
 
     UFUNCTION(BlueprintPure, Category = "Turn Based|Actions")
-    TArray<UTurnBasedAction*> GetAvailableActions() const;
+    int32 GetStackDepth() const { return ActionStack.Num(); }
+
+    UFUNCTION(BlueprintPure, Category = "Turn Based|Actions")
+    TArray<UTurnBasedAction*> GetAllRuntimeActions() const;
 
     UFUNCTION(BlueprintPure, Category = "Turn Based|Actions")
     TArray<UTurnBasedAction*> GetRequiredActions() const;
@@ -136,35 +180,37 @@ public:
     UFUNCTION(BlueprintPure, Category = "Turn Based|Actions")
     bool IsInitialised() const { return bIsInitialised; }
 
-    UFUNCTION(BlueprintPure, Category = "Turn Based|Actions")
-    bool HasPendingRequiredActions() const
-    {
-        return !PendingRequiredActions.IsEmpty();
-    }
-
     // --- Delegates ---
 
+    // Board change request passthrough
+    // Caller routes to server or board manager
     UPROPERTY(BlueprintAssignable, Category = "Turn Based|Actions")
-    FOnActionBoardChangeRequested OnBoardChangeRequested;
+    FOnBoardChangeRequested OnBoardChangeRequested;
 
     FOnBoardChangeRequested_Native OnBoardChangeRequested_Native;
 
+    // Fires when CanAutoEndTurn() becomes true
     UPROPERTY(BlueprintAssignable, Category = "Turn Based|Actions")
-    FOnActionTurnEndReady OnTurnEndReady;
+    FOnTurnEndReady OnTurnEndReady;
 
+    // Fires when RequestTurnEnd is called and CanEndTurn() is true
+    // Bind to ServerSubmitTurnEnd or equivalent
     UPROPERTY(BlueprintAssignable, Category = "Turn Based|Actions")
-    FOnActionTurnEndRequested OnTurnEndRequested;
+    FOnTurnEndRequested OnTurnEndRequested;
 
     FOnTurnEndRequested_Native OnTurnEndRequested_Native;
 
     UPROPERTY(BlueprintAssignable, Category = "Turn Based|Actions")
-    FOnActionsEvent OnActionActivated;
+    FOnActionBaseEvent OnActionPushed;
 
     UPROPERTY(BlueprintAssignable, Category = "Turn Based|Actions")
-    FOnActionsEvent OnActionCompleted;
+    FOnActionBaseEvent OnActionPopped;
 
     UPROPERTY(BlueprintAssignable, Category = "Turn Based|Actions")
-    FOnActionsEvent OnActionCancelled;
+    FOnTurnActionsEvent OnActionCompleted;
+
+    UPROPERTY(BlueprintAssignable, Category = "Turn Based|Actions")
+    FOnTurnActionsEvent OnActionCancelled;
 
     // --- Debug ---
 
@@ -175,70 +221,90 @@ protected:
 
     virtual void BeginPlay() override;
 
+    // --- Designer Hooks ---
+
+    // Override to customise turn start behaviour
+    // Default: ClearAndPush(RootAction)
+    // Subclass: call Super then push additional actions on top
+    UFUNCTION(BlueprintNativeEvent, Category = "Turn Based|Actions")
+    void OnTurnStarted(int32 TurnNumber);
+
+    // Override to customise opponent turn start behaviour
+    // Default: ClearAndPush(SpectatorViewerAction)
+    // Subclass: call Super then customise
+    UFUNCTION(BlueprintNativeEvent, Category = "Turn Based|Actions")
+    void OnOpponentTurnStarted();
+
+    // Override to customise turn end condition
+    // Default: all bIsRequired actions have CompletionsThisTurn > 0
+    UFUNCTION(BlueprintNativeEvent, Category = "Turn Based|Actions")
+    bool CanAutoEndTurn() const;
+
 private:
 
-    // Runtime instances cloned from loadout
+    // --- Stack ---
+
+    UPROPERTY()
+    TArray<TObjectPtr<UTurnBasedActionBase>> ActionStack;
+
+    // --- Runtime Instances ---
+
     UPROPERTY()
     TArray<UTurnBasedAction*> RuntimeActions;
 
-    // The active action -- never null after turn starts if RootActionClass set
-    UPROPERTY()
-    TObjectPtr<UTurnBasedAction> ActiveAction = nullptr;
-
-    // Runtime root action instance -- cloned from RootActionClass
-    // Not part of RuntimeActions -- managed separately
+    // Created from class references in InitialiseFromLoadout
     UPROPERTY()
     TObjectPtr<UTurnBasedAction> RootAction = nullptr;
 
-    // Required actions not yet complete this turn
-    // Order matches loadout array order
     UPROPERTY()
-    TArray<TObjectPtr<UTurnBasedAction>> PendingRequiredActions;
+    TObjectPtr<UTurnBasedSpectatorAction> IdleViewerAction = nullptr;
 
     UPROPERTY()
-    TObjectPtr<UActionLoadOutDataAsset> Loadout = nullptr;
+    TObjectPtr<UTurnBasedSpectatorAction> SpectatorViewerAction = nullptr;
+
+    UPROPERTY()
+    TObjectPtr<UTurnBasedSpectatorAction> PauseViewerAction = nullptr;
+
+    UPROPERTY()
+    TObjectPtr<UActionLoadoutDataAsset> Loadout = nullptr;
 
     bool bIsInitialised     = false;
     int32 CurrentTurnNumber = 0;
 
-    // --- Internal ---
+    // Force deactivates and empties the action stack without pushing
+    // a replacement -- shared by ClearAndPush and NotifyMatchEnded
+    void ClearStack();
+
+    // --- Initialisation ---
 
     void CloneActionsFromLoadout();
-    void CreateRootAction();
+    void CreateSystemActions();
     void BindActionDelegates(UTurnBasedAction* Action);
+    void HandleNextActionRequested(TSubclassOf<UTurnBasedAction> NextClass);
 
-    // Activates root action if one exists
-    // Called after any action completes or cancels
-    // Called on turn start if bAutoActivateRequiredActions is false
-    //   or no pending required actions remain
-    void ReturnToRoot();
+    // Logs a warning if a viewer action instance is null -- used by
+    // CreateSystemActions to report unset Idle/Spectator viewer classes
+    void WarnIfViewerActionMissing(
+        const UTurnBasedSpectatorAction* Action,
+        const TCHAR* ClassPropertyName,
+        const TCHAR* Consequence) const;
 
-    // Builds pending required queue and optionally auto-activates
-    void BuildRequiredQueue();
-
-    // Advances required queue -- interrupts root if needed
-    void AdvanceRequiredQueue();
-
-    // Called when all required actions are complete
-    void HandleAllRequiredComplete();
-
-    // Checks whether all required actions are done
-    // Called after required action completes when not auto-activating
-    void CheckRequiredCompletion();
-
-    UFUNCTION()
-    void HandleActionChangeRequested(const FTurnActionRequest& Request);
+    // --- Completion / Auto End ---
 
     UFUNCTION()
     void HandleActionCompleted(UTurnBasedAction* Action);
-
     UFUNCTION()
     void HandleActionCancelled(UTurnBasedAction* Action);
+    UFUNCTION()
+    void HandleBoardChangeRequested(const FTurnActionRequest& Request);
+    
+    void CheckAutoEndTurn();
+
+    // --- Logging ---
 
     void LogActionRecord(
         UTurnBasedAction* Action,
-        ETurnBasedActionState OutcomeState,
-        const FString& Note = TEXT(""));
+        FString Note = TEXT(""));
 
     AController* GetOwningController() const;
 };

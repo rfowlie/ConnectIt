@@ -7,7 +7,7 @@
 #include "ConnectIt_PlacePieceAction.generated.h"
 
 
-class UConnectItBoardStateComponent;
+class UConnectIt_BoardStateComponent;
 class AConnectIt_GridPiece;
 class AConnectIt_BoardManager;
 
@@ -45,32 +45,20 @@ public:
 
 protected:
 
-    virtual void OnActivated_Implementation() override;
+    // base internal
+    virtual void Activate_Internal_Implementation() override;
+
+    // turn internal
     virtual void OnCancelled_Implementation() override;
     virtual void OnCompleted_Implementation() override;
-
-    virtual bool IsValidHoverTile_Implementation(
-        AGridTileBase* Tile) const override;
-
-    virtual bool IsValidSelectionTile_Implementation(
-        AGridTileBase* Tile) const override;
-
-    virtual void HandleValidHover_Implementation(
-        AGridTileBase* Tile) override;
-
-    virtual void HandleHoverCleared_Implementation(
-        AGridTileBase* PreviousTile) override;
-
-    virtual void HandleValidSelection_Implementation(
-        AGridTileBase* Tile) override;
-
+    virtual bool IsValidHoverTile_Implementation(AGridTileBase* Tile) const override;
+    virtual bool IsValidSelectionTile_Implementation(AGridTileBase* Tile) const override;
+    virtual void HandleValidHover_Implementation(AGridTileBase* Tile) override;
+    virtual void HandleHoverCleared_Implementation(AGridTileBase* PreviousTile) override;
+    virtual void HandleValidSelection_Implementation(AGridTileBase* Tile) override;
     virtual void ClearSelectionState_Implementation() override;
 
 private:
-
-    // Reads board state to validate tile
-    // Finds UConnectItBoardStateComponent on board actor
-    const UConnectItBoardStateComponent* GetBoardStateComponent() const;
 
     // Gets owning faction ID from participant component slot index
     int32 GetOwningFactionID() const;

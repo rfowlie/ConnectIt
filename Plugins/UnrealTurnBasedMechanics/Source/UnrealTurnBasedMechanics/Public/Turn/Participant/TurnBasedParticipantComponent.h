@@ -3,24 +3,24 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Components/ActorComponent.h"
 #include "TurnBasedMechanicsEnums.h"
 #include "TurnBasedMechanicsStructs.h"
-#include "Components/ActorComponent.h"
+#include "TurnBasedMechanicsDelegates.h"
 #include "TurnBasedParticipantComponent.generated.h"
 
 class UTurnBasedParticipantManagerComponent;
 
 
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnTurnNotification, const FTurnNotification&, Notification);
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnAnyParticipantTurnStarted, bool, bIsMyTurn);
-DECLARE_MULTICAST_DELEGATE_OneParam(FOnTurnNotification_Native, const FTurnNotification&);
-DECLARE_MULTICAST_DELEGATE_OneParam(FOnAnyParticipantTurnStarted_Native, bool);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnTurnParticipantNotification, const FTurnNotification&, Notification);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnOpponentParticipantTurnStarted, int32, ActiveParticipantSlotIndex);
 
 UCLASS(ClassGroup=(TurnBased), meta=(BlueprintSpawnableComponent))
-class UNREALTURNBASEDMECHANICS_API UTurnBasedParticipantComponent
-    : public UActorComponent
+class UNREALTURNBASEDMECHANICS_API UTurnBasedParticipantComponent : public UActorComponent
 {
     GENERATED_BODY()
+
+    friend class UTurnBasedParticipantManagerComponent;
 
 public:
 
@@ -28,47 +28,53 @@ public:
 
     // --- State ---
 
-    UPROPERTY(BlueprintReadOnly, Category = "Turn Based|Participant")
-    int32 CachedSlotIndex = -1;
-
-    UPROPERTY(BlueprintReadOnly, Category = "Turn Based|Participant")
-    EParticipantType ParticipantType = EParticipantType::Human;
-
+    UFUNCTION(BlueprintPure, Category = "Turn Based|Participant")
+    int32 GetActiveParticipantSlotIndex() const { return CachedSlotIndex; }
+    
+    UFUNCTION(BlueprintPure, Category = "Turn Based|Participant")
+    EParticipantType GetParticipantType() const { return ParticipantType; }
+    
     UFUNCTION(BlueprintPure, Category = "Turn Based|Participant")
     bool IsMyTurn() const { return bIsMyTurn; }
 
     // --- Server RPCs ---
 
-    UFUNCTION(Server, Reliable, BlueprintCallable,
-        Category = "Turn Based|Participant")
+    UFUNCTION(Server, Reliable, BlueprintCallable, Category = "Turn Based|Participant")
     void ServerNotifyReady();
 
-    UFUNCTION(Server, Reliable, BlueprintCallable,
-        Category = "Turn Based|Participant")
+    UFUNCTION(Server, Reliable, BlueprintCallable, Category = "Turn Based|Participant")
     void ServerSubmitTurnEnd();
 
     // --- Client RPC ---
     // Single entry point for all turn phase notifications
-    // bIsMyTurn updated internally based on phase
-    // Subscribers check Notification.Phase to determine relevance
+    // to the active participant
     UFUNCTION(Client, Reliable)
-    void ClientReceiveTurnNotification(const FTurnNotification Notification);
-
-    // --- Delegates ---
-
-    UPROPERTY(BlueprintAssignable, Category = "Turn Based|Notifications")
-    FOnTurnNotification OnTurnNotificationReceived;
-
-    FOnTurnNotification_Native OnTurnNotificationReceived_Native;
-
-    UPROPERTY(BlueprintAssignable, Category = "Turn Based|Notifications")
-    FOnAnyParticipantTurnStarted OnAnyParticipantTurnStarted;
-
-    FOnAnyParticipantTurnStarted_Native OnAnyParticipantTurnStarted_Native;
+    void ClientReceiveTurnNotification(FTurnNotification Notification);
 
     // --- Called by manager ---
 
-    void NotifyAnyParticipantTurnStarted(bool bIsThisMyTurn);
+    // Called on all non-active participants when a turn starts
+    // Not an RPC -- fires local delegate only
+    // Manager calls this server side, replication not needed here
+    // since participant components exist on each machine independently
+    UFUNCTION(Client, Reliable)
+    void ClientReceiveOpponentTurnStarted(int32 ActiveParticipantSlotIndex);
+
+    // --- Delegates ---
+
+    // Fired on this participant when it is their turn
+    // Carries full notification with phase, turn number, duration
+    UPROPERTY(BlueprintAssignable, Category = "Turn Based|Notifications")
+    FOnTurnParticipantNotification OnTurnNotificationReceived;
+
+    FOnTurnNotification_Native OnTurnNotificationReceived_Native;
+
+    // Fired on this participant when it is someone else's turn
+    // Carries slot index of the now-active participant
+    UPROPERTY(BlueprintAssignable, Category = "Turn Based|Notifications")
+    FOnOpponentParticipantTurnStarted OnOpponentTurnStarted;
+
+    FOnOpponentTurnStarted_Native OnOpponentTurnStarted_Native;
 
 protected:
 
@@ -76,12 +82,15 @@ protected:
 
 private:
 
+    UPROPERTY()
+    int32 CachedSlotIndex = -1;
+    EParticipantType ParticipantType = EParticipantType::Human;
+
+    // Client-side only -- set by ClientReceiveTurnNotification
+    // Never valid on server -- use manager ActiveParticipantIndex instead
     bool bIsMyTurn = false;
 
-    // Phases that set bIsMyTurn true
     static bool IsMyTurnStartingPhase(ETurnPhase Phase);
-
-    // Phases that set bIsMyTurn false
     static bool IsMyTurnEndingPhase(ETurnPhase Phase);
 
     UTurnBasedParticipantManagerComponent* GetParticipantManager() const;

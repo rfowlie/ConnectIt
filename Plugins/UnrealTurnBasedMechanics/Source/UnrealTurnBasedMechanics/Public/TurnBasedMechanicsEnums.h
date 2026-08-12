@@ -5,6 +5,19 @@
 #include "CoreMinimal.h"
 
 
+// Match level -- replicated on game state
+// Drives overall game flow and UI state
+UENUM(BlueprintType)
+enum class EMatchPhase : uint8
+{
+	WaitingForParticipants  UMETA(DisplayName = "Waiting For Participants"),
+	WaitingForReady         UMETA(DisplayName = "Waiting For Ready"),
+	InProgress              UMETA(DisplayName = "In Progress"),
+	Updating                UMETA(DisplayName = "Updating"),
+	Paused                  UMETA(DisplayName = "Paused"),
+	GameOver                UMETA(DisplayName = "Game Over")
+};
+
 // Phase of the turn state machine
 UENUM(BlueprintType)
 enum class ETurnPhase : uint8
@@ -17,7 +30,7 @@ enum class ETurnPhase : uint8
 	TurnResolution          UMETA(DisplayName = "Turn Resolution"),
 	TurnTimeout             UMETA(DisplayName = "Turn Timeout"),
 	TurnSkipped             UMETA(DisplayName = "Turn Skipped"),
-	Paused                  UMETA(DisplayName = "Paused"),
+	TurnPaused              UMETA(DisplayName = "Turn Paused"),
 	GameOver                UMETA(DisplayName = "Game Over")
 };
 

@@ -4,6 +4,8 @@
 
 #include "Modules/ModuleManager.h"
 
+DECLARE_LOG_CATEGORY_EXTERN(LogTurnBasedMechanics, Log, All);
+
 class FUnrealTurnBasedMechanicsModule : public IModuleInterface
 {
 public:

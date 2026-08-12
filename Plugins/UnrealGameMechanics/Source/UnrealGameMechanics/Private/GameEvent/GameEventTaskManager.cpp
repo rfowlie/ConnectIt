@@ -66,7 +66,9 @@ void UGameEventTaskManager::UnregisterTask(UObject* Object)
 
 void UGameEventTaskManager::InitiateAllTasks()
 {
-	if (OnManagerBegin.IsBound()) { OnManagerBegin.Broadcast(); }
+	// Do not broadcast OnManagerBegin here -- InitiateAsyncTasks already
+	// broadcasts it once. Broadcasting from both meant every trigger fired
+	// OnManagerBegin twice.
 	InitiateAsyncTasks();
 }
 
@@ -94,15 +96,15 @@ void UGameEventTaskManager::InitiateAsyncTasks()
 	}
 
 	// remove any tasks that are no long persistent
+	// (was an unsigned reverse loop that underflowed at Num()==0 and never
+	// inspected index 0 -- RemoveAll is correct regardless of array size)
 	for (const auto Phase : OutPhaseOrder)
 	{
-		for (uint32 i = AsyncTaskMapPersistent[Phase].Tasks.Num() - 1; i > 0; i--)
-		{
-			if (!AsyncTaskMapPersistent[Phase].Tasks[i]->bIsPersistentTask)
+		AsyncTaskMapPersistent[Phase].Tasks.RemoveAll(
+			[](const UGameEventTask_Async* Task)
 			{
-				AsyncTaskMapPersistent[Phase].Tasks.Remove(AsyncTaskMapPersistent[Phase].Tasks[i]);
-			}
-		}
+				return !IsValid(Task) || !Task->bIsPersistentTask;
+			});
 	}
 
 	if (OnManagerBegin.IsBound()) {	OnManagerBegin.Broadcast(); }
@@ -142,8 +144,34 @@ void UGameEventTaskManager::ExecuteNextPhase()
 
 void UGameEventTaskManager::CheckPhaseComplete(UGameEventTask_Async* AsyncTask)
 {
+	// Guard against a task's OnComplete firing after this manager has
+	// already finished all phases (PhaseIndex sits at PhaseOrder.Num(), an
+	// invalid index, from the moment ExecuteNextPhase runs off the end
+	// until the next InitiateAsyncTasks reset) -- e.g. a late/overrun
+	// animation, or a stale task firing twice. Previously this indexed
+	// PhaseOrder[PhaseIndex] unconditionally and crashed.
+	if (!PhaseOrder.IsValidIndex(PhaseIndex))
+	{
+		UE_LOG(LogTemp, Warning,
+			TEXT("UGameEventTaskManager::CheckPhaseComplete - '%s' completed "
+				 "after manager already finished -- ignoring"),
+			*GetNameSafe(AsyncTask));
+		return;
+	}
+
+	const int32 CurrentPhase = PhaseOrder[PhaseIndex];
+
+	if (!AsyncTaskMap.Contains(CurrentPhase))
+	{
+		UE_LOG(LogTemp, Warning,
+			TEXT("UGameEventTaskManager::CheckPhaseComplete - no task "
+				 "bucket for phase %d -- ignoring"),
+			CurrentPhase);
+		return;
+	}
+
 	// flag if task does not belong to current phase
-	if (AsyncTaskMap[PhaseOrder[PhaseIndex]].Tasks.IsEmpty() || !AsyncTaskMap[PhaseOrder[PhaseIndex]].Tasks.Contains(AsyncTask))
+	if (AsyncTaskMap[CurrentPhase].Tasks.IsEmpty() || !AsyncTaskMap[CurrentPhase].Tasks.Contains(AsyncTask))
 	{
 		UE_LOG(LogTemp, Error, TEXT("UGameEventTaskManager::CheckPhaseComplete - Async task firing out of place!!"))
 		return;
@@ -151,10 +179,10 @@ void UGameEventTaskManager::CheckPhaseComplete(UGameEventTask_Async* AsyncTask)
 
 	// remove task from array
 	AsyncTask->OnComplete.RemoveAll(this);
-	AsyncTaskMap[PhaseOrder[PhaseIndex]].Tasks.Remove(AsyncTask);
+	AsyncTaskMap[CurrentPhase].Tasks.Remove(AsyncTask);
 
 	// check if array is empty, signal to move onto next phase
-	if (AsyncTaskMap[PhaseOrder[PhaseIndex]].Tasks.IsEmpty())
+	if (AsyncTaskMap[CurrentPhase].Tasks.IsEmpty())
 	{
 		ExecuteNextPhase();
 	}

@@ -3,11 +3,13 @@
 
 #include "Framework/GameMode/ConnectIt_GameMode.h"
 #include "EngineUtils.h"
-#include "Board/ConnectItBoardManager.h"
+#include "Board/ConnectIt_BoardManager.h"
 #include "Framework/Controller/ConnectIt_AIController.h"
 #include "Framework/GameState/ConnectIt_GameState.h"
 #include "Framework/GameState/TurnBasedGameState.h"
 #include "Framework/PlayerState/TurnBasedPlayerState.h"
+#include "Framework/Subsystem/ConnectIt_BoardManagerSubsystem.h"
+#include "Library/ConnectIt_GameUtilityLibrary.h"
 
 
 AConnectIt_GameMode::AConnectIt_GameMode()
@@ -77,7 +79,7 @@ void AConnectIt_GameMode::HandleMatchHasEnded()
 
 void AConnectIt_GameMode::InitialiseBoard()
 {
-    AConnectItBoardManager* Board = GetBoardActor();
+    AConnectIt_BoardManager* Board = GetBoardActor();
     if (!IsValid(Board))
     {
         UE_LOG(LogTemp, Error,
@@ -86,12 +88,13 @@ void AConnectIt_GameMode::InitialiseBoard()
         return;
     }
 
-    // Bind game over handler before initialising
-    // Board manager fires this when win condition is met
-    if (IsValid(Board->BoardManager))
+    // Bind game over handler via the subsystem relay rather than the board
+    // manager directly -- the binding then doesn't depend on Board having
+    // already been resolved above
+    if (UConnectIt_BoardManagerSubsystem* Subsystem =
+        GetWorld()->GetSubsystem<UConnectIt_BoardManagerSubsystem>())
     {
-        Board->BoardManager->OnGameOver.AddDynamic(
-            this, &AConnectIt_GameMode::HandleGameOver);
+        Subsystem->OnPlayerWin.AddDynamic(this, &AConnectIt_GameMode::HandleGameOver);
     }
 
     // Initialise board state from registered tile positions
@@ -165,15 +168,12 @@ void AConnectIt_GameMode::HandleGameOver(int32 WinningFactionSlot)
 
 // --- Helpers ---
 
-AConnectItBoardManager* AConnectIt_GameMode::GetBoardActor() const
+AConnectIt_BoardManager* AConnectIt_GameMode::GetBoardActor() const
 {
-    if (IsValid(CachedBoardActor)) return CachedBoardActor;
-
-    for (TActorIterator<AConnectItBoardManager> It(GetWorld()); It; ++It)
+    if (!IsValid(CachedBoardActor))
     {
-        CachedBoardActor = *It;
-        return CachedBoardActor;
+        CachedBoardActor = UConnectIt_GameUtilityLibrary::GetBoardManager(this);
     }
-
-    return nullptr;
+    
+    return CachedBoardActor;
 }

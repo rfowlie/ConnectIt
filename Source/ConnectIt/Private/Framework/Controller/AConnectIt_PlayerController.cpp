@@ -1,99 +1,116 @@
-﻿// Fill out your copyright notice in the Description page of Project Settings.
+// Fill out your copyright notice in the Description page of Project Settings.
 
 
+#include "Board/ConnectIt_BoardManager.h"
 #include "Framework/Controller/ConnectIt_PlayerController.h"
-#include "EngineUtils.h"
-#include "Action/ActionLoadoutDataAsset.h"
-#include "Action/TurnBasedActionComponent.h"
-#include "Board/ConnectItBoardManager.h"
+#include "Library/ConnectIt_GameUtilityLibrary.h"
 #include "Turn/Participant/TurnBasedParticipantComponent.h"
+#include "Action/TurnBasedActionsComponent.h"
 
-
-AConnectIt_PlayerController::AConnectIt_PlayerController()
-{
-    ParticipantComponent =
-        CreateDefaultSubobject<UTurnBasedParticipantComponent>(
-            TEXT("ParticipantComponent"));
-
-    ActionComponent =
-        CreateDefaultSubobject<UTurnBasedActionComponent>(
-            TEXT("ActionComponent"));
-}
 
 void AConnectIt_PlayerController::BeginPlay()
 {
+    // Base creates ParticipantComponent/ActionsComponent, wires them
+    // together (and to game state match phase changes) via
+    // CoordinatorComponent, and notifies ready
     Super::BeginPlay();
 
-    // Bind turn notifications
-    ParticipantComponent->OnTurnNotificationReceived.AddDynamic(
-        this, &AConnectIt_PlayerController::HandleTurnChanged);
-    
+    // Only owning client needs actions and input wiring
+    if (!IsLocalController()) return;
 
-    // Initialise from board actor
-    // Only owning client needs actions -- IsLocalController guards this
-    if (IsLocalController())
-    {
-        InitialiseFromBoardActor();
-    }
+    // Wire action component delegate -- board change routing is
+    // ConnectIt-specific and not handled by the generic coordinator
+    ActionsComponent->OnBoardChangeRequested.AddDynamic(
+        this,
+        &AConnectIt_PlayerController::HandleBoardChangeRequested);
+
+    // Initialise from board manager
+    InitialiseFromBoardManager();
 }
 
-void AConnectIt_PlayerController::InitialiseFromBoardActor()
-{
-    AConnectItBoardManager* BoardActor = nullptr;
-    for (TActorIterator<AConnectItBoardManager> It(GetWorld()); It; ++It)
-    {
-        BoardActor = *It;
-        break;
-    }
+// --- Initialisation ---
 
-    if (!IsValid(BoardActor))
+void AConnectIt_PlayerController::InitialiseFromBoardManager()
+{
+    CachedBoardManager =
+        UConnectIt_GameUtilityLibrary::GetBoardManager(this);
+
+    if (!IsValid(CachedBoardManager))
     {
         UE_LOG(LogTemp, Error,
-            TEXT("ConnectItPlayerController: No AConnectItBoardActor "
+            TEXT("ConnectIt_PlayerController: No AConnectIt_BoardManager "
                  "found in world"));
         return;
     }
 
-    // Initialise action component from player loadout
-    UActionLoadOutDataAsset* Loadout = BoardActor->GetPlayerLoadout();
+    // Get player loadout from board manager config
+    UActionLoadoutDataAsset* Loadout =
+        CachedBoardManager->GetPlayerLoadout();
+
     if (!IsValid(Loadout))
     {
         UE_LOG(LogTemp, Error,
-            TEXT("ConnectItPlayerController: No player loadout set "
-                 "on board actor config"));
+            TEXT("ConnectIt_PlayerController: No player loadout set "
+                 "on board manager config"));
         return;
     }
 
-    ActionComponent->InitialiseFromLoadout(Loadout);
-
-    // Wire action component passthrough to board manager
-    // OnBoardChangeRequested fires on SERVER inside ServerRPC
-    // Project wiring connects it to the board manager here
-    ActionComponent->OnBoardChangeRequested.AddDynamic(
-        BoardActor->BoardManager,
-        &UConnectItBoardManagerComponent::ProcessRequest);
+    ActionsComponent->InitialiseFromLoadout(Loadout);
 
     UE_LOG(LogTemp, Log,
-        TEXT("ConnectItPlayerController: Initialised from board actor "
+        TEXT("ConnectIt_PlayerController: Initialised from board manager "
              "with loadout '%s'"),
         *Loadout->LoadoutName);
 }
 
-void AConnectIt_PlayerController::HandleTurnChanged(const FTurnNotification& Notification)
+// --- Action Component Handler ---
+
+void AConnectIt_PlayerController::HandleBoardChangeRequested(
+    const FTurnActionRequest& Request)
 {
-    switch (Notification.Phase)
+    // Route to server via RPC
+    // Server validates and passes to board manager
+    ServerRouteBoardChangeRequest(Request);
+}
+
+// --- ServerRPC ---
+
+void AConnectIt_PlayerController::ServerRouteBoardChangeRequest_Implementation(
+    FTurnActionRequest Request)
+{
+    // Server side -- validate it is this player's turn
+    if (!ParticipantComponent->IsMyTurn())
     {
-        case ETurnPhase::TurnStart :
-            ActionComponent->NotifyTurnStarted(Notification.TurnNumber);
-            break;
-        case ETurnPhase::TurnEnd :
-            ActionComponent->NotifyTurnEnded();
-            break;
-        default:
-            break;
+        UE_LOG(LogTemp, Warning,
+            TEXT("ConnectIt_PlayerController: Board change request "
+                 "rejected — not this participant's turn"));
+        return;
     }
-    
+
+    // TODO: this feels problematic, any action can be made valid if no FactionID set?
+    // Stamp faction ID if not set by action
+    if (Request.FactionID < 0)
+    {
+        Request.FactionID = ParticipantComponent->GetActiveParticipantSlotIndex();
+    }
+
+    // Route to board manager component
+    AConnectIt_BoardManager* BoardManager =
+        UConnectIt_GameUtilityLibrary::GetBoardManager(this);
+
+    if (!IsValid(BoardManager))
+    {
+        UE_LOG(LogTemp, Error,
+            TEXT("ConnectIt_PlayerController: Cannot route board change "
+                 "— board manager component not found"));
+        return;
+    }
+
+    BoardManager->ProcessRequest(Request);
+
     UE_LOG(LogTemp, Log,
-        TEXT("ConnectItPlayerController: Turn %d started"),
-        Notification.TurnNumber);
+        TEXT("ConnectIt_PlayerController: Board change request routed "
+             "'%s' from faction %d"),
+        *Request.RequestType.ToString(),
+        Request.FactionID);
 }

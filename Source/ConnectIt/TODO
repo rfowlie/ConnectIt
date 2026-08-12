@@ -1,0 +1,53 @@
+- [done, claude] Update ConnectIt_PlayerController to inherit from TurnBasedController
+- [in progress, claude] Check setup for all ConnectIt Framework Actors
+  - Found: CI_GameMode_Play / CI_PlayerController_Play blueprints in
+    _ConnectItNetworked are parented to the generic plugin base classes
+    (ATurnBasedGameMode / ATurnBasedPlayerControllerBase) instead of
+    AConnectIt_GameMode / AConnectIt_PlayerController -- L_NetworkTest
+    currently runs none of the ConnectIt gameplay logic. Needs editor-side
+    reparenting (rfowlie to do).
+  - Found: AConnectIt_GameMode_Play (Source/ConnectIt/.../GameMode/) is an
+    empty, unreferenced stub -- not used by any Blueprint or C++. Decide
+    whether to delete it, along with IConnectIt_FacadeHandlerInterface /
+    IConnectIt_GameStateHandlerInterface which nothing else implements.
+- [done, claude] Turn facade into board query object that can be accessed
+  through the ConnectIt Function Library
+  - Added GetAllGridTiles / GetEmptyGridTiles / IsTileEmpty /
+    GetGridTilesWithFactionPieces / GetTileAtPosition /
+    GetRandomEmptyGridTile / IsGameBoardFull / HasFactionWon to
+    UConnectIt_GameUtilityLibrary, reading from the replicated board
+    state (UConnectIt_BoardStateComponent) instead of the old
+    UConnectIt_GameFacade (which reads from the non-networked
+    UConnectIt_State_Game / UGameTurnParticipant stack).
+  - Left UConnectIt_GameFacade/ViewModel/State_* in place -- they may
+    still back the old _ConnectIt (non-networked) content. Revisit once
+    it's confirmed nothing in _ConnectIt still needs them.
+- [done, claude] make abstract grid cursor manager
+  - Added AGridCursorManagerBase (UnrealGridMechanics/Cursor) -- abstract
+    actor owning the hover subscription (UGridWorldSubsystem::
+    OnGridTileHoverChanged, the same pipeline UTurnBasedAction hover
+    validation uses) and Enable/PauseCursor state. Subclasses only
+    implement UpdateCursor(Tile) for the visual.
+  - Refactored AGridCursorSimpleBase to derive from it -- now just the
+    mesh-follow visual, nothing else.
+  - Found + fixed along the way: AGridCursorSimpleBase was previously
+    listening to UGridTrackerSubsystem::OnGridTileHoveredStart, which
+    never fires -- AGridTileBase::BeginPlay only registers with the
+    newer UGridWorldSubsystem (registration with GridTrackerSubsystem is
+    commented out). The cursor was dead code; it now works via the
+    subsystem tiles actually register with.
+  - Also fixed an inverted bool in the old EnableCursor/PauseCursor pair
+    (EnableCursor(true) was calling PauseCursor(true), which disabled
+    updates while unhiding the actor).
+  - Not wired into any Blueprint yet -- no asset currently references
+    GridCursorSimpleBase, so this needs a BP_ or placement in a level to
+    actually be used.
+
+- [done, claude] Fix ConnectIt_PlacePieceAction -- IsValidHoverTile_Implementation
+  and HandleValidSelection_Implementation were stubbed out (hardcoded
+  return false / empty body), referencing a nonexistent
+  AGridTileBase::GetGridPosition(). No tile could ever be hovered or
+  placed. Restored using UConnectIt_GameUtilityLibrary::GetGridPositionForTile
+  to resolve position via the tile registry instead. Not verified against
+  a real engine build (no local UE install in this environment) -- build
+  and playtest in editor before trusting it.

@@ -9,12 +9,13 @@
 #include "Turn/Order/TurnOrderInterface.h"
 #include "TurnBasedParticipantManagerComponent.generated.h"
 
+class ATurnBasedGameState;
 class UTurnBasedParticipantComponent;
 
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnTurnPhaseChanged, ETurnPhase, NewPhase);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnParticipantForfeited, const FTurnParticipantInfo&, ParticipantInfo);
-// DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnAnyParticipantTurnStarted, bool, bIsTurn);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnActiveControllerChanged, AController*, NewActiveController);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnAllParticipantsReady);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnTurnResolutionStarted);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnGameOver);
@@ -52,13 +53,9 @@ public:
     // Turn order strategy -- must implement ITurnOrderInterface
     // Instanced inline in Details panel
     // Defaults to USequentialTurnOrderStrategy if not set
-    // UPROPERTY(EditAnywhere, Instanced, BlueprintReadOnly, Category = "Turn Based|Config",
-    //     meta = (MustImplement = "/Script/UnrealTurnBasedMechanics.TurnOrderInterface"))
-    UPROPERTY(EditAnywhere, Instanced, BlueprintReadOnly, Category = "Turn Based|Config")
-    TObjectPtr<UObject> TurnOrderStrategy = nullptr;
-    
-    // UPROPERTY(EditAnywhere, Instanced, BlueprintReadOnly, Category = "Turn Based|Config")
-    // TScriptInterface<UTurnOrderInterface> TurnOrderStrategy = nullptr;
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Turn Based|Config",
+        meta = (MustImplement = "/Script/UnrealTurnBasedMechanics.TurnOrderInterface"))
+    TScriptInterface<ITurnOrderInterface> TurnOrderStrategy;
 
     // --- Replicated State ---
 
@@ -71,25 +68,24 @@ public:
     UPROPERTY(BlueprintReadOnly, Replicated, Category = "Turn Based|State")
     int32 TurnNumber = 0;
 
+    // Replicated -- what clients need to see
     UPROPERTY(BlueprintReadOnly, Replicated, Category = "Turn Based|State")
     TArray<FTurnParticipantInfo> Participants;
-
+    
+    
     // Replicated once per turn start -- clients start local timer from this
     UPROPERTY(BlueprintReadOnly, Replicated, Category = "Turn Based|State")
     float ReplicatedTurnDuration = 0.f;
 
     // --- Setup --- Server only ---
 
-    void RegisterParticipant(
-        AController* Controller,
-        EParticipantType Type,
-        const FString& DisplayName);
+    UFUNCTION(BlueprintImplementableEvent, Category = "Turn Based|State")
+    bool CheckAllParticipantsRegistered();
+    
+    void RegisterParticipant(AController* Controller, EParticipantType Type);
 
     UFUNCTION(BlueprintPure, Category = "Turn Based")
-    bool IsParticipantRegistered(AController* Controller) const
-    {
-        return FindParticipantIndex(Controller) != INDEX_NONE;
-    }
+    bool IsParticipantRegistered(AController* Controller) const;
 
     void BeginReadyCheck();
 
@@ -108,6 +104,9 @@ public:
     FOnTurnPhaseChanged OnTurnPhaseChanged;
 
     UPROPERTY(BlueprintAssignable, Category = "Turn Based")
+    FOnActiveControllerChanged OnActiveControllerChanged;
+    
+    UPROPERTY(BlueprintAssignable, Category = "Turn Based")
     FOnParticipantForfeited OnParticipantForfeited;
 
     UPROPERTY(BlueprintAssignable, Category = "Turn Based")
@@ -122,6 +121,11 @@ public:
     UPROPERTY(BlueprintAssignable, Category = "Turn Based")
     FOnGameOver OnGameOver;
 
+    // --- Helpers ---
+    
+    // returns null on clients
+    AController* GetControllerAtIndex(int32 Index) const;
+    
     virtual void GetLifetimeReplicatedProps(
         TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
@@ -131,6 +135,10 @@ protected:
 
 private:
 
+    // Server only -- index matched to Participants
+    // Never replicated -- controllers are not network relevant to other clients
+    TArray<TWeakObjectPtr<AController>> ServerControllers;
+    
     // --- Timers ---
     FTimerHandle TurnTimerHandle;
     FTimerHandle ResolutionTimerHandle;
@@ -143,21 +151,28 @@ private:
     void SetPhase(ETurnPhase NewPhase);
     void StartTurn(int32 ParticipantIndex);
     void EndTurn(ETurnEndReason Reason);
+   
     void AdvanceToNextParticipant();
     void HandleTurnTimeout();
     void HandleResolutionComplete();
     void HandleReconnectTimeout();
     void CheckReadyStatus();
-    void CheckGameOver();
+    bool CheckGameOver() const;
 
     // Broadcasts to all participant components each turn start
     // Each component ticks its own cooldowns
     // Each component fires OnAnyParticipantTurnStarted(bIsMyTurn)
-    void BroadcastTurnStartToAllParticipants(int32 NewActiveIndex);
-
+    void BroadcastTurnStart(int32 ActiveIndex);
+    void BroadcastControllerChanged(int32 ActiveIndex);
+    
     // --- Helpers ---
+
+    ATurnBasedGameState* GetOwningGameState() const;
+    
+    void SetMatchPhase(EMatchPhase NewPhase) const;
     
     FTurnParticipantInfo* FindParticipant(AController* Controller);
+    const FTurnParticipantInfo* FindParticipant(AController* Controller) const;
     int32 FindParticipantIndex(AController* Controller) const;
     UTurnBasedParticipantComponent* GetParticipantComponent(
         AController* Controller) const;
