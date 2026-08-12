@@ -43,24 +43,26 @@ void UConnectIt_PlacePieceAction::OnCompleted_Implementation()
         TEXT("PlacePieceAction: Piece placed — action complete"));
 }
 
-bool UConnectIt_PlacePieceAction::IsValidHoverTile_Implementation(
-    AGridTileBase* Tile) const
+bool UConnectIt_PlacePieceAction::IsValidHoverTile_Implementation(AGridTileBase* Tile) const
 {
-    // if (!IsValid(Tile)) return false;
-    //
-    // const UConnectItBoardStateComponent* BoardState = UConnectIt_GameUtilityLibrary::GetBoardStateComponent(this);
-    // if (!IsValid(BoardState)) return false;
-    //
-    // // Tile must be valid for placement in current board state
-    // // IsTileValidForPlacement checks both bIsActive and !IsOccupied
-    // return BoardState->IsTileValidForPlacement(
-    //     Tile->GetGridPosition());
+    if (!IsValid(Tile)) return false;
 
-    return false;
+    const UConnectIt_BoardStateComponent* BoardState =
+        UConnectIt_GameUtilityLibrary::GetBoardStateComponent(this);
+    if (!IsValid(BoardState)) return false;
+
+    // Position is not stored on the tile itself -- resolved via the
+    // board manager's tile registry
+    FGridPosition Position;
+    if (!UConnectIt_GameUtilityLibrary::GetGridPositionForTile(this, Tile, Position))
+        return false;
+
+    // Tile must be valid for placement in current board state
+    // IsTileValidForPlacement checks both bIsActive and !IsOccupied
+    return BoardState->IsTileValidForPlacement(Position);
 }
 
-bool UConnectIt_PlacePieceAction::IsValidSelectionTile_Implementation(
-    AGridTileBase* Tile) const
+bool UConnectIt_PlacePieceAction::IsValidSelectionTile_Implementation(AGridTileBase* Tile) const
 {
     // Selection validity matches hover validity
     return IsValidHoverTile_Implementation(Tile);
@@ -85,27 +87,31 @@ void UConnectIt_PlacePieceAction::HandleHoverCleared_Implementation(
 
 void UConnectIt_PlacePieceAction::HandleValidSelection_Implementation(AGridTileBase* Tile)
 {
-    // if (!IsValid(Tile)) return;
-    //
-    // // Build the request -- board manager handles all mutation
-    // // Action has no knowledge of pools, piece actors, or state changes
-    // FTurnActionRequest Request;
-    // Request.RequestType = Tag_RequestType;
-    // Request.Positions.Add(Tile->GetGridPosition());
-    // Request.FactionID   = GetOwningFactionID();
-    //
-    // UE_LOG(LogTemp, Log,
-    //     TEXT("PlacePieceAction: Selection confirmed at (%d,%d) "
-    //          "faction %d — requesting board change"),
-    //     Tile->GetGridPosition().X,
-    //     Tile->GetGridPosition().Y,
-    //     Request.FactionID);
-    //
-    // // Route to action component which sends to server
-    // // Complete fires after request is sent -- not after server confirms
-    // // Server confirmation comes via board state replication
-    // RequestBoardChange(Request);
-    // Complete();
+    if (!IsValid(Tile)) return;
+
+    FGridPosition Position;
+    if (!UConnectIt_GameUtilityLibrary::GetGridPositionForTile(this, Tile, Position))
+        return;
+
+    // Build the request -- board manager handles all mutation
+    // Action has no knowledge of pools, piece actors, or state changes
+    FTurnActionRequest Request;
+    Request.RequestType = Tag_RequestType;
+    Request.Positions.Add(Position);
+    Request.FactionID = GetOwningFactionID();
+
+    UE_LOG(LogTemp, Log,
+        TEXT("PlacePieceAction: Selection confirmed at (%d,%d) "
+             "faction %d — requesting board change"),
+        Position.X,
+        Position.Y,
+        Request.FactionID);
+
+    // Route to action component which sends to server
+    // Complete fires after request is sent -- not after server confirms
+    // Server confirmation comes via board state replication
+    RequestBoardChange(Request);
+    Complete();
 }
 
 void UConnectIt_PlacePieceAction::ClearSelectionState_Implementation()

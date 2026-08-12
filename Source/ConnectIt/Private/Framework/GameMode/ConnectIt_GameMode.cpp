@@ -8,6 +8,7 @@
 #include "Framework/GameState/ConnectIt_GameState.h"
 #include "Framework/GameState/TurnBasedGameState.h"
 #include "Framework/PlayerState/TurnBasedPlayerState.h"
+#include "Framework/Subsystem/ConnectIt_BoardManagerSubsystem.h"
 #include "Library/ConnectIt_GameUtilityLibrary.h"
 
 
@@ -87,8 +88,14 @@ void AConnectIt_GameMode::InitialiseBoard()
         return;
     }
 
-    // Bind game over handler before initialising
-    Board->OnPlayerWin.AddDynamic(this, &AConnectIt_GameMode::HandleGameOver);
+    // Bind game over handler via the subsystem relay rather than the board
+    // manager directly -- the binding then doesn't depend on Board having
+    // already been resolved above
+    if (UConnectIt_BoardManagerSubsystem* Subsystem =
+        GetWorld()->GetSubsystem<UConnectIt_BoardManagerSubsystem>())
+    {
+        Subsystem->OnPlayerWin.AddDynamic(this, &AConnectIt_GameMode::HandleGameOver);
+    }
 
     // Initialise board state from registered tile positions
     Board->InitialiseBoard(NumFactions);

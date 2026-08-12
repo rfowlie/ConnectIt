@@ -1,56 +1,28 @@
-﻿// Fill out your copyright notice in the Description page of Project Settings.
+// Fill out your copyright notice in the Description page of Project Settings.
 
 
 #include "Board/ConnectIt_BoardManager.h"
 #include "Framework/Controller/ConnectIt_PlayerController.h"
-#include "Framework/GameState/ConnectIt_GameState.h"
 #include "Library/ConnectIt_GameUtilityLibrary.h"
+#include "Turn/Participant/TurnBasedParticipantComponent.h"
+#include "Action/TurnBasedActionsComponent.h"
 
-
-AConnectIt_PlayerController::AConnectIt_PlayerController()
-{
-    ParticipantComponent =
-        CreateDefaultSubobject<UTurnBasedParticipantComponent>(
-            TEXT("ParticipantComponent"));
-
-    ActionsComponent =
-        CreateDefaultSubobject<UTurnBasedActionsComponent>(
-            TEXT("ActionsComponent"));
-}
 
 void AConnectIt_PlayerController::BeginPlay()
 {
+    // Base creates ParticipantComponent/ActionsComponent, wires them
+    // together (and to game state match phase changes) via
+    // CoordinatorComponent, and notifies ready
     Super::BeginPlay();
 
     // Only owning client needs actions and input wiring
     if (!IsLocalController()) return;
 
-    // Wire participant component delegates
-    ParticipantComponent->OnTurnNotificationReceived.AddDynamic(
-        this,
-        &AConnectIt_PlayerController::HandleTurnNotificationReceived);
-
-    ParticipantComponent->OnOpponentTurnStarted.AddDynamic(
-        this,
-        &AConnectIt_PlayerController::HandleOpponentTurnStarted);
-
-    // Wire game state match phase delegate
-    if (AConnectIt_GameState* GS =
-        GetWorld()->GetGameState<AConnectIt_GameState>())
-    {
-        GS->OnMatchPhaseChanged.AddDynamic(
-            this,
-            &AConnectIt_PlayerController::HandleMatchPhaseChanged);
-    }
-
-    // Wire action component delegates
+    // Wire action component delegate -- board change routing is
+    // ConnectIt-specific and not handled by the generic coordinator
     ActionsComponent->OnBoardChangeRequested.AddDynamic(
         this,
         &AConnectIt_PlayerController::HandleBoardChangeRequested);
-
-    ActionsComponent->OnTurnEndRequested.AddDynamic(
-        this,
-        &AConnectIt_PlayerController::HandleTurnEndRequested);
 
     // Initialise from board manager
     InitialiseFromBoardManager();
@@ -91,84 +63,7 @@ void AConnectIt_PlayerController::InitialiseFromBoardManager()
         *Loadout->LoadoutName);
 }
 
-// --- Participant Delegate Handlers ---
-
-void AConnectIt_PlayerController::HandleTurnNotificationReceived(
-    const FTurnNotification& Notification)
-{
-    switch (Notification.Phase)
-    {
-        case ETurnPhase::TurnStart:
-        case ETurnPhase::TurnActive:
-            // Our turn -- notify action component
-            ActionsComponent->NotifyTurnStarted(Notification.TurnNumber);
-
-            UE_LOG(LogTemp, Log,
-                TEXT("ConnectIt_PlayerController: Turn %d started"),
-                Notification.TurnNumber);
-            break;
-
-        case ETurnPhase::TurnEnd:
-        case ETurnPhase::TurnTimeout:
-        case ETurnPhase::TurnSkipped:
-            // Our turn ended -- push idle viewer
-            ActionsComponent->NotifyTurnEnded();
-
-            UE_LOG(LogTemp, Log,
-                TEXT("ConnectIt_PlayerController: Turn ended — reason: %s"),
-                *UEnum::GetValueAsString(Notification.EndReason));
-            break;
-
-        case ETurnPhase::TurnPaused:
-            // Handled by match phase delegate
-            break;
-
-        default:
-            break;
-    }
-}
-
-void AConnectIt_PlayerController::HandleOpponentTurnStarted(
-    int32 ActiveParticipantSlotIndex)
-{
-    // Opponent turn starting -- push spectator viewer
-    ActionsComponent->NotifyOpponentTurnStarted();
-
-    UE_LOG(LogTemp, Log,
-        TEXT("ConnectIt_PlayerController: Opponent turn started "
-             "— active slot: %d"),
-        ActiveParticipantSlotIndex);
-}
-
-// --- Match Phase Handler ---
-
-void AConnectIt_PlayerController::HandleMatchPhaseChanged(EMatchPhase NewPhase)
-{
-    switch (NewPhase)
-    {
-    case EMatchPhase::Paused:
-        bIsPaused = true;
-        ActionsComponent->NotifyPaused();
-        break;
-
-    case EMatchPhase::InProgress:
-        if (bIsPaused)
-        {
-            bIsPaused = false;
-            ActionsComponent->NotifyUnpaused();
-        }
-        break;
-
-    case EMatchPhase::GameOver:
-        ActionsComponent->NotifyMatchEnded();
-        break;
-
-    default:
-        break;
-    }
-}
-
-// --- Action Component Handlers ---
+// --- Action Component Handler ---
 
 void AConnectIt_PlayerController::HandleBoardChangeRequested(
     const FTurnActionRequest& Request)
@@ -176,15 +71,6 @@ void AConnectIt_PlayerController::HandleBoardChangeRequested(
     // Route to server via RPC
     // Server validates and passes to board manager
     ServerRouteBoardChangeRequest(Request);
-}
-
-void AConnectIt_PlayerController::HandleTurnEndRequested()
-{
-    // Route to participant component ServerRPC
-    ParticipantComponent->ServerSubmitTurnEnd();
-
-    UE_LOG(LogTemp, Log,
-        TEXT("ConnectIt_PlayerController: Turn end submitted"));
 }
 
 // --- ServerRPC ---
@@ -201,6 +87,7 @@ void AConnectIt_PlayerController::ServerRouteBoardChangeRequest_Implementation(
         return;
     }
 
+    // TODO: this feels problematic, any action can be made valid if no FactionID set?
     // Stamp faction ID if not set by action
     if (Request.FactionID < 0)
     {

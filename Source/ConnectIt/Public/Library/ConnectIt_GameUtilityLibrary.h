@@ -40,6 +40,10 @@ public:
 
     
     // --- Game Board ---
+    // Read-only queries over the replicated board state
+    // Replaces UConnectIt_GameFacade for the networked game -- one
+    // static, stateless place for UI/AI to query the board instead of
+    // an object bound to the old non-networked state machine
 
     UFUNCTION(BlueprintPure, Category = "ConnectIt|Utility",
     meta = (WorldContext = "WorldContextObject"))
@@ -47,6 +51,59 @@ public:
         const UObject* WorldContextObject,
         const AGridTileBase* Tile,
         FGridPosition& OutPosition);
+
+    // Returns every tile registered on the board
+    UFUNCTION(BlueprintPure, Category = "ConnectIt|Utility|Board",
+        meta = (WorldContext = "WorldContextObject"))
+    static TArray<AGridTileBase*> GetAllGridTiles(
+        const UObject* WorldContextObject);
+
+    // Returns tiles that are active and unoccupied
+    UFUNCTION(BlueprintPure, Category = "ConnectIt|Utility|Board",
+        meta = (WorldContext = "WorldContextObject"))
+    static TArray<AGridTileBase*> GetEmptyGridTiles(
+        const UObject* WorldContextObject);
+
+    // Returns true if no faction piece occupies the tile
+    UFUNCTION(BlueprintPure, Category = "ConnectIt|Utility|Board",
+        meta = (WorldContext = "WorldContextObject"))
+    static bool IsTileEmpty(
+        const UObject* WorldContextObject,
+        const AGridTileBase* Tile);
+
+    // Returns all tiles currently holding a piece belonging to FactionSlot
+    UFUNCTION(BlueprintPure, Category = "ConnectIt|Utility|Board",
+        meta = (WorldContext = "WorldContextObject"))
+    static TArray<AGridTileBase*> GetGridTilesWithFactionPieces(
+        const UObject* WorldContextObject,
+        int32 FactionSlot);
+
+    // Returns the tile registered at a grid position -- null if none
+    UFUNCTION(BlueprintPure, Category = "ConnectIt|Utility|Board",
+        meta = (WorldContext = "WorldContextObject"))
+    static AGridTileBase* GetTileAtPosition(
+        const UObject* WorldContextObject,
+        FGridPosition Position);
+
+    // Returns a random tile that is active and unoccupied -- null if
+    // the board is full. Used by AI/utility fallback move selection
+    UFUNCTION(BlueprintPure, Category = "ConnectIt|Utility|Board",
+        meta = (WorldContext = "WorldContextObject"))
+    static AGridTileBase* GetRandomEmptyGridTile(
+        const UObject* WorldContextObject);
+
+    // Returns true once no tile remains valid for placement
+    UFUNCTION(BlueprintPure, Category = "ConnectIt|Utility|Board",
+        meta = (WorldContext = "WorldContextObject"))
+    static bool IsGameBoardFull(
+        const UObject* WorldContextObject);
+
+    // Returns true if the board has ended with FactionSlot as winner
+    UFUNCTION(BlueprintPure, Category = "ConnectIt|Utility|Board",
+        meta = (WorldContext = "WorldContextObject"))
+    static bool HasFactionWon(
+        const UObject* WorldContextObject,
+        int32 FactionSlot);
 
 
     // --- Game State ---

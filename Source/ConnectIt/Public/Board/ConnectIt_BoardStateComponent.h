@@ -27,10 +27,16 @@ public:
         int32 NumFactions,
         float InitialMultiplier = 1.0f);
 
-    // Captures current as previous as applies new state
+    // Captures current as previous, applies new state, and stores what
+    // specifically changed (ChangeEvent) so it replicates atomically
+    // alongside the state it describes.
     // Fires OnBoardStateChanged on server immediately
-    // Clients receive via OnRep
-    void ApplyAndBroadcast(const FConnectItBoardState& NewState);
+    // Clients receive via OnRep -- AConnectIt_BoardManager reads ChangeEvent
+    // from that same signal on both machines to drive typed delegates and
+    // gated visual sequencing (see HandleBoardStateChanged)
+    void ApplyAndBroadcast(
+        const FConnectItBoardState& NewState,
+        const FConnectItBoardChangeEvent& ChangeEvent);
 
     // --- Read API ---
     // Interpreters and game logic call these
@@ -56,7 +62,7 @@ public:
 
     // Convenience -- reads from current state
     UFUNCTION(BlueprintPure, Category = "Board State")
-    bool IsTileValidForPlacement(FGridPosition Position) const
+    bool IsTileValidForPlacement(const FGridPosition Position) const
     {
         return BoardSnapshot.CurrentState.IsTileValidForPlacement(Position);
     }

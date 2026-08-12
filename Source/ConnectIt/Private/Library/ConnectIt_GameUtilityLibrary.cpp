@@ -2,36 +2,53 @@
 
 
 #include "Library/ConnectIt_GameUtilityLibrary.h"
-#include "EngineUtils.h"
 #include "TurnBasedMechanicsEnums.h"
 #include "Subsystem/GridWorldSubsystem.h"
 #include "Framework/Subsystem/ConnectIt_BlackboardSubsystem.h"
+#include "Framework/Subsystem/ConnectIt_BoardManagerSubsystem.h"
 #include "Board/ConnectIt_BoardManager.h"
 #include "Framework/GameState/ConnectIt_GameState.h"
 #include "Turn/Participant/TurnBasedParticipantManagerComponent.h"
 #include "Turn/Participant/TurnBasedParticipantComponent.h"
 #include "GameFramework/PlayerController.h"
+#include "Tile/GridTileBase.h"
 #include "Tile/GridTileRegistryComponent.h"
 
 
-AConnectIt_BoardManager* UConnectIt_GameUtilityLibrary::GetBoardManager(
-    const UObject* WorldContextObject)
+AConnectIt_BoardManager* UConnectIt_GameUtilityLibrary::GetBoardManager(const UObject* WorldContextObject)
 {
     if (!IsValid(WorldContextObject)) return nullptr;
 
     UWorld* World = WorldContextObject->GetWorld();
     if (!IsValid(World)) return nullptr;
 
-    for (TActorIterator<AConnectIt_BoardManager> It(World); It; ++It)
+    UConnectIt_BoardManagerSubsystem* Subsystem =
+        World->GetSubsystem<UConnectIt_BoardManagerSubsystem>();
+
+    if (!IsValid(Subsystem))
     {
-        return *It;
+        UE_LOG(LogTemp, Error,
+            TEXT("ConnectIt_GameUtilityLibrary: "
+                 "UConnectIt_BoardManagerSubsystem not found in world"));
+        return nullptr;
     }
 
-    UE_LOG(LogTemp, Warning,
-        TEXT("ConnectIt_GameUtilityLibrary: "
-             "No AConnectIt_BoardManager found in world"));
+    AConnectIt_BoardManager* Cached = Subsystem->GetCachedBoardManager();
+    if (!IsValid(Cached))
+    {
+        // Should not happen in normal operation -- AConnectIt_BoardManager::
+        // BeginPlay registers itself with the subsystem on both server and
+        // client. A miss here means that registration never ran (or ran on
+        // a different world) and is treated as a hard failure, not a race
+        // to silently paper over with a world scan.
+        UE_LOG(LogTemp, Error,
+            TEXT("ConnectIt_GameUtilityLibrary: "
+                 "No AConnectIt_BoardManager registered with "
+                 "UConnectIt_BoardManagerSubsystem"));
+        return nullptr;
+    }
 
-    return nullptr;
+    return Cached;
 }
 
 UConnectIt_BoardStateComponent* UConnectIt_GameUtilityLibrary::GetBoardStateComponent(
@@ -52,6 +69,122 @@ bool UConnectIt_GameUtilityLibrary::GetGridPositionForTile(
     if (!IsValid(BM)) return false;
     OutPosition = BM->GetTileRegistry()->GetPositionOfTile(Tile);
     return true;
+}
+
+TArray<AGridTileBase*> UConnectIt_GameUtilityLibrary::GetAllGridTiles(
+    const UObject* WorldContextObject)
+{
+    const AConnectIt_BoardManager* BM = GetBoardManager(WorldContextObject);
+    if (!IsValid(BM) || !IsValid(BM->GetTileRegistry())) return {};
+
+    return BM->GetTileRegistry()->GetAllTiles();
+}
+
+TArray<AGridTileBase*> UConnectIt_GameUtilityLibrary::GetEmptyGridTiles(
+    const UObject* WorldContextObject)
+{
+    const AConnectIt_BoardManager* BM = GetBoardManager(WorldContextObject);
+    const UConnectIt_BoardStateComponent* BoardState =
+        GetBoardStateComponent(WorldContextObject);
+
+    if (!IsValid(BM) || !IsValid(BM->GetTileRegistry()) || !IsValid(BoardState))
+        return {};
+
+    TArray<AGridTileBase*> EmptyTiles;
+    for (AGridTileBase* Tile : BM->GetTileRegistry()->GetAllTiles())
+    {
+        const FGridPosition Position =
+            BM->GetTileRegistry()->GetPositionOfTile(Tile);
+
+        if (BoardState->IsTileValidForPlacement(Position))
+        {
+            EmptyTiles.Add(Tile);
+        }
+    }
+
+    return EmptyTiles;
+}
+
+bool UConnectIt_GameUtilityLibrary::IsTileEmpty(
+    const UObject* WorldContextObject,
+    const AGridTileBase* Tile)
+{
+    const AConnectIt_BoardManager* BM = GetBoardManager(WorldContextObject);
+    const UConnectIt_BoardStateComponent* BoardState =
+        GetBoardStateComponent(WorldContextObject);
+
+    if (!IsValid(BM) || !IsValid(BM->GetTileRegistry()) || !IsValid(BoardState) || !IsValid(Tile))
+        return false;
+
+    const FGridPosition Position = BM->GetTileRegistry()->GetPositionOfTile(Tile);
+    return !BoardState->GetCurrentState().IsTileOccupied(Position);
+}
+
+TArray<AGridTileBase*> UConnectIt_GameUtilityLibrary::GetGridTilesWithFactionPieces(
+    const UObject* WorldContextObject,
+    int32 FactionSlot)
+{
+    const AConnectIt_BoardManager* BM = GetBoardManager(WorldContextObject);
+    const UConnectIt_BoardStateComponent* BoardState =
+        GetBoardStateComponent(WorldContextObject);
+
+    if (!IsValid(BM) || !IsValid(BM->GetTileRegistry()) || !IsValid(BoardState))
+        return {};
+
+    TArray<AGridTileBase*> FactionTiles;
+    for (AGridTileBase* Tile : BM->GetTileRegistry()->GetAllTiles())
+    {
+        const FGridPosition Position =
+            BM->GetTileRegistry()->GetPositionOfTile(Tile);
+
+        const FConnectItTileData* TileData =
+            BoardState->GetCurrentState().GetTileData(Position);
+
+        if (TileData && TileData->FactionPiece == FactionSlot)
+        {
+            FactionTiles.Add(Tile);
+        }
+    }
+
+    return FactionTiles;
+}
+
+AGridTileBase* UConnectIt_GameUtilityLibrary::GetTileAtPosition(
+    const UObject* WorldContextObject,
+    FGridPosition Position)
+{
+    const AConnectIt_BoardManager* BM = GetBoardManager(WorldContextObject);
+    if (!IsValid(BM) || !IsValid(BM->GetTileRegistry())) return nullptr;
+
+    return BM->GetTileRegistry()->GetTileAtPosition(Position);
+}
+
+AGridTileBase* UConnectIt_GameUtilityLibrary::GetRandomEmptyGridTile(
+    const UObject* WorldContextObject)
+{
+    const TArray<AGridTileBase*> EmptyTiles = GetEmptyGridTiles(WorldContextObject);
+    if (EmptyTiles.Num() == 0) return nullptr;
+
+    return EmptyTiles[FMath::RandHelper(EmptyTiles.Num())];
+}
+
+bool UConnectIt_GameUtilityLibrary::IsGameBoardFull(
+    const UObject* WorldContextObject)
+{
+    return GetEmptyGridTiles(WorldContextObject).Num() == 0;
+}
+
+bool UConnectIt_GameUtilityLibrary::HasFactionWon(
+    const UObject* WorldContextObject,
+    int32 FactionSlot)
+{
+    const UConnectIt_BoardStateComponent* BoardState =
+        GetBoardStateComponent(WorldContextObject);
+
+    if (!IsValid(BoardState)) return false;
+
+    const FConnectItBoardState& CurrentState = BoardState->GetCurrentState();
+    return CurrentState.bGameOver && CurrentState.WinningFactionSlot == FactionSlot;
 }
 
 AConnectIt_GameState* UConnectIt_GameUtilityLibrary::GetConnectItGameState(

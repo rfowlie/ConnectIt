@@ -1,45 +1,31 @@
-﻿// Fill out your copyright notice in the Description page of Project Settings.
+// Fill out your copyright notice in the Description page of Project Settings.
 
 #pragma once
 
 #include "CoreMinimal.h"
-#include "GameFramework/Actor.h"
+#include "Cursor/GridCursorManagerBase.h"
 #include "GridCursorSimpleBase.generated.h"
 
 class AGridTileBase;
 
-
+// Simple concrete cursor -- moves a static mesh to the hovered tile's
+// location. Reference implementation of AGridCursorManagerBase
 UCLASS(Blueprintable, BlueprintType)
-class UNREALGRIDMECHANICS_API AGridCursorSimpleBase : public AActor
+class UNREALGRIDMECHANICS_API AGridCursorSimpleBase : public AGridCursorManagerBase
 {
 	GENERATED_BODY()
 
 public:
 	AGridCursorSimpleBase();
-	
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Grid Mechanics|Cursor")
+	FVector Cursor_ExtraHeight = FVector(0.f, 0.f, 5.f);
+
 protected:
 	virtual void BeginPlay() override;
-	
-public:	
-	// stop updating and hide actor
-	UFUNCTION(BlueprintCallable, Category = "Grid Mechanics | Cursor")
-	void EnableCursor(bool bValue);
 
-	// stop updating but keep actor visible
-	UFUNCTION(BlueprintCallable, Category = "Grid Mechanics | Cursor")
-	void PauseCursor(bool bValue);
+	virtual void UpdateCursor_Implementation(AGridTileBase* Tile) override;
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Grid Mechanics | Cursor")
-	FVector Cursor_ExtraHeight = FVector(0.f, 0.f, 5.f);
-	
-protected:
-	UFUNCTION(BlueprintCallable, Category = "Grid Mechanics | Cursor")
-	void UpdateCursor(AGridTileBase* GridTile);
-	
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite)
 	UStaticMeshComponent* StaticMeshComponent = nullptr;
-	
-	UPROPERTY(BlueprintReadWrite, Category = "Grid Mechanics | Cursor")
-	bool IsEnabled = true;
-	
 };

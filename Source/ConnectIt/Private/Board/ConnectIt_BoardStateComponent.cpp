@@ -53,13 +53,15 @@ void UConnectIt_BoardStateComponent::InitialiseBoardState(
 }
 
 void UConnectIt_BoardStateComponent::ApplyAndBroadcast(
-    const FConnectItBoardState& NewState)
+    const FConnectItBoardState& NewState,
+    const FConnectItBoardChangeEvent& ChangeEvent)
 {
     check(UCodingUtilsComponentLibrary::IsAuthoritative(this));
 
     // Capture current as previous before overwriting
     CaptureSnapshot();
     BoardSnapshot.CurrentState = NewState;
+    BoardSnapshot.ChangeEvent  = ChangeEvent;
 
     // Fire on server immediately
     // Clients receive via OnRep_BoardSnapshot replication

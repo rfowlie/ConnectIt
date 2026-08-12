@@ -1,0 +1,159 @@
+ConnectIt Board Manager Subsystem — Workflow
+=============================================
+
+WHAT THIS IS
+------------
+UConnectIt_BoardManagerSubsystem (Source/ConnectIt/Public|Private/Framework/Subsystem/
+ConnectIt_BoardManagerSubsystem.h/.cpp) is a per-world UWorldSubsystem that:
+
+  1. Caches the single AConnectIt_BoardManager actor in the level, so lookups don't
+     need to repeatedly scan the world for it.
+  2. Relays the board manager's own events (piece placed, line scored, player win,
+     shift applied) so listeners never need to know whether the board manager
+     reference is valid yet before binding.
+
+It always exists for the lifetime of the world (subsystems are created at world
+init), which is the whole point: it is always safe to bind to or query, even before
+AConnectIt_BoardManager itself has spawned or run BeginPlay.
+
+
+WHY IT EXISTS
+-------------
+UConnectIt_GameUtilityLibrary::GetBoardManager() used to do a full
+TActorIterator<AConnectIt_BoardManager> world scan on every call. That function is
+BlueprintPure and called from many client-side Blueprint call sites, some of them
+multiple times per frame -- so the scan cost was being paid repeatedly for a value
+that never changes during a match (one board manager per world).
+
+NOTE ON ARCHITECTURE: this cache intentionally lives in a NEW subsystem in the
+ConnectIt game module, not in the existing UGridWorldSubsystem (UnrealGridMechanics
+plugin). AConnectIt_BoardManager is a ConnectIt-module class; ConnectIt already
+depends on UnrealGridMechanics, so caching a strongly-typed AConnectIt_BoardManager*
+inside the plugin would require the plugin to depend back on ConnectIt -- a circular
+module dependency UBT rejects. Keeping the cache in ConnectIt's own subsystem avoids
+that entirely.
+
+
+HOW REGISTRATION HAPPENS (you should not normally need to touch this)
+-----------------------------------------------------------------------
+AConnectIt_BoardManager::BeginPlay() registers itself with the subsystem:
+
+    if (UConnectIt_BoardManagerSubsystem* BoardManagerSubsystem =
+        GetWorld()->GetSubsystem<UConnectIt_BoardManagerSubsystem>())
+    {
+        BoardManagerSubsystem->RegisterBoardManager(this);
+    }
+
+This call is OUTSIDE the HasAuthority() branch in BeginPlay, so it runs on both the
+server and every client's local replicated copy of the actor. This matters because
+most GetBoardManager call sites are client-side -- if registration only happened on
+the server, clients would never populate their local cache.
+
+RegisterBoardManager() is safe to call more than once (e.g. PIE re-entry): it
+unbinds the event relay from any previously-cached board manager, then rebinds to
+the new one. Last caller wins.
+
+
+TWO THINGS CONSUMERS WANT, AND WHICH ONE YOU NEED
+----------------------------------------------------
+There are two distinct reasons code wants to reach the board manager. Picking the
+right one matters -- using the wrong one is exactly the "backwards" pattern this
+subsystem was built to get away from.
+
+  (A) "I need to CALL something on the board manager"
+      e.g. GetPlayerLoadout(), GetEnemyLoadout(), ProcessRequest(), InitialiseBoard()
+
+      You need the actual object reference. Use one of:
+
+        - UConnectIt_GameUtilityLibrary::GetBoardManager(WorldContextObject)
+          The general-purpose entry point. Checks the subsystem cache and returns
+          it directly. Does NOT fall back to a world scan any more -- if the cache
+          is empty (subsystem missing, or board manager hasn't registered yet in
+          this world), it logs a LogTemp Error and returns nullptr. A miss here is
+          treated as a hard failure to surface immediately, not a race condition to
+          silently paper over.
+
+        - UConnectIt_BoardManagerSubsystem::GetBoardManager() [BlueprintPure]
+          Same cached value, callable directly on the subsystem from Blueprint.
+          Unlike the utility library version, this is a silent/pure accessor -- it
+          returns null with no logging if the board manager isn't registered yet.
+          Use this when you want to opportunistically check "do we have it yet"
+          without treating a miss as an error (see the OnBoardManagerReady pattern
+          below).
+
+        - UConnectIt_BoardManagerSubsystem::OnBoardManagerReady (delegate)
+          BlueprintAssignable, fires once with the AConnectIt_BoardManager* when
+          RegisterBoardManager() runs. Bind to this from anywhere (Construct,
+          BeginPlay, etc.) instead of polling GetBoardManager from Tick.
+
+      Recommended Blueprint pattern for (A) when you can't guarantee the board
+      manager already exists at the point you need it (e.g. a widget's Construct):
+
+          Get Board Manager (subsystem) --> Is Valid? --> [true] use it directly
+                                                       --> [false] Bind Event to
+                                                            OnBoardManagerReady,
+                                                            use the reference it
+                                                            passes when it fires
+
+  (B) "I want to REACT to something that happens on the board"
+      e.g. a piece was placed, a line was scored, someone won, a shift was applied
+
+      You do NOT need the board manager reference at all. Bind directly to the
+      subsystem's relay delegates -- these exist and can be bound at any time,
+      regardless of whether the board manager has spawned yet:
+
+        UConnectIt_BoardManagerSubsystem::OnPiecePlaced   (FGridPosition Position)
+        UConnectIt_BoardManagerSubsystem::OnLineScored    (int32 FactionSlot, float PointsScored)
+        UConnectIt_BoardManagerSubsystem::OnPlayerWin     (int32 WinningFactionSlot)
+        UConnectIt_BoardManagerSubsystem::OnShiftApplied  (const FShiftOperation&, const FShiftResult&)
+
+      These mirror AConnectIt_BoardManager's own delegates of the same name. The
+      subsystem binds itself to the real board manager's delegates once, inside
+      RegisterBoardManager, and relays every broadcast through. Do NOT bind
+      directly to Board->OnPiecePlaced / Board->OnLineScored / etc. -- that
+      reintroduces the exact "must prove the board manager exists before I can
+      bind" problem this subsystem exists to remove.
+
+      Example of what NOT to do (old pattern, still findable in old code before
+      this subsystem existed):
+
+          AConnectIt_BoardManager* Board = GetBoardActor();
+          if (!IsValid(Board)) { log error; return; }   // binding depends on this
+          Board->OnPlayerWin.AddDynamic(this, &AMyClass::HandleGameOver);
+
+      What to do instead:
+
+          if (UConnectIt_BoardManagerSubsystem* Subsystem =
+              GetWorld()->GetSubsystem<UConnectIt_BoardManagerSubsystem>())
+          {
+              Subsystem->OnPlayerWin.AddDynamic(this, &AMyClass::HandleGameOver);
+          }
+
+      This binding no longer depends on the board manager already being resolved.
+      See AConnectIt_GameMode::InitialiseBoard() (Source/ConnectIt/Private/Framework/
+      GameMode/ConnectIt_GameMode.cpp) for the real migrated example.
+
+
+QUICK REFERENCE
+----------------
+  Need to CALL something on the board manager right now, and you're confident
+  it already exists (e.g. server-side code after match start)?
+      -> UConnectIt_GameUtilityLibrary::GetBoardManager(this)
+
+  Need to CALL something on the board manager but can't guarantee timing
+  (e.g. client-side widget)?
+      -> UConnectIt_BoardManagerSubsystem::GetBoardManager(), fall back to
+         binding OnBoardManagerReady if null
+
+  Need to REACT to a board event (piece placed / line scored / win / shift)?
+      -> Bind directly to the matching delegate on UConnectIt_BoardManagerSubsystem.
+         Never bind to the board manager's own delegates directly.
+
+
+FILES INVOLVED
+---------------
+  Source/ConnectIt/Public/Framework/Subsystem/ConnectIt_BoardManagerSubsystem.h
+  Source/ConnectIt/Private/Framework/Subsystem/ConnectIt_BoardManagerSubsystem.cpp
+  Source/ConnectIt/Private/Board/ConnectIt_BoardManager.cpp        (BeginPlay registration)
+  Source/ConnectIt/Private/Library/ConnectIt_GameUtilityLibrary.cpp (GetBoardManager)
+  Source/ConnectIt/Private/Framework/GameMode/ConnectIt_GameMode.cpp (migrated example)

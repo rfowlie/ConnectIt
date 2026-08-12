@@ -16,3 +16,10 @@ UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_Tile_ValidHover);
 UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_Tile_InvalidHover);
 UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_Tile_Occupied);
 UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_Tile_Default);
+
+// Board event tags -- keys into UConnectIt_GameEventSubsystem's tag-keyed
+// UGameEventTaskManager registry, used to gate visual sequencing so piece
+// placement, scoring, and win visuals run fully in order instead of at once
+UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_Event_PiecePlaced);
+UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_Event_LineScored);
+UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_Event_PlayerWin);

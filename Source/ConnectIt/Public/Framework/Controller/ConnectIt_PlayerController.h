@@ -1,37 +1,26 @@
-﻿// Fill out your copyright notice in the Description page of Project Settings.
+// Fill out your copyright notice in the Description page of Project Settings.
 
 #pragma once
 
 #include "CoreMinimal.h"
-#include "GameFramework/PlayerController.h"
-#include "Turn/Participant/TurnBasedParticipantComponent.h"
-#include "Action/TurnBasedActionsComponent.h"
+#include "Framework/Controller/TurnBasedPlayerControllerBase.h"
 #include "TurnBasedMechanicsStructs.h"
 #include "ConnectIt_PlayerController.generated.h"
 
 class AConnectIt_BoardManager;
 class UConnectIt_BoardManagerComponent;
-class AConnectIt_GameState;
 
-
+// ConnectIt player controller
+// Generic turn/action/match-phase wiring (ParticipantComponent,
+// ActionsComponent, delegate routing) is provided by the base class via
+// UTurnBasedControllerCoordinatorComponent -- this class only adds the
+// ConnectIt-specific plumbing: finding the board manager, loading the
+// player's action loadout, and routing board change requests to the
+// server for validation
 UCLASS(Blueprintable, BlueprintType)
-class CONNECTIT_API AConnectIt_PlayerController : public APlayerController
+class CONNECTIT_API AConnectIt_PlayerController : public ATurnBasedPlayerControllerBase
 {
     GENERATED_BODY()
-
-public:
-
-    AConnectIt_PlayerController();
-
-    // --- Components ---
-
-    UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly,
-        Category = "ConnectIt|Components")
-    TObjectPtr<UTurnBasedParticipantComponent> ParticipantComponent = nullptr;
-
-    UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly,
-        Category = "ConnectIt|Components")
-    TObjectPtr<UTurnBasedActionsComponent> ActionsComponent = nullptr;
 
 protected:
 
@@ -41,34 +30,16 @@ private:
 
     // --- Initialisation ---
 
-    // Finds board manager, initialises loadout, wires all delegates
+    // Finds board manager, initialises loadout
     void InitialiseFromBoardManager();
 
-    // --- Participant Delegate Handlers ---
-
-    // Fired by participant component when it is our turn
-    UFUNCTION()
-    void HandleTurnNotificationReceived(const FTurnNotification& Notification);
-
-    // Fired by participant component when it is opponent's turn
-    UFUNCTION()
-    void HandleOpponentTurnStarted(int32 ActiveParticipantSlotIndex);
-
-    // --- Match Phase Handler ---
-
-    // Fired by game state when match phase changes
-    UFUNCTION()
-    void HandleMatchPhaseChanged(EMatchPhase NewPhase);
-
-    // --- Action Component Handlers ---
+    // --- Action Component Handler ---
+    // Board change request routing is ConnectIt-specific -- the generic
+    // coordinator only wires turn/action/match-phase plumbing
 
     // Routes board change request to server via ServerRPC
     UFUNCTION()
     void HandleBoardChangeRequested(const FTurnActionRequest& Request);
-
-    // Routes turn end request to participant component ServerRPC
-    UFUNCTION()
-    void HandleTurnEndRequested();
 
     // --- ServerRPC ---
 
@@ -82,6 +53,4 @@ private:
     // Cached reference -- found once in InitialiseFromBoardManager
     UPROPERTY()
     TObjectPtr<AConnectIt_BoardManager> CachedBoardManager = nullptr;
-    
-    bool bIsPaused = false;
 };

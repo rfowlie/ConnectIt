@@ -14,3 +14,7 @@ UE_DEFINE_GAMEPLAY_TAG_COMMENT(ConnectIt_Tile_ValidHover, "ConnectIt.Tile.ValidH
 UE_DEFINE_GAMEPLAY_TAG_COMMENT(ConnectIt_Tile_InvalidHover, "ConnectIt.Tile.InvalidHover", "");
 UE_DEFINE_GAMEPLAY_TAG_COMMENT(ConnectIt_Tile_Occupied, "ConnectIt.Tile.Occupied", "");
 UE_DEFINE_GAMEPLAY_TAG_COMMENT(ConnectIt_Tile_Default, "ConnectIt.Tile.Default", "");
+
+UE_DEFINE_GAMEPLAY_TAG_COMMENT(ConnectIt_Event_PiecePlaced, "ConnectIt.Event.PiecePlaced", "");
+UE_DEFINE_GAMEPLAY_TAG_COMMENT(ConnectIt_Event_LineScored, "ConnectIt.Event.LineScored", "");
+UE_DEFINE_GAMEPLAY_TAG_COMMENT(ConnectIt_Event_PlayerWin, "ConnectIt.Event.PlayerWin", "");

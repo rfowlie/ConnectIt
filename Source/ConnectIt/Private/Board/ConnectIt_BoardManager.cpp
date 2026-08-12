@@ -8,6 +8,8 @@
 #include "TurnBasedMechanicsStructs.h"
 #include "Board/ConnectIt_BoardStateComponent.h"
 #include "Framework/Data/ConnectIt_ConfigComponent.h"
+#include "Framework/Subsystem/ConnectIt_BoardManagerSubsystem.h"
+#include "Framework/Subsystem/ConnectIt_GameEventSubsystem.h"
 #include "Interpreter/ConnectIt_PieceSpawnInterpreter.h"
 #include "Interpreter/ConnectIt_ScoreInterpreter.h"
 #include "Interpreter/ConnectIt_TileStateInterpreter.h"
@@ -84,6 +86,26 @@ void AConnectIt_BoardManager::BeginPlay()
     Super::BeginPlay();
 
     BindInterpreters();
+
+    // Populate the per-world board manager cache -- runs on both server
+    // and client, since most GetBoardManager call sites are client-side
+    if (UConnectIt_BoardManagerSubsystem* BoardManagerSubsystem =
+        GetWorld()->GetSubsystem<UConnectIt_BoardManagerSubsystem>())
+    {
+        BoardManagerSubsystem->RegisterBoardManager(this);
+    }
+
+    // Board state changes replicate identically to server and client via
+    // BoardStateComponent's OnRep -- listen here, on both machines, so
+    // OnPiecePlaced/OnLineScored/OnPlayerWin and the gated visual sequence
+    // fire the same way everywhere instead of only on the server
+    if (IsValid(BoardStateComponent))
+    {
+        BoardStateComponent->OnBoardStateChanged.AddDynamic(
+            this, &AConnectIt_BoardManager::HandleBoardStateChanged);
+    }
+
+    BindGameEventSequencing();
 
     if (HasAuthority())
     {
@@ -199,8 +221,7 @@ void AConnectIt_BoardManager::InitialiseBoard(int32 NumFactions)
 
 // --- Request Processing ---
 
-void AConnectIt_BoardManager::ProcessRequest(
-    const FTurnActionRequest& Request)
+void AConnectIt_BoardManager::ProcessRequest(const FTurnActionRequest& Request)
 {
     if (!HasAuthority()) return;
 
@@ -223,8 +244,7 @@ void AConnectIt_BoardManager::ProcessRequest(
         *Request.RequestType.ToString());
 }
 
-void AConnectIt_BoardManager::HandlePlacePieceRequest(
-    const FTurnActionRequest& Request)
+void AConnectIt_BoardManager::HandlePlacePieceRequest(const FTurnActionRequest& Request)
 {
     if (Request.Positions.IsEmpty())
     {
@@ -235,8 +255,7 @@ void AConnectIt_BoardManager::HandlePlacePieceRequest(
     }
 
     const FGridPosition TargetPosition = Request.Positions[0];
-    const FConnectItBoardState& Current =
-        BoardStateComponent->GetCurrentState();
+    const FConnectItBoardState& Current = BoardStateComponent->GetCurrentState();
 
     if (!Current.IsTileValidForPlacement(TargetPosition))
     {
@@ -258,23 +277,36 @@ void AConnectIt_BoardManager::HandlePlacePieceRequest(
     const float PointsScored = CheckAndApplyScoring(
         NewState, TargetPosition, Request.FactionID);
 
-    if (PointsScored > 0.f)
+    CheckWinCondition(NewState);
+
+    // Record what happened -- replicated alongside the state itself via
+    // ApplyAndBroadcast, instead of broadcasting gameplay delegates
+    // directly here. This only ever runs on the server, so a direct
+    // broadcast would never reach a real remote client. HandleBoardStateChanged
+    // reads this back from BoardSnapshot.ChangeEvent on both server and
+    // client (via OnBoardStateChanged, which already fires symmetrically)
+    // and fires the typed delegates + gated visual sequence from there.
+    FConnectItBoardChangeEvent ChangeEvent;
+    ChangeEvent.bPiecePlaced        = true;
+    ChangeEvent.PlacedPosition      = TargetPosition;
+    ChangeEvent.PlacingFactionSlot  = Request.FactionID;
+    ChangeEvent.bLineScored         = PointsScored > 0.f;
+    ChangeEvent.ScoringFactionSlot  = Request.FactionID;
+    ChangeEvent.PointsScored        = PointsScored;
+    // Edge-triggered -- true only on the transition into game-over, not
+    // "the game is currently over" (Current.bGameOver would already be
+    // true on every snapshot after the winning move)
+    ChangeEvent.bGameWon            = NewState.bGameOver && !Current.bGameOver;
+    ChangeEvent.WinningFactionSlot  = NewState.WinningFactionSlot;
+
+    if (ChangeEvent.bLineScored)
     {
         UE_LOG(LogTemp, Log,
             TEXT("ConnectIt_BoardManager: Faction %d scored %.0f points"),
             Request.FactionID, PointsScored);
-
-        OnLineScored.Broadcast(Request.FactionID, PointsScored);
     }
 
-    CheckWinCondition(NewState);
-    BoardStateComponent->ApplyAndBroadcast(NewState);
-    OnPiecePlaced.Broadcast(TargetPosition);
-
-    if (NewState.bGameOver)
-    {
-        OnPlayerWin.Broadcast(NewState.WinningFactionSlot);
-    }
+    BoardStateComponent->ApplyAndBroadcast(NewState, ChangeEvent);
 }
 
 void AConnectIt_BoardManager::HandleShiftResult(
@@ -308,7 +340,12 @@ void AConnectIt_BoardManager::HandleShiftResult(
         }
     }
 
-    BoardStateComponent->ApplyAndBroadcast(NewState);
+    // NOTE: OnShiftApplied has the same server-only-broadcast issue
+    // OnPiecePlaced/OnLineScored/OnPlayerWin had -- deferred, not fixed
+    // here. FShiftResult's PositionRemap/WrappingPositions aren't
+    // UPROPERTY-tagged, so folding shift into FConnectItBoardChangeEvent
+    // needs a UnrealGridMechanics plugin change and its own design pass.
+    BoardStateComponent->ApplyAndBroadcast(NewState, FConnectItBoardChangeEvent());
     OnShiftApplied.Broadcast(Operation, Result);
 }
 
@@ -446,6 +483,144 @@ AConnectIt_BoardManager::GetScoringDirections()
         { 1, -1 }   // Diagonal bottom-up
     };
     return Directions;
+}
+
+// --- Gated Visual Sequencing ---
+
+void AConnectIt_BoardManager::HandleBoardStateChanged()
+{
+    if (!IsValid(BoardStateComponent)) return;
+
+    const FConnectItBoardStateSnapshot* Snapshot = BoardStateComponent->GetBoardSnapshot();
+    if (!Snapshot) return;
+
+    const FConnectItBoardChangeEvent& Event = Snapshot->ChangeEvent;
+
+    // Not every board update has something to sequence -- board init and
+    // (currently) shifts leave ChangeEvent default-constructed
+    if (!Event.bPiecePlaced) return;
+
+    PendingChangeEventQueue.Add(Event);
+    TryStartNextSequence();
+}
+
+void AConnectIt_BoardManager::BindGameEventSequencing()
+{
+    UConnectIt_GameEventSubsystem* GameEventSubsystem =
+        GetWorld() ? GetWorld()->GetSubsystem<UConnectIt_GameEventSubsystem>() : nullptr;
+
+    if (!IsValid(GameEventSubsystem)) return;
+
+    GameEventSubsystem->BindOnTagComplete(
+        ConnectIt_Event_PiecePlaced, this,
+        GET_FUNCTION_NAME_CHECKED(AConnectIt_BoardManager, HandlePiecePlacedSequenceComplete));
+
+    GameEventSubsystem->BindOnTagComplete(
+        ConnectIt_Event_LineScored, this,
+        GET_FUNCTION_NAME_CHECKED(AConnectIt_BoardManager, HandleLineScoredSequenceComplete));
+
+    GameEventSubsystem->BindOnTagComplete(
+        ConnectIt_Event_PlayerWin, this,
+        GET_FUNCTION_NAME_CHECKED(AConnectIt_BoardManager, HandlePlayerWinSequenceComplete));
+}
+
+void AConnectIt_BoardManager::TryStartNextSequence()
+{
+    if (bSequenceInFlight) return;
+    if (PendingChangeEventQueue.IsEmpty()) return;
+
+    ActiveChangeEvent = PendingChangeEventQueue[0];
+    PendingChangeEventQueue.RemoveAt(0);
+    bSequenceInFlight = true;
+
+    UConnectIt_GameEventSubsystem* GameEventSubsystem =
+        GetWorld() ? GetWorld()->GetSubsystem<UConnectIt_GameEventSubsystem>() : nullptr;
+
+    // "Just tell me now" listeners (e.g. UConnectIt_BoardManagerSubsystem's
+    // relay) fire immediately here, strictly before the gated visual step
+    // for this event even starts
+    OnPiecePlaced.Broadcast(ActiveChangeEvent.PlacedPosition);
+
+    if (IsValid(GameEventSubsystem))
+    {
+        GameEventSubsystem->TriggerTag(ConnectIt_Event_PiecePlaced);
+    }
+    else
+    {
+        // No subsystem to gate on -- fall through immediately so the
+        // sequence still completes
+        HandlePiecePlacedSequenceComplete();
+    }
+}
+
+void AConnectIt_BoardManager::HandlePiecePlacedSequenceComplete()
+{
+    UConnectIt_GameEventSubsystem* GameEventSubsystem =
+        GetWorld() ? GetWorld()->GetSubsystem<UConnectIt_GameEventSubsystem>() : nullptr;
+
+    if (ActiveChangeEvent.bLineScored)
+    {
+        OnLineScored.Broadcast(
+            ActiveChangeEvent.ScoringFactionSlot, ActiveChangeEvent.PointsScored);
+
+        if (IsValid(GameEventSubsystem))
+        {
+            GameEventSubsystem->TriggerTag(ConnectIt_Event_LineScored);
+        }
+        else
+        {
+            HandleLineScoredSequenceComplete();
+        }
+    }
+    else if (ActiveChangeEvent.bGameWon)
+    {
+        OnPlayerWin.Broadcast(ActiveChangeEvent.WinningFactionSlot);
+
+        if (IsValid(GameEventSubsystem))
+        {
+            GameEventSubsystem->TriggerTag(ConnectIt_Event_PlayerWin);
+        }
+        else
+        {
+            HandlePlayerWinSequenceComplete();
+        }
+    }
+    else
+    {
+        bSequenceInFlight = false;
+        TryStartNextSequence();
+    }
+}
+
+void AConnectIt_BoardManager::HandleLineScoredSequenceComplete()
+{
+    if (ActiveChangeEvent.bGameWon)
+    {
+        OnPlayerWin.Broadcast(ActiveChangeEvent.WinningFactionSlot);
+
+        UConnectIt_GameEventSubsystem* GameEventSubsystem =
+            GetWorld() ? GetWorld()->GetSubsystem<UConnectIt_GameEventSubsystem>() : nullptr;
+
+        if (IsValid(GameEventSubsystem))
+        {
+            GameEventSubsystem->TriggerTag(ConnectIt_Event_PlayerWin);
+        }
+        else
+        {
+            HandlePlayerWinSequenceComplete();
+        }
+    }
+    else
+    {
+        bSequenceInFlight = false;
+        TryStartNextSequence();
+    }
+}
+
+void AConnectIt_BoardManager::HandlePlayerWinSequenceComplete()
+{
+    bSequenceInFlight = false;
+    TryStartNextSequence();
 }
 
 // --- Config Accessors ---
