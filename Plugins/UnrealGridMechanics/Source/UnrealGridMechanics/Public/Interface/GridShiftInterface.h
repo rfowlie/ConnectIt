@@ -9,7 +9,7 @@
 
 // This class does not need to be modified.
 UINTERFACE(BlueprintType)
-class UGridShiftInterface : public UInterface
+class UNREALGRIDMECHANICS_API UGridShiftInterface : public UInterface
 {
 	GENERATED_BODY()
 };

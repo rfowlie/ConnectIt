@@ -6,6 +6,7 @@
 #include "Library/ConnectIt_GameUtilityLibrary.h"
 #include "Turn/Participant/TurnBasedParticipantComponent.h"
 #include "Action/TurnBasedActionsComponent.h"
+#include "Framework/Data/ConnectIt_ConfigComponent.h"
 
 
 void AConnectIt_PlayerController::BeginPlay()
@@ -45,7 +46,7 @@ void AConnectIt_PlayerController::InitialiseFromBoardManager()
 
     // Get player loadout from board manager config
     UActionLoadoutDataAsset* Loadout =
-        CachedBoardManager->GetPlayerLoadout();
+        CachedBoardManager->GetConfigComponent()->PlayerLoadout;
 
     if (!IsValid(Loadout))
     {
@@ -65,6 +66,7 @@ void AConnectIt_PlayerController::InitialiseFromBoardManager()
 
 // --- Action Component Handler ---
 
+// required to satisfy delegate signature and provide moment to add logic before sending request
 void AConnectIt_PlayerController::HandleBoardChangeRequested(
     const FTurnActionRequest& Request)
 {

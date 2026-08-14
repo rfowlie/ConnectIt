@@ -103,7 +103,7 @@ bool AConnectIt_GameState::IsTileValidForPlacement(
 {
     if (UConnectIt_BoardStateComponent* BSC = GetBoardStateComponent())
     {
-        return BSC->IsTileValidForPlacement(Position);
+        return BSC->GetCurrentState().IsTileValidForPlacement(Position);
     }
     return false;
 }

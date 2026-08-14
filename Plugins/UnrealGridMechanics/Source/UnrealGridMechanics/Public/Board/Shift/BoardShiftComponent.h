@@ -13,8 +13,6 @@ class UGridTileRegistryComponent;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnShiftStarted, FShiftOperation, Operation);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnShiftCompleted, FShiftOperation, Operation);
-// Board manager binds here to process the shift result server side
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnShiftResultReady, const FShiftOperation&, Operation, const FShiftResult&, Result);
 
 UCLASS(ClassGroup=(Grid), meta=(BlueprintSpawnableComponent))
 class UNREALGRIDMECHANICS_API UBoardShiftComponent : public UActorComponent
@@ -34,13 +32,18 @@ public:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Grid|Shift")
     float ShiftDuration = 0.5f;
 
-    UPROPERTY(BlueprintAssignable, Category = "Grid|Shift")
-    FOnShiftResultReady OnShiftResultReady;
-    
-    // Requests a shift operation
-    // Returns false if a shift is already in progress
+    // Computes the position remap for a shift operation -- pure and
+    // synchronous, no tile actor calls, no animation. Callers that need an
+    // authoritative result before committing state (e.g. AConnectIt_BoardManager)
+    // call this directly instead of waiting on a delegate.
     UFUNCTION(BlueprintCallable, Category = "Grid|Shift")
-    bool RequestShift(FShiftOperation Operation);
+    FShiftResult ComputeShift(const FShiftOperation& Operation) const;
+
+    // Plays the visual shift animation for an already-computed result.
+    // Purely presentational -- does not recompute or mutate any board state.
+    // Returns false if an animation is already in progress.
+    UFUNCTION(BlueprintCallable, Category = "Grid|Shift")
+    bool PlayShiftAnimation(const FShiftOperation& Operation, const FShiftResult& Result);
 
     UFUNCTION(BlueprintPure, Category = "Grid|Shift")
     bool IsShifting() const { return bIsShifting; }

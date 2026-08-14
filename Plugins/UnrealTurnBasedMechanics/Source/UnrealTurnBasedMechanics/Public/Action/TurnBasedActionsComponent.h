@@ -16,13 +16,11 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnTurnEndReady);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnTurnEndRequested);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnTurnActionsEvent, UTurnBasedAction*, Action);
 
-DECLARE_MULTICAST_DELEGATE_OneParam(FOnBoardChangeRequested_Native,
-    const FTurnActionRequest&);
+DECLARE_MULTICAST_DELEGATE_OneParam(FOnBoardChangeRequested_Native, const FTurnActionRequest&);
 DECLARE_MULTICAST_DELEGATE(FOnTurnEndRequested_Native);
 
 UCLASS(ClassGroup=(TurnBased), meta=(BlueprintSpawnableComponent))
-class UNREALTURNBASEDMECHANICS_API UTurnBasedActionsComponent
-    : public UActorComponent
+class UNREALTURNBASEDMECHANICS_API UTurnBasedActionsComponent : public UActorComponent
 {
     GENERATED_BODY()
 

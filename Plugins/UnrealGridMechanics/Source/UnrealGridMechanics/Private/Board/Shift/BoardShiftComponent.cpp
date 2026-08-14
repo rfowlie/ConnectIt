@@ -49,24 +49,17 @@ bool UBoardShiftComponent::ResolveComponents()
     return true;
 }
 
-bool UBoardShiftComponent::RequestShift(FShiftOperation Operation)
+FShiftResult UBoardShiftComponent::ComputeShift(const FShiftOperation& Operation) const
 {
-    if (bIsShifting)
-    {
-        UE_LOG(LogTemp, Warning,
-            TEXT("BoardShiftComponent: Shift requested while shift in progress — ignoring"));
-        return false;
-    }
-
-    if (!IsValid(RegistryComponent) || !IsValid(StateComponent))
+    if (!IsValid(RegistryComponent))
     {
         UE_LOG(LogTemp, Error,
-            TEXT("BoardShiftComponent: Cannot shift — missing component dependencies"));
-        return false;
+            TEXT("BoardShiftComponent: ComputeShift — missing RegistryComponent"));
+        return FShiftResult();
     }
 
     // Get all positions in the affected row or column
-    TArray<FGridPosition> AffectedPositions = Operation.Axis == EShiftAxis::Row
+    const TArray<FGridPosition> AffectedPositions = Operation.Axis == EShiftAxis::Row
         ? RegistryComponent->GetRowPositions(Operation.Index)
         : RegistryComponent->GetColumnPositions(Operation.Index);
 
@@ -76,19 +69,43 @@ bool UBoardShiftComponent::RequestShift(FShiftOperation Operation)
             TEXT("BoardShiftComponent: No positions found for %s %d"),
             Operation.Axis == EShiftAxis::Row ? TEXT("Row") : TEXT("Column"),
             Operation.Index);
-        return false;
+        return FShiftResult();
     }
 
-    // Compute the position remap
-    ActiveResult    = UGridMechanics_GridShiftLibrary::ComputeShiftResult(AffectedPositions, Operation);
-    ActiveOperation = Operation;
+    return UGridMechanics_GridShiftLibrary::ComputeShiftResult(AffectedPositions, Operation);
+}
 
-    if (!ActiveResult.IsValid())
+bool UBoardShiftComponent::PlayShiftAnimation(const FShiftOperation& Operation, const FShiftResult& Result)
+{
+    if (bIsShifting)
     {
         UE_LOG(LogTemp, Warning,
-            TEXT("BoardShiftComponent: ComputeShiftResult returned invalid result"));
+            TEXT("BoardShiftComponent: PlayShiftAnimation requested while a shift animation is already in progress — ignoring"));
         return false;
     }
+
+    if (!IsValid(RegistryComponent) || !IsValid(StateComponent))
+    {
+        UE_LOG(LogTemp, Error,
+            TEXT("BoardShiftComponent: Cannot animate shift — missing component dependencies"));
+        return false;
+    }
+
+    if (!Result.IsValid())
+    {
+        UE_LOG(LogTemp, Warning,
+            TEXT("BoardShiftComponent: PlayShiftAnimation given an invalid FShiftResult"));
+        return false;
+    }
+
+    ActiveOperation = Operation;
+    ActiveResult    = Result;
+
+    // Get all positions in the affected row or column -- needed to build
+    // world position/tile actor maps for the instructions below
+    const TArray<FGridPosition> AffectedPositions = Operation.Axis == EShiftAxis::Row
+        ? RegistryComponent->GetRowPositions(Operation.Index)
+        : RegistryComponent->GetColumnPositions(Operation.Index);
 
     // Build world position and actor maps for instruction building
     TMap<FGridPosition, FVector>  WorldPositions = BuildWorldPositionMap(AffectedPositions);
@@ -109,7 +126,7 @@ bool UBoardShiftComponent::RequestShift(FShiftOperation Operation)
         }
     }
 
-    // Start the shift
+    // Start the animation
     bIsShifting = true;
     ShiftAlpha  = 0.f;
     SetComponentTickEnabled(true);
@@ -117,7 +134,7 @@ bool UBoardShiftComponent::RequestShift(FShiftOperation Operation)
     OnShiftStarted.Broadcast(ActiveOperation);
 
     UE_LOG(LogTemp, Log,
-        TEXT("BoardShiftComponent: Shift started — %s %d by %d"),
+        TEXT("BoardShiftComponent: Shift animation started — %s %d by %d"),
         ActiveOperation.Axis == EShiftAxis::Row ? TEXT("Row") : TEXT("Column"),
         ActiveOperation.Index,
         ActiveOperation.GetSignedAmount());
@@ -175,12 +192,6 @@ void UBoardShiftComponent::FinaliseShift()
             IGridShiftInterface::Execute_OnShiftComplete(Instruction.TileActor);
         }
     }
-
-    // Fire shift result to board manager via delegate
-    // Board manager applies the remap to board state
-    // replication drives client visual updates
-    // Shift component has no knowledge of state shape
-    OnShiftResultReady.Broadcast(ActiveOperation, ActiveResult);
 
     // Reset shift state
     bIsShifting         = false;

@@ -6,7 +6,7 @@
 #include "ConnectIt_BoardStateComponent.h"
 #include "ConnectIt_Structs.h"
 #include "GridMechanicsBaseStructs.h"
-#include "Board/GridBoardManagerInterface.h"
+#include "TurnBasedMechanicsStructs.h"
 #include "ConnectIt_BoardManager.generated.h"
 
 class UActionLoadoutDataAsset;
@@ -16,44 +16,63 @@ class UConnectIt_PieceSpawnInterpreter;
 class UConnectIt_ScoreInterpreter;
 class UGridTileRegistryComponent;
 class UGridPieceRegistryComponent;
-class UBoardShiftComponent;
+class UConnectIt_BoardRulesComponent;
+class UConnectIt_BoardShiftComponent;
+class UConnectIt_BoardSequencerComponent;
 
-// NOTE: OnPiecePlaced/OnLineScored/OnPlayerWin used to live here as their
-// own delegates. Removed -- listeners now bind to UGameEventTaskSubsystem's
-// ConnectIt_Event_PiecePlaced/LineScored/PlayerWin tags instead (see
-// Workflows/GameEventSubsystem_Workflow.txt). This board manager triggers
-// which tag fires when; it doesn't also maintain a parallel notification
-// API for the same events.
-//
-// OnShiftApplied stays as a direct delegate for now -- its tag-based
-// equivalent is deferred (see HandleShiftResult).
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnShiftApplied, const FShiftOperation&, Operation, const FShiftResult&, Result);
+// NOTE: OnPiecePlaced/OnLineScored/OnPlayerWin/OnShiftApplied used to live
+// here as their own delegates. Removed -- listeners now bind to
+// UGameEventTaskSubsystem's ConnectIt_Event_PiecePlaced/LineScored/PlayerWin/
+// Shift tags instead (see Workflows/GameEventSubsystem_Workflow.txt). This
+// board manager triggers which tag fires when; it doesn't also maintain a
+// parallel notification API for the same events.
 
 UCLASS(Blueprintable, BlueprintType)
-class CONNECTIT_API AConnectIt_BoardManager : public AActor, public IGridBoardManagerInterface
+class CONNECTIT_API AConnectIt_BoardManager : public AActor
 {
-    
+
     GENERATED_BODY()
 
 public:
 
     AConnectIt_BoardManager();
 
-    // --- ABoardManager Interface Overrides ---
+    // --- Component Accessors ---
+    // Used to live as IGridBoardManagerInterface overrides -- removed, it
+    // was never used generically anywhere in the plugin (AConnectIt_BoardManager
+    // was its sole implementer project-wide) and its interface-mandated
+    // GetBoardState() return type (UBoardStateComponentBase*) forced an
+    // awkward Cast<UConnectIt_BoardStateComponent>(...) at every call site.
+    // Plain accessors below return the real derived type directly.
 
-    virtual UGridTileRegistryComponent* GetTileRegistry_Implementation() const override;
-    virtual UGridPieceRegistryComponent* GetPieceRegistry_Implementation() const override;
-    virtual UBoardStateComponentBase* GetBoardState_Implementation() const override;
-    virtual UBoardShiftComponent* GetShiftComponent_Implementation() const override;
+    UFUNCTION(BlueprintPure, Category = "ConnectIt|Board")
+    UGridTileRegistryComponent* GetTileRegistry() const { return TileRegistryComponent; }
 
-    // --- Board Rules ---
-    // Previously on UConnectIt_BoardManagerComponent
+    UFUNCTION(BlueprintPure, Category = "ConnectIt|Board")
+    UGridPieceRegistryComponent* GetPieceRegistry() const { return PieceRegistryComponent; }
 
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "ConnectIt|Rules")
-    float WinScoreThreshold = 100.f;
+    UFUNCTION(BlueprintPure, Category = "ConnectIt|Board")
+    UConnectIt_ConfigComponent* GetConfigComponent() const { return ConnectItConfigComponent; }
 
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "ConnectIt|Rules")
-    int32 ConnectLength = 4;
+    UFUNCTION(BlueprintPure, Category = "ConnectIt|Board")
+    UConnectIt_BoardStateComponent* GetBoardStateComponent() const { return BoardStateComponent; }
+
+    // Owns shift end-to-end for ConnectIt -- computing the remap, applying
+    // it to board state, and animating it. See UConnectIt_BoardShiftComponent.
+    UFUNCTION(BlueprintPure, Category = "ConnectIt|Board")
+    UConnectIt_BoardShiftComponent* GetShiftStateComponent() const { return BoardShiftComponent; }
+
+    // Owns the pluggable scoring/win-condition strategies -- see
+    // UConnectIt_BoardRulesComponent. Replaces the WinScoreThreshold/
+    // ConnectLength fields and hardcoded scoring/win methods that used to
+    // live directly on this class.
+    UFUNCTION(BlueprintPure, Category = "ConnectIt|Board")
+    UConnectIt_BoardRulesComponent* GetBoardRulesComponent() const { return BoardRulesComponent; }
+
+    // Drives the gated visual sequence for board changes -- see
+    // UConnectIt_BoardSequencerComponent.
+    UFUNCTION(BlueprintPure, Category = "ConnectIt|Board")
+    UConnectIt_BoardSequencerComponent* GetBoardSequencerComponent() const { return BoardSequencerComponent; }
 
     // --- Board Lifecycle ---
 
@@ -62,31 +81,12 @@ public:
     void InitialiseBoard(int32 NumFactions);
 
     // Entry point for all board change requests
-    // Called directly by player controller ServerRPC and AI controller
+    // Called directly by player controller ServerRPC and AI controller.
+    // Dispatches by RequestType, unwrapping Request.Payload into whichever
+    // concrete struct that type expects (see FTurnActionRequest) and
+    // routing to the matching private HandleXRequest below.
     UFUNCTION(BlueprintCallable, Category = "ConnectIt|Board")
     void ProcessRequest(const FTurnActionRequest& Request);
-
-    // Called by shift component OnShiftResultReady
-    UFUNCTION()
-    void HandleShiftResult(
-        const FShiftOperation& Operation,
-        const FShiftResult& Result);
-
-    // --- Delegates ---
-
-    UPROPERTY(BlueprintAssignable, Category = "ConnectIt|Board")
-    FOnShiftApplied OnShiftApplied;
-
-    // --- Config Accessors ---
-
-    UFUNCTION(BlueprintPure, Category = "ConnectIt|Board")
-    UActionLoadoutDataAsset* GetPlayerLoadout() const;
-
-    UFUNCTION(BlueprintPure, Category = "ConnectIt|Board")
-    UActionLoadoutDataAsset* GetEnemyLoadout() const;
-
-    UFUNCTION(BlueprintPure, Category = "ConnectIt|Board")
-    float GetWinScoreThreshold() const;
 
 protected:
     
@@ -96,16 +96,6 @@ protected:
     void HandleActiveControllerChanged(AController* NewActiveController);
     void BindParticipantManager();
 
-    // Bound to BoardStateComponent->OnBoardStateChanged in BeginPlay, on
-    // both server and client -- that signal already fires symmetrically on
-    // both machines (server: ApplyAndBroadcast, client: OnRep_BoardSnapshot),
-    // so reading BoardSnapshot.ChangeEvent here is what drives the gated
-    // visual sequence (via UGameEventTaskSubsystem tags) identically on
-    // every machine, instead of the old pattern of broadcasting delegates
-    // directly from server-only request handlers.
-    UFUNCTION()
-    void HandleBoardStateChanged();
-    
     // --- Components ---
 
     UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly,
@@ -118,15 +108,23 @@ protected:
 
     UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly,
         Category = "ConnectIt|Components")
+    TObjectPtr<UConnectIt_ConfigComponent> ConnectItConfigComponent = nullptr;
+    
+    UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly,
+        Category = "ConnectIt|Components")
     TObjectPtr<UConnectIt_BoardStateComponent> BoardStateComponent = nullptr;
+    
+    UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly,
+        Category = "ConnectIt|Components")
+    TObjectPtr<UConnectIt_BoardShiftComponent> BoardShiftComponent = nullptr;
 
     UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly,
         Category = "ConnectIt|Components")
-    TObjectPtr<UBoardShiftComponent> BoardShiftComponent = nullptr;
+    TObjectPtr<UConnectIt_BoardRulesComponent> BoardRulesComponent = nullptr;
 
     UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly,
         Category = "ConnectIt|Components")
-    TObjectPtr<UConnectIt_ConfigComponent> ConnectItConfig = nullptr;
+    TObjectPtr<UConnectIt_BoardSequencerComponent> BoardSequencerComponent = nullptr;
 
     // --- Interpreters ---
 
@@ -145,77 +143,36 @@ protected:
 private:
 
     void BindInterpreters();
-    void BindShiftComponent();
 
-    // --- Board Logic ---
-    // Moved from UConnectIt_BoardManagerComponent
+    // --- Request Handlers ---
+    // FactionID is passed separately rather than living on each payload
+    // struct -- it's the one piece of data every request type needs, so it
+    // stays on FTurnActionRequest's envelope instead of being duplicated
+    // into FConnectItRequestPlacePiece/FConnectItRequestBoardShift.
+    void HandlePlacePieceRequest(const FConnectItRequestPlacePiece& Request, int32 FactionID) const;
+    void HandleShiftRequest(const FConnectItRequestBoardShift& Request, int32 FactionID) const;
 
-    void HandlePlacePieceRequest(const FTurnActionRequest& Request);
+    // --- Turn-End Sequencing ---
+    // Not a board-state concern -- BoardSequencerComponent stays scoped to
+    // board-change visuals only and knows nothing about turns. This is
+    // turn-flow orchestration: hold resolution back the instant a turn
+    // ends, wait for BoardSequencerComponent to finish anything already in
+    // flight/queued, then run the ConnectIt_Event_TurnEnd gated sequence
+    // (letting any external listener do end-of-turn work, distinct from
+    // board-change visuals) before releasing the hold. See
+    // Workflows/TurnResolutionHold_Workflow.txt.
 
-    float CheckAndApplyScoring(
-        FConnectItBoardState& MutableState,
-        FGridPosition Position,
-        int32 FactionSlot);
-
-    TArray<TArray<FGridPosition>> FindScoringLines(
-        const FConnectItBoardState& State,
-        FGridPosition Position,
-        int32 FactionSlot) const;
-
-    float ApplyScoringLine(
-        FConnectItBoardState& MutableState,
-        const TArray<FGridPosition>& Line,
-        FGridPosition CompletingPosition,
-        int32 FactionSlot) const;
-
-    void CheckWinCondition(FConnectItBoardState& MutableState) const;
-
-    static const TArray<FGridDirectionVector>& GetScoringDirections();
-
-    // --- Gated Visual Sequencing ---
-    // Drives ConnectIt_Event_PiecePlaced -> ConnectIt_Event_LineScored ->
-    // ConnectIt_Event_PlayerWin in strict order via UGameEventTaskSubsystem's
-    // QueueTagSequence, each step gated on the previous fully completing.
-    // See HandleBoardStateChanged for the entry point.
-    //
-    // NOTE (known, deferred limitation): nothing here gates
-    // UTurnBasedParticipantManagerComponent's resolution-phase timer on this
-    // sequence completing -- that timer is fixed-duration with no external
-    // hold/extend mechanism, and TurnBasedPauseAction/NotifyPaused is
-    // client-side input-blocking only, with no effect on it. A slow win/
-    // score sequence can still be running when the next turn starts. See
-    // Workflows/GameEventSubsystem_Workflow.txt for the follow-up plan.
-
-    // Starts the next queued change event's sequence if one isn't already
-    // running -- pops PendingChangeEventQueue into ActiveChangeEvent, builds
-    // the step list from its flags, and calls QueueTagSequence once. No
-    // typed delegates are fired from here or anywhere in this sequencing --
-    // listeners bind directly to UGameEventTaskSubsystem (BindOnTagBegin for
-    // "tell me now", a registered UGameEventTask_Async for "wait for my
-    // visual to finish") and read UConnectIt_BoardStateComponent::
-    // GetChangeEvent() for payload data.
-    void TryStartNextSequence();
-
-    // Bound as QueueTagSequence's OnComplete -- the whole sequence for
-    // ActiveChangeEvent finished, drain the next queued change event
     UFUNCTION()
-    void HandleSequenceComplete();
+    void HandleTurnResolutionStarted();
 
-    // Change events awaiting sequencing -- a new event arriving while a
-    // sequence is already in flight is queued rather than dropped or
-    // interleaved with the one currently running. This is separate from
-    // (and in addition to) UGameEventTaskSubsystem's own internal queue --
-    // that queue only serializes WHICH sequence runs when; this one is what
-    // lets HandleSequenceComplete know a new ChangeEvent is waiting once the
-    // current one finishes.
-    UPROPERTY()
-    TArray<FConnectItBoardChangeEvent> PendingChangeEventQueue;
+    UFUNCTION()
+    void HandleBoardSequenceIdle();
 
-    // The change event currently being sequenced -- valid only while
-    // bSequenceInFlight is true
-    UPROPERTY()
-    FConnectItBoardChangeEvent ActiveChangeEvent;
+    void BeginTurnEndSequence();
+
+    UFUNCTION()
+    void HandleTurnEndSequenceComplete();
 
     UPROPERTY()
-    bool bSequenceInFlight = false;
+    TObjectPtr<class UTurnBasedParticipantManagerComponent> ParticipantManagerRef = nullptr;
 };

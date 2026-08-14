@@ -88,7 +88,7 @@ void UGameEventTaskSubsystem::QueueTagSequence(
 {
     if (Steps.IsEmpty())
     {
-        OnComplete.ExecuteIfBound();
+        if (OnComplete.IsBound()) { OnComplete.Execute(); }
         return;
     }
 
@@ -120,7 +120,7 @@ void UGameEventTaskSubsystem::AdvanceSequenceToStep(int32 StepIndex)
     if (!Active.Steps.IsValidIndex(StepIndex))
     {
         // Every step in this sequence has completed
-        Active.OnComplete.ExecuteIfBound();
+        if (Active.OnStepComplete.IsBound()) { Active.OnComplete.Execute(); }
         SequenceQueue.RemoveAt(0);
         bSequenceInFlight = false;
         TryStartNextQueuedSequence();

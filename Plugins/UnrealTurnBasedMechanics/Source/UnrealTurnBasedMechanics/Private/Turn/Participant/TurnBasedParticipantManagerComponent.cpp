@@ -319,20 +319,47 @@ void UTurnBasedParticipantManagerComponent::EndTurn(ETurnEndReason Reason)
 
     // Enter updating -- all clients suspend input while resolution plays
     SetMatchPhase(EMatchPhase::Updating);
+
+    // Reset defensively before broadcasting -- a hold left dangling by a
+    // bug elsewhere should never be able to permanently stall future turns
+    ResolutionHoldCount = 0;
+
     OnTurnResolutionStarted.Broadcast();
 
-    GetWorld()->GetTimerManager().SetTimer(
-        ResolutionTimerHandle,
-        this,
-        &UTurnBasedParticipantManagerComponent::HandleResolutionComplete,
-        TurnResolutionDuration,
-        false
-    );
+    // Broadcast() calls every bound listener synchronously before
+    // returning, so anything that needed to hold resolution has already
+    // called BeginResolutionHold() by this point -- if nothing did, there's
+    // nothing to wait for.
+    if (ResolutionHoldCount == 0)
+    {
+        AdvanceToNextParticipant();
+    }
 }
 
-void UTurnBasedParticipantManagerComponent::HandleResolutionComplete()
+void UTurnBasedParticipantManagerComponent::BeginResolutionHold()
 {
-    AdvanceToNextParticipant();
+    check(!IsRunningClientOnly());
+    ResolutionHoldCount++;
+}
+
+void UTurnBasedParticipantManagerComponent::EndResolutionHold()
+{
+    check(!IsRunningClientOnly());
+
+    if (ResolutionHoldCount <= 0)
+    {
+        UE_LOG(LogTurnBasedMechanics, Warning,
+            TEXT("TurnBasedParticipantManager: EndResolutionHold called "
+                 "with no matching hold — ignoring"));
+        return;
+    }
+
+    ResolutionHoldCount--;
+
+    if (ResolutionHoldCount == 0 && CurrentPhase == ETurnPhase::TurnEnd)
+    {
+        AdvanceToNextParticipant();
+    }
 }
 
 void UTurnBasedParticipantManagerComponent::AdvanceToNextParticipant()

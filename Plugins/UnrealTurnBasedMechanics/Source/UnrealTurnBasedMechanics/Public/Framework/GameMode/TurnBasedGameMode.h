@@ -32,9 +32,6 @@ public:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Turn Based|Config")
 	float ReconnectTimeout = 30.f;
 
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Turn Based|Config")
-	float TurnResolutionDuration = 1.5f;
-	
 	// --- Overrides ---
 
 	virtual void PostLogin(APlayerController* NewPlayer) override;

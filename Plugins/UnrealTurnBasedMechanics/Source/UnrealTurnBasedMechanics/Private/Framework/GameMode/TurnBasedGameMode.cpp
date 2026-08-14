@@ -60,10 +60,9 @@ void ATurnBasedGameMode::HandleMatchHasStarted()
     if (!Manager) return;
 
     // Apply configuration
-    Manager->TurnDuration           = TurnDuration;
-    Manager->ForfeitThreshold       = ForfeitThreshold;
-    Manager->ReconnectTimeout       = ReconnectTimeout;
-    Manager->TurnResolutionDuration = TurnResolutionDuration;
+    Manager->TurnDuration     = TurnDuration;
+    Manager->ForfeitThreshold = ForfeitThreshold;
+    Manager->ReconnectTimeout = ReconnectTimeout;
 }
 
 void ATurnBasedGameMode::RegisterAIParticipant(

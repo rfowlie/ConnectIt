@@ -26,32 +26,50 @@ finished (not just been kicked off). This subsystem adds two things on top:
 
 WHY IT EXISTS
 -------------
-ConnectIt's board events (piece placed, line scored, player win) used to fire as
-plain delegate broadcasts directly from server-only code in AConnectIt_BoardManager
--- which meant real remote clients never saw them (dynamic delegate broadcasts are
-local function calls, not RPCs). That got fixed by moving event firing onto the
-already-correctly-replicated BoardStateComponent signal (see
-AConnectIt_BoardManager::HandleBoardStateChanged).
+ConnectIt's board events (shift, piece placed, line scored, player win) used to
+fire as plain delegate broadcasts directly from server-only code in
+AConnectIt_BoardManager -- which meant real remote clients never saw them (dynamic
+delegate broadcasts are local function calls, not RPCs). That got fixed by moving
+event firing onto the already-correctly-replicated BoardStateComponent signal
+(see AConnectIt_BoardManager::HandleBoardStateChanged). Shift had a second,
+related problem on top of that: it also *animated before* committing state at
+all (tick a fixed-duration animation, then mutate state once it finished) --
+now state commits immediately and the animation is a reaction to it, same as
+every other event here.
 
 Fixing *that* still left everything firing simultaneously with no way to sequence
-visual responses -- piece-drop animation, score VFX, and win banner all firing at
-once looks wrong. This subsystem is the mechanism for gating that: register your
-visual/audio/UI response against the relevant tag, and it only runs (and the next
-thing in the chain only starts) once your response says it's actually done.
+visual responses -- shift animation, piece-drop animation, score VFX, and win
+banner all firing at once looks wrong. This subsystem is the mechanism for gating
+that: register your visual/audio/UI response against the relevant tag, and it
+only runs (and the next thing in the chain only starts) once your response says
+it's actually done.
 
 
-THE THREE BOARD EVENT TAGS
+THE FOUR BOARD EVENT TAGS
 ----------------------------
 Declared in ConnectIt_GameplayTags.h/.cpp:
 
-  ConnectIt_Event_PiecePlaced   "ConnectIt.Event.PiecePlaced"
+  ConnectIt_Event_Shift         "ConnectIt.Event.Shift"        (a shift request only)
+  ConnectIt_Event_PiecePlaced   "ConnectIt.Event.PiecePlaced"  (a placement request only)
   ConnectIt_Event_LineScored    "ConnectIt.Event.LineScored"   (skipped if nothing scored)
   ConnectIt_Event_PlayerWin     "ConnectIt.Event.PlayerWin"    (skipped if nobody won)
 
 AConnectIt_BoardManager::TryStartNextSequence builds an ordered step list from
-FConnectItBoardChangeEvent's flags (always PiecePlaced; conditionally append
-LineScored; conditionally append PlayerWin) and calls QueueTagSequence once per
-placement -- see "HOW BOARDMANAGER USES THIS" below for the exact chain.
+FConnectItBoardChangeEvent's flags. A shift ChangeEvent and a placement
+ChangeEvent are always disjoint (each ApplyAndBroadcast call represents exactly
+one kind of change): Shift never co-occurs with PiecePlaced/LineScored/PlayerWin;
+a placement ChangeEvent always leads with PiecePlaced, then conditionally
+appends LineScored and/or PlayerWin. QueueTagSequence is called once per
+request -- see "HOW BOARDMANAGER USES THIS" below for the exact chain.
+
+ConnectIt_Event_Shift is also where the shift *animation itself* is registered
+as a gated task -- AConnectIt_BoardManager::TryStartNextSequence constructs a
+UGameEventTask_Async bound to HandleShiftAnimationExecute (which reads the
+ChangeEvent's shift payload and calls UBoardShiftComponent::PlayShiftAnimation)
+and registers it before triggering the tag, same as any other listener would.
+This is what replaced the old animate-then-commit-state flow: state commits
+immediately via ApplyAndBroadcast, and the animation plays as a reaction,
+gated the same way every other visual step already is.
 
 If nothing is registered against a tag yet, that tag's manager completes with zero
 phases immediately, and the chain falls through to the next step synchronously --
@@ -118,19 +136,19 @@ queue of ChangeEvents (separate from the subsystem's own queue) specifically so 
 knows a new ChangeEvent is waiting once the current one finishes.
 
 AConnectIt_BoardManager's role is purely to decide WHICH tags fire WHEN. It does not
-maintain any notification API of its own for piece placed / line scored / player win
--- see below for why, and what to bind to instead.
+maintain any notification API of its own for shift / piece placed / line scored /
+player win -- see below for why, and what to bind to instead.
 
 
-CONSOLIDATED ONTO THIS SUBSYSTEM (no more typed delegates for these three events)
+CONSOLIDATED ONTO THIS SUBSYSTEM (no more typed delegates for these four events)
 ----------------------------------------------------------------------------------------
-AConnectIt_BoardManager used to also own OnPiecePlaced/OnLineScored/OnPlayerWin
-delegates, relayed by UConnectIt_BoardManagerSubsystem, *in addition to* these tags
--- two parallel notification systems for the same three events, kept in hand-written
-lockstep by the board manager. That produced a real bug: the "tell me now" delegates
-ended up accidentally gated on step completion instead of firing immediately,
-because the two systems got tangled together. Both were removed; this subsystem is
-now the only channel for these three events.
+AConnectIt_BoardManager used to also own OnPiecePlaced/OnLineScored/OnPlayerWin/
+OnShiftApplied delegates (the last one relayed by UConnectIt_BoardManagerSubsystem),
+*in addition to* these tags -- two parallel notification systems for the same
+events, kept in hand-written lockstep by the board manager. That produced a real
+bug: the "tell me now" delegates ended up accidentally gated on step completion
+instead of firing immediately, because the two systems got tangled together. All
+of them were removed; this subsystem is now the only channel for these four events.
 
   "Just tell me this happened, right now, no waiting"
       -> UGameEventTaskSubsystem::BindOnTagBegin(Tag, this, FunctionName) -- fires
@@ -139,35 +157,29 @@ now the only channel for these three events.
   "I need to run something and have the NEXT step wait until I'm done"
       -> Register a UGameEventTask_Async against the matching tag (see above).
 
-  "I need the actual data (position / faction / points / winner)"
+  "I need the actual data (position / faction / points / winner / shift op)"
       -> The tag signal itself carries no parameters. Call
          UConnectIt_BoardStateComponent::GetChangeEvent() (BlueprintPure) to read
          what happened -- it's the same replicated data driving the sequence,
          available on both server and client the instant any tag fires.
 
-OnShiftApplied is the one exception -- still a direct delegate on
-AConnectIt_BoardManager (relayed by UConnectIt_BoardManagerSubsystem) because its
-tag-based equivalent is deferred. See BoardManagerSubsystem_Workflow.txt.
+This is now the only channel for all four board events, including shift --
+UConnectIt_BoardManagerSubsystem does not relay anything any more (see
+BoardManagerSubsystem_Workflow.txt).
 
 
-KNOWN LIMITATION -- NOT YET FIXED: TURN SYSTEM DOES NOT WAIT ON THIS
+TURN SYSTEM NOW WAITS ON THIS -- SEE ALSO TurnResolutionHold_Workflow.txt
 -------------------------------------------------------------------------
-UTurnBasedParticipantManagerComponent's resolution phase (EndTurn -> ResolutionTimerHandle
--> HandleResolutionComplete -> AdvanceToNextParticipant) is a fixed-duration timer with
-no hold/extend mechanism anywhere in the UnrealTurnBasedMechanics plugin today.
-TurnBasedPauseAction / TurnBasedActionsComponent::NotifyPaused is entirely client-side
-input-blocking (disables local input, shows a widget) and has zero effect on that
-server-side timer.
-
-This means a slow gated visual sequence (e.g. a win animation with real registered
-tasks) can genuinely still be in flight when the next turn starts -- nothing today
-gates turn advancement on QueueTagSequence's OnComplete firing.
-
-Follow-up, if/when picked up: add BeginResolutionHold()/EndResolutionHold() to
-UTurnBasedParticipantManagerComponent (a hold counter gating AdvanceToNextParticipant,
-with TurnResolutionDuration still acting as a floor, not a hard deadline), and have
-AConnectIt_BoardManager hold/release around OnTurnResolutionStarted based on
-bSequenceInFlight.
+This used to be a known limitation: UTurnBasedParticipantManagerComponent's resolution
+phase advanced on a fixed-duration timer with no way to hold it back, so a slow gated
+visual sequence could genuinely still be in flight when the next turn started. Fixed --
+UTurnBasedParticipantManagerComponent::BeginResolutionHold()/EndResolutionHold() (a
+generic hold counter, no knowledge of tags or ConnectIt) now gates AdvanceToNextParticipant,
+and AConnectIt_BoardManager drives it: on OnTurnResolutionStarted, it holds immediately,
+waits for UConnectIt_BoardSequencerComponent::IsIdle() (no board-change sequence in
+flight or queued), then runs its own ConnectIt_Event_TurnEnd gated sequence before
+releasing the hold. See TurnResolutionHold_Workflow.txt for the full flow -- board-change
+sequencing (this doc) and turn-end orchestration are deliberately separate concerns.
 
 
 FILES INVOLVED
@@ -176,10 +188,11 @@ FILES INVOLVED
   Plugins/UnrealGameMechanics/Source/UnrealGameMechanics/Private/GameEvent/GameEventTaskSubsystem.cpp
   Plugins/UnrealGameMechanics/Source/UnrealGameMechanics/Public+Private/GameEvent/
       GameEventTaskManager.h/.cpp (the underlying phase-barrier executor)
-  Source/ConnectIt/Public/ConnectIt_GameplayTags.h (the three board event tags)
-  Source/ConnectIt/Public/Board/ConnectIt_BoardManager.h (sequencing state/handlers)
-  Source/ConnectIt/Private/Board/ConnectIt_BoardManager.cpp (HandleBoardStateChanged,
-      TryStartNextSequence, HandleSequenceComplete)
+  Source/ConnectIt/Public/ConnectIt_GameplayTags.h (the board event tags)
+  Source/ConnectIt/Public/Board/ConnectIt_BoardSequencerComponent.h (board-change
+      sequencing state/handlers -- HandleBoardStateChanged, TryStartNextSequence,
+      HandleSequenceComplete, IsIdle/OnSequenceIdle)
+  Source/ConnectIt/Private/Board/ConnectIt_BoardSequencerComponent.cpp
   Source/ConnectIt/Public/Board/ConnectIt_BoardStateComponent.h (GetChangeEvent)
   Source/ConnectIt/Private/Framework/GameMode/ConnectIt_GameMode.cpp (a real
       BindOnTagComplete consumer -- HandleGameOver)

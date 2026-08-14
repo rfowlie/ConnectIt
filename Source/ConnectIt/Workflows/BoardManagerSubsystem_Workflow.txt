@@ -4,27 +4,20 @@ ConnectIt Board Manager Subsystem — Workflow
 WHAT THIS IS
 ------------
 UConnectIt_BoardManagerSubsystem (Source/ConnectIt/Public|Private/Framework/Subsystem/
-ConnectIt_BoardManagerSubsystem.h/.cpp) is a per-world UWorldSubsystem that:
-
-  1. Caches the single AConnectIt_BoardManager actor in the level, so lookups don't
-     need to repeatedly scan the world for it.
-  2. Relays OnShiftApplied -- the one board event still fired as a direct delegate
-     (its tag-based equivalent is deferred, see ConnectIt_BoardManager.h) -- so
-     listeners never need to know whether the board manager reference is valid yet
-     before binding to it.
+ConnectIt_BoardManagerSubsystem.h/.cpp) is a per-world UWorldSubsystem that caches
+the single AConnectIt_BoardManager actor in the level, so lookups don't need to
+repeatedly scan the world for it.
 
 It always exists for the lifetime of the world (subsystems are created at world
 init), which is the whole point: it is always safe to bind to or query, even before
 AConnectIt_BoardManager itself has spawned or run BeginPlay.
 
-NOTE: piece placed / line scored / player win are NOT relayed here any more -- those
-are UGameEventTaskSubsystem tags now (ConnectIt_Event_PiecePlaced/LineScored/
-PlayerWin). See Workflows/GameEventSubsystem_Workflow.txt. This subsystem used to
-relay all four board events as typed delegates; that produced two parallel
-notification systems for the same events (a typed delegate here and a tag on the
-event subsystem) that had to be kept in hand-written lockstep -- consolidated down
-to one channel per event. OnShiftApplied is the sole remaining exception because its
-tag equivalent isn't built yet.
+NOTE: this subsystem does not relay any board events. Shift / piece placed / line
+scored / player win are all UGameEventTaskSubsystem tags (ConnectIt_Event_Shift/
+PiecePlaced/LineScored/PlayerWin) -- see Workflows/GameEventSubsystem_Workflow.txt.
+This subsystem used to also relay OnShiftApplied as a direct delegate (while the
+other three events had already moved to tags) -- that was a deferred migration,
+now finished; this subsystem is purely a cache.
 
 
 WHY IT EXISTS
@@ -59,9 +52,8 @@ server and every client's local replicated copy of the actor. This matters becau
 most GetBoardManager call sites are client-side -- if registration only happened on
 the server, clients would never populate their local cache.
 
-RegisterBoardManager() is safe to call more than once (e.g. PIE re-entry): it
-unbinds the event relay from any previously-cached board manager, then rebinds to
-the new one. Last caller wins.
+RegisterBoardManager() is safe to call more than once (e.g. PIE re-entry) -- last
+caller wins.
 
 
 TWO THINGS CONSUMERS WANT, AND WHICH ONE YOU NEED
@@ -71,7 +63,7 @@ right one matters -- using the wrong one is exactly the "backwards" pattern this
 subsystem was built to get away from.
 
   (A) "I need to CALL something on the board manager"
-      e.g. GetPlayerLoadout(), GetEnemyLoadout(), ProcessRequest(), InitialiseBoard()
+      e.g. ProcessRequest(), InitialiseBoard()
 
       You need the actual object reference. Use one of:
 
@@ -106,42 +98,14 @@ subsystem was built to get away from.
                                                             passes when it fires
 
   (B) "I want to REACT to something that happens on the board"
-      e.g. a piece was placed, a line was scored, someone won, a shift was applied
+      e.g. a shift was applied, a piece was placed, a line was scored, someone won
 
-      For piece placed / line scored / player win: you do NOT need the board
-      manager reference at all, and you do NOT bind here. Bind to the matching tag
-      on UGameEventTaskSubsystem instead -- see Workflows/GameEventSubsystem_Workflow.txt
-      for the full pattern (BindOnTagBegin for "tell me now", a registered
-      UGameEventTask_Async for "wait for my visual to finish"; read payload data via
+      You do NOT need the board manager reference at all, and you do NOT bind
+      here. Bind to the matching tag on UGameEventTaskSubsystem instead -- see
+      Workflows/GameEventSubsystem_Workflow.txt for the full pattern
+      (BindOnTagBegin for "tell me now", a registered UGameEventTask_Async for
+      "wait for my visual to finish"; read payload data via
       UConnectIt_BoardStateComponent::GetChangeEvent()).
-
-      For shift applied specifically (deferred tag migration): bind to this
-      subsystem's OnShiftApplied, which exists and can be bound at any time,
-      regardless of whether the board manager has spawned yet:
-
-        UConnectIt_BoardManagerSubsystem::OnShiftApplied  (const FShiftOperation&, const FShiftResult&)
-
-      This mirrors AConnectIt_BoardManager's own OnShiftApplied. The subsystem binds
-      itself to the real board manager's delegate once, inside RegisterBoardManager,
-      and relays every broadcast through. Do NOT bind directly to
-      Board->OnShiftApplied -- that reintroduces the exact "must prove the board
-      manager exists before I can bind" problem this subsystem exists to remove.
-
-      Example of what NOT to do:
-
-          AConnectIt_BoardManager* Board = GetBoardActor();
-          if (!IsValid(Board)) { log error; return; }   // binding depends on this
-          Board->OnShiftApplied.AddDynamic(this, &AMyClass::HandleShift);
-
-      What to do instead:
-
-          if (UConnectIt_BoardManagerSubsystem* Subsystem =
-              GetWorld()->GetSubsystem<UConnectIt_BoardManagerSubsystem>())
-          {
-              Subsystem->OnShiftApplied.AddDynamic(this, &AMyClass::HandleShift);
-          }
-
-      This binding no longer depends on the board manager already being resolved.
 
 
 QUICK REFERENCE
@@ -155,15 +119,11 @@ QUICK REFERENCE
       -> UConnectIt_BoardManagerSubsystem::GetBoardManager(), fall back to
          binding OnBoardManagerReady if null
 
-  Need to REACT to piece placed / line scored / player win?
+  Need to REACT to a shift / piece placed / line scored / player win?
       -> Bind to the matching tag on UGameEventTaskSubsystem. See
          Workflows/GameEventSubsystem_Workflow.txt. AConnectIt_GameMode::
          InitialiseBoard() (Source/ConnectIt/Private/Framework/GameMode/
-         ConnectIt_GameMode.cpp) is the real example.
-
-  Need to REACT to a shift being applied?
-      -> Bind to UConnectIt_BoardManagerSubsystem::OnShiftApplied (deferred
-         tag migration -- still a direct delegate for now).
+         ConnectIt_GameMode.cpp) is a real BindOnTagComplete example.
 
 
 FILES INVOLVED
@@ -173,5 +133,5 @@ FILES INVOLVED
   Source/ConnectIt/Private/Board/ConnectIt_BoardManager.cpp        (BeginPlay registration)
   Source/ConnectIt/Private/Library/ConnectIt_GameUtilityLibrary.cpp (GetBoardManager)
 
-For piece placed / line scored / player win, see Workflows/GameEventSubsystem_Workflow.txt
-instead -- those events moved off this subsystem entirely.
+For all board events including shift, see Workflows/GameEventSubsystem_Workflow.txt
+instead -- none of them are relayed by this subsystem.

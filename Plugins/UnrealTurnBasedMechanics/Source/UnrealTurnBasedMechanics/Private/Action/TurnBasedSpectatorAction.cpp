@@ -6,6 +6,13 @@
 
 
 
+void UTurnBasedSpectatorAction::InitialiseAction(AController* InOwningController)
+{
+	OwningController = InOwningController;
+
+	PostInitialiseAction();
+}
+
 void UTurnBasedSpectatorAction::Deactivate()
 {
 	// Viewer actions have no use tracking or completion state

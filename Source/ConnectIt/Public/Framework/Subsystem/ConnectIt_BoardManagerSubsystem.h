@@ -14,11 +14,8 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnBoardManagerReady, AConnectIt_Boa
 // sites (see UConnectIt_GameUtilityLibrary::GetBoardManager). Populated by
 // AConnectIt_BoardManager::BeginPlay on both server and client.
 //
-// Also relays OnShiftApplied -- the one board event that still fires as a
-// direct delegate (its tag-based equivalent, on UGameEventTaskSubsystem,
-// is deferred; see ConnectIt_BoardManager.h). Every other board event
-// (piece placed, line scored, player win) is a UGameEventTaskSubsystem tag
-// now -- this subsystem does not relay those, bind to the tag subsystem
+// Does not relay any board events -- piece placed, line scored, player win,
+// and shift are all UGameEventTaskSubsystem tags; bind to the tag subsystem
 // directly instead (see Workflows/GameEventSubsystem_Workflow.txt).
 UCLASS()
 class CONNECTIT_API UConnectIt_BoardManagerSubsystem : public UWorldSubsystem
@@ -27,10 +24,8 @@ class CONNECTIT_API UConnectIt_BoardManagerSubsystem : public UWorldSubsystem
 
 public:
 
-	// Sets the cached board manager, rebinds the event relay to it, and
-	// broadcasts OnBoardManagerReady. Safe to call more than once -- last
-	// caller wins (e.g. PIE re-entry); any previously bound board manager
-	// is unbound first.
+	// Sets the cached board manager and broadcasts OnBoardManagerReady. Safe
+	// to call more than once -- last caller wins (e.g. PIE re-entry).
 	void RegisterBoardManager(AConnectIt_BoardManager* InBoardManager);
 
 	AConnectIt_BoardManager* GetCachedBoardManager() const { return CachedBoardManager; }
@@ -49,24 +44,8 @@ public:
 	UPROPERTY(BlueprintAssignable, Category = "ConnectIt|Board")
 	FOnBoardManagerReady OnBoardManagerReady;
 
-	// --- Board Event Relay ---
-	// Mirrors AConnectIt_BoardManager's OnShiftApplied -- the one board
-	// event still fired as a direct delegate (deferred tag migration, see
-	// ConnectIt_BoardManager.h). Bind here instead of on the board manager
-	// directly -- this subsystem always exists, so there is no need to
-	// check for or wait on the board manager's existence before binding.
-
-	UPROPERTY(BlueprintAssignable, Category = "ConnectIt|Board")
-	FOnShiftApplied OnShiftApplied;
-
 private:
 
 	UPROPERTY()
 	TObjectPtr<AConnectIt_BoardManager> CachedBoardManager = nullptr;
-
-	void BindToBoardManager(AConnectIt_BoardManager* InBoardManager);
-	void UnbindFromBoardManager();
-
-	UFUNCTION()
-	void HandleShiftApplied(const FShiftOperation& Operation, const FShiftResult& Result);
 };

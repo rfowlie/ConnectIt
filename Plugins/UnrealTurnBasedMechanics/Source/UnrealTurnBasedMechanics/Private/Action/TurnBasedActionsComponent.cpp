@@ -70,8 +70,7 @@ void UTurnBasedActionsComponent::CloneActionsFromLoadout()
     {
         if (!IsValid(Source)) continue;
 
-        UTurnBasedAction* Clone = DuplicateObject<UTurnBasedAction>(
-            Source, this);
+        UTurnBasedAction* Clone = DuplicateObject<UTurnBasedAction>(Source, this);
         if (!IsValid(Clone)) continue;
 
         Clone->InitialiseAction(Controller, EIC);
@@ -126,6 +125,12 @@ void UTurnBasedActionsComponent::CreateSystemActions()
     IdleViewerAction      = Loadout->GetIdleViewerAction(this);
     SpectatorViewerAction = Loadout->GetSpectatorAction(this);
     PauseViewerAction     = Loadout->GetPauseAction(this);
+
+    // Give each viewer action OwningController early (same point RootAction
+    // gets it via InitialiseAction above), not deferred until Activate
+    if (IsValid(IdleViewerAction))      IdleViewerAction->InitialiseAction(Controller);
+    if (IsValid(SpectatorViewerAction)) SpectatorViewerAction->InitialiseAction(Controller);
+    if (IsValid(PauseViewerAction))     PauseViewerAction->InitialiseAction(Controller);
 
     WarnIfViewerActionMissing(IdleViewerAction, TEXT("IdleViewerActionClass"),
         TEXT("Stack will remain unchanged on turn end."));

@@ -4,6 +4,7 @@
 #include "CoreMinimal.h"
 #include "GameplayTagContainer.h"
 #include "GridMechanicsBaseStructs.h"
+#include "StructUtils/InstancedStruct.h"
 #include "TurnBasedMechanicsEnums.h"
 #include "TurnBasedMechanicsStructs.generated.h"
 
@@ -89,32 +90,37 @@ struct FTurnBasedActionRecord
 
 // Request sent from UTurnBasedAction to UTurnBasedActionComponent
 // Routed to server then to project-specific board manager
-// Action tag identifies the type of change requested
+// Generic envelope only -- never needs to grow for a new project action
+// type. Concrete per-action data (grid positions, shift parameters, etc.)
+// lives in a project-defined USTRUCT wrapped in Payload instead of being
+// added here directly.
 USTRUCT(BlueprintType)
 struct FTurnActionRequest
 {
     GENERATED_BODY()
 
     // Identifies what kind of change is requested
-    // e.g. ConnectIt.Board.PlacePiece, ConnectIt.Board.ShiftRow
+    // e.g. ConnectIt.Game.State.PlacePiece, ConnectIt.Game.State.Shift
     UPROPERTY(BlueprintReadWrite)
     FGameplayTag RequestType;
-
-    // Grid positions relevant to this request
-    UPROPERTY(BlueprintReadWrite)
-    TArray<FGridPosition> Positions;
 
     // Faction making the request — from SlotIndex on participant component
     UPROPERTY(BlueprintReadWrite)
     int32 FactionID = -1;
 
-    // Flexible additional data — shard type, shift direction, etc.
+    // Flexible additional data — shard type, etc.
     UPROPERTY(BlueprintReadWrite)
     FGameplayTagContainer AdditionalData;
 
+    // Project-specific payload -- the plugin has no idea what concrete
+    // struct this holds. Each project defines its own USTRUCTs (e.g.
+    // FConnectItRequestPlacePiece) and wraps one here per request type.
+    UPROPERTY(BlueprintReadWrite)
+    FInstancedStruct Payload;
+
     bool IsValid() const
     {
-        return RequestType.IsValid() && FactionID >= 0;
+        return RequestType.IsValid() && FactionID >= 0 && Payload.IsValid();
     }
 };
 

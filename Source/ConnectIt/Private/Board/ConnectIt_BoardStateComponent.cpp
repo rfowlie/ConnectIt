@@ -43,8 +43,13 @@ void UConnectIt_BoardStateComponent::InitialiseBoardState(
     BoardSnapshot.PreviousState = InitialState;
     BoardSnapshot.CurrentState  = InitialState;
 
+    /*
+     * TODO: in theory this will likely not be necessary
+     * each level should have a starting position where tiles and pieces are set
+     * broadcasting a change is technically wrong
+     */ 
     // Broadcast so interpreters can initialise their visual state
-    BroadcastChange();
+    // BroadcastChange();
 
     UE_LOG(LogTemp, Log,
         TEXT("ConnectItBoardStateComponent: Initialised — "
@@ -52,14 +57,14 @@ void UConnectIt_BoardStateComponent::InitialiseBoardState(
         TilePositions.Num(), NumFactions);
 }
 
-void UConnectIt_BoardStateComponent::ApplyAndBroadcast(
+void UConnectIt_BoardStateComponent::SetBoardState(
     const FConnectItBoardState& NewState,
     const FConnectItBoardChangeEvent& ChangeEvent)
 {
     check(UCodingUtilsComponentLibrary::IsAuthoritative(this));
 
     // Capture current as previous before overwriting
-    CaptureSnapshot();
+    BoardSnapshot.PreviousState = BoardSnapshot.CurrentState;
     BoardSnapshot.CurrentState = NewState;
     BoardSnapshot.ChangeEvent  = ChangeEvent;
 
@@ -87,12 +92,6 @@ void UConnectIt_BoardStateComponent::GetLifetimeReplicatedProps(TArray<FLifetime
 {
     Super::GetLifetimeReplicatedProps(OutLifetimeProps);
     DOREPLIFETIME(UConnectIt_BoardStateComponent, BoardSnapshot);
-}
-
-void UConnectIt_BoardStateComponent::CaptureSnapshot()
-{
-    check(UCodingUtilsComponentLibrary::IsAuthoritative(this));
-    BoardSnapshot.PreviousState = BoardSnapshot.CurrentState;
 }
 
 void UConnectIt_BoardStateComponent::OnRep_BoardSnapshot()

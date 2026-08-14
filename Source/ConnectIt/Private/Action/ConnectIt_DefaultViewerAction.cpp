@@ -3,8 +3,21 @@
 
 #include "Action/ConnectIt_DefaultViewerAction.h"
 #include "Board/ConnectIt_BoardManager.h"
+#include "Board/ConnectIt_BoardStateComponent.h"
 #include "Library/ConnectIt_GameUtilityLibrary.h"
 
+
+void UConnectIt_DefaultViewerAction::PostInitialiseAction_Implementation()
+{
+    CachedBoardState = UConnectIt_GameUtilityLibrary::GetBoardStateComponent(OwningController);
+
+    if (!IsValid(CachedBoardState))
+    {
+        UE_LOG(LogTemp, Error,
+            TEXT("DefaultViewerAction: PostInitialiseAction -- "
+                 "no UConnectIt_BoardStateComponent found"));
+    }
+}
 
 void UConnectIt_DefaultViewerAction::Activate_Internal_Implementation()
 {
@@ -23,26 +36,18 @@ void UConnectIt_DefaultViewerAction::Deactivate_Internal_Implementation()
 
 void UConnectIt_DefaultViewerAction::BindToBoardState()
 {
-    // Pass this as WorldContextObject
-    // GetWorld() resolves via outer chain from the component this lives on
-    UConnectIt_BoardStateComponent* BSC =
-        UConnectIt_GameUtilityLibrary::GetBoardStateComponent(GetPlayerController());
+    if (!IsValid(CachedBoardState)) return;
 
-    if (!IsValid(BSC)) return;
-
-    BSC->OnBoardStateChanged.AddDynamic(
+    CachedBoardState->OnBoardStateChanged.AddDynamic(
         this,
         &UConnectIt_DefaultViewerAction::HandleBoardStateChanged);
 }
 
 void UConnectIt_DefaultViewerAction::UnbindFromBoardState()
 {
-    UConnectIt_BoardStateComponent* BSC =
-        UConnectIt_GameUtilityLibrary::GetBoardStateComponent(GetPlayerController());
+    if (!IsValid(CachedBoardState)) return;
 
-    if (!IsValid(BSC)) return;
-
-    BSC->OnBoardStateChanged.RemoveDynamic(
+    CachedBoardState->OnBoardStateChanged.RemoveDynamic(
         this,
         &UConnectIt_DefaultViewerAction::HandleBoardStateChanged);
 }

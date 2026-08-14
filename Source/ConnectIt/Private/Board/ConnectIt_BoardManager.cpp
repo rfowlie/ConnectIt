@@ -5,15 +5,19 @@
 
 #include "ConnectIt_GameplayTags.h"
 #include "GameplayTagContainer.h"
+#include "StructUtils/InstancedStruct.h"
 #include "TurnBasedMechanicsStructs.h"
+#include "Action/ConnectIt_ShiftAction.h"
 #include "Board/ConnectIt_BoardStateComponent.h"
+#include "Board/ConnectIt_BoardSequencerComponent.h"
+#include "Board/Rules/ConnectIt_BoardRulesComponent.h"
 #include "Framework/Data/ConnectIt_ConfigComponent.h"
 #include "Framework/Subsystem/ConnectIt_BoardManagerSubsystem.h"
 #include "GameEvent/GameEventTaskSubsystem.h"
 #include "Interpreter/ConnectIt_PieceSpawnInterpreter.h"
 #include "Interpreter/ConnectIt_ScoreInterpreter.h"
 #include "Interpreter/ConnectIt_TileStateInterpreter.h"
-#include "Board/Shift/BoardShiftComponent.h"
+#include "Board/ConnectIt_BoardShiftComponent.h"
 #include "Library/ConnectIt_GameUtilityLibrary.h"
 #include "Piece/GridPieceRegistryComponent.h"
 #include "Tile/GridTileRegistryComponent.h"
@@ -34,13 +38,17 @@ AConnectIt_BoardManager::AConnectIt_BoardManager()
         CreateDefaultSubobject<UConnectIt_BoardStateComponent>(
             TEXT("BoardState"));
 
-    BoardShiftComponent =
-        CreateDefaultSubobject<UBoardShiftComponent>(
-            TEXT("BoardShift"));
-
-    ConnectItConfig =
+    ConnectItConfigComponent =
         CreateDefaultSubobject<UConnectIt_ConfigComponent>(
             TEXT("ConnectItConfig"));
+
+    BoardRulesComponent =
+        CreateDefaultSubobject<UConnectIt_BoardRulesComponent>(
+            TEXT("BoardRules"));
+
+    BoardSequencerComponent =
+        CreateDefaultSubobject<UConnectIt_BoardSequencerComponent>(
+            TEXT("BoardSequencer"));
 
     TileStateInterpreter =
         CreateDefaultSubobject<UConnectIt_TileStateInterpreter>(
@@ -55,28 +63,6 @@ AConnectIt_BoardManager::AConnectIt_BoardManager()
             TEXT("ScoreInterpreter"));
 
     bReplicates = true;
-}
-
-// --- ABoardManager Interface Overrides ---
-
-UGridTileRegistryComponent* AConnectIt_BoardManager::GetTileRegistry_Implementation() const
-{
-    return TileRegistryComponent;
-}
-
-UGridPieceRegistryComponent* AConnectIt_BoardManager::GetPieceRegistry_Implementation() const
-{
-    return PieceRegistryComponent;
-}
-
-UBoardStateComponentBase* AConnectIt_BoardManager::GetBoardState_Implementation() const
-{
-    return BoardStateComponent;
-}
-
-UBoardShiftComponent* AConnectIt_BoardManager::GetShiftComponent_Implementation() const
-{
-    return BoardShiftComponent;
 }
 
 // --- Lifecycle ---
@@ -95,27 +81,9 @@ void AConnectIt_BoardManager::BeginPlay()
         BoardManagerSubsystem->RegisterBoardManager(this);
     }
 
-    // Board state changes replicate identically to server and client via
-    // BoardStateComponent's OnRep -- listen here, on both machines, so the
-    // gated visual sequence (UGameEventTaskSubsystem tags) fires the same
-    // way everywhere instead of only on the server
-    if (IsValid(BoardStateComponent))
-    {
-        BoardStateComponent->OnBoardStateChanged.AddDynamic(
-            this, &AConnectIt_BoardManager::HandleBoardStateChanged);
-    }
-
     if (HasAuthority())
     {
-        BindShiftComponent();
         BindParticipantManager();
-        
-        // Sync rules from config to actor
-        if (IsValid(ConnectItConfig))
-        {
-            WinScoreThreshold = ConnectItConfig->WinScoreThreshold;
-            ConnectLength     = ConnectItConfig->ConnectLength;
-        }
     }
 }
 
@@ -161,18 +129,6 @@ void AConnectIt_BoardManager::BindInterpreters()
         TEXT("ConnectIt_BoardManager: Interpreters bound"));
 }
 
-void AConnectIt_BoardManager::BindShiftComponent()
-{
-    if (!IsValid(BoardShiftComponent)) return;
-
-    BoardShiftComponent->OnShiftResultReady.AddDynamic(
-        this,
-        &AConnectIt_BoardManager::HandleShiftResult);
-
-    UE_LOG(LogTemp, Log,
-        TEXT("ConnectIt_BoardManager: Shift component wired"));
-}
-
 // --- Board Lifecycle ---
 
 void AConnectIt_BoardManager::InitialiseBoard(int32 NumFactions)
@@ -211,10 +167,9 @@ void AConnectIt_BoardManager::InitialiseBoard(int32 NumFactions)
 
     UE_LOG(LogTemp, Log,
         TEXT("ConnectIt_BoardManager: Board initialised — "
-             "%d tiles, %d factions, win threshold %.0f"),
+             "%d tiles, %d factions"),
         TilePositions.Num(),
-        NumFactions,
-        WinScoreThreshold);
+        NumFactions);
 }
 
 // --- Request Processing ---
@@ -233,7 +188,33 @@ void AConnectIt_BoardManager::ProcessRequest(const FTurnActionRequest& Request)
 
     if (Request.RequestType == ConnectIt_Game_PlacePiece)
     {
-        HandlePlacePieceRequest(Request);
+        if (const FConnectItRequestPlacePiece* Payload =
+            Request.Payload.GetPtr<FConnectItRequestPlacePiece>())
+        {
+            HandlePlacePieceRequest(*Payload, Request.FactionID);
+        }
+        else
+        {
+            UE_LOG(LogTemp, Error,
+                TEXT("ConnectIt_BoardManager: PlacePiece request payload "
+                     "missing or wrong type"));
+        }
+        return;
+    }
+
+    if (Request.RequestType == ConnectIt_Game_Shift)
+    {
+        if (const FConnectItRequestBoardShift* Payload =
+            Request.Payload.GetPtr<FConnectItRequestBoardShift>())
+        {
+            HandleShiftRequest(*Payload, Request.FactionID);
+        }
+        else
+        {
+            UE_LOG(LogTemp, Error,
+                TEXT("ConnectIt_BoardManager: Shift request payload "
+                     "missing or wrong type"));
+        }
         return;
     }
 
@@ -242,7 +223,8 @@ void AConnectIt_BoardManager::ProcessRequest(const FTurnActionRequest& Request)
         *Request.RequestType.ToString());
 }
 
-void AConnectIt_BoardManager::HandlePlacePieceRequest(const FTurnActionRequest& Request)
+void AConnectIt_BoardManager::HandlePlacePieceRequest(
+    const FConnectItRequestPlacePiece& Request, int32 FactionID) const
 {
     if (Request.Positions.IsEmpty())
     {
@@ -269,27 +251,27 @@ void AConnectIt_BoardManager::HandlePlacePieceRequest(const FTurnActionRequest& 
     if (FConnectItTileData* TileData =
         NewState.GetTileDataMutable(TargetPosition))
     {
-        TileData->FactionPiece = Request.FactionID;
+        TileData->FactionPiece = FactionID;
     }
 
-    const float PointsScored = CheckAndApplyScoring(
-        NewState, TargetPosition, Request.FactionID);
+    const float PointsScored = BoardRulesComponent->ApplyScoring(
+        NewState, TargetPosition, FactionID);
 
-    CheckWinCondition(NewState);
+    BoardRulesComponent->CheckWinCondition(NewState);
 
     // Record what happened -- replicated alongside the state itself via
-    // ApplyAndBroadcast, instead of broadcasting gameplay delegates
-    // directly here. This only ever runs on the server, so a direct
-    // broadcast would never reach a real remote client. HandleBoardStateChanged
+    // SetBoardState, instead of broadcasting gameplay delegates directly
+    // here. This only ever runs on the server, so a direct broadcast would
+    // never reach a real remote client. UConnectIt_BoardSequencerComponent
     // reads this back from BoardSnapshot.ChangeEvent on both server and
     // client (via OnBoardStateChanged, which already fires symmetrically)
-    // and fires the typed delegates + gated visual sequence from there.
+    // and drives the gated visual sequence from there.
     FConnectItBoardChangeEvent ChangeEvent;
     ChangeEvent.bPiecePlaced        = true;
     ChangeEvent.PlacedPosition      = TargetPosition;
-    ChangeEvent.PlacingFactionSlot  = Request.FactionID;
+    ChangeEvent.PlacingFactionSlot  = FactionID;
     ChangeEvent.bLineScored         = PointsScored > 0.f;
-    ChangeEvent.ScoringFactionSlot  = Request.FactionID;
+    ChangeEvent.ScoringFactionSlot  = FactionID;
     ChangeEvent.PointsScored        = PointsScored;
     // Edge-triggered -- true only on the transition into game-over, not
     // "the game is currently over" (Current.bGameOver would already be
@@ -301,289 +283,123 @@ void AConnectIt_BoardManager::HandlePlacePieceRequest(const FTurnActionRequest& 
     {
         UE_LOG(LogTemp, Log,
             TEXT("ConnectIt_BoardManager: Faction %d scored %.0f points"),
-            Request.FactionID, PointsScored);
+            FactionID, PointsScored);
     }
 
-    BoardStateComponent->ApplyAndBroadcast(NewState, ChangeEvent);
+    BoardStateComponent->SetBoardState(NewState, ChangeEvent);
 }
 
-void AConnectIt_BoardManager::HandleShiftResult(
-    const FShiftOperation& Operation,
-    const FShiftResult& Result)
+void AConnectIt_BoardManager::HandleShiftRequest(
+    const FConnectItRequestBoardShift& Request, int32 FactionID) const
 {
-    if (!HasAuthority()) return;
-
-    FConnectItBoardState NewState =
-        BoardStateComponent->GetCurrentState();
-
-    // Snapshot positions before remap to prevent mid-remap overwrites
-    TMap<FGridPosition, FConnectItTileData> Snapshot;
-    for (const auto& [OldPos, NewPos] : Result.PositionRemap)
+    if (!IsValid(BoardShiftComponent))
     {
-        const FConnectItTileData* Data = NewState.GetTileData(OldPos);
-        if (Data) Snapshot.Add(OldPos, *Data);
+        UE_LOG(LogTemp, Error,
+            TEXT("ConnectIt_BoardManager: HandleShiftRequest — "
+                 "ShiftStateComponent is null"));
+        return;
     }
 
-    // Apply remap atomically from snapshot
-    for (const auto& [OldPos, NewPos] : Result.PositionRemap)
+    FConnectItBoardState NewState = BoardStateComponent->GetCurrentState();
+    FShiftResult ShiftResult;
+    if (!BoardShiftComponent->ComputeShift(
+        NewState, ShiftResult, Request.ShiftOperation))
     {
-        const FConnectItTileData* Data = Snapshot.Find(OldPos);
-        if (Data)
-        {
-            NewState.SetTileData(NewPos, *Data);
-        }
-        else
-        {
-            NewState.SetTileData(NewPos, FConnectItTileData());
-        }
+        UE_LOG(LogTemp, Warning,
+            TEXT("ConnectIt_BoardManager: Shift rejected — "
+                 "ComputeShift returned an invalid result"));
+        return;
     }
 
-    // NOTE: OnShiftApplied has the same server-only-broadcast issue
-    // OnPiecePlaced/OnLineScored/OnPlayerWin had -- deferred, not fixed
-    // here. FShiftResult's PositionRemap/WrappingPositions aren't
-    // UPROPERTY-tagged, so folding shift into FConnectItBoardChangeEvent
-    // needs a UnrealGridMechanics plugin change and its own design pass.
-    BoardStateComponent->ApplyAndBroadcast(NewState, FConnectItBoardChangeEvent());
-    OnShiftApplied.Broadcast(Operation, Result);
+    // Record what happened -- same authoritative-first pattern as
+    // HandlePlacePieceRequest: commit state via SetBoardState first, then
+    // UConnectIt_BoardSequencerComponent (fires identically on server and
+    // client) drives the gated visual sequence from the replicated
+    // ChangeEvent. Parallel arrays instead of Result's TMap/TSet directly --
+    // those don't replicate (see FConnectItBoardChangeEvent's Shift fields).
+    FConnectItBoardChangeEvent ChangeEvent;
+    ChangeEvent.bShiftApplied = true;
+    ChangeEvent.ShiftOperation = Request.ShiftOperation;
+    ShiftResult.PositionRemap.GenerateKeyArray(ChangeEvent.ShiftFromPositions);
+    for (const FGridPosition& FromPos : ChangeEvent.ShiftFromPositions)
+    {
+        ChangeEvent.ShiftToPositions.Add(ShiftResult.PositionRemap[FromPos]);
+    }
+    
+    ChangeEvent.ShiftWrappingPositions = ShiftResult.WrappingPositions.Array();
+
+    BoardStateComponent->SetBoardState(NewState, ChangeEvent);
 }
 
-// --- Game Logic ---
-
-float AConnectIt_BoardManager::CheckAndApplyScoring(
-    FConnectItBoardState& MutableState,
-    FGridPosition Position,
-    int32 FactionSlot)
+void AConnectIt_BoardManager::BindParticipantManager()
 {
-    TArray<TArray<FGridPosition>> ScoringLines =
-        FindScoringLines(MutableState, Position, FactionSlot);
+    ParticipantManagerRef = UConnectIt_GameUtilityLibrary::GetParticipantManager(this);
 
-    if (ScoringLines.IsEmpty()) return 0.f;
-
-    float TotalPoints = 0.f;
-
-    for (const TArray<FGridPosition>& Line : ScoringLines)
+    if (IsValid(ParticipantManagerRef))
     {
-        TotalPoints += ApplyScoringLine(
-            MutableState, Line, Position, FactionSlot);
-    }
+        ParticipantManagerRef->OnActiveControllerChanged.AddDynamic(
+            this, &AConnectIt_BoardManager::HandleActiveControllerChanged);
 
-    if (MutableState.ScoreBoard.IsValidIndex(FactionSlot))
-    {
-        MutableState.ScoreBoard[FactionSlot] += TotalPoints;
-    }
-
-    return TotalPoints;
-}
-
-TArray<TArray<FGridPosition>> AConnectIt_BoardManager::FindScoringLines(
-    const FConnectItBoardState& State,
-    FGridPosition Position,
-    int32 FactionSlot) const
-{
-    TArray<TArray<FGridPosition>> ScoringLines;
-
-    for (const FGridDirectionVector& Dir : GetScoringDirections())
-    {
-        TArray<FGridPosition> Line;
-        Line.Add(Position);
-
-        // Walk positive direction
-        for (int32 Step = 1; Step < ConnectLength * 2; Step++)
-        {
-            FGridPosition Check(
-                Position.X + Step * Dir.Row,
-                Position.Y + Step * Dir.Column);
-
-            const FConnectItTileData* Data = State.GetTileData(Check);
-            if (!Data || Data->FactionPiece != FactionSlot) break;
-            Line.Add(Check);
-        }
-
-        // Walk negative direction
-        for (int32 Step = 1; Step < ConnectLength * 2; Step++)
-        {
-            FGridPosition Check(
-                Position.X - Step * Dir.Row,
-                Position.Y - Step * Dir.Column);
-
-            const FConnectItTileData* Data = State.GetTileData(Check);
-            if (!Data || Data->FactionPiece != FactionSlot) break;
-            Line.Add(Check);
-        }
-
-        if (Line.Num() >= ConnectLength)
-        {
-            ScoringLines.Add(MoveTemp(Line));
-        }
-    }
-
-    return ScoringLines;
-}
-
-float AConnectIt_BoardManager::ApplyScoringLine(
-    FConnectItBoardState& MutableState,
-    const TArray<FGridPosition>& Line,
-    FGridPosition CompletingPosition,
-    int32 FactionSlot) const
-{
-    float PointsScored = 0.f;
-
-    for (const FGridPosition& Position : Line)
-    {
-        FConnectItTileData* TileData = MutableState.GetTileDataMutable(Position);
-        if (!TileData) continue;
-
-        PointsScored += TileData->Multiplier;
-
-        // Remove piece and increment multiplier
-        TileData->FactionPiece = -1;
-        TileData->Multiplier  += 1.0f;
-    }
-
-    // Completing piece stays on the board
-    if (FConnectItTileData* CompletingTile =
-        MutableState.GetTileDataMutable(CompletingPosition))
-    {
-        CompletingTile->FactionPiece = FactionSlot;
-    }
-
-    return PointsScored;
-}
-
-void AConnectIt_BoardManager::CheckWinCondition(
-    FConnectItBoardState& MutableState) const
-{
-    for (int32 i = 0; i < MutableState.ScoreBoard.Num(); i++)
-    {
-        if (MutableState.ScoreBoard[i] >= WinScoreThreshold)
-        {
-            MutableState.bGameOver         = true;
-            MutableState.WinningFactionSlot = i;
-
-            UE_LOG(LogTemp, Log,
-                TEXT("ConnectIt_BoardManager: "
-                     "Faction %d wins with %.0f points"),
-                i, MutableState.ScoreBoard[i]);
-
-            return;
-        }
+        ParticipantManagerRef->OnTurnResolutionStarted.AddDynamic(
+            this, &AConnectIt_BoardManager::HandleTurnResolutionStarted);
     }
 }
 
-const TArray<FGridDirectionVector>&
-AConnectIt_BoardManager::GetScoringDirections()
+// --- Turn-End Sequencing ---
+
+void AConnectIt_BoardManager::HandleTurnResolutionStarted()
 {
-    static const TArray<FGridDirectionVector> Directions =
+    if (!IsValid(ParticipantManagerRef)) return;
+
+    // Hold immediately, synchronously during this broadcast -- see
+    // UTurnBasedParticipantManagerComponent::EndTurn for why that's race-free.
+    ParticipantManagerRef->BeginResolutionHold();
+
+    if (!IsValid(BoardSequencerComponent) || BoardSequencerComponent->IsIdle())
     {
-        { 0,  1 },  // Row
-        { 1,  0 },  // Column
-        { 1,  1 },  // Diagonal top-down
-        { 1, -1 }   // Diagonal bottom-up
-    };
-    return Directions;
+        BeginTurnEndSequence();
+        return;
+    }
+
+    BoardSequencerComponent->OnSequenceIdle.AddDynamic(
+        this, &AConnectIt_BoardManager::HandleBoardSequenceIdle);
 }
 
-// --- Gated Visual Sequencing ---
-
-void AConnectIt_BoardManager::HandleBoardStateChanged()
+void AConnectIt_BoardManager::HandleBoardSequenceIdle()
 {
-    if (!IsValid(BoardStateComponent)) return;
+    if (IsValid(BoardSequencerComponent))
+    {
+        BoardSequencerComponent->OnSequenceIdle.RemoveDynamic(
+            this, &AConnectIt_BoardManager::HandleBoardSequenceIdle);
+    }
 
-    const FConnectItBoardStateSnapshot* Snapshot = BoardStateComponent->GetBoardSnapshot();
-    if (!Snapshot) return;
-
-    const FConnectItBoardChangeEvent& Event = Snapshot->ChangeEvent;
-
-    // Not every board update has something to sequence -- board init and
-    // (currently) shifts leave ChangeEvent default-constructed
-    if (!Event.bPiecePlaced) return;
-
-    PendingChangeEventQueue.Add(Event);
-    TryStartNextSequence();
+    BeginTurnEndSequence();
 }
 
-void AConnectIt_BoardManager::TryStartNextSequence()
+void AConnectIt_BoardManager::BeginTurnEndSequence()
 {
-    if (bSequenceInFlight) return;
-    if (PendingChangeEventQueue.IsEmpty()) return;
-
-    bSequenceInFlight = true;
-    ActiveChangeEvent = PendingChangeEventQueue[0];
-    PendingChangeEventQueue.RemoveAt(0);
-
-    // Build the step list -- always PiecePlaced, then conditionally
-    // LineScored and/or PlayerWin, in that order. Empty steps are simply
-    // omitted rather than included and skipped.
-    TArray<FGameplayTagContainer> Steps;
-    if (ActiveChangeEvent.bPiecePlaced)
-    {
-        Steps.Add(FGameplayTagContainer(ConnectIt_Event_PiecePlaced));
-    }
-    if (ActiveChangeEvent.bLineScored)
-    {
-        Steps.Add(FGameplayTagContainer(ConnectIt_Event_LineScored));
-    }
-    if (ActiveChangeEvent.bGameWon)
-    {
-        Steps.Add(FGameplayTagContainer(ConnectIt_Event_PlayerWin));
-    }
-
     UGameEventTaskSubsystem* GameEventSubsystem =
         GetWorld() ? GetWorld()->GetSubsystem<UGameEventTaskSubsystem>() : nullptr;
 
     if (!IsValid(GameEventSubsystem))
     {
-        // No subsystem to trigger tags on -- nothing left to notify (no
-        // typed delegates exist any more; listeners bind directly to the
-        // subsystem), so just consider this sequence done and drain the
-        // next queued change event, if any
-        HandleSequenceComplete();
+        HandleTurnEndSequenceComplete();
         return;
     }
 
-    // No OnStepComplete handler needed -- there are no typed delegates left
-    // for this board manager to fire per-step. "Tell me now" listeners bind
-    // UGameEventTaskSubsystem::BindOnTagBegin directly (fires the instant
-    // TriggerTag runs, before any registered task executes); anyone needing
-    // payload data reads BoardStateComponent->GetChangeEvent().
     FOnTagSequenceComplete CompleteDelegate;
-    CompleteDelegate.BindDynamic(this, &AConnectIt_BoardManager::HandleSequenceComplete);
+    CompleteDelegate.BindDynamic(this, &AConnectIt_BoardManager::HandleTurnEndSequenceComplete);
 
-    GameEventSubsystem->QueueTagSequence(Steps, FOnTagSequenceStepComplete(), CompleteDelegate);
+    GameEventSubsystem->QueueTagSequence(
+        { FGameplayTagContainer(ConnectIt_Event_TurnEnd) },
+        FOnTagSequenceStepComplete(),
+        CompleteDelegate);
 }
 
-void AConnectIt_BoardManager::HandleSequenceComplete()
+void AConnectIt_BoardManager::HandleTurnEndSequenceComplete()
 {
-    bSequenceInFlight = false;
-    TryStartNextSequence();
-}
-
-// --- Config Accessors ---
-
-UActionLoadoutDataAsset* AConnectIt_BoardManager::GetPlayerLoadout() const
-{
-    return IsValid(ConnectItConfig)
-        ? ConnectItConfig->PlayerLoadout : nullptr;
-}
-
-UActionLoadoutDataAsset* AConnectIt_BoardManager::GetEnemyLoadout() const
-{
-    return IsValid(ConnectItConfig)
-        ? ConnectItConfig->EnemyLoadout : nullptr;
-}
-
-float AConnectIt_BoardManager::GetWinScoreThreshold() const
-{
-    return IsValid(ConnectItConfig)
-        ? ConnectItConfig->WinScoreThreshold : 100.f;
-}
-
-void AConnectIt_BoardManager::BindParticipantManager()
-{
-    if (UTurnBasedParticipantManagerComponent* PM =
-        UConnectIt_GameUtilityLibrary::GetParticipantManager(this))
+    if (IsValid(ParticipantManagerRef))
     {
-        PM->OnActiveControllerChanged.AddDynamic(
-            this, &AConnectIt_BoardManager::HandleActiveControllerChanged);
+        ParticipantManagerRef->EndResolutionHold();
     }
 }

@@ -5,7 +5,6 @@
 #include "Engine/Level.h"
 #include "Engine/World.h"
 #include "EngineUtils.h"
-#include "Board/GridBoardManagerInterface.h"
 #include "Tile/GridTileRegistryComponent.h"
 #include "Tile/GridTileBase.h"
 
@@ -24,14 +23,15 @@ EDataValidationResult UGridValidatorBase::ValidateLoadedAsset_Implementation(
     if (!IsValid(World)) return EDataValidationResult::NotValidated;
 
     // Find the board actor in the level
+    // TODO: this loop never actually sets BoardActor, so this validator
+    // always falls through to NotValidated below -- was previously
+    // identifying the board actor via IGridBoardManagerInterface, which has
+    // since been removed (AConnectIt_BoardManager was its only implementer
+    // and had no generic plugin-side purpose). Needs a new way to identify
+    // the board actor if this validator is to actually run its check.
     AActor* BoardActor = nullptr;
     for (TActorIterator<AActor> It(World); It; ++It)
     {
-        // if (It->Implements<UGridBoardManagerInterface>())
-        // {
-        //     BoardActor = *It;
-        //     break;
-        // }        
     }
 
     if (!IsValid(BoardActor))

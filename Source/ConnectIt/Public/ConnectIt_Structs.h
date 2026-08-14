@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "GridMechanicsBaseStructs.h"
+#include "Board/Shift/GridShiftTypes.h"
 #include "ConnectIt_Structs.generated.h"
 
 
@@ -179,6 +180,31 @@ struct FConnectItBoardChangeEvent
 
     UPROPERTY(BlueprintReadOnly)
     int32 WinningFactionSlot = -1;
+
+    // --- Shift ---
+    // Always disjoint from the placement fields above -- a single
+    // ApplyAndBroadcast call represents exactly one kind of change, so
+    // bShiftApplied and bPiecePlaced never both end up true on the same event.
+
+    UPROPERTY(BlueprintReadOnly)
+    bool bShiftApplied = false;
+
+    UPROPERTY(BlueprintReadOnly)
+    FShiftOperation ShiftOperation;
+
+    // Parallel arrays, not FShiftResult's TMap/TSet directly -- TMap/TSet
+    // don't replicate (same reason FConnectItBoardState uses parallel
+    // TArrays instead of a TMap). Old/new position identity is kept
+    // explicit so the shift animation plays the same way on clients as it
+    // does on the server. ShiftFromPositions[i] moved to ShiftToPositions[i].
+    UPROPERTY(BlueprintReadOnly)
+    TArray<FGridPosition> ShiftFromPositions;
+
+    UPROPERTY(BlueprintReadOnly)
+    TArray<FGridPosition> ShiftToPositions;
+
+    UPROPERTY(BlueprintReadOnly)
+    TArray<FGridPosition> ShiftWrappingPositions;
 };
 
 // Snapshot -- the ONE replicated property on UConnectItBoardStateComponent
@@ -206,4 +232,26 @@ struct FConnectItBoardStateSnapshot
     // What specifically changed on this update -- see FConnectItBoardChangeEvent
     UPROPERTY(BlueprintReadWrite)
     FConnectItBoardChangeEvent ChangeEvent;
+};
+
+// FTurnActionRequest payload -- FactionID lives on the envelope itself,
+// not duplicated here (see FTurnActionRequest in TurnBasedMechanicsStructs.h)
+USTRUCT(BlueprintType)
+struct FConnectItRequestPlacePiece
+{
+    GENERATED_BODY()
+
+    // Grid positions relevant to this request
+    UPROPERTY(BlueprintReadWrite)
+    TArray<FGridPosition> Positions;
+};
+
+// FTurnActionRequest payload -- see FConnectItRequestPlacePiece above
+USTRUCT(BlueprintType)
+struct FConnectItRequestBoardShift
+{
+    GENERATED_BODY()
+
+    UPROPERTY(BlueprintReadWrite)
+    FShiftOperation ShiftOperation;
 };

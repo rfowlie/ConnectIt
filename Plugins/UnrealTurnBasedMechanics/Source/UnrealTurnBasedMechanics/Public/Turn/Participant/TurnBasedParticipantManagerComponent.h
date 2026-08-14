@@ -43,13 +43,6 @@ public:
         Category = "Turn Based|Config")
     float ReconnectTimeout = 30.f;
 
-    // Duration of the resolution phase between TurnEnd and next TurnStart
-    // External systems hook OnTurnResolutionStarted to drive their logic
-    // Manager advances to next turn after this duration automatically
-    UPROPERTY(EditAnywhere, BlueprintReadOnly,
-        Category = "Turn Based|Config")
-    float TurnResolutionDuration = 2.0f;
-
     // Turn order strategy -- must implement ITurnOrderInterface
     // Instanced inline in Details panel
     // Defaults to USequentialTurnOrderStrategy if not set
@@ -98,6 +91,19 @@ public:
     // Called by participant manager when a participant confirms ready
     void NotifyParticipantReady(AController* Controller);
 
+    // Holds AdvanceToNextParticipant back during the resolution phase --
+    // external systems bind to OnTurnResolutionStarted and call this
+    // immediately if they have gated visual/logic work to finish first,
+    // then call EndResolutionHold() once that work is genuinely done.
+    // Replaces the old fixed-duration TurnResolutionDuration timer, which
+    // only ever estimated how long that work would take instead of knowing.
+    void BeginResolutionHold();
+
+    // Releases a hold placed by BeginResolutionHold(). Once the hold count
+    // returns to zero (and resolution is still pending), advances to the
+    // next participant immediately.
+    void EndResolutionHold();
+
     // --- Delegates ---
 
     UPROPERTY(BlueprintAssignable, Category = "Turn Based")
@@ -113,8 +119,9 @@ public:
     FOnAllParticipantsReady OnAllParticipantsReady;
 
     // Hook for external systems during resolution phase
-    // Cinematics, scoring visuals, dialogue etc. bind here
-    // Manager auto-advances after TurnResolutionDuration
+    // Cinematics, scoring visuals, dialogue etc. bind here and call
+    // BeginResolutionHold()/EndResolutionHold() around their own work.
+    // Manager advances immediately once nothing is holding it.
     UPROPERTY(BlueprintAssignable, Category = "Turn Based")
     FOnTurnResolutionStarted OnTurnResolutionStarted;
 
@@ -141,10 +148,13 @@ private:
     
     // --- Timers ---
     FTimerHandle TurnTimerHandle;
-    FTimerHandle ResolutionTimerHandle;
     FTimerHandle ReconnectTimerHandle;
 
     int32 DisconnectedParticipantIndex = -1;
+
+    // Count of outstanding BeginResolutionHold() calls not yet matched by
+    // EndResolutionHold() -- AdvanceToNextParticipant is deferred while > 0
+    int32 ResolutionHoldCount = 0;
 
     // --- State Machine ---
 
@@ -154,7 +164,6 @@ private:
    
     void AdvanceToNextParticipant();
     void HandleTurnTimeout();
-    void HandleResolutionComplete();
     void HandleReconnectTimeout();
     void CheckReadyStatus();
     bool CheckGameOver() const;

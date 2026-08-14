@@ -19,10 +19,9 @@ AConnectIt_GameMode::AConnectIt_GameMode()
     GameStateClass  = AConnectIt_GameState::StaticClass();
     PlayerStateClass = ATurnBasedPlayerState::StaticClass();
 
-    TurnDuration           = 90.f;
-    ForfeitThreshold       = 3;
-    ReconnectTimeout       = 30.f;
-    TurnResolutionDuration = 1.5f;
+    TurnDuration     = 90.f;
+    ForfeitThreshold = 3;
+    ReconnectTimeout = 30.f;
 }
 
 // --- Overrides ---

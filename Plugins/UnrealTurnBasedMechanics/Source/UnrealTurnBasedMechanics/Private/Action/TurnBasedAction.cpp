@@ -14,6 +14,8 @@ void UTurnBasedAction::InitialiseAction(
 {
     OwningController       = InOwningController;
     EnhancedInputComponent = InInputComponent;
+
+    PostInitialiseAction();
 }
 
 void UTurnBasedAction::Complete()
@@ -239,7 +241,7 @@ void UTurnBasedAction::OnSelectionInputTriggered()
 {
     AGridTileBase* Tile = CurrentHoveredTile.Get();
     if (!IsValid(Tile)) return;
-    if (IsValidSelectionTile(Tile)) HandleValidSelection(Tile);
+    if (IsValidSelectionTile(Tile)) { HandleValidSelection(Tile); }
 }
 
 // --- Default Virtual Implementations ---

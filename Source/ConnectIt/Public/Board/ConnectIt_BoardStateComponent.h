@@ -34,7 +34,7 @@ public:
     // Clients receive via OnRep -- AConnectIt_BoardManager reads ChangeEvent
     // from that same signal on both machines to drive gated visual
     // sequencing (see HandleBoardStateChanged)
-    void ApplyAndBroadcast(
+    void SetBoardState(
         const FConnectItBoardState& NewState,
         const FConnectItBoardChangeEvent& ChangeEvent);
 
@@ -71,18 +71,22 @@ public:
         return BoardSnapshot.ChangeEvent;
     }
 
-    // Convenience -- reads from current state
-    UFUNCTION(BlueprintPure, Category = "Board State")
-    bool IsTileValidForPlacement(const FGridPosition Position) const
-    {
-        return BoardSnapshot.CurrentState.IsTileValidForPlacement(Position);
-    }
-
-    UFUNCTION(BlueprintPure, Category = "Board State")
-    float GetFactionScore(int32 FactionSlot) const
-    {
-        return BoardSnapshot.CurrentState.GetScore(FactionSlot);
-    }
+    /*
+     *  TODO: remove, let's try not repeat ourselves
+     *  unless we opt to move all the helper functions out of the struct into here
+     */
+    // // Convenience -- reads from current state
+    // UFUNCTION(BlueprintPure, Category = "Board State")
+    // bool IsTileValidForPlacement(const FGridPosition Position) const
+    // {
+    //     return BoardSnapshot.CurrentState.IsTileValidForPlacement(Position);
+    // }
+    //
+    // UFUNCTION(BlueprintPure, Category = "Board State")
+    // float GetFactionScore(int32 FactionSlot) const
+    // {
+    //     return BoardSnapshot.CurrentState.GetScore(FactionSlot);
+    // }
 
     virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
@@ -93,10 +97,6 @@ private:
     // OnRep fires void OnBoardStateChanged delegate on clients
     UPROPERTY(ReplicatedUsing = OnRep_BoardSnapshot)
     FConnectItBoardStateSnapshot BoardSnapshot;
-
-    // Captures current state as previous before applying new state
-    // Server only -- called inside ApplyAndBroadcast
-    void CaptureSnapshot();
 
     UFUNCTION()
     void OnRep_BoardSnapshot();
