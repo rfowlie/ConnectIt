@@ -51,6 +51,7 @@ void UConnectIt_PlacePieceAction::PostInitialiseAction_Implementation()
 
 void UConnectIt_PlacePieceAction::Activate_Internal_Implementation()
 {
+    Super::Activate_Internal_Implementation();
     UE_LOG(LogTemp, Log,
         TEXT("PlacePieceAction: Activated — awaiting tile selection"));
 }
@@ -88,7 +89,9 @@ bool UConnectIt_PlacePieceAction::IsValidHoverTile_Implementation(AGridTileBase*
 bool UConnectIt_PlacePieceAction::IsValidSelectionTile_Implementation(AGridTileBase* Tile) const
 {
     // Selection validity matches hover validity
-    return IsValidHoverTile_Implementation(Tile);
+    if (!IsValidHoverTile_Implementation(Tile)) return false;
+
+    return Super::IsValidSelectionTile_Implementation(Tile);
 }
 
 void UConnectIt_PlacePieceAction::HandleValidHover_Implementation(AGridTileBase* Tile)

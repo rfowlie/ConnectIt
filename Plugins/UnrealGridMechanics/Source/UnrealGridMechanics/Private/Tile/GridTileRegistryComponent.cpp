@@ -219,47 +219,51 @@ TArray<FGridPosition> UGridTileRegistryComponent::GetColumnPositions(const int32
 #if WITH_EDITOR
 void UGridTileRegistryComponent::ValidateTileAlignment() const
 {
-    if (!IsValid(GridSubsystem)) return;
-
-    TArray<AGridTileBase*> AllTiles = GridSubsystem->GetAllTiles();
-    int32 MisalignedCount = 0;
-
-    for (AGridTileBase* Tile : AllTiles)
-    {
-        if (!IsValid(Tile)) continue;
-
-        const FVector WorldLocation  = Tile->GetActorLocation();
-        const FGridPosition Expected = WorldToGridPosition(WorldLocation);
-        // const FGridPosition Actual   = Tile->GetGridPosition();
-        const FGridPosition Actual   = FGridPosition();
-
-        if (Expected != Actual)
-        {
-            UE_LOG(LogTemp, Warning,
-                TEXT("GridRegistryComponent: Tile %s is misaligned — "
-                     "GridPosition (%d,%d) does not match world position (%d,%d). "
-                     "Expected GridPosition based on world location with GridSize %d."),
-                *Tile->GetName(),
-                Actual.X, Actual.Y,
-                Expected.X, Expected.Y,
-                GridSize);
-
-            MisalignedCount++;
-        }
-    }
-
-    if (MisalignedCount == 0)
-    {
-        UE_LOG(LogTemp, Log,
-            TEXT("GridRegistryComponent: All %d tiles validated successfully"),
-            AllTiles.Num());
-    }
-    else
-    {
-        UE_LOG(LogTemp, Warning,
-            TEXT("GridRegistryComponent: %d misaligned tile(s) found — "
-                 "check GridSize (%d) matches tile placement"),
-            MisalignedCount, GridSize);
-    }
+    /*
+     * TODO: this relies on tile actors to be given a GridPosition in editor
+     * this is currently not happening so always misaligned
+     */ 
+    // if (!IsValid(GridSubsystem)) return;
+    //
+    // TArray<AGridTileBase*> AllTiles = GridSubsystem->GetAllTiles();
+    // int32 MisalignedCount = 0;
+    //
+    // for (AGridTileBase* Tile : AllTiles)
+    // {
+    //     if (!IsValid(Tile)) continue;
+    //
+    //     const FVector WorldLocation  = Tile->GetActorLocation();
+    //     const FGridPosition Expected = WorldToGridPosition(WorldLocation);
+    //     // const FGridPosition Actual   = Tile->GetGridPosition();
+    //     const FGridPosition Actual   = FGridPosition();
+    //
+    //     if (Expected != Actual)
+    //     {
+    //         UE_LOG(LogTemp, Warning,
+    //             TEXT("GridRegistryComponent: Tile %s is misaligned — "
+    //                  "GridPosition (%d,%d) does not match world position (%d,%d). "
+    //                  "Expected GridPosition based on world location with GridSize %d."),
+    //             *Tile->GetName(),
+    //             Actual.X, Actual.Y,
+    //             Expected.X, Expected.Y,
+    //             GridSize);
+    //
+    //         MisalignedCount++;
+    //     }
+    // }
+    //
+    // if (MisalignedCount == 0)
+    // {
+    //     UE_LOG(LogTemp, Log,
+    //         TEXT("GridRegistryComponent: All %d tiles validated successfully"),
+    //         AllTiles.Num());
+    // }
+    // else
+    // {
+    //     UE_LOG(LogTemp, Warning,
+    //         TEXT("GridRegistryComponent: %d misaligned tile(s) found — "
+    //              "check GridSize (%d) matches tile placement"),
+    //         MisalignedCount, GridSize);
+    // }
 }
 #endif
