@@ -280,6 +280,7 @@ void UTurnBasedParticipantManagerComponent::StartTurn(int32 ParticipantIndex)
     ActiveParticipantIndex = ParticipantIndex;
     ReplicatedTurnDuration = TurnDuration;
     TurnNumber++;
+    Participants[ParticipantIndex].TurnsTaken++;
 
     // Match is now actively running a turn
     // Fired before turn notifications so clients know updating has ended

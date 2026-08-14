@@ -37,6 +37,14 @@ public:
     UFUNCTION(BlueprintPure, Category = "Turn Based|Participant")
     bool IsMyTurn() const { return bIsMyTurn; }
 
+    // Resolves the match's manager component (lives on GameState, so this
+    // is reachable on both server and clients). Public so callers outside
+    // the friend relationship -- e.g. UTurnBasedControllerCoordinatorComponent
+    // building an FTurnStartContext for an opponent's turn -- can read the
+    // manager's already-replicated TurnNumber/Participants directly instead
+    // of re-deriving this same resolution themselves.
+    UTurnBasedParticipantManagerComponent* GetParticipantManager() const;
+
     // --- Server RPCs ---
 
     UFUNCTION(Server, Reliable, BlueprintCallable, Category = "Turn Based|Participant")
@@ -92,6 +100,4 @@ private:
 
     static bool IsMyTurnStartingPhase(ETurnPhase Phase);
     static bool IsMyTurnEndingPhase(ETurnPhase Phase);
-
-    UTurnBasedParticipantManagerComponent* GetParticipantManager() const;
 };

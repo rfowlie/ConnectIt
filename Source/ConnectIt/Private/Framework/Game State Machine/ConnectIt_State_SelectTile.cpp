@@ -1,7 +1,7 @@
 ﻿// Fill out your copyright notice in the Description page of Project Settings.
 
 
-#include "Framework/State/ConnectIt_State_SelectTile.h"
+#include "ConnectIt/Public/Framework/Game State Machine/ConnectIt_State_SelectTile.h"
 
 #include "ConnectIt_GameplayTags.h"
 #include "Framework/Data/ConnectIt_GameFacade.h"

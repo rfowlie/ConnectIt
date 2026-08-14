@@ -1,12 +1,12 @@
 ﻿// Fill out your copyright notice in the Description page of Project Settings.
 
 
-#include "Framework/State/ConnectIt_State_Game.h"
+#include "ConnectIt/Public/Framework/Game State Machine/ConnectIt_State_Game.h"
 #include "Framework/Data/ConnectIt_GameFacade.h"
 #include "Framework/Data/ConnectIt_GameViewModel.h"
-#include "Framework/State/ConnectIt_State_PlacePiece.h"
-#include "Framework/State/ConnectIt_State_UpdateGameBoard.h"
-#include "Framework/State/ConnectIt_State_SelectTile.h"
+#include "ConnectIt/Public/Framework/Game State Machine/ConnectIt_State_PlacePiece.h"
+#include "ConnectIt/Public/Framework/Game State Machine/ConnectIt_State_UpdateGameBoard.h"
+#include "ConnectIt/Public/Framework/Game State Machine/ConnectIt_State_SelectTile.h"
 #include "GameTurn/GameTurnTracker.h"
 #include "Tile/GridTileBase.h"
 

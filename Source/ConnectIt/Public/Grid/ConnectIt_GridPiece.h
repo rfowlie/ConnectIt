@@ -52,6 +52,7 @@ public:
 
 protected:
 
+	// TODO: rename to Initialize_Internal as this fires during the initialize function
 	// Called when FactionID replicates to clients
 	// Blueprint override to update mesh, material, particle etc.
 	UFUNCTION(BlueprintNativeEvent, Category = "ConnectIt|Piece")

@@ -33,13 +33,43 @@ struct UNREALTURNBASEDMECHANICS_API FTurnParticipantInfo
     UPROPERTY(BlueprintReadOnly)
     bool bConnected = true;
 
+    // How many turns this participant has personally had, including
+    // whichever one is currently active. Incremented in
+    // UTurnBasedParticipantManagerComponent::StartTurn alongside the
+    // match-wide TurnNumber counter -- use this, not TurnNumber, to answer
+    // "is this my Nth turn" (TurnNumber increments on every participant's
+    // turn, not just this one's).
+    UPROPERTY(BlueprintReadOnly)
+    int32 TurnsTaken = 0;
+
     // Per-player mutable state lives on ATurnBasedPlayerState
     // Read via cast when needed
     bool IsActiveParticipant() const;
 
     // Convenience -- reads from PlayerState
     FString GetDisplayName() const;
-    
+
+};
+
+// Passed to a participant's own ActionsComponent whenever any turn begins --
+// their own (NotifyTurnStarted) or someone else's (NotifyOpponentTurnStarted).
+// Same shape for both so a project override can react identically regardless
+// of whose turn it is. Deliberately not a full snapshot of every participant
+// -- Participants/TurnNumber already replicate independently on
+// UTurnBasedParticipantManagerComponent, reachable directly wherever needed.
+USTRUCT(BlueprintType)
+struct FTurnStartContext
+{
+    GENERATED_BODY()
+
+    // Global, match-wide count -- increments on every participant's turn
+    UPROPERTY(BlueprintReadOnly)
+    int32 TurnNumber = 0;
+
+    // Whose turn this is -- ActiveParticipant.TurnsTaken is how many turns
+    // THAT participant has personally had, including this one
+    UPROPERTY(BlueprintReadOnly)
+    FTurnParticipantInfo ActiveParticipant;
 };
 
 // Notification payload sent to participants on turn events

@@ -186,13 +186,19 @@ protected:
 
     UGridWorldSubsystem* GetGridSubsystem() const;
 
+    // Bind/unbind grid-tile hover + optional Enhanced Input selection.
+    // Called automatically from Activate_Internal_Implementation when
+    // bRequiresSelection is true. Exposed to subclasses so an action that
+    // defers selection to a later internal state (bRequiresSelection left
+    // false) can call these directly once it's ready -- see
+    // ConnectIt_TutorialShiftIntroAction for an example.
+    void BindSelectionInput();
+    void UnbindSelectionInput();
+
 private:
 
     UPROPERTY()
     TObjectPtr<UEnhancedInputComponent> EnhancedInputComponent = nullptr;
-
-    void BindSelectionInput();
-    void UnbindSelectionInput();
 
     // Shared tail of Complete()/Cancel() -- runs Deactivate_Internal,
     // clears the active flag, and broadcasts OnDeactivated

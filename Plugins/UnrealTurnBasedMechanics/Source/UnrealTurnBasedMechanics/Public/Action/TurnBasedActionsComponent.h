@@ -75,13 +75,13 @@ public:
     // Fires OnTurnStarted BlueprintNativeEvent
     // Default implementation clears stack and pushes RootAction
     UFUNCTION(BlueprintCallable, Category = "Turn Based|Actions")
-    void NotifyTurnStarted(int32 InTurnNumber);
+    void NotifyTurnStarted(const FTurnStartContext& Context);
 
     // Called when opponent's turn starts
     // Fires OnOpponentTurnStarted BlueprintNativeEvent
     // Default implementation clears stack and pushes SpectatorViewerAction
     UFUNCTION(BlueprintCallable, Category = "Turn Based|Actions")
-    void NotifyOpponentTurnStarted();
+    void NotifyOpponentTurnStarted(const FTurnStartContext& Context);
 
     // Called when this participant's turn ends
     // Clears stack and pushes IdleViewerAction
@@ -225,13 +225,13 @@ protected:
     // Default: ClearAndPush(RootAction)
     // Subclass: call Super then push additional actions on top
     UFUNCTION(BlueprintNativeEvent, Category = "Turn Based|Actions")
-    void OnTurnStarted(int32 TurnNumber);
+    void OnTurnStarted(const FTurnStartContext& Context);
 
     // Override to customise opponent turn start behaviour
     // Default: ClearAndPush(SpectatorViewerAction)
     // Subclass: call Super then customise
     UFUNCTION(BlueprintNativeEvent, Category = "Turn Based|Actions")
-    void OnOpponentTurnStarted();
+    void OnOpponentTurnStarted(const FTurnStartContext& Context);
 
     // Override to customise turn end condition
     // Default: all bIsRequired actions have CompletionsThisTurn > 0

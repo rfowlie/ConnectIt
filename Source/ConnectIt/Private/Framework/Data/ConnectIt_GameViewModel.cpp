@@ -6,7 +6,7 @@
 #include "Framework/Data/ConnectIt_GameFacade.h"
 #include "Tile/GridTileBase.h"
 #include "Framework/Data/ConnectIt_PlayerData.h"
-#include "Framework/State/ConnectIt_State_Game.h"
+#include "ConnectIt/Public/Framework/Game State Machine/ConnectIt_State_Game.h"
 #include "Interface/GridFactionInterface.h"
 #include "Pooling/ActorPool.h"
 

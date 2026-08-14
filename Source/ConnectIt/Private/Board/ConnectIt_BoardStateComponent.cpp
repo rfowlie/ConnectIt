@@ -64,9 +64,9 @@ void UConnectIt_BoardStateComponent::SetBoardState(
     check(UCodingUtilsComponentLibrary::IsAuthoritative(this));
 
     // Capture current as previous before overwriting
-    BoardSnapshot.PreviousState = BoardSnapshot.CurrentState;
-    BoardSnapshot.CurrentState = NewState;
-    BoardSnapshot.ChangeEvent  = ChangeEvent;
+    // this calls the replication function which broadcasts change for clients
+    BoardSnapshot = FConnectItBoardStateSnapshot(
+        BoardSnapshot.CurrentState, NewState, ChangeEvent);
 
     // Fire on server immediately
     // Clients receive via OnRep_BoardSnapshot replication

@@ -217,8 +217,10 @@ struct FConnectItBoardStateSnapshot
 
     FConnectItBoardStateSnapshot() = default;
     FConnectItBoardStateSnapshot(
-        const FConnectItBoardState& InPreviousState, const FConnectItBoardState& InCurrentState) :
-    PreviousState(InPreviousState), CurrentState(InCurrentState) {}
+        const FConnectItBoardState& InPreviousState,
+        const FConnectItBoardState& InCurrentState,
+        const FConnectItBoardChangeEvent& InChangeEvent) :
+    PreviousState(InPreviousState), CurrentState(InCurrentState), ChangeEvent(InChangeEvent) {}
 
     // State before the most recent change
     // Set by server immediately before applying new state

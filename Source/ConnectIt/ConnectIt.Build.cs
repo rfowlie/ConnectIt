@@ -15,6 +15,7 @@ public class ConnectIt : ModuleRules
 			"Engine", 
 			"InputCore", 
 			"EnhancedInput",
+			"UMG",
 			"GameplayTags", 
 			"GameplayTasks", 
 			"GameplayAbilities",

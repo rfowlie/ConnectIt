@@ -201,9 +201,9 @@ void UTurnBasedActionsComponent::HandleNextActionRequested(TSubclassOf<UTurnBase
 
 // --- Turn Lifecycle ---
 
-void UTurnBasedActionsComponent::NotifyTurnStarted(int32 InTurnNumber)
+void UTurnBasedActionsComponent::NotifyTurnStarted(const FTurnStartContext& Context)
 {
-    CurrentTurnNumber = InTurnNumber;
+    CurrentTurnNumber = Context.TurnNumber;
 
     // Tick cooldowns -- it is our turn
     TickCooldowns(true);
@@ -215,28 +215,32 @@ void UTurnBasedActionsComponent::NotifyTurnStarted(int32 InTurnNumber)
     }
 
     // Fire designer hook -- default clears stack and pushes root
-    OnTurnStarted(InTurnNumber);
+    OnTurnStarted(Context);
 
     UE_LOG(LogTurnBasedMechanics, Log,
         TEXT("TurnBasedActionsComponent: Turn %d started on %s "
-             "— stack depth: %d"),
+             "(own turn #%d) — stack depth: %d"),
         CurrentTurnNumber,
         *GetOwner()->GetName(),
+        Context.ActiveParticipant.TurnsTaken,
         ActionStack.Num());
 }
 
-void UTurnBasedActionsComponent::NotifyOpponentTurnStarted()
+void UTurnBasedActionsComponent::NotifyOpponentTurnStarted(const FTurnStartContext& Context)
 {
     // Tick cooldowns -- not our turn
     TickCooldowns(false);
 
     // Fire designer hook -- default clears stack and pushes spectator
-    OnOpponentTurnStarted();
+    OnOpponentTurnStarted(Context);
 
     UE_LOG(LogTurnBasedMechanics, Log,
         TEXT("TurnBasedActionsComponent: Opponent turn started on %s "
-             "— stack depth: %d"),
+             "— turn %d, %s's own turn #%d, stack depth: %d"),
         *GetOwner()->GetName(),
+        Context.TurnNumber,
+        *Context.ActiveParticipant.GetDisplayName(),
+        Context.ActiveParticipant.TurnsTaken,
         ActionStack.Num());
 }
 
@@ -590,7 +594,7 @@ UTurnBasedAction* UTurnBasedActionsComponent::FindActionByTag(FGameplayTag Tag) 
 // --- Designer Hooks ---
 
 void UTurnBasedActionsComponent::OnTurnStarted_Implementation(
-    int32 TurnNumber)
+    const FTurnStartContext& Context)
 {
     if (!IsValid(RootAction))
     {
@@ -606,7 +610,8 @@ void UTurnBasedActionsComponent::OnTurnStarted_Implementation(
     ClearAndPush(RootAction);
 }
 
-void UTurnBasedActionsComponent::OnOpponentTurnStarted_Implementation()
+void UTurnBasedActionsComponent::OnOpponentTurnStarted_Implementation(
+    const FTurnStartContext& Context)
 {
     if (!IsValid(SpectatorViewerAction))
     {
