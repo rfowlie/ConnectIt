@@ -97,6 +97,25 @@ subsystem was built to get away from.
                                                             use the reference it
                                                             passes when it fires
 
+      IMPORTANT -- do the check before you bind, not instead of it. Binding
+      to OnBoardManagerReady without checking GetBoardManager() first is a
+      bug: RegisterBoardManager() may have already run (and already
+      broadcast) before your code executes, and a dynamic multicast
+      delegate does not replay past broadcasts to listeners that bind
+      after the fact -- you would wait forever for an event that already
+      happened. Always check the synchronous accessor first; only bind if
+      it comes back null.
+
+      Does the subsystem clear OnBoardManagerReady after it fires? No, and
+      it shouldn't -- RegisterBoardManager() is safe to call more than
+      once (PIE re-entry, a hypothetical board manager replacement), and
+      clearing the delegate after the first broadcast would silently break
+      any future re-registration from ever notifying listeners again. If a
+      specific listener only needs the reference once, it should unbind
+      itself (RemoveDynamic) inside its own handler once it's done -- a
+      per-listener decision the subsystem has no way to make on their
+      behalf.
+
   (B) "I want to REACT to something that happens on the board"
       e.g. a shift was applied, a piece was placed, a line was scored, someone won
 
