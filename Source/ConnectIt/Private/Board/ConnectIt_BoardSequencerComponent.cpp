@@ -81,7 +81,7 @@ void UConnectIt_BoardSequencerComponent::TryStartNextSequence()
     if (Steps.IsEmpty())
     {
         UE_LOG(LogTemp, Error,
-            TEXT("ConnectIt_BoardSequencerComponent: TyrStartNextSequence — "
+            TEXT("ConnectIt_BoardSequencerComponent: TryStartNextSequence — "
                  "no steps to register for event"));        
         return;
     }

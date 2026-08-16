@@ -84,9 +84,12 @@ public:
     // Called directly by player controller ServerRPC and AI controller.
     // Dispatches by RequestType, unwrapping Request.Payload into whichever
     // concrete struct that type expects (see FTurnActionRequest) and
-    // routing to the matching private HandleXRequest below.
+    // routing to the matching private HandleXRequest below. Returns
+    // whether the request succeeded -- the caller (AConnectIt_PlayerController)
+    // reports this back to the requesting client via ClientNotifyBoardChangeOutcome
+    // so UTurnBasedActionsComponent can resolve its awaiting-confirmation state.
     UFUNCTION(BlueprintCallable, Category = "ConnectIt|Board")
-    void ProcessRequest(const FTurnActionRequest& Request);
+    bool ProcessRequest(const FTurnActionRequest& Request);
 
 protected:
     
@@ -149,8 +152,8 @@ private:
     // struct -- it's the one piece of data every request type needs, so it
     // stays on FTurnActionRequest's envelope instead of being duplicated
     // into FConnectItRequestPlacePiece/FConnectItRequestBoardShift.
-    void HandlePlacePieceRequest(const FConnectItRequestPlacePiece& Request, int32 FactionID) const;
-    void HandleShiftRequest(const FConnectItRequestBoardShift& Request, int32 FactionID) const;
+    bool HandlePlacePieceRequest(const FConnectItRequestPlacePiece& Request, int32 FactionID) const;
+    bool HandleShiftRequest(const FConnectItRequestBoardShift& Request, int32 FactionID) const;
 
     // --- Turn-End Sequencing ---
     // Not a board-state concern -- BoardSequencerComponent stays scoped to

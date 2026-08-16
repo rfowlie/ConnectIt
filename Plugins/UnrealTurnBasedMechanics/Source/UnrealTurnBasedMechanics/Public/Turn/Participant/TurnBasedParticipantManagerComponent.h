@@ -129,10 +129,22 @@ public:
     FOnGameOver OnGameOver;
 
     // --- Helpers ---
-    
+
     // returns null on clients
     AController* GetControllerAtIndex(int32 Index) const;
-    
+
+    // Server-authoritative -- true if Controller is the actively-taking-turn
+    // participant right now. Safe to call from server-side code that needs
+    // to validate a request actually comes from whoever's turn it is; do
+    // NOT use UTurnBasedParticipantComponent::IsMyTurn() for this -- that
+    // flag is client-side-only (see its own doc comment) and always false
+    // on the server.
+    UFUNCTION(BlueprintPure, Category = "Turn Based")
+    bool IsActiveParticipant(AController* Controller) const
+    {
+        return IsValid(Controller) && GetControllerAtIndex(ActiveParticipantIndex) == Controller;
+    }
+
     virtual void GetLifetimeReplicatedProps(
         TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
@@ -155,6 +167,18 @@ private:
     // Count of outstanding BeginResolutionHold() calls not yet matched by
     // EndResolutionHold() -- AdvanceToNextParticipant is deferred while > 0
     int32 ResolutionHoldCount = 0;
+
+    // Set by BeginResolutionHold, reset alongside ResolutionHoldCount at the
+    // top of EndTurn. Distinguishes "nobody ever held resolution" from
+    // "something held it and already released it synchronously before
+    // OnTurnResolutionStarted.Broadcast() returned" -- both look identical
+    // as ResolutionHoldCount == 0 to EndTurn's post-broadcast fallback check,
+    // but only the first case should trigger it. Without this, a hold taken
+    // and released entirely within the broadcast (e.g. a gated tag sequence
+    // with nothing registered against it, resolving synchronously) causes
+    // EndResolutionHold's own AdvanceToNextParticipant call and EndTurn's
+    // fallback call to both fire for the same turn end.
+    bool bResolutionHoldTakenThisTurnEnd = false;
 
     // --- State Machine ---
 

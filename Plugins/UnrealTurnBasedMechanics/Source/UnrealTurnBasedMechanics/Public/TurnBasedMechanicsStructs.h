@@ -152,6 +152,17 @@ struct FTurnActionRequest
     {
         return RequestType.IsValid() && FactionID >= 0 && Payload.IsValid();
     }
+
+    // Used by UTurnBasedActionsComponent's awaiting-confirmation machinery
+    // to match an incoming server outcome against the request it's waiting
+    // on -- see NotifyBoardChangeOutcome.
+    bool operator==(const FTurnActionRequest& Other) const
+    {
+        return RequestType == Other.RequestType
+            && FactionID == Other.FactionID
+            && AdditionalData == Other.AdditionalData
+            && Payload == Other.Payload;
+    }
 };
 
 // Modifier written by one participant, read by another

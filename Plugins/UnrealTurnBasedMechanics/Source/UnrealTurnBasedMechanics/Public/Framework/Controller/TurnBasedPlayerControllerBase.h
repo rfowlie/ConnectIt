@@ -5,6 +5,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/PlayerController.h"
+#include "Interface/GridFactionInterface.h"
 #include "TurnBasedPlayerControllerBase.generated.h"
 
 class UTurnBasedParticipantComponent;
@@ -19,7 +20,7 @@ class UTurnBasedControllerCoordinatorComponent;
 // All turn-to-action wiring is handled by the coordinator component
 UCLASS(Abstract, Blueprintable, BlueprintType)
 class UNREALTURNBASEDMECHANICS_API ATurnBasedPlayerControllerBase
-	: public APlayerController
+	: public APlayerController, public IGridFactionInterface
 {
 	GENERATED_BODY()
 
@@ -27,6 +28,7 @@ public:
 
 	ATurnBasedPlayerControllerBase();
 
+	// TODO: make components protected
 	UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly,
 		Category = "Turn Based|Components")
 	TObjectPtr<UTurnBasedParticipantComponent> ParticipantComponent = nullptr;
@@ -47,6 +49,9 @@ public:
 		Category = "Turn Based|Config")
 	bool bAutoNotifyReady = true;
 
+	// --- Interface ---
+	virtual int32 GetFactionId_Implementation() override;
+	
 protected:
 
 	virtual void BeginPlay() override;

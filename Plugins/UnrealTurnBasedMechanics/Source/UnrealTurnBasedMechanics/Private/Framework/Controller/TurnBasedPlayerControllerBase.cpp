@@ -22,6 +22,12 @@ ATurnBasedPlayerControllerBase::ATurnBasedPlayerControllerBase()
 			TEXT("CoordinatorComponent"));
 }
 
+int32 ATurnBasedPlayerControllerBase::GetFactionId_Implementation()
+{
+	const int32 FactionId = ParticipantComponent->GetActiveParticipantSlotIndex();
+	return FactionId;
+}
+
 void ATurnBasedPlayerControllerBase::BeginPlay()
 {
 	Super::BeginPlay();

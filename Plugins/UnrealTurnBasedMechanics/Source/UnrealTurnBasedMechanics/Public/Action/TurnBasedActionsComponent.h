@@ -58,6 +58,15 @@ public:
         Category = "Turn Based|Behaviour")
     TSubclassOf<UTurnBasedSpectatorAction> PauseViewerActionClass = nullptr;
 
+    // Pushed while a board-change request this participant just sent is in
+    // flight, blocking further stack mutation until the server answers via
+    // NotifyBoardChangeOutcome. Conceptually distinct from
+    // IdleViewerActionClass (turn already ended) -- this is mid-turn,
+    // waiting on the participant's own pending request.
+    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly,
+        Category = "Turn Based|Behaviour")
+    TSubclassOf<UTurnBasedSpectatorAction> AwaitingConfirmationActionClass = nullptr;
+
     // When true RequestTurnEnd fires automatically when
     // CanAutoEndTurn() returns true after an action completes
     UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Turn Based|Behaviour")
@@ -178,6 +187,22 @@ public:
     UFUNCTION(BlueprintPure, Category = "Turn Based|Actions")
     bool IsInitialised() const { return bIsInitialised; }
 
+    // --- Board Change Confirmation ---
+
+    // The only thing project-specific glue needs to call once the server's
+    // answer to a board-change request is known -- e.g. from a Client RPC
+    // fired by the project's own PlayerController. No-ops if Request doesn't
+    // match whatever this component is currently awaiting (see
+    // HandleBoardChangeRequested). On success, force-completes the action
+    // that made the request; on failure, simply reactivates it so the
+    // player can retry -- neither this component nor the plugin needs to
+    // know *why* a request succeeded or failed, only that it did.
+    UFUNCTION(BlueprintCallable, Category = "Turn Based|Actions")
+    void NotifyBoardChangeOutcome(const FTurnActionRequest& Request, bool bSucceeded);
+
+    UFUNCTION(BlueprintPure, Category = "Turn Based|Actions")
+    bool IsAwaitingRequestConfirmation() const { return bAwaitingRequestConfirmation; }
+
     // --- Delegates ---
 
     // Board change request passthrough
@@ -264,10 +289,21 @@ private:
     TObjectPtr<UTurnBasedSpectatorAction> PauseViewerAction = nullptr;
 
     UPROPERTY()
+    TObjectPtr<UTurnBasedSpectatorAction> AwaitingConfirmationAction = nullptr;
+
+    UPROPERTY()
     TObjectPtr<UActionLoadoutDataAsset> Loadout = nullptr;
 
     bool bIsInitialised     = false;
     int32 CurrentTurnNumber = 0;
+
+    // --- Board Change Confirmation ---
+    // Set by HandleBoardChangeRequested when AwaitingConfirmationAction is
+    // pushed; cleared by NotifyBoardChangeOutcome before it mutates the
+    // stack itself. While true, PushAction/SafePopAction/TryPushActionByRef/
+    // ClearAndPush all refuse to run -- see each for the guard.
+    bool bAwaitingRequestConfirmation = false;
+    FTurnActionRequest PendingRequest;
 
     // Force deactivates and empties the action stack without pushing
     // a replacement -- shared by ClearAndPush and NotifyMatchEnded

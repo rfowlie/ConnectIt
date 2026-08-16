@@ -69,9 +69,6 @@ private:
     UPROPERTY()
     TObjectPtr<AConnectIt_BoardManager> BoardManager = nullptr;
 
-    UPROPERTY()
-    TObjectPtr<UTurnBasedParticipantComponent> TurnBasedParticipantManager = nullptr;
-
     // Gets owning faction ID from participant component slot index
-    int32 GetOwningFactionID() const;
+    int32 GetOwningControllerFactionID() const;
 };

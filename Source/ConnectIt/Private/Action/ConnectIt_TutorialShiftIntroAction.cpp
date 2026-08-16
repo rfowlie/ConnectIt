@@ -73,7 +73,8 @@ void UConnectIt_TutorialShiftIntroAction::NotifyInfoDismissed()
     HideInfoWidget();
 
     CurrentState = EInternalState::SelectingShiftTarget;
-    BindSelectionInput();
+    BindInput();
+    BindGridSubsystem();
 
     UE_LOG(LogTemp, Log,
         TEXT("TutorialShiftIntroAction: Info dismissed -- "
@@ -117,8 +118,11 @@ void UConnectIt_TutorialShiftIntroAction::HandleValidSelection_Implementation(AG
         Operation.GetSignedAmount(),
         Request.FactionID);
 
+    // Complete() is no longer called here -- UTurnBasedActionsComponent
+    // pushes an awaiting-confirmation state and calls Complete() itself
+    // once the server's answer arrives (NotifyBoardChangeOutcome), so a
+    // rejected request no longer falsely completes this action.
     RequestBoardChange(Request);
-    Complete();
 }
 
 FShiftOperation UConnectIt_TutorialShiftIntroAction::GetShiftOperationForTile_Implementation(

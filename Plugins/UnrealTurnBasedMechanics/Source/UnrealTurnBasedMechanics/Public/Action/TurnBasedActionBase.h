@@ -4,11 +4,12 @@
 
 #include "CoreMinimal.h"
 #include "UObject/Object.h"
+#include "InputCoreTypes.h"
 #include "GameplayTagContainer.h"
 #include "TurnBasedActionBase.generated.h"
 
 class UTurnBasedActionBase;
-
+struct FKey;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnActionBaseEvent, UTurnBasedActionBase*, Action);
 DECLARE_MULTICAST_DELEGATE_OneParam(FOnActionBaseEvent_Native, UTurnBasedActionBase*);

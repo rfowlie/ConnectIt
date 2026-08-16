@@ -33,7 +33,7 @@ AConnectIt_BoardManager* UConnectIt_GameUtilityLibrary::GetBoardManager(const UO
         return nullptr;
     }
 
-    AConnectIt_BoardManager* Cached = Subsystem->GetCachedBoardManager();
+    AConnectIt_BoardManager* Cached = Subsystem->GetBoardManager();
     if (!IsValid(Cached))
     {
         // Should not happen in normal operation -- AConnectIt_BoardManager::

@@ -25,6 +25,7 @@ class UNREALTURNBASEDMECHANICS_API UTurnBasedParticipantComponent : public UActo
 public:
 
     UTurnBasedParticipantComponent();
+    virtual void GetLifetimeReplicatedProps(TArray<class FLifetimeProperty>& OutLifetimeProps) const override;
 
     // --- State ---
 
@@ -88,11 +89,13 @@ protected:
 
     virtual void BeginPlay() override;
 
-private:
-
-    UPROPERTY()
+    UPROPERTY(Replicated)
     int32 CachedSlotIndex = -1;
+    
+    UPROPERTY(Replicated)
     EParticipantType ParticipantType = EParticipantType::Human;
+
+private:    
 
     // Client-side only -- set by ClientReceiveTurnNotification
     // Never valid on server -- use manager ActiveParticipantIndex instead

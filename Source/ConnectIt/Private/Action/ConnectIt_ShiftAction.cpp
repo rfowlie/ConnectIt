@@ -59,11 +59,12 @@ void UConnectIt_ShiftAction::RequestShift(FShiftOperation Operation)
         Operation.GetSignedAmount(),
         Request.FactionID);
 
-    // Route to action component which sends to server
-    // Complete fires after request is sent -- not after server confirms
-    // Server confirmation comes via board state replication
+    // Route to action component which sends to server. Complete() is no
+    // longer called here -- UTurnBasedActionsComponent pushes an
+    // awaiting-confirmation state and calls Complete() itself once the
+    // server's answer arrives (NotifyBoardChangeOutcome), so a rejected
+    // request no longer falsely completes this action.
     RequestBoardChange(Request);
-    Complete();
 }
 
 int32 UConnectIt_ShiftAction::GetOwningFactionID() const

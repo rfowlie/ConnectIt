@@ -174,16 +174,17 @@ void AConnectIt_BoardManager::InitialiseBoard(int32 NumFactions)
 
 // --- Request Processing ---
 
-void AConnectIt_BoardManager::ProcessRequest(const FTurnActionRequest& Request)
+// board needs to map out how to handle each request and transform payloads...
+bool AConnectIt_BoardManager::ProcessRequest(const FTurnActionRequest& Request)
 {
-    if (!HasAuthority()) return;
+    if (!HasAuthority()) return false;
 
     if (!Request.IsValid())
     {
         UE_LOG(LogTemp, Warning,
             TEXT("ConnectIt_BoardManager: Received invalid "
                  "FTurnActionRequest"));
-        return;
+        return false;
     }
 
     if (Request.RequestType == ConnectIt_Game_PlacePiece)
@@ -191,15 +192,13 @@ void AConnectIt_BoardManager::ProcessRequest(const FTurnActionRequest& Request)
         if (const FConnectItRequestPlacePiece* Payload =
             Request.Payload.GetPtr<FConnectItRequestPlacePiece>())
         {
-            HandlePlacePieceRequest(*Payload, Request.FactionID);
+            return HandlePlacePieceRequest(*Payload, Request.FactionID);
         }
-        else
-        {
-            UE_LOG(LogTemp, Error,
-                TEXT("ConnectIt_BoardManager: PlacePiece request payload "
-                     "missing or wrong type"));
-        }
-        return;
+
+        UE_LOG(LogTemp, Error,
+            TEXT("ConnectIt_BoardManager: PlacePiece request payload "
+                 "missing or wrong type"));
+        return false;
     }
 
     if (Request.RequestType == ConnectIt_Game_Shift)
@@ -207,23 +206,22 @@ void AConnectIt_BoardManager::ProcessRequest(const FTurnActionRequest& Request)
         if (const FConnectItRequestBoardShift* Payload =
             Request.Payload.GetPtr<FConnectItRequestBoardShift>())
         {
-            HandleShiftRequest(*Payload, Request.FactionID);
+            return HandleShiftRequest(*Payload, Request.FactionID);
         }
-        else
-        {
-            UE_LOG(LogTemp, Error,
-                TEXT("ConnectIt_BoardManager: Shift request payload "
-                     "missing or wrong type"));
-        }
-        return;
+
+        UE_LOG(LogTemp, Error,
+            TEXT("ConnectIt_BoardManager: Shift request payload "
+                 "missing or wrong type"));
+        return false;
     }
 
     UE_LOG(LogTemp, Warning,
         TEXT("ConnectIt_BoardManager: Unknown request type '%s'"),
         *Request.RequestType.ToString());
+    return false;
 }
 
-void AConnectIt_BoardManager::HandlePlacePieceRequest(
+bool AConnectIt_BoardManager::HandlePlacePieceRequest(
     const FConnectItRequestPlacePiece& Request, int32 FactionID) const
 {
     if (Request.Positions.IsEmpty())
@@ -231,7 +229,7 @@ void AConnectIt_BoardManager::HandlePlacePieceRequest(
         UE_LOG(LogTemp, Warning,
             TEXT("ConnectIt_BoardManager: PlacePiece request "
                  "has no positions"));
-        return;
+        return false;
     }
 
     const FGridPosition TargetPosition = Request.Positions[0];
@@ -243,7 +241,7 @@ void AConnectIt_BoardManager::HandlePlacePieceRequest(
             TEXT("ConnectIt_BoardManager: PlacePiece rejected "
                  "— position (%d,%d) invalid for placement"),
             TargetPosition.X, TargetPosition.Y);
-        return;
+        return false;
     }
 
     FConnectItBoardState NewState = Current;
@@ -287,9 +285,10 @@ void AConnectIt_BoardManager::HandlePlacePieceRequest(
     }
 
     BoardStateComponent->SetBoardState(NewState, ChangeEvent);
+    return true;
 }
 
-void AConnectIt_BoardManager::HandleShiftRequest(
+bool AConnectIt_BoardManager::HandleShiftRequest(
     const FConnectItRequestBoardShift& Request, int32 FactionID) const
 {
     if (!IsValid(BoardShiftComponent))
@@ -297,7 +296,7 @@ void AConnectIt_BoardManager::HandleShiftRequest(
         UE_LOG(LogTemp, Error,
             TEXT("ConnectIt_BoardManager: HandleShiftRequest — "
                  "ShiftStateComponent is null"));
-        return;
+        return false;
     }
 
     FConnectItBoardState NewState = BoardStateComponent->GetCurrentState();
@@ -308,7 +307,7 @@ void AConnectIt_BoardManager::HandleShiftRequest(
         UE_LOG(LogTemp, Warning,
             TEXT("ConnectIt_BoardManager: Shift rejected — "
                  "ComputeShift returned an invalid result"));
-        return;
+        return false;
     }
 
     // Record what happened -- same authoritative-first pattern as
@@ -329,6 +328,7 @@ void AConnectIt_BoardManager::HandleShiftRequest(
     ChangeEvent.ShiftWrappingPositions = ShiftResult.WrappingPositions.Array();
 
     BoardStateComponent->SetBoardState(NewState, ChangeEvent);
+    return true;
 }
 
 void AConnectIt_BoardManager::BindParticipantManager()

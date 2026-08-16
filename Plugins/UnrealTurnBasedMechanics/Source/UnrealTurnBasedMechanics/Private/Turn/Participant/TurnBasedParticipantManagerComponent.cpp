@@ -324,14 +324,19 @@ void UTurnBasedParticipantManagerComponent::EndTurn(ETurnEndReason Reason)
     // Reset defensively before broadcasting -- a hold left dangling by a
     // bug elsewhere should never be able to permanently stall future turns
     ResolutionHoldCount = 0;
+    bResolutionHoldTakenThisTurnEnd = false;
 
     OnTurnResolutionStarted.Broadcast();
 
     // Broadcast() calls every bound listener synchronously before
     // returning, so anything that needed to hold resolution has already
     // called BeginResolutionHold() by this point -- if nothing did, there's
-    // nothing to wait for.
-    if (ResolutionHoldCount == 0)
+    // nothing to wait for. ResolutionHoldCount == 0 alone isn't enough to
+    // tell that apart from "something held it and already released it
+    // synchronously during the broadcast" (e.g. a gated tag sequence with
+    // nothing registered against it) -- that case already advanced via
+    // EndResolutionHold, so guard against advancing a second time here.
+    if (ResolutionHoldCount == 0 && !bResolutionHoldTakenThisTurnEnd)
     {
         AdvanceToNextParticipant();
     }
@@ -341,6 +346,7 @@ void UTurnBasedParticipantManagerComponent::BeginResolutionHold()
 {
     check(!IsRunningClientOnly());
     ResolutionHoldCount++;
+    bResolutionHoldTakenThisTurnEnd = true;
 }
 
 void UTurnBasedParticipantManagerComponent::EndResolutionHold()
@@ -482,7 +488,7 @@ bool UTurnBasedParticipantManagerComponent::CheckGameOver() const
     return true;
 }
 
-void UTurnBasedParticipantManagerComponent::BroadcastTurnStart(int32 ActiveIndex)
+void UTurnBasedParticipantManagerComponent::BroadcastTurnStart(const int32 ActiveIndex)
 {
     if (!Participants.IsValidIndex(ActiveIndex)) return;
 
@@ -510,6 +516,11 @@ void UTurnBasedParticipantManagerComponent::BroadcastTurnStart(int32 ActiveIndex
 
     // Notify listeners that board ownership should transfer
     OnActiveControllerChanged.Broadcast(GetControllerAtIndex(ActiveIndex));
+}
+
+void UTurnBasedParticipantManagerComponent::BroadcastControllerChanged(int32 ActiveIndex)
+{
+    // TODO: where and why do we need this?
 }
 
 // --- Helpers ---

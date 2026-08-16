@@ -5,6 +5,7 @@
 #include "Board/ConnectIt_BoardManager.h"
 #include "Board/ConnectIt_BoardStateComponent.h"
 #include "ConnectIt_Structs.h"
+#include "Interface/GridFactionInterface.h"
 #include "Library/ConnectIt_GameUtilityLibrary.h"
 #include "StructUtils/InstancedStruct.h"
 #include "Tile/GridTileBase.h"
@@ -28,24 +29,21 @@ UConnectIt_PlacePieceAction::UConnectIt_PlacePieceAction()
 
 void UConnectIt_PlacePieceAction::PostInitialiseAction_Implementation()
 {
+    if (!IsValid(OwningController))
+    {
+        UE_LOG(LogTemp, Error,
+            TEXT("PlacePieceAction: PostInitialiseAction -- "
+                 "OwningController is null"));
+        return;
+    }
+    
     BoardManager = UConnectIt_GameUtilityLibrary::GetBoardManager(OwningController);
-
-    TurnBasedParticipantManager = IsValid(OwningController)
-        ? OwningController->FindComponentByClass<UTurnBasedParticipantComponent>()
-        : nullptr;
 
     if (!IsValid(BoardManager))
     {
         UE_LOG(LogTemp, Error,
             TEXT("PlacePieceAction: PostInitialiseAction -- "
                  "no AConnectIt_BoardManager found"));
-    }
-
-    if (!IsValid(TurnBasedParticipantManager))
-    {
-        UE_LOG(LogTemp, Error,
-            TEXT("PlacePieceAction: PostInitialiseAction -- "
-                 "no UTurnBasedParticipantComponent on owning controller"));
     }
 }
 
@@ -58,6 +56,7 @@ void UConnectIt_PlacePieceAction::Activate_Internal_Implementation()
 
 void UConnectIt_PlacePieceAction::OnCancelled_Implementation()
 {
+    Super::OnCancelled_Implementation();
     UE_LOG(LogTemp, Log,
         TEXT("PlacePieceAction: Cancelled — "
              "optional action taking priority"));
@@ -65,6 +64,7 @@ void UConnectIt_PlacePieceAction::OnCancelled_Implementation()
 
 void UConnectIt_PlacePieceAction::OnCompleted_Implementation()
 {
+    Super::OnCompleted_Implementation();
     UE_LOG(LogTemp, Log,
         TEXT("PlacePieceAction: Piece placed — action complete"));
 }
@@ -121,8 +121,8 @@ void UConnectIt_PlacePieceAction::HandleValidSelection_Implementation(AGridTileB
     // Build the request -- board manager handles all mutation
     // Action has no knowledge of pools, piece actors, or state changes
     FTurnActionRequest Request;
-    Request.RequestType = Tag_RequestType;
-    Request.FactionID = GetOwningFactionID();
+    Request.RequestType = ActionTag;
+    Request.FactionID = GetOwningControllerFactionID();
     Request.Payload.InitializeAs<FConnectItRequestPlacePiece>(
         FConnectItRequestPlacePiece{ .Positions = { Position } });
 
@@ -133,11 +133,12 @@ void UConnectIt_PlacePieceAction::HandleValidSelection_Implementation(AGridTileB
         Position.Y,
         Request.FactionID);
 
-    // Route to action component which sends to server
-    // Complete fires after request is sent -- not after server confirms
-    // Server confirmation comes via board state replication
+    // Route to action component which sends to server. Complete() is no
+    // longer called here -- UTurnBasedActionsComponent pushes an
+    // awaiting-confirmation state and calls Complete() itself once the
+    // server's answer arrives (NotifyBoardChangeOutcome), so a rejected
+    // request no longer falsely completes this action.
     RequestBoardChange(Request);
-    Complete();
 }
 
 void UConnectIt_PlacePieceAction::ClearSelectionState_Implementation()
@@ -152,9 +153,21 @@ void UConnectIt_PlacePieceAction::ClearSelectionState_Implementation()
     }
 }
 
-int32 UConnectIt_PlacePieceAction::GetOwningFactionID() const
+int32 UConnectIt_PlacePieceAction::GetOwningControllerFactionID() const
 {
-    return IsValid(TurnBasedParticipantManager)
-        ? TurnBasedParticipantManager->GetActiveParticipantSlotIndex()
-        : -1;
+    if (!IsValid(OwningController))
+    {
+        UE_LOG(LogTemp, Error,
+            TEXT("PlacePieceAction: PostInitialiseAction -- "
+                 "OwningController is null"));
+        return -1;
+    }
+
+    int32 FactionId  = -1;
+    if (OwningController->Implements<UGridFactionInterface>())
+    {
+        FactionId = IGridFactionInterface::Execute_GetFactionId(OwningController);
+    }
+    
+    return FactionId;
 }

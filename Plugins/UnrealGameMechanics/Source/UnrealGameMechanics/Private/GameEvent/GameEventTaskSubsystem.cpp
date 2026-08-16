@@ -120,7 +120,7 @@ void UGameEventTaskSubsystem::AdvanceSequenceToStep(int32 StepIndex)
     if (!Active.Steps.IsValidIndex(StepIndex))
     {
         // Every step in this sequence has completed
-        if (Active.OnStepComplete.IsBound()) { Active.OnComplete.Execute(); }
+        Active.OnComplete.ExecuteIfBound();
         SequenceQueue.RemoveAt(0);
         bSequenceInFlight = false;
         TryStartNextQueuedSequence();

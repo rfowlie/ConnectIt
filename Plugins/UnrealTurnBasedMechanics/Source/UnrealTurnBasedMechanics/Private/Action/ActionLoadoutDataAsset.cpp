@@ -28,6 +28,11 @@ UTurnBasedSpectatorAction* UActionLoadoutDataAsset::GetPauseAction(UObject* Oute
     return CreateSystemAction<UTurnBasedSpectatorAction>(PauseViewerActionClass, Outer);
 }
 
+UTurnBasedSpectatorAction* UActionLoadoutDataAsset::GetAwaitingConfirmationAction(UObject* Outer) const
+{
+    return CreateSystemAction<UTurnBasedSpectatorAction>(AwaitingConfirmationActionClass, Outer);
+}
+
 // --- Turn Action Accessors ---
 
 TArray<UTurnBasedAction*> UActionLoadoutDataAsset::GetPermittedActions() const
