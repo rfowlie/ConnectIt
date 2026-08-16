@@ -1,24 +1,27 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 #include "GameEvent/GameEventTaskSubsystem.h"
-
 #include "GameEvent/GameEventTaskManager.h"
-#include "GameEvent/GameEventTask_Async.h"
 
+
+// --- Queued Tag Containers ---
+
+void UGameEventTaskSubsystem::QueueTagContainer(const FGameplayTagContainer& Tags)
+{
+    if (Tags.IsEmpty()) return;
+
+    ContainerQueue.Add(Tags);
+    TryExecuteNextContainer();
+}
 
 void UGameEventTaskSubsystem::RegisterAsyncTask(
-    FGameplayTag Tag, UGameEventTask_Async* Task, int32 Phase)
+    const FGameplayTag Tag, UGameEventTask_Async* Task, const int32 Phase)
 {
     GetOrCreateManager(Tag)->RegisterAsyncTask(Task, Phase);
 }
 
-void UGameEventTaskSubsystem::TriggerTag(FGameplayTag Tag)
-{
-    GetOrCreateManager(Tag)->InitiateAllTasks();
-}
-
 void UGameEventTaskSubsystem::BindOnTagBegin(
-    FGameplayTag Tag, UObject* Listener, FName FunctionName)
+    const FGameplayTag Tag, UObject* Listener, const FName FunctionName)
 {
     if (!IsValid(Listener)) return;
 
@@ -28,7 +31,7 @@ void UGameEventTaskSubsystem::BindOnTagBegin(
 }
 
 void UGameEventTaskSubsystem::UnbindOnTagBegin(
-    FGameplayTag Tag, UObject* Listener, FName FunctionName)
+    const FGameplayTag Tag, UObject* Listener, const FName FunctionName)
 {
     if (!IsValid(Listener)) return;
 
@@ -38,7 +41,7 @@ void UGameEventTaskSubsystem::UnbindOnTagBegin(
 }
 
 void UGameEventTaskSubsystem::BindOnTagComplete(
-    FGameplayTag Tag, UObject* Listener, FName FunctionName)
+    const FGameplayTag Tag, UObject* Listener, const FName FunctionName)
 {
     if (!IsValid(Listener)) return;
 
@@ -48,7 +51,7 @@ void UGameEventTaskSubsystem::BindOnTagComplete(
 }
 
 void UGameEventTaskSubsystem::UnbindOnTagComplete(
-    FGameplayTag Tag, UObject* Listener, FName FunctionName)
+    const FGameplayTag Tag, UObject* Listener, const FName FunctionName)
 {
     if (!IsValid(Listener)) return;
 
@@ -57,13 +60,18 @@ void UGameEventTaskSubsystem::UnbindOnTagComplete(
     GetOrCreateManager(Tag)->OnManagerComplete.Remove(Delegate);
 }
 
-UGameEventTaskManager* UGameEventTaskSubsystem::GetGameEventTaskManagerByTag_Implementation(
-    FGameplayTag InGameplayTag)
+TArray<FGameplayTag> UGameEventTaskSubsystem::GetTagsInQueue()
 {
-    return GetOrCreateManager(InGameplayTag);
+    TArray<FGameplayTag> Out;
+    for (const auto Tag : ActiveManagerTags)
+    {
+        Out.Add(Tag);
+    }
+
+    return Out;
 }
 
-UGameEventTaskManager* UGameEventTaskSubsystem::GetOrCreateManager(FGameplayTag Tag)
+UGameEventTaskManager* UGameEventTaskSubsystem::GetOrCreateManager(const FGameplayTag Tag)
 {
     if (TObjectPtr<UGameEventTaskManager>* Found = ManagersByTag.Find(Tag))
     {
@@ -75,98 +83,76 @@ UGameEventTaskManager* UGameEventTaskSubsystem::GetOrCreateManager(FGameplayTag 
     // to this subsystem gives a correct ownership chain; GC safety comes
     // from ManagersByTag being a UPROPERTY, reachable for the world's life.
     UGameEventTaskManager* NewManager = NewObject<UGameEventTaskManager>(this);
+    NewManager->EventTag = Tag;
     ManagersByTag.Add(Tag, NewManager);
     return NewManager;
 }
 
-// --- Queued Tag Sequences ---
-
-void UGameEventTaskSubsystem::QueueTagSequence(
-    const TArray<FGameplayTagContainer>& Steps,
-    FOnTagSequenceStepComplete OnStepComplete,
-    FOnTagSequenceComplete OnComplete)
+void UGameEventTaskSubsystem::TriggerTag(const FGameplayTag Tag)
 {
-    if (Steps.IsEmpty())
-    {
-        if (OnComplete.IsBound()) { OnComplete.Execute(); }
-        return;
-    }
-
-    FGameEventQueuedTagSequence NewSequence;
-    NewSequence.Steps          = Steps;
-    NewSequence.OnStepComplete = OnStepComplete;
-    NewSequence.OnComplete     = OnComplete;
-
-    SequenceQueue.Add(NewSequence);
-    TryStartNextQueuedSequence();
+    GetOrCreateManager(Tag)->InitiateAllTasks();
 }
 
-void UGameEventTaskSubsystem::TryStartNextQueuedSequence()
+void UGameEventTaskSubsystem::TryExecuteNextContainer()
 {
-    if (bSequenceInFlight) return;
-    if (SequenceQueue.IsEmpty()) return;
+    if (!ActiveManagerTags.IsEmpty()) return; // something already firing
+    if (ContainerQueue.IsEmpty()) return;
 
-    bSequenceInFlight = true;
-    AdvanceSequenceToStep(0);
-}
+    ActiveContainer = ContainerQueue[0];
+    ContainerQueue.RemoveAt(0);
 
-void UGameEventTaskSubsystem::AdvanceSequenceToStep(int32 StepIndex)
-{
-    if (SequenceQueue.IsEmpty()) return; // defensive -- should not happen
-
-    FGameEventQueuedTagSequence& Active = SequenceQueue[0];
-    Active.CurrentStepIndex = StepIndex;
-
-    if (!Active.Steps.IsValidIndex(StepIndex))
+    // Populate the full set BEFORE triggering anything -- a tag that
+    // completes synchronously (zero registered tasks) mid-loop removes
+    // itself from a set that still contains every other tag in this
+    // container, so it can't look "empty" prematurely and re-enter while
+    // still iterating the rest of the container. Membership makes this
+    // guarantee for free, no arithmetic bias needed.
+    for (const FGameplayTag& Tag : ActiveContainer)
     {
-        // Every step in this sequence has completed
-        if (Active.OnComplete.IsBound()) { Active.OnComplete.Execute(); };
-        SequenceQueue.RemoveAt(0);
-        bSequenceInFlight = false;
-        TryStartNextQueuedSequence();
-        return;
+        ActiveManagerTags.Add(Tag);
     }
 
-    const FGameplayTagContainer& StepTags = Active.Steps[StepIndex];
-    Active.PendingInStep = StepTags.Num();
-
-    if (Active.PendingInStep == 0)
+    for (const FGameplayTag& Tag : ActiveContainer)
     {
-        // Empty step -- nothing to wait on, advance immediately
-        AdvanceSequenceToStep(StepIndex + 1);
-        return;
-    }
+        // Bound directly (AddUniqueDynamic/RemoveDynamic, compile-time
+        // signature-checked) rather than through the reflection-based
+        // BindOnTagComplete/UnbindOnTagComplete pass-throughs -- those exist
+        // for external (UObject*, FName) callers; the subsystem is binding
+        // to its own known member function here.
+        GetOrCreateManager(Tag)->OnManagerComplete.AddUniqueDynamic(
+            this, &UGameEventTaskSubsystem::HandleOnManagerComplete);
 
-    for (const FGameplayTag& Tag : StepTags)
-    {
-        BindOnTagComplete(Tag, this,
-            GET_FUNCTION_NAME_CHECKED(UGameEventTaskSubsystem, HandleSequenceStepTagComplete));
         TriggerTag(Tag);
     }
 }
 
-void UGameEventTaskSubsystem::HandleSequenceStepTagComplete()
+void UGameEventTaskSubsystem::HandleOnManagerComplete(const FGameplayTag Tag)
 {
-    if (SequenceQueue.IsEmpty()) return; // defensive -- should not happen
-
-    FGameEventQueuedTagSequence& Active = SequenceQueue[0];
-    Active.PendingInStep--;
-
-    if (Active.PendingInStep > 0) return;
-
-    // Every tag in this step has completed -- unbind, notify, advance
-    if (Active.Steps.IsValidIndex(Active.CurrentStepIndex))
+    if (!Tag.IsValid())
     {
-        const FGameplayTagContainer& StepTags = Active.Steps[Active.CurrentStepIndex];
-
-        for (const FGameplayTag& Tag : StepTags)
-        {
-            UnbindOnTagComplete(Tag, this,
-                GET_FUNCTION_NAME_CHECKED(UGameEventTaskSubsystem, HandleSequenceStepTagComplete));
-        }
-
-        if (Active.OnStepComplete.IsBound()) { Active.OnStepComplete.Execute(StepTags); }
+        UE_LOG(LogTemp, Error, TEXT(
+            "UGameEventTaskSubsystem::HandleOnManagerComplete -- received an invalid tag"));
+        return;
     }
 
-    AdvanceSequenceToStep(Active.CurrentStepIndex + 1);
+    // TODO: this feels clunky. This should be happening only on create/destroy of EventManager
+    GetOrCreateManager(Tag)->OnManagerComplete.RemoveDynamic(
+        this, &UGameEventTaskSubsystem::HandleOnManagerComplete);
+
+    if (!ActiveManagerTags.Remove(Tag))
+    {
+        UE_LOG(LogTemp, Error, TEXT(
+            "UGameEventTaskSubsystem::HandleOnManagerComplete -- '%s' completed "
+            "but wasn't tracked as active -- ignoring"), *Tag.ToString());
+        return;
+    }
+
+    // notify interested parties of event list change
+    if (OnActiveManagerTagsChanged.IsBound()) { OnActiveManagerTagsChanged.Broadcast(); }
+
+    // only try next if all ActiveManagerTags are complete
+    if (ActiveManagerTags.IsEmpty())
+    {
+        TryExecuteNextContainer();
+    }
 }

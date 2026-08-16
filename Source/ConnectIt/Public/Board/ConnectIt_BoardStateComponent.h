@@ -100,4 +100,15 @@ private:
 
     UFUNCTION()
     void OnRep_BoardSnapshot();
+
+    // Reads the just-recorded ChangeEvent and enqueues this board change's
+    // event tags on UGameEventTaskSubsystem, one QueueTagContainer call per
+    // event, in the fixed order shift/piece-placed, then line-scored, then
+    // player-win (shift and piece-placed are always mutually exclusive on a
+    // single ChangeEvent). Called symmetrically from both SetBoardState
+    // (server) and OnRep_BoardSnapshot (client), right after BroadcastChange
+    // -- ported from the now-deprecated UConnectIt_BoardSequencerComponent,
+    // which used to derive the same step list from a separate listener
+    // rather than the component that already owns this data.
+    void EnqueueBoardEventTags() const;
 };

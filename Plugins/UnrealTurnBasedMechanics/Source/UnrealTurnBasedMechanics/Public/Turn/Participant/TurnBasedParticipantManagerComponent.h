@@ -160,9 +160,15 @@ private:
     void EndTurn(ETurnEndReason Reason);
 
     // UFUNCTION() -- bound to TurnEndEventTag's OnManagerComplete via
-    // BindOnTagComplete (reflection-based, needs a UFUNCTION to find it)
+    // BindOnTagComplete (reflection-based, needs a UFUNCTION to find it).
+    // Tag param is unused -- this only ever binds to TurnEndEventTag, so
+    // there's nothing to disambiguate -- but the signature must match
+    // OnManagerComplete's (FGameplayTag) exactly, since BindOnTagComplete's
+    // underlying FScriptDelegate::BindUFunction bind is not compile-time
+    // signature-checked; a mismatch here would misbehave at runtime, not
+    // fail to build.
     UFUNCTION()
-    void AdvanceToNextParticipant();
+    void AdvanceToNextParticipant(FGameplayTag Tag);
 
     void HandleTurnTimeout();
     void HandleReconnectTimeout();

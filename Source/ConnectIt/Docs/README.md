@@ -44,6 +44,7 @@ Each plugin's purpose, scope boundaries, and full class catalogue:
 
 - [ConnectItModule.md](ConnectItModule.md) — class catalogue of the live, networked game module itself (Board/, Action/, Framework/, Grid/, Interpreter/, Library/, GameIntelligence/, MinMax/).
 - [LegacyPipeline.md](LegacyPipeline.md) — full historical write-up of the superseded, non-networked Game State Machine / Facade / ViewModel / PlayerData pipeline. Not used by any live code; kept here for context rather than deleted from the record.
+- [RuntimeStateAccess.md](RuntimeStateAccess.md) — reference for reading live board/turn/participant/action state (e.g. for debug or in-game UI): which accessor to use, whether it's Blueprint-safe, and where the gaps are. Includes the current turn-end/resolution sequencing design (`TurnEndEventTag` + `QueueTagContainer`), which replaced the earlier `ResolutionHoldCount`/`BoardSequencerComponent` mechanism.
 
 ## Reusable Workflows
 

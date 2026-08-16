@@ -3,14 +3,15 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "GameplayTagContainer.h"
 #include "UObject/Object.h"
 #include "GameEventTaskManager.generated.h"
 
-
 class UGameEventTask_Async;
 
+
 DECLARE_DYNAMIC_DELEGATE(FGameEventTaskDelegate);
-DECLARE_DYNAMIC_MULTICAST_DELEGATE(FGameEventTaskManagerDelegate);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FGameEventTaskManagerDelegate, const FGameplayTag, EventTag);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnTaskCompleted);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnAllTasksCompleted);
 
@@ -39,6 +40,13 @@ class UNREALGAMEMECHANICS_API UGameEventTaskManager : public UObject
 	
 public:
 	static UGameEventTaskManager* Create();
+
+	// Set once by UGameEventTaskSubsystem::GetOrCreateManager immediately
+	// after construction -- lets this manager identify itself on its own
+	// delegates instead of callers tracking "which manager is this" via a
+	// raw pointer or bind-order assumption.
+	UPROPERTY(BlueprintReadOnly)
+	FGameplayTag EventTag;
 
 	// delegates
 	UPROPERTY(BlueprintAssignable)

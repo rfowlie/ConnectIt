@@ -55,16 +55,16 @@ public:
 
 protected:
 	UFUNCTION()
-	void OnTurnStartPreAsync();
+	void OnTurnStartPreAsync(FGameplayTag Tag);
 
 	UFUNCTION()
-	void OnTurnStartPostAsync();
+	void OnTurnStartPostAsync(FGameplayTag Tag);
 
 	UFUNCTION()
-	void OnTurnEndPreAsync();
+	void OnTurnEndPreAsync(FGameplayTag Tag);
 
 	UFUNCTION()
-	void OnTurnEndPostAsync();
+	void OnTurnEndPostAsync(FGameplayTag Tag);
 	
 	
 public:

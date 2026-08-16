@@ -18,7 +18,7 @@ UnrealGameMechanics is a generic, reusable gameplay-mechanics scaffolding layer:
 ## When to Use It
 
 - Gating a sequence of async steps behind gameplay tags so that dependent logic only fires once every registered task/object reports completion (see `GameEvent/`).
-- Queuing a multi-step, serialized sequence of tag-triggered phases (`QueueTagSequence`).
+- Queuing one or more tag-groups to fire in order via a serialized FIFO queue (`QueueTagContainer`) -- a caller with several events to fire in order just calls it once per event, back to back; the queue's own ordering does the rest. (`QueueTagSequence`, an older single-call chaining primitive, is deprecated in favour of this.)
 - Tracking turn state (turn counters, begin/end/pause/resume delegates) for a turn-based or phase-based game.
 - Pooling actors that are spawned/despawned frequently (board pieces, projectiles, VFX actors).
 - Building a lightweight state machine node hierarchy that doesn't need a full Gameplay Ability System / Behavior Tree.
@@ -34,7 +34,7 @@ UnrealGameMechanics is a generic, reusable gameplay-mechanics scaffolding layer:
 
 ## Notable Design Patterns
 
-- Gated task/phase-barrier pattern (`GameEvent/`): `UGameEventTaskManager` tracks a set of tasks that must ALL complete before firing `OnManagerComplete`, and `UGameEventTaskSubsystem` layers a per-tag registry plus a serialized multi-step tag-sequence queue on top. This is the reusable core of the project-level "Gated Event Sequencing via Tags" workflow — see [GameplayTag-EventSequencing.md](../../../Source/ConnectIt/Docs/Workflows/GameplayTag-EventSequencing.md).
+- Gated task/phase-barrier pattern (`GameEvent/`): `UGameEventTaskManager` tracks a set of tasks that must ALL complete before firing `OnManagerComplete`, and `UGameEventTaskSubsystem` layers a per-tag registry plus a serialized FIFO queue (`QueueTagContainer`) on top -- the actual single-tag trigger (`TriggerTag`) is private, reachable only internally, so every external caller goes through the queue. This is the reusable core of the project-level "Gated Event Sequencing via Tags" workflow — see [GameplayTag-EventSequencing.md](../../../Source/ConnectIt/Docs/Workflows/GameplayTag-EventSequencing.md).
 - Tag-broadcast pattern: `IGameplayTagBroadcaster` / `UGameplayTagBroadcasterComponent` expose a simple register/unregister + multicast-delegate broadcast keyed by gameplay tag.
 - UFUNCTION `Category` strings are inconsistent across the plugin (e.g. `"Game Mechanics | Turn"`, `"GameMechanics|Framework"`, `"Actor Pool"`, `"Turn Completion"`, `"Scoring | Selectors"` — mixed spacing/style). See the project-level [naming conventions notes](../../../Source/ConnectIt/Docs/Conventions.md).
 
@@ -53,7 +53,7 @@ UnrealGameMechanics is a generic, reusable gameplay-mechanics scaffolding layer:
 |---|---|---|---|
 | `IGameEventTaskHandler` | Native Interface | Contract to fetch a `UGameEventTaskManager*` by gameplay tag. | `Public/GameEvent/GameEventTaskHandler.h`. |
 | `UGameEventTaskManager` | `UObject` | Tracks a set of objects/async tasks that must all complete before firing `OnManagerComplete`; supports phased async tasks via `AsyncTaskMap` keyed by phase int. | `Public/GameEvent/GameEventTaskManager.h`. Key API: `Create()`, `RegisterTask`, `RegisterAsyncTask`, `UnregisterTask`, `InitiateAllTasks`, `OnManagerBegin`/`OnManagerComplete`. |
-| `UGameEventTaskSubsystem` | `UWorldSubsystem`, `IGameEventTaskHandler` | Per-world registry of tag-keyed `UGameEventTaskManager`s; adds a serialized queue of multi-step tag sequences on top of single-tag triggering. | `Public/GameEvent/GameEventTaskSubsystem.h`. Extensively documented. Key API: `RegisterAsyncTask`, `TriggerTag`, `BindOnTagBegin`/`BindOnTagComplete`, `QueueTagSequence`, `GetGameEventTaskManagerByTag_Implementation`. This is the central class powering the project-level "Gated Event Sequencing via Tags" reusable workflow — see [GameplayTag-EventSequencing.md](../../../Source/ConnectIt/Docs/Workflows/GameplayTag-EventSequencing.md). |
+| `UGameEventTaskSubsystem` | `UWorldSubsystem`, `IGameEventTaskHandler` | Per-world registry of tag-keyed `UGameEventTaskManager`s; a genuine serialized FIFO queue (`QueueTagContainer`) is the primary way to fire a tag from outside this class -- the underlying single-tag trigger (`TriggerTag`) is private. | `Public/GameEvent/GameEventTaskSubsystem.h`. Extensively documented. Key API: `RegisterAsyncTask`, `QueueTagContainer`, `BindOnTagBegin`/`BindOnTagComplete`, `GetGameEventTaskManagerByTag_Implementation`. `QueueTagSequence` (an older multi-step chaining primitive) is deprecated -- kept, not deleted, with zero remaining callers in this project. This is the central class powering the project-level "Gated Event Sequencing via Tags" reusable workflow — see [GameplayTag-EventSequencing.md](../../../Source/ConnectIt/Docs/Workflows/GameplayTag-EventSequencing.md). |
 | `UGameEventTask_Async` | `UObject` | Simple async-task payload object. | `Public/GameEvent/GameEventTask_Async.h`. Key API: `OnComplete` delegate, `OnExecuteDelegate`, `bIsPersistentTask` flag. |
 
 ### GameTurn

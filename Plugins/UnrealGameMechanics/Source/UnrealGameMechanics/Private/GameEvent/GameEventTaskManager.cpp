@@ -107,7 +107,7 @@ void UGameEventTaskManager::InitiateAsyncTasks()
 			});
 	}
 
-	if (OnManagerBegin.IsBound()) {	OnManagerBegin.Broadcast(); }
+	if (OnManagerBegin.IsBound()) {	OnManagerBegin.Broadcast(EventTag); }
 	
 	AsyncTaskMap.GetKeys(PhaseOrder);
 	PhaseOrder.Sort();
@@ -119,7 +119,7 @@ void UGameEventTaskManager::CheckTasksComplete() const
 {
 	if (TaskSet.IsEmpty())
 	{
-		if (OnManagerComplete.IsBound()) { OnManagerComplete.Broadcast(); }
+		if (OnManagerComplete.IsBound()) { OnManagerComplete.Broadcast(EventTag); }
 	}
 }
 
@@ -129,7 +129,7 @@ void UGameEventTaskManager::ExecuteNextPhase()
 	// if at end of array completely finished
 	if (!PhaseOrder.IsValidIndex(PhaseIndex))
 	{
-		if (OnManagerComplete.IsBound()) { OnManagerComplete.Broadcast(); }
+		if (OnManagerComplete.IsBound()) { OnManagerComplete.Broadcast(EventTag); }
 		bAsyncTasksInitiated = false;
 		return;
 	}

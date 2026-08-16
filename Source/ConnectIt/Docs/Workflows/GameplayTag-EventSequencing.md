@@ -6,41 +6,43 @@ Once game-state changes reliably reach every client (see [SingleSourceOfTruth-Re
 
 ## Pattern
 
-Represent each event as a **tag**, not a typed delegate signature, and register reactions against a **generic per-world task-sequencing subsystem** rather than binding directly to whatever object caused the event. The subsystem offers two independent primitives on top of tags: "tell me the instant this tag fires" (no gating) and "run my work and hold the next thing until I say I'm done" (gated). A **chain primitive** on top of both lets a caller declare an ordered list of tag-groups and have the subsystem run them one group at a time, only advancing once every tag in the current group has fully completed.
+Represent each event as a **tag**, not a typed delegate signature, and register reactions against a **generic per-world task-sequencing subsystem** rather than binding directly to whatever object caused the event. The subsystem offers two independent primitives on top of tags: "tell me the instant this tag fires" (no gating) and "run my work and hold the next thing until I say I'm done" (gated). On top of both, the subsystem is itself a genuine **FIFO queue**: a caller enqueues one tag-group at a time, and the queue only starts the next group once every tag in the current one has fully completed — a caller with several events to fire in order just calls the enqueue primitive once per event, back to back, and the queue's own ordering does the rest. No caller-side chaining or second queue is needed on top.
 
 ```
 Caller (knows WHICH tags fire WHEN)
-  → QueueTagSequence([ {PiecePlaced}, {LineScored}, {PlayerWin} ])
+  → QueueTagContainer({PiecePlaced})
+  → QueueTagContainer({LineScored})
+  → QueueTagContainer({PlayerWin})
         │
         ▼
-Subsystem (generic, tag-keyed, serialized queue)
-  Step 1: trigger PiecePlaced tag
+Subsystem (generic, tag-keyed, serialized FIFO queue)
+  Dequeue {PiecePlaced}: trigger it
              ├─ instant listeners fire immediately (BindOnTagBegin)
              └─ gated listeners run, subsystem waits for all to report done
-  Step 1 complete → Step 2: trigger LineScored tag  (same shape)
-  Step 2 complete → Step 3: trigger PlayerWin tag    (same shape)
-  Step 3 complete → OnComplete fires once, whole chain done
+  Complete → dequeue {LineScored}: trigger it  (same shape)
+  Complete → dequeue {PlayerWin}: trigger it    (same shape)
+  Complete → queue empty, nothing left pending
 ```
 
 ## Participants / Classes Involved
 
 | Role | Class | Note |
 |---|---|---|
-| Generic per-world registry + chain primitive | `UGameEventTaskSubsystem` (`UnrealGameMechanics`, `UWorldSubsystem`) | Has no dependency on anything project-specific — a caller is any consumer, ConnectIt included. See [UnrealGameMechanics docs](../../../Plugins/UnrealGameMechanics/Docs/README.md). |
+| Generic per-world registry + FIFO queue | `UGameEventTaskSubsystem` (`UnrealGameMechanics`, `UWorldSubsystem`) | Has no dependency on anything project-specific — a caller is any consumer, ConnectIt included. See [UnrealGameMechanics docs](../../../Plugins/UnrealGameMechanics/Docs/README.md). `QueueTagContainer(Tags)` is the primary enqueue entry point; the underlying `TriggerTag` is private, reachable only internally. |
 | Phase-barrier executor per tag | `UGameEventTaskManager` | Tracks a set of registered tasks; only reports "done" once every one of them has actually finished, not just started. |
 | Gated task payload | `UGameEventTask_Async` | `OnExecuteDelegate` (your work) + `OnComplete` (you broadcast when genuinely finished) + `bIsPersistentTask` (auto-re-register for every future trigger, e.g. a permanent VFX manager bound once at startup). |
 | Project-specific tag vocabulary | `ConnectIt.Event.Shift/PiecePlaced/LineScored/PlayerWin/TurnEnd` (`Source/ConnectIt/ConnectIt_GameplayTags.h`) | The tags themselves are ConnectIt-specific; the subsystem that keys off them is not. |
-| The caller that decides step order | `AConnectIt_BoardManager::TryStartNextSequence` | Builds the ordered step list from `FConnectItBoardChangeEvent`'s flags and calls `QueueTagSequence` once per request — see [ConnectItModule.md](../ConnectItModule.md). |
-| Data for "what actually happened" | `UConnectIt_BoardStateComponent::GetChangeEvent()` | The tag signal itself carries no parameters — payload data is read separately from the same replicated snapshot driving the sequence (see [SingleSourceOfTruth-Replication.md](SingleSourceOfTruth-Replication.md)), available identically on server and client. |
+| The caller that decides enqueue order | `UConnectIt_BoardStateComponent::EnqueueBoardEventTags` | Reads `FConnectItBoardChangeEvent`'s flags and calls `QueueTagContainer` once per event, in order — see [ConnectItModule.md](../ConnectItModule.md). Called from the same component that owns the data being read, not a separate listener. |
+| Data for "what actually happened" | `UConnectIt_BoardStateComponent::GetChangeEvent()` | The tag signal itself carries no parameters — payload data is read separately from the same replicated snapshot driving the queue (see [SingleSourceOfTruth-Replication.md](SingleSourceOfTruth-Replication.md)), available identically on server and client. |
 
 ## Sequence
 
 1. State commits (via the single-source-of-truth pattern), and `OnBoardStateChanged` fires on both server and client.
-2. The caller (`AConnectIt_BoardManager` in ConnectIt) inspects what changed and builds an ordered list of tag-groups — e.g. a placement always leads with `PiecePlaced`, then conditionally appends `LineScored` and/or `PlayerWin`; a shift is always its own, disjoint single-tag sequence.
-3. `QueueTagSequence` is called once with that list. Calls are serialized globally — only one sequence runs at a time across the whole subsystem/world; further calls while one is running are queued and drained in order, never interleaved.
-4. For each tag-group in the sequence, every tag in the group triggers. Anything registered with `BindOnTagBegin` for that tag fires instantly, before any gated task even executes. Anything registered as a `UGameEventTask_Async` against that tag runs, and the group is not considered complete until every registered task in it has called `OnComplete`.
-5. If nothing is registered against a tag yet, its manager completes with zero phases immediately and the chain falls through to the next group synchronously — sequencing is opt-in per listener, not something that has to be wired up before the game functions at all.
-6. Once every group has completed, the chain's own `OnComplete` fires once.
+2. The same component that just committed the change (`UConnectIt_BoardStateComponent` in ConnectIt) inspects what changed and calls the enqueue primitive once per event, in order — e.g. a placement always leads with `PiecePlaced`, then conditionally `LineScored` and/or `PlayerWin`; a shift is always its own, disjoint single call.
+3. Each `QueueTagContainer` call enqueues its tag-group and tries to start executing immediately. The subsystem's queue is serialized globally — only one group is actually firing at a time across the whole subsystem/world; further calls while one is running are queued and drained in order, never interleaved. This is what lets several back-to-back enqueue calls behave like an ordered chain without the caller needing any chaining logic or second queue of its own.
+4. For each tag-group, every tag in the group triggers. Anything registered with `BindOnTagBegin` for that tag fires instantly, before any gated task even executes. Anything registered as a `UGameEventTask_Async` against that tag runs, and the group is not considered complete until every registered task in it has called `OnComplete`.
+5. If nothing is registered against a tag yet, its manager completes with zero phases immediately and the queue falls through to the next group synchronously — sequencing is opt-in per listener, not something that has to be wired up before the game functions at all.
+6. Once a group completes, the queue immediately tries the next one, if any is waiting.
 
 ## Why It's Reusable
 

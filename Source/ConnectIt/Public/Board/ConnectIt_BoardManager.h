@@ -18,7 +18,6 @@ class UGridTileRegistryComponent;
 class UGridPieceRegistryComponent;
 class UConnectIt_BoardRulesComponent;
 class UConnectIt_BoardShiftComponent;
-class UConnectIt_BoardSequencerComponent;
 
 // NOTE: OnPiecePlaced/OnLineScored/OnPlayerWin/OnShiftApplied used to live
 // here as their own delegates. Removed -- listeners now bind to
@@ -68,11 +67,6 @@ public:
     // live directly on this class.
     UFUNCTION(BlueprintPure, Category = "ConnectIt|Board")
     UConnectIt_BoardRulesComponent* GetBoardRulesComponent() const { return BoardRulesComponent; }
-
-    // Drives the gated visual sequence for board changes -- see
-    // UConnectIt_BoardSequencerComponent.
-    UFUNCTION(BlueprintPure, Category = "ConnectIt|Board")
-    UConnectIt_BoardSequencerComponent* GetBoardSequencerComponent() const { return BoardSequencerComponent; }
 
     // --- Board Lifecycle ---
 
@@ -125,10 +119,6 @@ protected:
         Category = "ConnectIt|Components")
     TObjectPtr<UConnectIt_BoardRulesComponent> BoardRulesComponent = nullptr;
 
-    UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly,
-        Category = "ConnectIt|Components")
-    TObjectPtr<UConnectIt_BoardSequencerComponent> BoardSequencerComponent = nullptr;
-
     // --- Interpreters ---
 
     UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly,
@@ -155,25 +145,16 @@ private:
     bool HandlePlacePieceRequest(const FConnectItRequestPlacePiece& Request, int32 FactionID) const;
     bool HandleShiftRequest(const FConnectItRequestBoardShift& Request, int32 FactionID) const;
 
-    // --- Turn-End Sequencing ---
-    // Registers once as a persistent async task against
-    // UTurnBasedParticipantManagerComponent::TurnEndEventTag (set to
-    // ConnectIt_Event_TurnEnd in the GameState's component defaults) -- the
-    // plugin now triggers that tag directly from EndTurn(); this is just
-    // one more gated-sequence listener, same idiom as
-    // UConnectIt_BoardShiftComponent's persistent ConnectIt_Event_Shift
-    // task, not a bespoke bridge to a hold-count API.
-    void RegisterTurnEndTask();
-
-    UFUNCTION()
-    void HandleTurnEndTaskExecute();
-
-    UFUNCTION()
-    void HandleBoardSequenceIdleForTurnEnd();
-
-    UPROPERTY()
-    TObjectPtr<class UGameEventTask_Async> TurnEndTask = nullptr;
-
+    // Kept only for OnActiveControllerChanged. Used to also register a
+    // persistent turn-end task here (RegisterTurnEndTask/HandleTurnEndTaskExecute/
+    // HandleBoardSequenceIdleForTurnEnd) that polled BoardSequencerComponent
+    // ::IsIdle() before completing -- removed along with BoardSequencerComponent
+    // itself: UGameEventTaskSubsystem's own queue now guarantees
+    // ConnectIt_Event_TurnEnd (triggered by UTurnBasedParticipantManagerComponent
+    // ::EndTurn) can't start firing until every board-event tag enqueued
+    // ahead of it (by ConnectIt_BoardStateComponent) has finished, so a task
+    // that only ever polled for that same fact and then immediately
+    // completed had become redundant.
     UPROPERTY()
     TObjectPtr<class UTurnBasedParticipantManagerComponent> ParticipantManagerRef = nullptr;
 };

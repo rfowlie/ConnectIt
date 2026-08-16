@@ -343,20 +343,26 @@ void UTurnBasedParticipantManagerComponent::EndTurn(ETurnEndReason Reason)
     // Gate AdvanceToNextParticipant on TurnEndEventTag -- fires immediately
     // if nothing is registered against it, or once every registered gated
     // task completes. See BeginPlay for the AdvanceToNextParticipant bind.
+    // QueueTagContainer (not the subsystem's private TriggerTag) is the
+    // correct entry point for any external caller -- it also means this
+    // enqueue takes its place in the subsystem's own FIFO queue, which is
+    // what guarantees it can't start firing until every board-event tag a
+    // project might have enqueued ahead of it (e.g. ConnectIt's
+    // ConnectIt_BoardStateComponent) has already fully completed.
     UGameEventTaskSubsystem* GameEventSubsystem =
         GetWorld() ? GetWorld()->GetSubsystem<UGameEventTaskSubsystem>() : nullptr;
 
     if (IsValid(GameEventSubsystem) && TurnEndEventTag.IsValid())
     {
-        GameEventSubsystem->TriggerTag(TurnEndEventTag);
+        GameEventSubsystem->QueueTagContainer(FGameplayTagContainer(TurnEndEventTag));
     }
     else
     {
-        AdvanceToNextParticipant();
+        AdvanceToNextParticipant(TurnEndEventTag);
     }
 }
 
-void UTurnBasedParticipantManagerComponent::AdvanceToNextParticipant()
+void UTurnBasedParticipantManagerComponent::AdvanceToNextParticipant(FGameplayTag Tag)
 {
     check(!IsRunningClientOnly());
     check(TurnOrderStrategy.GetInterface() != nullptr);

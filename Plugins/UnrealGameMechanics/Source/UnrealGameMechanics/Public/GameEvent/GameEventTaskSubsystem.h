@@ -12,27 +12,8 @@ class UGameEventTaskManager;
 class UGameEventTask_Async;
 
 DECLARE_DYNAMIC_DELEGATE_OneParam(FOnTagSequenceStepComplete, FGameplayTagContainer, CompletedStepTags);
-DECLARE_DYNAMIC_DELEGATE(FOnTagSequenceComplete);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnActiveManagerTagsChanged);
 
-// One queued call to QueueTagSequence -- tracked internally by
-// UGameEventTaskSubsystem, index 0 in the queue is always the active one
-USTRUCT()
-struct FGameEventQueuedTagSequence
-{
-    GENERATED_BODY()
-
-    UPROPERTY()
-    TArray<FGameplayTagContainer> Steps;
-
-    UPROPERTY()
-    FOnTagSequenceStepComplete OnStepComplete;
-
-    UPROPERTY()
-    FOnTagSequenceComplete OnComplete;
-
-    int32 CurrentStepIndex = -1;
-    int32 PendingInStep = 0;
-};
 
 // Per-world registry of tag-keyed UGameEventTaskManager instances.
 //
@@ -48,25 +29,28 @@ struct FGameEventQueuedTagSequence
 // its managers, so visual/UI systems always have a stable place to bind
 // against regardless of whether any particular gameplay actor exists yet.
 UCLASS()
-class UNREALGAMEMECHANICS_API UGameEventTaskSubsystem
-    : public UWorldSubsystem, public IGameEventTaskHandler
+class UNREALGAMEMECHANICS_API UGameEventTaskSubsystem : public UWorldSubsystem
 {
     GENERATED_BODY()
 
 public:
 
+    // Enqueues Tags to fire together once it's their turn in the queue, then
+    // tries to start executing immediately if nothing else is currently
+    // running. Every tag in the container triggers in parallel; the queue
+    // does not advance to the next queued container until every tag in this
+    // one has fully completed (OnManagerComplete for all of them). This is
+    // the primary way to fire a tag from outside the subsystem -- TriggerTag
+    // itself is private, reachable only internally.
+    UFUNCTION(BlueprintCallable, Category = "GameEvent")
+    void QueueTagContainer(const FGameplayTagContainer& Tags);
+    
     // Registers a gated task against a tag's sequence at the given phase.
     // See UGameEventTaskManager::RegisterAsyncTask -- refused if that tag's
     // sequence is currently running, or if the task's OnExecuteDelegate
     // isn't bound yet.
     UFUNCTION(BlueprintCallable, Category = "GameEvent")
     void RegisterAsyncTask(FGameplayTag Tag, UGameEventTask_Async* Task, int32 Phase = 0);
-
-    // Runs the tag's sequence -- executes phase 0, waits for every task in
-    // it to signal completion, advances to the next phase, and so on until
-    // OnManagerComplete fires for that tag.
-    UFUNCTION(BlueprintCallable, Category = "GameEvent")
-    void TriggerTag(FGameplayTag Tag);
 
     // Bind/unbind to a tag's sequence starting. Listener/FunctionName is
     // the same (Object, UFUNCTION name) pair Blueprint's "Bind Event to X"
@@ -84,50 +68,55 @@ public:
     UFUNCTION(BlueprintCallable, Category = "GameEvent")
     void UnbindOnTagComplete(FGameplayTag Tag, UObject* Listener, FName FunctionName);
 
-    // Runs an ordered sequence of tag-groups. Each group's tags all trigger
-    // in parallel; the sequence advances to the next group only once every
-    // tag in the current group has fully completed (OnStepComplete fires
-    // once per group, with that group's tags, as it finishes). Serialized
-    // globally -- if another sequence is already running, this one queues
-    // and starts once every sequence ahead of it in the queue has finished;
-    // sequences never run concurrently or interleave.
-    //
-    // Callers with their own per-call payload data to correlate against a
-    // specific run (e.g. AConnectIt_BoardManager's FConnectItBoardChangeEvent)
-    // should track that themselves and only queue their next call once
-    // OnComplete fires for the previous one -- this queue serializes
-    // WHICH sequence runs when, not caller-side state.
-    UFUNCTION(BlueprintCallable, Category = "GameEvent")
-    void QueueTagSequence(
-        const TArray<FGameplayTagContainer>& Steps,
-        FOnTagSequenceStepComplete OnStepComplete,
-        FOnTagSequenceComplete OnComplete);
+    // --- Helpers ---
 
-    // IGameEventTaskHandler -- gives this previously-unimplemented plugin
-    // interface a real implementation. Returns the same lazily-created
-    // manager the pass-through functions above operate on; provided for
-    // plugin-side code written against the interface rather than this
-    // concrete class.
-    virtual UGameEventTaskManager* GetGameEventTaskManagerByTag_Implementation(
-        FGameplayTag InGameplayTag) override;
+    UPROPERTY(BlueprintAssignable, Category = "GameEvent")
+    FOnActiveManagerTagsChanged OnActiveManagerTagsChanged;
+    
+    // return tag array at time of calling
+    UFUNCTION(BlueprintCallable, Category = "GameEvent")
+    TArray<FGameplayTag> GetTagsInQueue();
 
 private:
-
-    UGameEventTaskManager* GetOrCreateManager(FGameplayTag Tag);
 
     UPROPERTY()
     TMap<FGameplayTag, TObjectPtr<UGameEventTaskManager>> ManagersByTag;
 
-    // --- Queued Tag Sequences ---
+    UGameEventTaskManager* GetOrCreateManager(FGameplayTag Tag);
+    
+    // Runs the tag's sequence -- executes phase 0, waits for every task in
+    // it to signal completion, advances to the next phase, and so on until
+    // OnManagerComplete fires for that tag. Private -- external callers go
+    // through QueueTagContainer (or the deprecated QueueTagSequence) so
+    // every firing is properly queued; this subsystem's own internals
+    // (below, and QueueTagSequence's) call it directly.
+    void TriggerTag(FGameplayTag Tag);
+
+    // --- Queued Tag Containers ---
+    // Deliberately separate state from the deprecated sequence queue above
+    // -- QueueTagSequence's own bind/unbind of HandleSequenceStepTagComplete
+    // operates on the very same per-tag managers this queue's
+    // HandleOnManagerComplete binds to (via AddUniqueDynamic/RemoveDynamic
+    // instead of the reflection-based BindOnTagComplete), so keeping the two
+    // mechanisms' bookkeeping fully independent is what keeps them from
+    // interfering with each other.
 
     UPROPERTY()
-    TArray<FGameEventQueuedTagSequence> SequenceQueue;
+    TArray<FGameplayTagContainer> ContainerQueue;
 
-    bool bSequenceInFlight = false;
+    FGameplayTagContainer ActiveContainer;
 
-    void TryStartNextQueuedSequence();
-    void AdvanceSequenceToStep(int32 StepIndex);
+    // The set of tags whose managers are still outstanding for
+    // ActiveContainer -- populated in full before any of them are
+    // triggered, and drained one at a time as each completes. Precise,
+    // can inspect state (what's actually still running) rather than an
+    // opaque pending count.
+    UPROPERTY()
+    TArray<FGameplayTag> ActiveManagerTags;
+
+    void TryExecuteNextContainer();
 
     UFUNCTION()
-    void HandleSequenceStepTagComplete();
+    void HandleOnManagerComplete(FGameplayTag Tag);
+    
 };

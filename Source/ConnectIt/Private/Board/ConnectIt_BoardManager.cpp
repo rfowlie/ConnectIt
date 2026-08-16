@@ -9,12 +9,9 @@
 #include "TurnBasedMechanicsStructs.h"
 #include "Action/ConnectIt_ShiftAction.h"
 #include "Board/ConnectIt_BoardStateComponent.h"
-#include "Board/ConnectIt_BoardSequencerComponent.h"
 #include "Board/Rules/ConnectIt_BoardRulesComponent.h"
 #include "Framework/Data/ConnectIt_ConfigComponent.h"
 #include "Framework/Subsystem/ConnectIt_BoardManagerSubsystem.h"
-#include "GameEvent/GameEventTaskSubsystem.h"
-#include "GameEvent/GameEventTask_Async.h"
 #include "Interpreter/ConnectIt_PieceSpawnInterpreter.h"
 #include "Interpreter/ConnectIt_ScoreInterpreter.h"
 #include "Interpreter/ConnectIt_TileStateInterpreter.h"
@@ -46,10 +43,6 @@ AConnectIt_BoardManager::AConnectIt_BoardManager()
     BoardRulesComponent =
         CreateDefaultSubobject<UConnectIt_BoardRulesComponent>(
             TEXT("BoardRules"));
-
-    BoardSequencerComponent =
-        CreateDefaultSubobject<UConnectIt_BoardSequencerComponent>(
-            TEXT("BoardSequencer"));
 
     TileStateInterpreter =
         CreateDefaultSubobject<UConnectIt_TileStateInterpreter>(
@@ -261,10 +254,12 @@ bool AConnectIt_BoardManager::HandlePlacePieceRequest(
     // Record what happened -- replicated alongside the state itself via
     // SetBoardState, instead of broadcasting gameplay delegates directly
     // here. This only ever runs on the server, so a direct broadcast would
-    // never reach a real remote client. UConnectIt_BoardSequencerComponent
-    // reads this back from BoardSnapshot.ChangeEvent on both server and
-    // client (via OnBoardStateChanged, which already fires symmetrically)
-    // and drives the gated visual sequence from there.
+    // never reach a real remote client. ConnectIt_BoardStateComponent reads
+    // this back from its own BoardSnapshot.ChangeEvent and enqueues the
+    // matching event tags on UGameEventTaskSubsystem itself, symmetrically
+    // on both server (from SetBoardState) and client (from OnRep) -- this
+    // board manager plays no role in sequencing, only in deciding what
+    // happened.
     FConnectItBoardChangeEvent ChangeEvent;
     ChangeEvent.bPiecePlaced        = true;
     ChangeEvent.PlacedPosition      = TargetPosition;
@@ -313,8 +308,8 @@ bool AConnectIt_BoardManager::HandleShiftRequest(
 
     // Record what happened -- same authoritative-first pattern as
     // HandlePlacePieceRequest: commit state via SetBoardState first, then
-    // UConnectIt_BoardSequencerComponent (fires identically on server and
-    // client) drives the gated visual sequence from the replicated
+    // ConnectIt_BoardStateComponent (fires identically on server and
+    // client) enqueues the gated visual sequence from the replicated
     // ChangeEvent. Parallel arrays instead of Result's TMap/TSet directly --
     // those don't replicate (see FConnectItBoardChangeEvent's Shift fields).
     FConnectItBoardChangeEvent ChangeEvent;
@@ -341,52 +336,4 @@ void AConnectIt_BoardManager::BindParticipantManager()
         ParticipantManagerRef->OnActiveControllerChanged.AddDynamic(
             this, &AConnectIt_BoardManager::HandleActiveControllerChanged);
     }
-
-    RegisterTurnEndTask();
-}
-
-// --- Turn-End Sequencing ---
-
-void AConnectIt_BoardManager::RegisterTurnEndTask()
-{
-    UGameEventTaskSubsystem* GameEventSubsystem =
-        GetWorld() ? GetWorld()->GetSubsystem<UGameEventTaskSubsystem>() : nullptr;
-
-    if (!IsValid(GameEventSubsystem))
-    {
-        UE_LOG(LogTemp, Error,
-            TEXT("ConnectIt_BoardManager: RegisterTurnEndTask -- "
-                 "no UGameEventTaskSubsystem in world"));
-        return;
-    }
-
-    TurnEndTask = NewObject<UGameEventTask_Async>(this);
-    TurnEndTask->bIsPersistentTask = true;
-    TurnEndTask->OnExecuteDelegate.BindDynamic(
-        this, &AConnectIt_BoardManager::HandleTurnEndTaskExecute);
-
-    GameEventSubsystem->RegisterAsyncTask(ConnectIt_Event_TurnEnd, TurnEndTask, 0);
-}
-
-void AConnectIt_BoardManager::HandleTurnEndTaskExecute()
-{
-    if (!IsValid(BoardSequencerComponent) || BoardSequencerComponent->IsIdle())
-    {
-        if (IsValid(TurnEndTask)) { TurnEndTask->OnComplete.Broadcast(TurnEndTask); }
-        return;
-    }
-
-    BoardSequencerComponent->OnSequenceIdle.AddDynamic(
-        this, &AConnectIt_BoardManager::HandleBoardSequenceIdleForTurnEnd);
-}
-
-void AConnectIt_BoardManager::HandleBoardSequenceIdleForTurnEnd()
-{
-    if (IsValid(BoardSequencerComponent))
-    {
-        BoardSequencerComponent->OnSequenceIdle.RemoveDynamic(
-            this, &AConnectIt_BoardManager::HandleBoardSequenceIdleForTurnEnd);
-    }
-
-    if (IsValid(TurnEndTask)) { TurnEndTask->OnComplete.Broadcast(TurnEndTask); }
 }

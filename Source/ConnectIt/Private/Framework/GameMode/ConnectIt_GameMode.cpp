@@ -150,11 +150,12 @@ void AConnectIt_GameMode::SpawnAndRegisterAI()
 
 // --- Game Over ---
 
-void AConnectIt_GameMode::HandleGameOver()
+void AConnectIt_GameMode::HandleGameOver(FGameplayTag Tag)
 {
-    // The tag signal carries no payload -- WinningFactionSlot is a
-    // persistent field CheckWinCondition already set on CurrentState, no
-    // need to route it through a delegate parameter
+    // Tag is just the manager's own identity (ConnectIt_Event_PlayerWin,
+    // the only thing this is ever bound to), not event-specific data --
+    // WinningFactionSlot is a persistent field CheckWinCondition already
+    // set on CurrentState, no need to route it through a delegate parameter
     const UConnectIt_BoardStateComponent* BoardState =
         UConnectIt_GameUtilityLibrary::GetBoardStateComponent(this);
 
