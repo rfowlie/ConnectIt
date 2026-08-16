@@ -168,18 +168,39 @@ UConnectIt_BoardManagerSubsystem does not relay anything any more (see
 BoardManagerSubsystem_Workflow.txt).
 
 
-TURN SYSTEM NOW WAITS ON THIS -- SEE ALSO TurnResolutionHold_Workflow.txt
--------------------------------------------------------------------------
+TURN SYSTEM NOW WAITS ON THIS
+------------------------------
 This used to be a known limitation: UTurnBasedParticipantManagerComponent's resolution
 phase advanced on a fixed-duration timer with no way to hold it back, so a slow gated
-visual sequence could genuinely still be in flight when the next turn started. Fixed --
-UTurnBasedParticipantManagerComponent::BeginResolutionHold()/EndResolutionHold() (a
-generic hold counter, no knowledge of tags or ConnectIt) now gates AdvanceToNextParticipant,
-and AConnectIt_BoardManager drives it: on OnTurnResolutionStarted, it holds immediately,
-waits for UConnectIt_BoardSequencerComponent::IsIdle() (no board-change sequence in
-flight or queued), then runs its own ConnectIt_Event_TurnEnd gated sequence before
-releasing the hold. See TurnResolutionHold_Workflow.txt for the full flow -- board-change
-sequencing (this doc) and turn-end orchestration are deliberately separate concerns.
+visual sequence could genuinely still be in flight when the next turn started. Fixed,
+and fixed again since -- an earlier version of the fix used a bespoke hold counter
+(BeginResolutionHold()/EndResolutionHold()) that AConnectIt_BoardManager drove by hand.
+That counter turned out to just be reimplementing what UGameEventTaskManager already
+does generically (wait for zero or more registered tasks, fire completion once), so it
+was removed in favour of turn-end becoming just another tag in this same system:
+
+  - UTurnBasedParticipantManagerComponent gained a project-configurable TurnEndEventTag
+    (set to ConnectIt_Event_TurnEnd for ConnectIt). BeginPlay binds
+    AdvanceToNextParticipant to that tag's OnManagerComplete via BindOnTagComplete, once,
+    the same two calls QueueTagSequence already uses internally. EndTurn() calls
+    TriggerTag(TurnEndEventTag) directly -- no bespoke hold API, no bridge functions.
+
+  - AConnectIt_BoardManager registers ONE persistent UGameEventTask_Async against
+    ConnectIt_Event_TurnEnd in BindParticipantManager (RegisterTurnEndTask) -- exactly
+    the same self-registration idiom UConnectIt_BoardShiftComponent already uses for
+    ConnectIt_Event_Shift, not a special case. Its Execute handler
+    (HandleTurnEndTaskExecute) checks UConnectIt_BoardSequencerComponent::IsIdle(): if
+    idle, completes the task immediately; if not, waits for OnSequenceIdle
+    (HandleBoardSequenceIdleForTurnEnd) before completing it.
+
+  - With zero registered tasks for the tag (e.g. a project that hasn't wired anything up
+    yet), TriggerTag fires OnManagerComplete synchronously -- turn end proceeds
+    immediately, same as it always has for a trivially-idle board.
+
+Board-change sequencing (the rest of this doc) and turn-end orchestration remain
+deliberately separate concerns -- AConnectIt_BoardManager's turn-end task just happens to
+read UConnectIt_BoardSequencerComponent's already-existing IsIdle() fact, the same way it
+always did; UConnectIt_BoardSequencerComponent itself still knows nothing about turns.
 
 
 FILES INVOLVED

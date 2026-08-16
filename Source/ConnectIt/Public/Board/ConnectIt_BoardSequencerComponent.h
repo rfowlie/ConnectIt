@@ -21,9 +21,11 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE(FConnectItOnSequenceIdle);
 //
 // This component knows nothing about turns or UTurnBasedParticipantManagerComponent
 // -- turn-end is not a board concern. It only exposes IsIdle()/OnSequenceIdle,
-// a board-domain fact; AConnectIt_BoardManager is what uses that to hold turn
-// resolution back until board-change visuals are done (see
-// Workflows/TurnResolutionHold_Workflow.txt).
+// a board-domain fact; AConnectIt_BoardManager reads that from its own
+// persistent ConnectIt_Event_TurnEnd task to decide whether it can complete
+// immediately or has to wait for board-change visuals to finish first (see
+// Workflows/GameEventSubsystem_Workflow.txt's "TURN SYSTEM NOW WAITS ON
+// THIS" section).
 UCLASS(ClassGroup=(Custom), meta=(BlueprintSpawnableComponent))
 class CONNECTIT_API UConnectIt_BoardSequencerComponent : public UActorComponent
 {

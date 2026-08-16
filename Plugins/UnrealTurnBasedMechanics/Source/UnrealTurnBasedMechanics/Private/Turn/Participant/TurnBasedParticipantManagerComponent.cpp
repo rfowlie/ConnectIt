@@ -3,6 +3,7 @@
 #include "Turn/Participant/TurnBasedParticipantManagerComponent.h"
 #include "UnrealTurnBasedMechanics.h"
 #include "Framework/GameState/TurnBasedGameState.h"
+#include "GameEvent/GameEventTaskSubsystem.h"
 #include "Net/UnrealNetwork.h"
 #include "Framework/PlayerState/TurnBasedPlayerState.h"
 #include "Turn/Order/SequentialTurnOrderStrategy.h"
@@ -27,6 +28,24 @@ void UTurnBasedParticipantManagerComponent::BeginPlay()
         UE_LOG(LogTurnBasedMechanics, Log,
             TEXT("TurnBasedParticipantManager: No strategy set "
                  "— defaulting to Sequential"));
+    }
+
+    if (TurnEndEventTag.IsValid())
+    {
+        if (UGameEventTaskSubsystem* GameEventSubsystem =
+            GetWorld() ? GetWorld()->GetSubsystem<UGameEventTaskSubsystem>() : nullptr)
+        {
+            GameEventSubsystem->BindOnTagComplete(TurnEndEventTag, this,
+                GET_FUNCTION_NAME_CHECKED(UTurnBasedParticipantManagerComponent, AdvanceToNextParticipant));
+        }
+    }
+    else
+    {
+        UE_LOG(LogTurnBasedMechanics, Error,
+            TEXT("TurnBasedParticipantManager: TurnEndEventTag not set on %s "
+                 "— EndTurn will fall back to advancing immediately with no "
+                 "gated turn-end sequence."),
+            *GetOwner()->GetName());
     }
 }
 
@@ -321,49 +340,17 @@ void UTurnBasedParticipantManagerComponent::EndTurn(ETurnEndReason Reason)
     // Enter updating -- all clients suspend input while resolution plays
     SetMatchPhase(EMatchPhase::Updating);
 
-    // Reset defensively before broadcasting -- a hold left dangling by a
-    // bug elsewhere should never be able to permanently stall future turns
-    ResolutionHoldCount = 0;
-    bResolutionHoldTakenThisTurnEnd = false;
+    // Gate AdvanceToNextParticipant on TurnEndEventTag -- fires immediately
+    // if nothing is registered against it, or once every registered gated
+    // task completes. See BeginPlay for the AdvanceToNextParticipant bind.
+    UGameEventTaskSubsystem* GameEventSubsystem =
+        GetWorld() ? GetWorld()->GetSubsystem<UGameEventTaskSubsystem>() : nullptr;
 
-    OnTurnResolutionStarted.Broadcast();
-
-    // Broadcast() calls every bound listener synchronously before
-    // returning, so anything that needed to hold resolution has already
-    // called BeginResolutionHold() by this point -- if nothing did, there's
-    // nothing to wait for. ResolutionHoldCount == 0 alone isn't enough to
-    // tell that apart from "something held it and already released it
-    // synchronously during the broadcast" (e.g. a gated tag sequence with
-    // nothing registered against it) -- that case already advanced via
-    // EndResolutionHold, so guard against advancing a second time here.
-    if (ResolutionHoldCount == 0 && !bResolutionHoldTakenThisTurnEnd)
+    if (IsValid(GameEventSubsystem) && TurnEndEventTag.IsValid())
     {
-        AdvanceToNextParticipant();
+        GameEventSubsystem->TriggerTag(TurnEndEventTag);
     }
-}
-
-void UTurnBasedParticipantManagerComponent::BeginResolutionHold()
-{
-    check(!IsRunningClientOnly());
-    ResolutionHoldCount++;
-    bResolutionHoldTakenThisTurnEnd = true;
-}
-
-void UTurnBasedParticipantManagerComponent::EndResolutionHold()
-{
-    check(!IsRunningClientOnly());
-
-    if (ResolutionHoldCount <= 0)
-    {
-        UE_LOG(LogTurnBasedMechanics, Warning,
-            TEXT("TurnBasedParticipantManager: EndResolutionHold called "
-                 "with no matching hold — ignoring"));
-        return;
-    }
-
-    ResolutionHoldCount--;
-
-    if (ResolutionHoldCount == 0 && CurrentPhase == ETurnPhase::TurnEnd)
+    else
     {
         AdvanceToNextParticipant();
     }

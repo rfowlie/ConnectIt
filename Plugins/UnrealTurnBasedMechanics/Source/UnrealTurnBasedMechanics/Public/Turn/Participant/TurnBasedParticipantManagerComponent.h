@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "GameplayTagContainer.h"
 #include "TurnBasedMechanicsEnums.h"
 #include "TurnBasedMechanicsStructs.h"
 #include "Components/ActorComponent.h"
@@ -17,7 +18,6 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnTurnPhaseChanged, ETurnPhase, New
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnParticipantForfeited, const FTurnParticipantInfo&, ParticipantInfo);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnActiveControllerChanged, AController*, NewActiveController);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnAllParticipantsReady);
-DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnTurnResolutionStarted);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnGameOver);
 
 UCLASS(ClassGroup=(TurnBased), meta=(BlueprintSpawnableComponent))
@@ -91,19 +91,6 @@ public:
     // Called by participant manager when a participant confirms ready
     void NotifyParticipantReady(AController* Controller);
 
-    // Holds AdvanceToNextParticipant back during the resolution phase --
-    // external systems bind to OnTurnResolutionStarted and call this
-    // immediately if they have gated visual/logic work to finish first,
-    // then call EndResolutionHold() once that work is genuinely done.
-    // Replaces the old fixed-duration TurnResolutionDuration timer, which
-    // only ever estimated how long that work would take instead of knowing.
-    void BeginResolutionHold();
-
-    // Releases a hold placed by BeginResolutionHold(). Once the hold count
-    // returns to zero (and resolution is still pending), advances to the
-    // next participant immediately.
-    void EndResolutionHold();
-
     // --- Delegates ---
 
     UPROPERTY(BlueprintAssignable, Category = "Turn Based")
@@ -117,13 +104,6 @@ public:
 
     UPROPERTY(BlueprintAssignable, Category = "Turn Based")
     FOnAllParticipantsReady OnAllParticipantsReady;
-
-    // Hook for external systems during resolution phase
-    // Cinematics, scoring visuals, dialogue etc. bind here and call
-    // BeginResolutionHold()/EndResolutionHold() around their own work.
-    // Manager advances immediately once nothing is holding it.
-    UPROPERTY(BlueprintAssignable, Category = "Turn Based")
-    FOnTurnResolutionStarted OnTurnResolutionStarted;
 
     UPROPERTY(BlueprintAssignable, Category = "Turn Based")
     FOnGameOver OnGameOver;
@@ -152,6 +132,15 @@ protected:
 
     virtual void BeginPlay() override;
 
+    // Tag triggered on UGameEventTaskSubsystem when a turn ends -- external
+    // systems register gated async tasks against this tag (same pattern as
+    // any other gated sequence step) instead of a bespoke hold API. Must be
+    // set by the project (this plugin has no opinion on the tag's name) --
+    // AdvanceToNextParticipant only runs once every registered task for
+    // this tag completes, or immediately if none are registered.
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Turn Based|Config")
+    FGameplayTag TurnEndEventTag;
+
 private:
 
     // Server only -- index matched to Participants
@@ -164,29 +153,17 @@ private:
 
     int32 DisconnectedParticipantIndex = -1;
 
-    // Count of outstanding BeginResolutionHold() calls not yet matched by
-    // EndResolutionHold() -- AdvanceToNextParticipant is deferred while > 0
-    int32 ResolutionHoldCount = 0;
-
-    // Set by BeginResolutionHold, reset alongside ResolutionHoldCount at the
-    // top of EndTurn. Distinguishes "nobody ever held resolution" from
-    // "something held it and already released it synchronously before
-    // OnTurnResolutionStarted.Broadcast() returned" -- both look identical
-    // as ResolutionHoldCount == 0 to EndTurn's post-broadcast fallback check,
-    // but only the first case should trigger it. Without this, a hold taken
-    // and released entirely within the broadcast (e.g. a gated tag sequence
-    // with nothing registered against it, resolving synchronously) causes
-    // EndResolutionHold's own AdvanceToNextParticipant call and EndTurn's
-    // fallback call to both fire for the same turn end.
-    bool bResolutionHoldTakenThisTurnEnd = false;
-
     // --- State Machine ---
 
     void SetPhase(ETurnPhase NewPhase);
     void StartTurn(int32 ParticipantIndex);
     void EndTurn(ETurnEndReason Reason);
-   
+
+    // UFUNCTION() -- bound to TurnEndEventTag's OnManagerComplete via
+    // BindOnTagComplete (reflection-based, needs a UFUNCTION to find it)
+    UFUNCTION()
     void AdvanceToNextParticipant();
+
     void HandleTurnTimeout();
     void HandleReconnectTimeout();
     void CheckReadyStatus();

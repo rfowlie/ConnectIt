@@ -28,7 +28,7 @@ On top of the engine convention, ConnectIt's own module prefixes nearly every cl
 |---|---|---|
 | `OnRep_<Property>` | Replication callback (`ReplicatedUsing=`) | `OnRep_BoardSnapshot`, `OnRep_FactionID`, `OnRep_MatchResult`, `OnRep_MatchPhase` |
 | `Server<Verb>` | Server RPC | `ServerRouteBoardChangeRequest`, `ServerNotifyReady`, `ServerSubmitTurnEnd` |
-| `Handle<Event>` | A function bound to a delegate, reacting to something that already happened | `HandleBoardStateChanged`, `HandleTurnResolutionStarted`, `HandleGameOver` |
+| `Handle<Event>` | A function bound to a delegate, reacting to something that already happened | `HandleBoardStateChanged`, `HandleTurnEndTaskExecute`, `HandleGameOver` |
 | `<Verb>_Implementation` | The native override point for a `BlueprintNativeEvent` | `Activate_Internal_Implementation`, `OnBoardStateChanged_Implementation` |
 | `Get<Thing>` / `Is<Condition>` | `BlueprintPure`, `const` query | `GetCurrentState()`, `IsLocalPlayerTurn()` |
 

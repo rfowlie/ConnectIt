@@ -120,7 +120,7 @@ void UGameEventTaskSubsystem::AdvanceSequenceToStep(int32 StepIndex)
     if (!Active.Steps.IsValidIndex(StepIndex))
     {
         // Every step in this sequence has completed
-        Active.OnComplete.ExecuteIfBound();
+        if (Active.OnComplete.IsBound()) { Active.OnComplete.Execute(); };
         SequenceQueue.RemoveAt(0);
         bSequenceInFlight = false;
         TryStartNextQueuedSequence();
@@ -165,7 +165,7 @@ void UGameEventTaskSubsystem::HandleSequenceStepTagComplete()
                 GET_FUNCTION_NAME_CHECKED(UGameEventTaskSubsystem, HandleSequenceStepTagComplete));
         }
 
-        Active.OnStepComplete.ExecuteIfBound(StepTags);
+        if (Active.OnStepComplete.IsBound()) { Active.OnStepComplete.Execute(StepTags); }
     }
 
     AdvanceSequenceToStep(Active.CurrentStepIndex + 1);

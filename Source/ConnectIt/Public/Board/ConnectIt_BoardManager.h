@@ -156,25 +156,23 @@ private:
     bool HandleShiftRequest(const FConnectItRequestBoardShift& Request, int32 FactionID) const;
 
     // --- Turn-End Sequencing ---
-    // Not a board-state concern -- BoardSequencerComponent stays scoped to
-    // board-change visuals only and knows nothing about turns. This is
-    // turn-flow orchestration: hold resolution back the instant a turn
-    // ends, wait for BoardSequencerComponent to finish anything already in
-    // flight/queued, then run the ConnectIt_Event_TurnEnd gated sequence
-    // (letting any external listener do end-of-turn work, distinct from
-    // board-change visuals) before releasing the hold. See
-    // Workflows/TurnResolutionHold_Workflow.txt.
+    // Registers once as a persistent async task against
+    // UTurnBasedParticipantManagerComponent::TurnEndEventTag (set to
+    // ConnectIt_Event_TurnEnd in the GameState's component defaults) -- the
+    // plugin now triggers that tag directly from EndTurn(); this is just
+    // one more gated-sequence listener, same idiom as
+    // UConnectIt_BoardShiftComponent's persistent ConnectIt_Event_Shift
+    // task, not a bespoke bridge to a hold-count API.
+    void RegisterTurnEndTask();
 
     UFUNCTION()
-    void HandleTurnResolutionStarted();
+    void HandleTurnEndTaskExecute();
 
     UFUNCTION()
-    void HandleBoardSequenceIdle();
+    void HandleBoardSequenceIdleForTurnEnd();
 
-    void BeginTurnEndSequence();
-
-    UFUNCTION()
-    void HandleTurnEndSequenceComplete();
+    UPROPERTY()
+    TObjectPtr<class UGameEventTask_Async> TurnEndTask = nullptr;
 
     UPROPERTY()
     TObjectPtr<class UTurnBasedParticipantManagerComponent> ParticipantManagerRef = nullptr;

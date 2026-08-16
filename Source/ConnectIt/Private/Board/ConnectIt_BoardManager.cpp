@@ -14,6 +14,7 @@
 #include "Framework/Data/ConnectIt_ConfigComponent.h"
 #include "Framework/Subsystem/ConnectIt_BoardManagerSubsystem.h"
 #include "GameEvent/GameEventTaskSubsystem.h"
+#include "GameEvent/GameEventTask_Async.h"
 #include "Interpreter/ConnectIt_PieceSpawnInterpreter.h"
 #include "Interpreter/ConnectIt_ScoreInterpreter.h"
 #include "Interpreter/ConnectIt_TileStateInterpreter.h"
@@ -339,67 +340,53 @@ void AConnectIt_BoardManager::BindParticipantManager()
     {
         ParticipantManagerRef->OnActiveControllerChanged.AddDynamic(
             this, &AConnectIt_BoardManager::HandleActiveControllerChanged);
-
-        ParticipantManagerRef->OnTurnResolutionStarted.AddDynamic(
-            this, &AConnectIt_BoardManager::HandleTurnResolutionStarted);
     }
+
+    RegisterTurnEndTask();
 }
 
 // --- Turn-End Sequencing ---
 
-void AConnectIt_BoardManager::HandleTurnResolutionStarted()
-{
-    if (!IsValid(ParticipantManagerRef)) return;
-
-    // Hold immediately, synchronously during this broadcast -- see
-    // UTurnBasedParticipantManagerComponent::EndTurn for why that's race-free.
-    ParticipantManagerRef->BeginResolutionHold();
-
-    if (!IsValid(BoardSequencerComponent) || BoardSequencerComponent->IsIdle())
-    {
-        BeginTurnEndSequence();
-        return;
-    }
-
-    BoardSequencerComponent->OnSequenceIdle.AddDynamic(
-        this, &AConnectIt_BoardManager::HandleBoardSequenceIdle);
-}
-
-void AConnectIt_BoardManager::HandleBoardSequenceIdle()
-{
-    if (IsValid(BoardSequencerComponent))
-    {
-        BoardSequencerComponent->OnSequenceIdle.RemoveDynamic(
-            this, &AConnectIt_BoardManager::HandleBoardSequenceIdle);
-    }
-
-    BeginTurnEndSequence();
-}
-
-void AConnectIt_BoardManager::BeginTurnEndSequence()
+void AConnectIt_BoardManager::RegisterTurnEndTask()
 {
     UGameEventTaskSubsystem* GameEventSubsystem =
         GetWorld() ? GetWorld()->GetSubsystem<UGameEventTaskSubsystem>() : nullptr;
 
     if (!IsValid(GameEventSubsystem))
     {
-        HandleTurnEndSequenceComplete();
+        UE_LOG(LogTemp, Error,
+            TEXT("ConnectIt_BoardManager: RegisterTurnEndTask -- "
+                 "no UGameEventTaskSubsystem in world"));
         return;
     }
 
-    FOnTagSequenceComplete CompleteDelegate;
-    CompleteDelegate.BindDynamic(this, &AConnectIt_BoardManager::HandleTurnEndSequenceComplete);
+    TurnEndTask = NewObject<UGameEventTask_Async>(this);
+    TurnEndTask->bIsPersistentTask = true;
+    TurnEndTask->OnExecuteDelegate.BindDynamic(
+        this, &AConnectIt_BoardManager::HandleTurnEndTaskExecute);
 
-    GameEventSubsystem->QueueTagSequence(
-        { FGameplayTagContainer(ConnectIt_Event_TurnEnd) },
-        FOnTagSequenceStepComplete(),
-        CompleteDelegate);
+    GameEventSubsystem->RegisterAsyncTask(ConnectIt_Event_TurnEnd, TurnEndTask, 0);
 }
 
-void AConnectIt_BoardManager::HandleTurnEndSequenceComplete()
+void AConnectIt_BoardManager::HandleTurnEndTaskExecute()
 {
-    if (IsValid(ParticipantManagerRef))
+    if (!IsValid(BoardSequencerComponent) || BoardSequencerComponent->IsIdle())
     {
-        ParticipantManagerRef->EndResolutionHold();
+        if (IsValid(TurnEndTask)) { TurnEndTask->OnComplete.Broadcast(TurnEndTask); }
+        return;
     }
+
+    BoardSequencerComponent->OnSequenceIdle.AddDynamic(
+        this, &AConnectIt_BoardManager::HandleBoardSequenceIdleForTurnEnd);
+}
+
+void AConnectIt_BoardManager::HandleBoardSequenceIdleForTurnEnd()
+{
+    if (IsValid(BoardSequencerComponent))
+    {
+        BoardSequencerComponent->OnSequenceIdle.RemoveDynamic(
+            this, &AConnectIt_BoardManager::HandleBoardSequenceIdleForTurnEnd);
+    }
+
+    if (IsValid(TurnEndTask)) { TurnEndTask->OnComplete.Broadcast(TurnEndTask); }
 }
