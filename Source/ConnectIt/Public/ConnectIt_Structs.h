@@ -205,6 +205,61 @@ struct FConnectItBoardChangeEvent
 
     UPROPERTY(BlueprintReadOnly)
     TArray<FGridPosition> ShiftWrappingPositions;
+
+    // --- Tile Multiplier Destroyed --- (UConnectIt_TileMultiplierDestroyerAction)
+
+    UPROPERTY(BlueprintReadOnly)
+    bool bTileMultiplierDestroyed = false;
+
+    UPROPERTY(BlueprintReadOnly)
+    FGridPosition MultiplierDestroyedPosition;
+
+    // --- Piece Removed --- (UConnectIt_TimedPieceRemoverAction)
+
+    UPROPERTY(BlueprintReadOnly)
+    bool bPieceRemoved = false;
+
+    UPROPERTY(BlueprintReadOnly)
+    FGridPosition RemovedPosition;
+
+    UPROPERTY(BlueprintReadOnly)
+    int32 RemovedFactionSlot = -1;
+
+    // --- Pieces Swapped --- (UConnectIt_PieceSwapperAction)
+
+    UPROPERTY(BlueprintReadOnly)
+    bool bPiecesSwapped = false;
+
+    UPROPERTY(BlueprintReadOnly)
+    FGridPosition SwapPositionA;
+
+    UPROPERTY(BlueprintReadOnly)
+    FGridPosition SwapPositionB;
+
+    // --- Tile Active Toggled --- (UConnectIt_TileActivationToggleAction)
+
+    UPROPERTY(BlueprintReadOnly)
+    bool bTileActiveToggled = false;
+
+    UPROPERTY(BlueprintReadOnly)
+    FGridPosition ToggledPosition;
+
+    UPROPERTY(BlueprintReadOnly)
+    bool bToggledPositionNowActive = false;
+
+    // --- Piece Captured --- (UConnectIt_PieceCaptureAction)
+
+    UPROPERTY(BlueprintReadOnly)
+    bool bPieceCaptured = false;
+
+    UPROPERTY(BlueprintReadOnly)
+    FGridPosition CapturedPosition;
+
+    UPROPERTY(BlueprintReadOnly)
+    int32 CapturingFactionSlot = -1;
+
+    UPROPERTY(BlueprintReadOnly)
+    int32 PreviousFactionSlot = -1;
 };
 
 // Snapshot -- the ONE replicated property on UConnectItBoardStateComponent
@@ -256,4 +311,78 @@ struct FConnectItRequestBoardShift
 
     UPROPERTY(BlueprintReadWrite)
     FShiftOperation ShiftOperation;
+};
+
+// FTurnActionRequest payload -- UConnectIt_TileMultiplierDestroyerAction
+USTRUCT(BlueprintType)
+struct FConnectItRequestDestroyTileMultiplier
+{
+    GENERATED_BODY()
+
+    UPROPERTY(BlueprintReadWrite)
+    FGridPosition Position;
+};
+
+// FTurnActionRequest payload -- UConnectIt_TimedPieceRemoverAction.
+// DelayTurns is forward-declared for a delayed/scheduled follow-up that
+// doesn't exist yet -- see that action's class comment. The current board
+// manager handler only honours DelayTurns == 0 (immediate removal).
+USTRUCT(BlueprintType)
+struct FConnectItRequestRemovePiece
+{
+    GENERATED_BODY()
+
+    UPROPERTY(BlueprintReadWrite)
+    FGridPosition Position;
+
+    UPROPERTY(BlueprintReadWrite, meta = (ClampMin = 0))
+    int32 DelayTurns = 0;
+};
+
+// FTurnActionRequest payload -- UConnectIt_PieceSwapperAction
+USTRUCT(BlueprintType)
+struct FConnectItRequestSwapPieces
+{
+    GENERATED_BODY()
+
+    UPROPERTY(BlueprintReadWrite)
+    FGridPosition PositionA;
+
+    UPROPERTY(BlueprintReadWrite)
+    FGridPosition PositionB;
+};
+
+// FTurnActionRequest payload -- UConnectIt_TileActivationToggleAction
+USTRUCT(BlueprintType)
+struct FConnectItRequestToggleTileActive
+{
+    GENERATED_BODY()
+
+    UPROPERTY(BlueprintReadWrite)
+    FGridPosition Position;
+};
+
+// FTurnActionRequest payload -- UConnectIt_PieceCaptureAction. No explicit
+// capturing faction field -- FTurnActionRequest::FactionID on the envelope
+// is already "who's making this request" for every request type.
+USTRUCT(BlueprintType)
+struct FConnectItRequestCapturePiece
+{
+    GENERATED_BODY()
+
+    UPROPERTY(BlueprintReadWrite)
+    FGridPosition Position;
+};
+
+// FTurnActionRequest payload -- UConnectIt_ForcePiecePlaceOnTileAction.
+// Deliberately the same shape as FConnectItRequestPlacePiece (not reused
+// directly) -- keeps this request type free to diverge later (e.g. an
+// explicit faction override) without touching the normal placement payload.
+USTRUCT(BlueprintType)
+struct FConnectItRequestForcePlacePiece
+{
+    GENERATED_BODY()
+
+    UPROPERTY(BlueprintReadWrite)
+    FGridPosition Position;
 };

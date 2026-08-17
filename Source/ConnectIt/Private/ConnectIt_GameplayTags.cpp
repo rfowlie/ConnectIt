@@ -11,6 +11,13 @@ UE_DEFINE_GAMEPLAY_TAG_COMMENT(ConnectIt_Game_PlacePiece, "ConnectIt.Game.State.
 UE_DEFINE_GAMEPLAY_TAG_COMMENT(ConnectIt_Game_UpdateBoard, "ConnectIt.Game.State.UpdateBoard", "");
 UE_DEFINE_GAMEPLAY_TAG_COMMENT(ConnectIt_Game_Shift, "ConnectIt.Game.State.Shift", "");
 
+UE_DEFINE_GAMEPLAY_TAG_COMMENT(ConnectIt_Game_DestroyTileMultiplier, "ConnectIt.Game.State.DestroyTileMultiplier", "");
+UE_DEFINE_GAMEPLAY_TAG_COMMENT(ConnectIt_Game_RemovePiece, "ConnectIt.Game.State.RemovePiece", "");
+UE_DEFINE_GAMEPLAY_TAG_COMMENT(ConnectIt_Game_SwapPieces, "ConnectIt.Game.State.SwapPieces", "");
+UE_DEFINE_GAMEPLAY_TAG_COMMENT(ConnectIt_Game_ForcePlacePiece, "ConnectIt.Game.State.ForcePlacePiece", "");
+UE_DEFINE_GAMEPLAY_TAG_COMMENT(ConnectIt_Game_ToggleTileActive, "ConnectIt.Game.State.ToggleTileActive", "");
+UE_DEFINE_GAMEPLAY_TAG_COMMENT(ConnectIt_Game_CapturePiece, "ConnectIt.Game.State.CapturePiece", "");
+
 UE_DEFINE_GAMEPLAY_TAG_COMMENT(ConnectIt_Tile_ValidHover, "ConnectIt.Tile.ValidHover", "");
 UE_DEFINE_GAMEPLAY_TAG_COMMENT(ConnectIt_Tile_InvalidHover, "ConnectIt.Tile.InvalidHover", "");
 UE_DEFINE_GAMEPLAY_TAG_COMMENT(ConnectIt_Tile_Occupied, "ConnectIt.Tile.Occupied", "");
@@ -21,3 +28,9 @@ UE_DEFINE_GAMEPLAY_TAG_COMMENT(ConnectIt_Event_LineScored, "ConnectIt.Event.Line
 UE_DEFINE_GAMEPLAY_TAG_COMMENT(ConnectIt_Event_PlayerWin, "ConnectIt.Event.PlayerWin", "");
 UE_DEFINE_GAMEPLAY_TAG_COMMENT(ConnectIt_Event_Shift, "ConnectIt.Event.Shift", "");
 UE_DEFINE_GAMEPLAY_TAG_COMMENT(ConnectIt_Event_TurnEnd, "ConnectIt.Event.TurnEnd", "");
+
+UE_DEFINE_GAMEPLAY_TAG_COMMENT(ConnectIt_Event_TileMultiplierDestroyed, "ConnectIt.Event.TileMultiplierDestroyed", "");
+UE_DEFINE_GAMEPLAY_TAG_COMMENT(ConnectIt_Event_PieceRemoved, "ConnectIt.Event.PieceRemoved", "");
+UE_DEFINE_GAMEPLAY_TAG_COMMENT(ConnectIt_Event_PiecesSwapped, "ConnectIt.Event.PiecesSwapped", "");
+UE_DEFINE_GAMEPLAY_TAG_COMMENT(ConnectIt_Event_TileActiveToggled, "ConnectIt.Event.TileActiveToggled", "");
+UE_DEFINE_GAMEPLAY_TAG_COMMENT(ConnectIt_Event_PieceCaptured, "ConnectIt.Event.PieceCaptured", "");

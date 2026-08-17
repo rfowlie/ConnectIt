@@ -141,8 +141,32 @@ void UConnectIt_BoardStateComponent::EnqueueBoardEventTags() const
     {
         GameEventSubsystem->QueueTagContainer(FGameplayTagContainer(ConnectIt_Event_LineScored));
     }
+    if (ChangeEvent.bPieceRemoved)
+    {
+        GameEventSubsystem->QueueTagContainer(FGameplayTagContainer(ConnectIt_Event_PieceRemoved));
+    }
     if (ChangeEvent.bGameWon)
     {
         GameEventSubsystem->QueueTagContainer(FGameplayTagContainer(ConnectIt_Event_PlayerWin));
+    }
+
+    // New mutation types (see AConnectIt_BoardManager's Handle*Request
+    // methods) -- each is its own disjoint kind of change, same as Shift vs
+    // PiecePlaced above, so no ordering relationship between them
+    if (ChangeEvent.bTileMultiplierDestroyed)
+    {
+        GameEventSubsystem->QueueTagContainer(FGameplayTagContainer(ConnectIt_Event_TileMultiplierDestroyed));
+    }    
+    if (ChangeEvent.bPiecesSwapped)
+    {
+        GameEventSubsystem->QueueTagContainer(FGameplayTagContainer(ConnectIt_Event_PiecesSwapped));
+    }
+    if (ChangeEvent.bTileActiveToggled)
+    {
+        GameEventSubsystem->QueueTagContainer(FGameplayTagContainer(ConnectIt_Event_TileActiveToggled));
+    }
+    if (ChangeEvent.bPieceCaptured)
+    {
+        GameEventSubsystem->QueueTagContainer(FGameplayTagContainer(ConnectIt_Event_PieceCaptured));
     }
 }

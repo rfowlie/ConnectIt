@@ -145,6 +145,36 @@ private:
     bool HandlePlacePieceRequest(const FConnectItRequestPlacePiece& Request, int32 FactionID) const;
     bool HandleShiftRequest(const FConnectItRequestBoardShift& Request, int32 FactionID) const;
 
+    // Same as HandlePlacePieceRequest but skips IsTileValidForPlacement --
+    // only requires the position to exist in the registry, so it can place
+    // on an inactive or already-occupied tile (overwriting it). Produces the
+    // same ChangeEvent shape (bPiecePlaced) since visually it's the same
+    // kind of event as a normal placement.
+    bool HandleForcePlacePieceRequest(const FConnectItRequestForcePlacePiece& Request, int32 FactionID) const;
+
+    bool HandleDestroyTileMultiplierRequest(const FConnectItRequestDestroyTileMultiplier& Request) const;
+
+    // DelayTurns > 0 is rejected (logged) rather than silently treated as
+    // immediate -- delayed/scheduled removal needs a per-turn ticking
+    // mechanism this board manager doesn't have yet. See
+    // FConnectItRequestRemovePiece's comment.
+    bool HandleRemovePieceRequest(const FConnectItRequestRemovePiece& Request) const;
+
+    // Requires both positions occupied. Deliberately does not re-run
+    // scoring/win-condition checks -- IConnectIt_ScoringRule::ApplyScoring
+    // is defined around a single just-completed position; a swap changes
+    // two positions at once and there's no obvious single-position call
+    // that means the right thing here. Left as a known scope gap rather
+    // than a guessed-at implementation -- see class/action comments.
+    bool HandleSwapPiecesRequest(const FConnectItRequestSwapPieces& Request) const;
+
+    bool HandleToggleTileActiveRequest(const FConnectItRequestToggleTileActive& Request) const;
+
+    // Unlike HandleSwapPiecesRequest, scoring IS re-run here -- exactly one
+    // position changes ownership, the same well-defined case
+    // HandlePlacePieceRequest already handles.
+    bool HandleCapturePieceRequest(const FConnectItRequestCapturePiece& Request, int32 FactionID) const;
+
     // Kept only for OnActiveControllerChanged. Used to also register a
     // persistent turn-end task here (RegisterTurnEndTask/HandleTurnEndTaskExecute/
     // HandleBoardSequenceIdleForTurnEnd) that polled BoardSequencerComponent

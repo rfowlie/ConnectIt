@@ -209,6 +209,90 @@ bool AConnectIt_BoardManager::ProcessRequest(const FTurnActionRequest& Request)
         return false;
     }
 
+    if (Request.RequestType == ConnectIt_Game_ForcePlacePiece)
+    {
+        if (const FConnectItRequestForcePlacePiece* Payload =
+            Request.Payload.GetPtr<FConnectItRequestForcePlacePiece>())
+        {
+            return HandleForcePlacePieceRequest(*Payload, Request.FactionID);
+        }
+
+        UE_LOG(LogTemp, Error,
+            TEXT("ConnectIt_BoardManager: ForcePlacePiece request payload "
+                 "missing or wrong type"));
+        return false;
+    }
+
+    if (Request.RequestType == ConnectIt_Game_DestroyTileMultiplier)
+    {
+        if (const FConnectItRequestDestroyTileMultiplier* Payload =
+            Request.Payload.GetPtr<FConnectItRequestDestroyTileMultiplier>())
+        {
+            return HandleDestroyTileMultiplierRequest(*Payload);
+        }
+
+        UE_LOG(LogTemp, Error,
+            TEXT("ConnectIt_BoardManager: DestroyTileMultiplier request "
+                 "payload missing or wrong type"));
+        return false;
+    }
+
+    if (Request.RequestType == ConnectIt_Game_RemovePiece)
+    {
+        if (const FConnectItRequestRemovePiece* Payload =
+            Request.Payload.GetPtr<FConnectItRequestRemovePiece>())
+        {
+            return HandleRemovePieceRequest(*Payload);
+        }
+
+        UE_LOG(LogTemp, Error,
+            TEXT("ConnectIt_BoardManager: RemovePiece request payload "
+                 "missing or wrong type"));
+        return false;
+    }
+
+    if (Request.RequestType == ConnectIt_Game_SwapPieces)
+    {
+        if (const FConnectItRequestSwapPieces* Payload =
+            Request.Payload.GetPtr<FConnectItRequestSwapPieces>())
+        {
+            return HandleSwapPiecesRequest(*Payload);
+        }
+
+        UE_LOG(LogTemp, Error,
+            TEXT("ConnectIt_BoardManager: SwapPieces request payload "
+                 "missing or wrong type"));
+        return false;
+    }
+
+    if (Request.RequestType == ConnectIt_Game_ToggleTileActive)
+    {
+        if (const FConnectItRequestToggleTileActive* Payload =
+            Request.Payload.GetPtr<FConnectItRequestToggleTileActive>())
+        {
+            return HandleToggleTileActiveRequest(*Payload);
+        }
+
+        UE_LOG(LogTemp, Error,
+            TEXT("ConnectIt_BoardManager: ToggleTileActive request payload "
+                 "missing or wrong type"));
+        return false;
+    }
+
+    if (Request.RequestType == ConnectIt_Game_CapturePiece)
+    {
+        if (const FConnectItRequestCapturePiece* Payload =
+            Request.Payload.GetPtr<FConnectItRequestCapturePiece>())
+        {
+            return HandleCapturePieceRequest(*Payload, Request.FactionID);
+        }
+
+        UE_LOG(LogTemp, Error,
+            TEXT("ConnectIt_BoardManager: CapturePiece request payload "
+                 "missing or wrong type"));
+        return false;
+    }
+
     UE_LOG(LogTemp, Warning,
         TEXT("ConnectIt_BoardManager: Unknown request type '%s'"),
         *Request.RequestType.ToString());
@@ -322,6 +406,253 @@ bool AConnectIt_BoardManager::HandleShiftRequest(
     }
     
     ChangeEvent.ShiftWrappingPositions = ShiftResult.WrappingPositions.Array();
+
+    BoardStateComponent->SetBoardState(NewState, ChangeEvent);
+    return true;
+}
+
+bool AConnectIt_BoardManager::HandleForcePlacePieceRequest(
+    const FConnectItRequestForcePlacePiece& Request, int32 FactionID) const
+{
+    const FConnectItBoardState& Current = BoardStateComponent->GetCurrentState();
+
+    // Only requires the position to exist -- deliberately skips
+    // IsTileValidForPlacement (active/unoccupied) so this can overwrite an
+    // inactive or already-occupied tile. Registry existence is still
+    // checked so a garbage position can't silently grow the tile arrays.
+    if (!Current.GetTileData(Request.Position))
+    {
+        UE_LOG(LogTemp, Warning,
+            TEXT("ConnectIt_BoardManager: ForcePlacePiece rejected "
+                 "-- position (%d,%d) not registered"),
+            Request.Position.X, Request.Position.Y);
+        return false;
+    }
+
+    FConnectItBoardState NewState = Current;
+
+    if (FConnectItTileData* TileData = NewState.GetTileDataMutable(Request.Position))
+    {
+        TileData->FactionPiece = FactionID;
+    }
+
+    const float PointsScored = BoardRulesComponent->ApplyScoring(
+        NewState, Request.Position, FactionID);
+
+    BoardRulesComponent->CheckWinCondition(NewState);
+
+    FConnectItBoardChangeEvent ChangeEvent;
+    ChangeEvent.bPiecePlaced       = true;
+    ChangeEvent.PlacedPosition     = Request.Position;
+    ChangeEvent.PlacingFactionSlot = FactionID;
+    ChangeEvent.bLineScored        = PointsScored > 0.f;
+    ChangeEvent.ScoringFactionSlot = FactionID;
+    ChangeEvent.PointsScored       = PointsScored;
+    ChangeEvent.bGameWon           = NewState.bGameOver && !Current.bGameOver;
+    ChangeEvent.WinningFactionSlot = NewState.WinningFactionSlot;
+
+    BoardStateComponent->SetBoardState(NewState, ChangeEvent);
+    return true;
+}
+
+bool AConnectIt_BoardManager::HandleDestroyTileMultiplierRequest(
+    const FConnectItRequestDestroyTileMultiplier& Request) const
+{
+    const FConnectItBoardState& Current = BoardStateComponent->GetCurrentState();
+    const FConnectItTileData* Existing = Current.GetTileData(Request.Position);
+
+    if (!Existing)
+    {
+        UE_LOG(LogTemp, Warning,
+            TEXT("ConnectIt_BoardManager: DestroyTileMultiplier rejected "
+                 "-- position (%d,%d) not registered"),
+            Request.Position.X, Request.Position.Y);
+        return false;
+    }
+
+    if (Existing->Multiplier == 1.0f)
+    {
+        UE_LOG(LogTemp, Warning,
+            TEXT("ConnectIt_BoardManager: DestroyTileMultiplier rejected "
+                 "-- position (%d,%d) has no multiplier to destroy"),
+            Request.Position.X, Request.Position.Y);
+        return false;
+    }
+
+    FConnectItBoardState NewState = Current;
+
+    if (FConnectItTileData* TileData = NewState.GetTileDataMutable(Request.Position))
+    {
+        TileData->Multiplier = 1.0f;
+    }
+
+    FConnectItBoardChangeEvent ChangeEvent;
+    ChangeEvent.bTileMultiplierDestroyed   = true;
+    ChangeEvent.MultiplierDestroyedPosition = Request.Position;
+
+    BoardStateComponent->SetBoardState(NewState, ChangeEvent);
+    return true;
+}
+
+bool AConnectIt_BoardManager::HandleRemovePieceRequest(
+    const FConnectItRequestRemovePiece& Request) const
+{
+    if (Request.DelayTurns > 0)
+    {
+        UE_LOG(LogTemp, Warning,
+            TEXT("ConnectIt_BoardManager: RemovePiece rejected -- "
+                 "DelayTurns %d not supported yet (no per-turn scheduling "
+                 "mechanism exists), only immediate (0) removal is handled"),
+            Request.DelayTurns);
+        return false;
+    }
+
+    const FConnectItBoardState& Current = BoardStateComponent->GetCurrentState();
+    const FConnectItTileData* Existing = Current.GetTileData(Request.Position);
+
+    if (!Existing || !Existing->IsOccupied())
+    {
+        UE_LOG(LogTemp, Warning,
+            TEXT("ConnectIt_BoardManager: RemovePiece rejected -- "
+                 "position (%d,%d) is not occupied"),
+            Request.Position.X, Request.Position.Y);
+        return false;
+    }
+
+    const int32 RemovedFactionSlot = Existing->FactionPiece;
+
+    FConnectItBoardState NewState = Current;
+
+    if (FConnectItTileData* TileData = NewState.GetTileDataMutable(Request.Position))
+    {
+        TileData->FactionPiece = -1;
+    }
+
+    FConnectItBoardChangeEvent ChangeEvent;
+    ChangeEvent.bPieceRemoved      = true;
+    ChangeEvent.RemovedPosition    = Request.Position;
+    ChangeEvent.RemovedFactionSlot = RemovedFactionSlot;
+
+    BoardStateComponent->SetBoardState(NewState, ChangeEvent);
+    return true;
+}
+
+bool AConnectIt_BoardManager::HandleSwapPiecesRequest(
+    const FConnectItRequestSwapPieces& Request) const
+{
+    const FConnectItBoardState& Current = BoardStateComponent->GetCurrentState();
+    const FConnectItTileData* DataA = Current.GetTileData(Request.PositionA);
+    const FConnectItTileData* DataB = Current.GetTileData(Request.PositionB);
+
+    if (!DataA || !DataB || !DataA->IsOccupied() || !DataB->IsOccupied())
+    {
+        UE_LOG(LogTemp, Warning,
+            TEXT("ConnectIt_BoardManager: SwapPieces rejected -- "
+                 "both (%d,%d) and (%d,%d) must be registered and occupied"),
+            Request.PositionA.X, Request.PositionA.Y,
+            Request.PositionB.X, Request.PositionB.Y);
+        return false;
+    }
+
+    FConnectItBoardState NewState = Current;
+
+    FConnectItTileData* MutableA = NewState.GetTileDataMutable(Request.PositionA);
+    FConnectItTileData* MutableB = NewState.GetTileDataMutable(Request.PositionB);
+    Swap(MutableA->FactionPiece, MutableB->FactionPiece);
+
+    // No scoring/win-condition re-check -- see class header comment
+    FConnectItBoardChangeEvent ChangeEvent;
+    ChangeEvent.bPiecesSwapped = true;
+    ChangeEvent.SwapPositionA  = Request.PositionA;
+    ChangeEvent.SwapPositionB  = Request.PositionB;
+
+    BoardStateComponent->SetBoardState(NewState, ChangeEvent);
+    return true;
+}
+
+bool AConnectIt_BoardManager::HandleToggleTileActiveRequest(
+    const FConnectItRequestToggleTileActive& Request) const
+{
+    const FConnectItBoardState& Current = BoardStateComponent->GetCurrentState();
+    const FConnectItTileData* Existing = Current.GetTileData(Request.Position);
+
+    if (!Existing)
+    {
+        UE_LOG(LogTemp, Warning,
+            TEXT("ConnectIt_BoardManager: ToggleTileActive rejected -- "
+                 "position (%d,%d) not registered"),
+            Request.Position.X, Request.Position.Y);
+        return false;
+    }
+
+    FConnectItBoardState NewState = Current;
+    bool bNewActiveState = false;
+
+    if (FConnectItTileData* TileData = NewState.GetTileDataMutable(Request.Position))
+    {
+        TileData->bIsActive = !TileData->bIsActive;
+        bNewActiveState = TileData->bIsActive;
+    }
+
+    FConnectItBoardChangeEvent ChangeEvent;
+    ChangeEvent.bTileActiveToggled       = true;
+    ChangeEvent.ToggledPosition          = Request.Position;
+    ChangeEvent.bToggledPositionNowActive = bNewActiveState;
+
+    BoardStateComponent->SetBoardState(NewState, ChangeEvent);
+    return true;
+}
+
+bool AConnectIt_BoardManager::HandleCapturePieceRequest(
+    const FConnectItRequestCapturePiece& Request, int32 FactionID) const
+{
+    const FConnectItBoardState& Current = BoardStateComponent->GetCurrentState();
+    const FConnectItTileData* Existing = Current.GetTileData(Request.Position);
+
+    if (!Existing || !Existing->IsOccupied())
+    {
+        UE_LOG(LogTemp, Warning,
+            TEXT("ConnectIt_BoardManager: CapturePiece rejected -- "
+                 "position (%d,%d) is not occupied"),
+            Request.Position.X, Request.Position.Y);
+        return false;
+    }
+
+    if (Existing->FactionPiece == FactionID)
+    {
+        UE_LOG(LogTemp, Warning,
+            TEXT("ConnectIt_BoardManager: CapturePiece rejected -- "
+                 "position (%d,%d) already belongs to faction %d"),
+            Request.Position.X, Request.Position.Y, FactionID);
+        return false;
+    }
+
+    const int32 PreviousFactionSlot = Existing->FactionPiece;
+
+    FConnectItBoardState NewState = Current;
+
+    if (FConnectItTileData* TileData = NewState.GetTileDataMutable(Request.Position))
+    {
+        TileData->FactionPiece = FactionID;
+    }
+
+    // Exactly one position changed ownership -- same well-defined case
+    // HandlePlacePieceRequest already handles, unlike HandleSwapPiecesRequest
+    const float PointsScored = BoardRulesComponent->ApplyScoring(
+        NewState, Request.Position, FactionID);
+
+    BoardRulesComponent->CheckWinCondition(NewState);
+
+    FConnectItBoardChangeEvent ChangeEvent;
+    ChangeEvent.bPieceCaptured        = true;
+    ChangeEvent.CapturedPosition      = Request.Position;
+    ChangeEvent.CapturingFactionSlot  = FactionID;
+    ChangeEvent.PreviousFactionSlot   = PreviousFactionSlot;
+    ChangeEvent.bLineScored           = PointsScored > 0.f;
+    ChangeEvent.ScoringFactionSlot    = FactionID;
+    ChangeEvent.PointsScored          = PointsScored;
+    ChangeEvent.bGameWon              = NewState.bGameOver && !Current.bGameOver;
+    ChangeEvent.WinningFactionSlot    = NewState.WinningFactionSlot;
 
     BoardStateComponent->SetBoardState(NewState, ChangeEvent);
     return true;
