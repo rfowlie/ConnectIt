@@ -32,10 +32,13 @@ public:
     // MutableState at Position. Implementations mutate MutableState with any
     // further scoring consequences (clearing tiles, incrementing
     // multipliers, updating ScoreBoard) and return the total points awarded
-    // for this placement (0 if none).
+    // for this placement (0 if none). OutScoringPositions is appended with
+    // every tile that was part of a completed line (left untouched if
+    // nothing scored) -- the caller starts it empties each call.
     UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "ConnectIt|Scoring")
     float ApplyScoring(
         UPARAM(ref) FConnectItBoardState& MutableState,
         FGridPosition Position,
-        int32 FactionSlot);
+        int32 FactionSlot,
+        UPARAM(ref) TArray<FGridPosition>& OutScoringPositions);
 };

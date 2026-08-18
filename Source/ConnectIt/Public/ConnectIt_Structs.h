@@ -175,6 +175,15 @@ struct FConnectItBoardChangeEvent
     UPROPERTY(BlueprintReadOnly)
     float PointsScored = 0.f;
 
+    // Every tile that was part of a completed line on this placement --
+    // the union across all lines if more than one completed simultaneously
+    // (e.g. a horizontal and a diagonal through the same piece), not kept
+    // separate per line since USTRUCT arrays-of-arrays don't replicate
+    // (same reason shift below uses parallel arrays instead of a TMap/TSet).
+    // Empty when bLineScored is false.
+    UPROPERTY(BlueprintReadOnly)
+    TArray<FGridPosition> ScoringLinePositions;
+
     UPROPERTY(BlueprintReadOnly)
     bool bGameWon = false;
 

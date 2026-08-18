@@ -52,7 +52,6 @@ struct CONNECTIT_API FConnectItMatchResult
 
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnMatchResultUpdated, const FConnectItMatchResult&, Result);
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FonMatchPhaseUpdated, EMatchPhase, UpdatedPhase);
 
 UCLASS()
 class CONNECTIT_API AConnectIt_GameState : public ATurnBasedGameState

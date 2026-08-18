@@ -330,8 +330,9 @@ bool AConnectIt_BoardManager::HandlePlacePieceRequest(
         TileData->FactionPiece = FactionID;
     }
 
+    TArray<FGridPosition> ScoringPositions;
     const float PointsScored = BoardRulesComponent->ApplyScoring(
-        NewState, TargetPosition, FactionID);
+        NewState, TargetPosition, FactionID, ScoringPositions);
 
     BoardRulesComponent->CheckWinCondition(NewState);
 
@@ -351,6 +352,7 @@ bool AConnectIt_BoardManager::HandlePlacePieceRequest(
     ChangeEvent.bLineScored         = PointsScored > 0.f;
     ChangeEvent.ScoringFactionSlot  = FactionID;
     ChangeEvent.PointsScored        = PointsScored;
+    ChangeEvent.ScoringLinePositions = ScoringPositions;
     // Edge-triggered -- true only on the transition into game-over, not
     // "the game is currently over" (Current.bGameOver would already be
     // true on every snapshot after the winning move)
@@ -436,8 +438,9 @@ bool AConnectIt_BoardManager::HandleForcePlacePieceRequest(
         TileData->FactionPiece = FactionID;
     }
 
+    TArray<FGridPosition> ScoringPositions;
     const float PointsScored = BoardRulesComponent->ApplyScoring(
-        NewState, Request.Position, FactionID);
+        NewState, Request.Position, FactionID, ScoringPositions);
 
     BoardRulesComponent->CheckWinCondition(NewState);
 
@@ -448,6 +451,7 @@ bool AConnectIt_BoardManager::HandleForcePlacePieceRequest(
     ChangeEvent.bLineScored        = PointsScored > 0.f;
     ChangeEvent.ScoringFactionSlot = FactionID;
     ChangeEvent.PointsScored       = PointsScored;
+    ChangeEvent.ScoringLinePositions = ScoringPositions;
     ChangeEvent.bGameWon           = NewState.bGameOver && !Current.bGameOver;
     ChangeEvent.WinningFactionSlot = NewState.WinningFactionSlot;
 
@@ -638,8 +642,9 @@ bool AConnectIt_BoardManager::HandleCapturePieceRequest(
 
     // Exactly one position changed ownership -- same well-defined case
     // HandlePlacePieceRequest already handles, unlike HandleSwapPiecesRequest
+    TArray<FGridPosition> ScoringPositions;
     const float PointsScored = BoardRulesComponent->ApplyScoring(
-        NewState, Request.Position, FactionID);
+        NewState, Request.Position, FactionID, ScoringPositions);
 
     BoardRulesComponent->CheckWinCondition(NewState);
 
@@ -651,6 +656,7 @@ bool AConnectIt_BoardManager::HandleCapturePieceRequest(
     ChangeEvent.bLineScored           = PointsScored > 0.f;
     ChangeEvent.ScoringFactionSlot    = FactionID;
     ChangeEvent.PointsScored          = PointsScored;
+    ChangeEvent.ScoringLinePositions  = ScoringPositions;
     ChangeEvent.bGameWon              = NewState.bGameOver && !Current.bGameOver;
     ChangeEvent.WinningFactionSlot    = NewState.WinningFactionSlot;
 

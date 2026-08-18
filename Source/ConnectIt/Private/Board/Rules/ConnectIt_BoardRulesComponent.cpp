@@ -11,6 +11,7 @@ void UConnectIt_BoardRulesComponent::BeginPlay()
 {
     Super::BeginPlay();
 
+    // Set default rules
     if (!ScoringRule.GetObject())
     {
         ScoringRule = NewObject<UConnectIt_LineScoringRule>(
@@ -35,7 +36,8 @@ void UConnectIt_BoardRulesComponent::BeginPlay()
 float UConnectIt_BoardRulesComponent::ApplyScoring(
     FConnectItBoardState& MutableState,
     FGridPosition Position,
-    int32 FactionSlot) const
+    int32 FactionSlot,
+    TArray<FGridPosition>& OutScoringPositions) const
 {
     if (!ScoringRule.GetInterface())
     {
@@ -46,7 +48,8 @@ float UConnectIt_BoardRulesComponent::ApplyScoring(
     }
 
     return IConnectIt_ScoringRule::Execute_ApplyScoring(
-        ScoringRule.GetObject(), MutableState, Position, FactionSlot);
+        ScoringRule.GetObject(), MutableState, Position, FactionSlot,
+        OutScoringPositions);
 }
 
 void UConnectIt_BoardRulesComponent::CheckWinCondition(

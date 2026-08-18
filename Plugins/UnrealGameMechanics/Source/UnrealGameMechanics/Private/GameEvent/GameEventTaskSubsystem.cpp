@@ -112,6 +112,12 @@ void UGameEventTaskSubsystem::TryExecuteNextContainer()
         ActiveManagerTags.Add(Tag);
     }
 
+    // notify interested parties (e.g. debug widgets) that a new container
+    // just became active -- without this, listeners only ever see tags
+    // disappearing (HandleOnManagerComplete's own broadcast below), never
+    // the moment they actually started.
+    if (OnActiveManagerTagsChanged.IsBound()) { OnActiveManagerTagsChanged.Broadcast(); }
+
     for (const FGameplayTag& Tag : ActiveContainer)
     {
         // Bound directly (AddUniqueDynamic/RemoveDynamic, compile-time

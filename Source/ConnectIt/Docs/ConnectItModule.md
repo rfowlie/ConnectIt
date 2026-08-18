@@ -43,7 +43,7 @@ The central board orchestrator and its components.
 
 | Class | Base | Purpose |
 |---|---|---|
-| `IConnectIt_ScoringRule` | `UInterface` | `ApplyScoring(MutableState, Position, FactionSlot) -> float` (`BlueprintNativeEvent`). |
+| `IConnectIt_ScoringRule` | `UInterface` | `ApplyScoring(MutableState, Position, FactionSlot, OutScoringPositions) -> float` (`BlueprintNativeEvent`) -- appends every tile from a completed line to `OutScoringPositions` (left untouched if nothing scored). |
 | `IConnectIt_WinCondition` | `UInterface` | `CheckWinCondition(MutableState)` (`BlueprintNativeEvent`), sets `bGameOver`/`WinningFactionSlot`. |
 | `UConnectIt_LineScoringRule` | `UObject`, implements `IConnectIt_ScoringRule` | Default N-in-a-row (`ConnectLength`, default 4) scoring — ported unchanged from the board manager's old hardcoded logic. |
 | `UConnectIt_ScoreThresholdWinCondition` | `UObject`, implements `IConnectIt_WinCondition` | Default win condition: first faction to reach `WinScoreThreshold` (default 100) wins. |

@@ -26,7 +26,8 @@ public:
     virtual float ApplyScoring_Implementation(
         FConnectItBoardState& MutableState,
         FGridPosition Position,
-        int32 FactionSlot) override;
+        int32 FactionSlot,
+        TArray<FGridPosition>& OutScoringPositions) override;
 
 private:
 

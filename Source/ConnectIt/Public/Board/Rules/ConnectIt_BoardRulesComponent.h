@@ -36,10 +36,13 @@ public:
 
     // Wraps IConnectIt_ScoringRule::Execute_ApplyScoring -- Error-logs and
     // returns 0 if ScoringRule is unset (should not happen post-BeginPlay).
+    // OutScoringPositions is appended with every tile from a completed line
+    // (left untouched if nothing scored).
     float ApplyScoring(
         FConnectItBoardState& MutableState,
         FGridPosition Position,
-        int32 FactionSlot) const;
+        int32 FactionSlot,
+        TArray<FGridPosition>& OutScoringPositions) const;
 
     // Wraps IConnectIt_WinCondition::Execute_CheckWinCondition -- Error-logs
     // and no-ops if WinConditionRule is unset (should not happen post-BeginPlay).

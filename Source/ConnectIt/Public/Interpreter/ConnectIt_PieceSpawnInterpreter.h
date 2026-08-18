@@ -31,7 +31,7 @@ public:
 	// How many pieces to pre-warm in the client pool
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Interpreter|Pool",
 		meta = (ClampMin = 1))
-	int32 PoolInitialSize = 32;
+	int32 PoolInitialSize = 50;
 
 protected:
 

@@ -7,7 +7,8 @@
 float UConnectIt_LineScoringRule::ApplyScoring_Implementation(
     FConnectItBoardState& MutableState,
     FGridPosition Position,
-    int32 FactionSlot)
+    int32 FactionSlot,
+    TArray<FGridPosition>& OutScoringPositions)
 {
     TArray<TArray<FGridPosition>> ScoringLines =
         FindScoringLines(MutableState, Position, FactionSlot);
@@ -20,6 +21,13 @@ float UConnectIt_LineScoringRule::ApplyScoring_Implementation(
     {
         TotalPoints += ApplyScoringLine(
             MutableState, Line, Position, FactionSlot);
+
+        // Union across every completed line -- AddUnique since lines always
+        // overlap at Position at minimum, and could overlap further.
+        for (const FGridPosition& LinePosition : Line)
+        {
+            OutScoringPositions.AddUnique(LinePosition);
+        }
     }
 
     if (MutableState.ScoreBoard.IsValidIndex(FactionSlot))
