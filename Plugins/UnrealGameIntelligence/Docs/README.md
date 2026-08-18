@@ -34,7 +34,7 @@ See [Systems.md](Systems.md) for a narrative, system-by-system walkthrough of ho
 
 - Data-provider interface decoupling: `IGI_FloatGridDataProviderInterface` defines only a "data shape" contract (`float GetData(FIntPoint)`), so `UGI_InfluenceMapSubsystem` and its visualisers never need to know the concrete map type they're reading from. This is a reusable pattern worth following for future debug-visualization work. See [Systems.md](Systems.md#influence-map-debug-visualization) for the full walkthrough — including a doc/code drift where this interface's own in-header usage example still refers to an `IGI_InfluenceMap` contract that isn't actually implemented anywhere in the plugin (see Known Discrepancies).
 - Registry/orchestrator pattern: `UGI_InfluenceMapSubsystem` is a `UWorldSubsystem` acting as a central registry for pluggable visualisers, managing selection and debug-widget lifecycle rather than any visualiser doing so itself.
-- Template/C++20-concept-constrained algorithm family: three MinMax solvers (plain, alpha-beta pruning, alpha-beta with move ordering) exist side by side as header-only templates, constrained via `c_min_max_node*` concepts. This looks like an intentional progressive set of reference implementations (baseline → pruning → move-ordering) rather than accidental duplication, but is worth confirming with the plugin author. See [Systems.md](Systems.md#minmax-alpha-beta-solver-toolkit) for how the three actually relate, and for the orphaned `TMinMaxManager<TNode>` scaffolding this family sits alongside.
+- Template/C++20-concept-constrained algorithm family: three MinMax solvers (plain, alpha-beta pruning, alpha-beta with move ordering) exist side by side as header-only templates, constrained via `c_min_max_node*` concepts. This looks like an intentional progressive set of reference implementations (baseline → pruning → move-ordering) rather than accidental duplication, but is worth confirming with the plugin author. See [Systems.md](Systems.md#minmax-solver-toolkit) for how the three actually relate, and for the orphaned `TMinMaxManager<TNode>` scaffolding this family sits alongside.
 
 ## Classes
 
@@ -51,7 +51,7 @@ A supplementary design guide, `Source/UnrealGameIntelligence/README/InfluenceMap
 
 ### MinMax
 
-All header-only templates, C++20 `requires`-concept constrained. See [Systems.md](Systems.md#minmax-alpha-beta-solver-toolkit) for how these three progress from baseline to pruning to move ordering, and for the orphaned `TMinMaxManager<TNode>` scaffolding below.
+All header-only templates, C++20 `requires`-concept constrained. See [Systems.md](Systems.md#minmax-solver-toolkit) for how these three progress from baseline to pruning to move ordering, and for the orphaned `TMinMaxManager<TNode>` scaffolding below.
 
 | Class | Base Class | Purpose | Notes |
 |---|---|---|---|
