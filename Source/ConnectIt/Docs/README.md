@@ -48,12 +48,13 @@ Each plugin's purpose, scope boundaries, and full class catalogue:
 
 ## Reusable Workflows
 
-Four design patterns from ConnectIt's networked pipeline, written up as portable, engine/project-agnostic patterns rather than ConnectIt-specific how-tos — see [Workflows/README.md](Workflows/README.md) for the index. Useful as a starting point for any other turn-based or event-sequenced multiplayer project:
+Five design patterns from ConnectIt's networked pipeline, written up as portable, engine/project-agnostic patterns rather than ConnectIt-specific how-tos — see [Workflows/README.md](Workflows/README.md) for the index. Useful as a starting point for any other turn-based or event-sequenced multiplayer project:
 
 - [Server-Authoritative Action Request](Workflows/ServerAuthoritative-ActionRequest.md)
 - [Single-Source-of-Truth Replication](Workflows/SingleSourceOfTruth-Replication.md)
 - [Gated Event Sequencing via Tags](Workflows/GameplayTag-EventSequencing.md) (turn-end is now just another instance of this pattern)
 - [Dual-Mode Subsystem Discovery](Workflows/SubsystemDiscovery-DualAccessPattern.md)
+- [One Debug Widget Per Tracked Class](Workflows/DebugWidgets.md) — also the class↔widget↔plugin location reference for the `DWidget_*` family
 
 ## Conventions & Quality
 

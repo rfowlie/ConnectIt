@@ -58,7 +58,14 @@ public:
     UPROPERTY(BlueprintReadOnly, ReplicatedUsing = OnRep_ActiveParticipantIndex, Category = "Turn Based|State")
     int32 ActiveParticipantIndex = -1;
 
-    UPROPERTY(BlueprintReadOnly, Replicated, Category = "Turn Based|State")
+    // ReplicatedUsing rather than plain Replicated -- TurnNumber is
+    // monotonic and never repeats within a match, so unlike CurrentPhase it
+    // can never "settle back" to a value the client already has and go
+    // unsent for a tick. Gives listeners (e.g. a debug UI) a signal that's
+    // guaranteed to fire on every single turn advance, independent of
+    // whichever unrelated RPC/property happens to also be in flight that
+    // tick. See OnRep_TurnNumber.
+    UPROPERTY(BlueprintReadOnly, ReplicatedUsing = OnRep_TurnNumber, Category = "Turn Based|State")
     int32 TurnNumber = 0;
 
     // Replicated -- what clients need to see
@@ -209,4 +216,7 @@ private:
 
     UFUNCTION()
     void OnRep_ActiveParticipantIndex();
+
+    UFUNCTION()
+    void OnRep_TurnNumber();
 };

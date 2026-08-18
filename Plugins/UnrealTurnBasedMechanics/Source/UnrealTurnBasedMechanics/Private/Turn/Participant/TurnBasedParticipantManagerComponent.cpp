@@ -616,3 +616,13 @@ void UTurnBasedParticipantManagerComponent::OnRep_ActiveParticipantIndex()
 {
     // Clients react here -- e.g. highlight active player in UI
 }
+
+void UTurnBasedParticipantManagerComponent::OnRep_TurnNumber()
+{
+    // Reuses OnTurnPhaseChanged rather than a dedicated delegate -- TurnNumber
+    // and CurrentPhase change together every turn, and listeners only ever
+    // care that turn state changed, not specifically which property tripped
+    // the notification. See TurnNumber's own doc comment for why this needs
+    // its own ReplicatedUsing instead of piggybacking on OnRep_CurrentPhase.
+    OnTurnPhaseChanged.Broadcast(CurrentPhase);
+}

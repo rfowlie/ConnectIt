@@ -26,4 +26,11 @@ public:
 
 	UPROPERTY(BlueprintReadWrite)
 	FGameEventTaskExecute OnExecuteDelegate;
+
+	// --- Helper ---
+
+	// call complete passing in self so less awkward looking in BP
+	UFUNCTION(BlueprintCallable, Category = "GameEventTask")
+	void CallOnComplete();
+	
 };

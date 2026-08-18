@@ -38,7 +38,7 @@ void UConnectIt_DefaultViewerAction::BindToBoardState()
 {
     if (!IsValid(CachedBoardState)) return;
 
-    CachedBoardState->OnBoardStateChanged.AddDynamic(
+    CachedBoardState->OnBoardStateChanged.AddUniqueDynamic(
         this,
         &UConnectIt_DefaultViewerAction::HandleBoardStateChanged);
 }

@@ -3,6 +3,7 @@
 #include "State/StackedStateMachine.h"
 #include "State/StackedState.h"
 
+
 void UStackedStateMachine::PrintStateMachineInfo()
 {
     UE_LOG(LogTemp, Display, TEXT("UStackedStateMachine::PrintStateMachineInfo"));
@@ -21,7 +22,7 @@ void UStackedStateMachine::EmptyStack()
     {
         // Don't use PopState -- that would reinitialize whatever's
         // underneath. Here we only want every state on the stack
-        // deinitialized, not the next one down reactivated.
+        // uninitialized, not the next one down reactivated.
         UStackedState* State = StateStack.Pop();
         State->Deinitialize();
     }
@@ -51,7 +52,7 @@ UStackedState* UStackedStateMachine::PeakState()
     return StateStack.Top();
 }
 
-void UStackedStateMachine::SetBaseState(UStackedState* InState)
+void UStackedStateMachine::SetBaseState(UStackedState* InState, bool bDeinitialize)
 {
     if (InState == nullptr) { return; }
     EmptyStack();

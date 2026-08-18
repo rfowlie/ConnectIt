@@ -264,81 +264,83 @@ void UConnectIt_DebugStateWidget::RefreshEventQueueState()
 
 // --- Delegate handlers ---
 
+// Every handler below refreshes ALL categories (not just the one its own
+// delegate name suggests) via ForceRefreshAll, rather than a per-category
+// Refresh*()+OnDebugStateUpdated() pair. This is deliberate, not laziness --
+// see Docs/RuntimeStateAccess.md's Turn-End & Resolution Sequencing section:
+// several of the turn-state delegates (OnActiveControllerChanged,
+// OnRep_ActiveParticipantIndex) are currently dead stubs on the plugin side,
+// and OnTurnPhaseChanged can go quiet on rapid turn cycling if CurrentPhase
+// settles back on its previously-replicated value within one tick even
+// though TurnNumber (no OnRep) still changed. Meanwhile something *does*
+// reliably fire every turn (the action-stack delegates, via the reliable
+// ClientReceiveTurnNotification RPC) -- so every handler just refreshes
+// everything. Debug-only tool; the extra cost is irrelevant, and it means
+// no category can go silently stale behind a delegate that doesn't fire
+// reliably.
+
 void UConnectIt_DebugStateWidget::HandleBoardManagerReady(AConnectIt_BoardManager* InBoardManager)
 {
     BindBoardManager(InBoardManager);
-    RefreshBoardState();
-    OnDebugStateUpdated();
+    ForceRefreshAll();
 }
 
 void UConnectIt_DebugStateWidget::HandleBoardStateChanged()
 {
-    RefreshBoardState();
-    OnDebugStateUpdated();
+    ForceRefreshAll();
 }
 
 void UConnectIt_DebugStateWidget::HandleMatchPhaseChanged(EMatchPhase NewPhase)
 {
-    RefreshTurnState();
-    OnDebugStateUpdated();
+    ForceRefreshAll();
 }
 
 void UConnectIt_DebugStateWidget::HandleMatchResultUpdated(const FConnectItMatchResult& Result)
 {
-    RefreshTurnState();
-    OnDebugStateUpdated();
+    ForceRefreshAll();
 }
 
 void UConnectIt_DebugStateWidget::HandleTurnPhaseChanged(ETurnPhase NewPhase)
 {
-    RefreshTurnState();
-    OnDebugStateUpdated();
+    ForceRefreshAll();
 }
 
 void UConnectIt_DebugStateWidget::HandleActiveControllerChanged(AController* NewActiveController)
 {
-    RefreshTurnState();
-    OnDebugStateUpdated();
+    ForceRefreshAll();
 }
 
 void UConnectIt_DebugStateWidget::HandleParticipantForfeited(const FTurnParticipantInfo& ParticipantInfo)
 {
-    RefreshTurnState();
-    OnDebugStateUpdated();
+    ForceRefreshAll();
 }
 
 void UConnectIt_DebugStateWidget::HandleAllParticipantsReady()
 {
-    RefreshTurnState();
-    OnDebugStateUpdated();
+    ForceRefreshAll();
 }
 
 void UConnectIt_DebugStateWidget::HandleGameOver()
 {
-    RefreshTurnState();
-    OnDebugStateUpdated();
+    ForceRefreshAll();
 }
 
 void UConnectIt_DebugStateWidget::HandleActionStackChanged(UTurnBasedActionBase* Action)
 {
-    RefreshActionState();
-    OnDebugStateUpdated();
+    ForceRefreshAll();
 }
 
 void UConnectIt_DebugStateWidget::HandleActionResolved(UTurnBasedAction* Action)
 {
-    RefreshActionState();
-    OnDebugStateUpdated();
+    ForceRefreshAll();
 }
 
 void UConnectIt_DebugStateWidget::HandleBoardChangeRequested(const FTurnActionRequest& Request)
 {
-    RefreshActionState();
-    OnDebugStateUpdated();
+    ForceRefreshAll();
 }
 
 void UConnectIt_DebugStateWidget::HandleActiveManagerTagsChanged()
 {
-    RefreshEventQueueState();
-    OnDebugStateUpdated();
+    ForceRefreshAll();
 }

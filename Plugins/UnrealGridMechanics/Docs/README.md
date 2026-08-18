@@ -32,6 +32,8 @@ Notes: `UnrealTurnBasedMechanics.Build.cs` lists `UnrealGridMechanics` in both `
 - Tracking or reacting to tile hover/cursor state (`UGridWorldSubsystem`, `AGridCursorManagerBase`).
 - Needing a generic, replicated board-state container with pluggable observers (`UBoardStateComponentBase` + `UBoardStateInterpreter`).
 
+See [Systems.md](Systems.md) for a narrative, system-by-system walkthrough of how these fit together and this plugin's own internal conventions — this README stays the exhaustive per-class reference.
+
 ## When NOT to Use It / Scope Boundaries
 
 - Game-specific win conditions, scoring rules, and turn-driven piece placement logic belong in the consuming game module (or in `UnrealTurnBasedMechanics` for turn/action orchestration), not here — this plugin should only ever know about grids, tiles, and pieces in the abstract.
@@ -42,10 +44,11 @@ Notes: `UnrealTurnBasedMechanics.Build.cs` lists `UnrealGridMechanics` in both `
 
 ## Notable Design Patterns
 
-- Explicit-injection observer pattern for board state: `UBoardStateInterpreter` subclasses are bound to a `UBoardStateComponentBase` by project wiring code, rather than discovering it automatically.
-- Subsystem-based discovery/registration: `UGridWorldSubsystem` (and the largely-overlapping `UGridTrackerSubsystem`) provide per-world grid tile/piece registries and hover tracking.
-- Interface-based deprecation: `IGridTileSelector` supersedes `UGridTileSelectorComponent`, which is marked deprecated via its own `DeprecatedFunction` meta pointing back at the interface.
-- Pure-function libraries (`UBlueprintFunctionLibrary`) separate grid math from actor/state concerns, keeping shift, connection, and shape logic independently testable and Blueprint-accessible.
+- Explicit-injection observer pattern for board state: `UBoardStateInterpreter` subclasses are bound to a `UBoardStateComponentBase` by project wiring code, rather than discovering it automatically. See [Systems.md](Systems.md#board-state) for how the replication + interpreter pattern actually works end to end.
+- Subsystem-based discovery/registration: `UGridWorldSubsystem` (and the largely-overlapping `UGridTrackerSubsystem`) provide per-world grid tile/piece registries and hover tracking. See [Systems.md](Systems.md#known-rough-edges) for how the two relate.
+- Interface-based deprecation: `IGridTileSelector` supersedes `UGridTileSelectorComponent`, which is marked deprecated via its own `DeprecatedFunction` meta pointing back at the interface. See [Systems.md](Systems.md#tile-selection) for the interface-vs-component pairing.
+- Pure-function libraries (`UBlueprintFunctionLibrary`) separate grid math from actor/state concerns, keeping shift, connection, and shape logic independently testable and Blueprint-accessible. See [Systems.md](Systems.md#board-shifting) for how the shift system's compute/animate split works.
+- UFUNCTION `Category` strings are inconsistent across the plugin (e.g. `"Grid Mechanics | Library | Direction"`, `"Grid|Shift"`, `"Grid|Registry"`, `"Turn Based | Grid"`, `"Grid Mechanics|Cursor"` — mixed spacing/style). See the project-level [naming conventions notes](../../../Source/ConnectIt/Docs/Conventions.md) and [Systems.md](Systems.md#conventions) for this plugin's own fuller convention notes.
 
 ## Classes
 
@@ -71,7 +74,7 @@ Notes: `UnrealTurnBasedMechanics.Build.cs` lists `UnrealGridMechanics` in both `
 
 | Class | Base Class | Purpose | Notes |
 |---|---|---|---|
-| `EGridDirection` (+operators) | Enum | 8-way compass direction with wraparound arithmetic operators (`+`, `-`, `+=`, `-=`). | |
+| `EGridDirection` (+operators) | Enum | 8-way compass direction with wraparound arithmetic operators. | Actual operator set is `+` (two overloads: `EGridDirection`+`EGridDirection`, and `EGridDirection`+`int32`), `-`, and `-=`; there is no `operator+=`. |
 | `FGridDirectionVector`, `FGridPosition` (+`GetTypeHash`), `FGridPositionArray`, `FGridMovement` (+hash), `FGridPair` | Structs | Core coordinate/movement value types with full operator overload sets. | `FGridPosition::GetDistance` uses Chebyshev distance with a `// FOR NOW` comment flagging it as a placeholder metric. |
 | `UGridMechanics_GridLibrary` | `UBlueprintFunctionLibrary` | Direction↔rotation conversion, grid-position math, neighbor traversal, and N-in-a-row connection analysis (`CountValidWindows`, `CountPossibleGridConnections`, `GetPotentialConnectionCountPerDirection`, `CreateConnectionsFloodMap`). | This is the N-in-a-row scoring engine a consuming project's board rules can build on. |
 | `UGridMechanics_ShapeLibrary` (+`FShapeConfiguration`) | `UBlueprintFunctionLibrary` | Line/shape detection: `GetLongestLine(s)`, `GetLinesOfLength`, `IsSquare`. | |
@@ -107,7 +110,7 @@ Notes: `UnrealTurnBasedMechanics.Build.cs` lists `UnrealGridMechanics` in both `
 |---|---|---|---|
 | `AGridTileBase` | `AActor` | Base tile actor; `SendGameplayTag` BlueprintNativeEvent, `OnGridTileBeginCursorOver` delegate. | Has its own cursor-over delegate distinct from `UGridTileComponent`'s — see Notes below. |
 | `UGridTileComponent` | `UActorComponent` | Component variant of the cursor-over concept (`OnGridTileBeginCursorOver`/`OnGridTileEndCursorOver`). | Header comment states "anything that is a grid tile will be required to have this component," yet `AGridTileBase` duplicates the same delegate concept independently. See [Duplication.md](../../../Source/ConnectIt/Docs/Duplication.md). |
-| `UGridTileRegistryComponent` | `UActorComponent` | Authoritative row/column/position↔world conversion and board-dimension query API (Min/Max Row/Column, GetRow/GetColumn, GetTileAtPosition, etc.), derived from registered tiles with no hardcoded dimensions. Editor-only `ValidateTileAlignment()` under `WITH_EDITOR`. | In the current consuming project, this is the class its board manager exposes for lookup; every position↔tile resolution there goes through it. |
+| `UGridTileRegistryComponent` | `UActorComponent` | Authoritative row/column/position↔world conversion and board-dimension query API (Min/Max Row/Column, GetRow/GetColumn, GetTileAtPosition, etc.), derived from registered tiles with no hardcoded dimensions. Editor-only `ValidateTileAlignment()` under `WITH_EDITOR`. | In the current consuming project, this is the class its board manager exposes for lookup; every position↔tile resolution there goes through it. **Known bug**: `ValidateTileAlignment()`'s entire body is commented out — it currently does nothing. Its own TODO explains why: it relies on tile actors having a `GridPosition` set in-editor, which isn't happening yet, so the check would always report every tile misaligned. See [Systems.md](Systems.md#known-rough-edges). |
 | `IGridTileSelector` (+2 delegate types) | Native interface | Dual-pattern selector contract: Blueprint-friendly dynamic delegate register/unregister, and C++-friendly direct multicast binding (`BindOnGridTileSelected`/`GetOnGridTileSelectedDelegate`). | Has an explicitly `[Deprecated]` `GetGridTileSelectorComponent()` pointing at `UGridTileSelectorComponent`. |
 | `UGridTileSelectorComponent` | `UActorComponent` | Simpler component exposing one dynamic multicast delegate. | Being phased out per the interface's own deprecation note; the interface-based pattern above is the intended future direction. See [Duplication.md](../../../Source/ConnectIt/Docs/Duplication.md). |
 
@@ -127,4 +130,7 @@ Notes: `UnrealTurnBasedMechanics.Build.cs` lists `UnrealGridMechanics` in both `
 - `AGridTileBase` vs `UGridTileComponent` cursor-over delegate duplication. See [Duplication.md](../../../Source/ConnectIt/Docs/Duplication.md).
 - `IGridTileSelector` vs `UGridTileSelectorComponent` deprecation pairing. See [Duplication.md](../../../Source/ConnectIt/Docs/Duplication.md).
 - `UGridValidatorBase`'s non-functional `BoardActor` assignment loop (`GridValidatorBase.cpp:26`) — a real bug, not just a stylistic discrepancy.
+- `UGridTileRegistryComponent::ValidateTileAlignment()`'s body is entirely commented out — a second, editor-side non-functional validation check alongside `UGridValidatorBase`'s bug above, both blocked on tile actors not yet being given a `GridPosition` in-editor. See [Systems.md](Systems.md#known-rough-edges).
 - `UnrealTurnBasedMechanics.Build.cs` redundantly lists `UnrealGridMechanics` in both Public and Private dependency lists. See [Duplication.md](../../../Source/ConnectIt/Docs/Duplication.md).
+- `EGridDirection`'s operator set is `+`/`-`/`-=`, not `+`/`-`/`+=`/`-=` — there is no `operator+=`. See [Systems.md](Systems.md#conventions).
+- UFUNCTION `Category` string inconsistency across the plugin. See the project-level [naming conventions notes](../../../Source/ConnectIt/Docs/Conventions.md) and [Systems.md](Systems.md#conventions) for this plugin's own verbatim examples.

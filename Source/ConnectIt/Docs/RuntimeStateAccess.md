@@ -15,7 +15,10 @@ one only.
 `UConnectIt_DebugStateWidget` (`Source/ConnectIt/Public/UI/ConnectIt_DebugStateWidget.h`)
 is a prototype that wires up every accessor and delegate documented below
 into one cached-state widget — a working, cross-referenced example rather
-than just a table to read.
+than just a table to read. A parallel, narrower-scoped alternative also
+exists: one small widget per tracked class (the `DWidget_*` family) — see
+[Workflows/DebugWidgets.md](Workflows/DebugWidgets.md) for the pattern and
+the full class↔widget↔plugin mapping.
 
 **BP Access column key:** `Pure` = `BlueprintPure` function. `Callable` =
 `BlueprintCallable` (has side effects, or plugin marks a query this way

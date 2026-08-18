@@ -46,7 +46,7 @@ protected:
     // Walk backwards through the stack deinitializing each state, then push
     // InState as the new (and only) entry
     UFUNCTION(BlueprintCallable, Category = "State Machine")
-    void SetBaseState(UStackedState* InState);
+    void SetBaseState(UStackedState* InState, bool bDeinitialize);
 
     // Push a state onto the stack. bDeinitialize controls whether the state
     // currently on top gets deinitialized (fully replaced) or left running

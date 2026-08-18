@@ -20,6 +20,8 @@ UnrealCodingUtils is a tiny grab-bag of general-purpose C++ helper utilities tha
 - Adding a small, generic C++ helper function that doesn't belong to any particular gameplay system and would otherwise have nowhere natural to live.
 - Utility functions that need to be broadly reusable and kept free of gameplay-mechanics dependencies (e.g. authority/networking helper checks not directly exposed by the engine on a given class).
 
+See [Systems.md](Systems.md) for this plugin's scope/philosophy in more narrative detail — this README stays the exhaustive per-class reference.
+
 ## When NOT to Use It / Scope Boundaries
 
 - This plugin should stay small and dependency-free: single-purpose, broadly-applicable helpers only.
@@ -36,8 +38,8 @@ UnrealCodingUtils is a tiny grab-bag of general-purpose C++ helper utilities tha
 
 | Class | Base Class | Purpose | Notes |
 |---|---|---|---|
-| `UCodingUtilsComponentLibrary` | `UBlueprintFunctionLibrary` | Component-related helpers; currently one function to check server authority on a `UActorComponent` (since `HasAuthority()` isn't directly available there). | `Public/Library/CodingUtilsComponentLibrary.h`. Key API: `static bool IsAuthoritative(const UActorComponent*)`. This function is tagged `Category = "Chimera|Utils"` — "Chimera" is leftover naming from an unrelated predecessor codebase, not this plugin's own name. See Known Discrepancies. |
+| `UCodingUtilsComponentLibrary` | `UBlueprintFunctionLibrary` | Component-related helpers; currently one function to check server authority on a `UActorComponent` (since `HasAuthority()` isn't directly available there). | `Public/Library/CodingUtilsComponentLibrary.h`. Key API: `static bool IsAuthoritative(const UActorComponent*)`. This function is tagged `Category = "Chimera|Utils"` — "Chimera" is leftover naming from an unrelated predecessor codebase, not this plugin's own name. See Known Discrepancies and [Systems.md](Systems.md#known-rough-edges). |
 
 ## Known Discrepancies / Issues in This Plugin
 
-- `UCodingUtilsComponentLibrary::IsAuthoritative` uses `Category = "Chimera|Utils"`, a naming residue from a predecessor codebase. See the project-level [naming conventions notes](../../../Source/ConnectIt/Docs/Conventions.md#discrepancies) #1 ("Chimera naming residue").
+- `UCodingUtilsComponentLibrary::IsAuthoritative` uses `Category = "Chimera|Utils"`, a naming residue from a predecessor codebase. See the project-level [naming conventions notes](../../../Source/ConnectIt/Docs/Conventions.md#discrepancies) #1 ("Chimera naming residue") and [Systems.md](Systems.md#known-rough-edges).

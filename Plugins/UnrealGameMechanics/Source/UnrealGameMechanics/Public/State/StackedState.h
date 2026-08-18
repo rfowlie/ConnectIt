@@ -11,7 +11,7 @@ class UStackedState;
 
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FStackedStateSetBaseDelegate, UStackedState*, InState, bool, bDeinitialize);
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FStackedStatePushDelegate, UStackedState*, InState);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FStackedStatePushDelegate, UStackedState*, InState, bool, bDeinitialize);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FStackedStatePopDelegate);
 
 // Generic base for one entry on a UStackedStateMachine's stack. Ported from
@@ -28,7 +28,7 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE(FStackedStatePopDelegate);
 // works in the sibling UnrealTurnBasedMechanics plugin.
 //
 // Intended use: any action, controller, or system that has a "mini state
-// machine within a larger flow" need -- e.g. a multi-step action that walks
+// machine within a larger flow" need -- e.g. a multistep action that walks
 // a player through several distinct selection phases -- owns a
 // UStackedStateMachine and pushes/pops UStackedState subclasses to
 // represent each phase, instead of hand-rolling an enum + a switch.

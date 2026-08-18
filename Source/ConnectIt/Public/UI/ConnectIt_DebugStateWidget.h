@@ -54,6 +54,7 @@ struct FConnectItDebugTurnState
     ETurnPhase TurnPhase = ETurnPhase::WaitingForParticipants;
 
     UPROPERTY(BlueprintReadOnly, Category = "ConnectIt|Debug")
+    
     EMatchPhase MatchPhase = EMatchPhase::WaitingForParticipants;
 
     UPROPERTY(BlueprintReadOnly, Category = "ConnectIt|Debug")
