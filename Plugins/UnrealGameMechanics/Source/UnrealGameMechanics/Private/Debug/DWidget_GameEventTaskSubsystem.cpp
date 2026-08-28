@@ -9,10 +9,14 @@ void UDWidget_GameEventTaskSubsystem::BindDelegates()
         ? GetWorld()->GetSubsystem<UGameEventTaskSubsystem>()
         : nullptr;
 
-    if (!IsValid(ResolvedSource)) return;
+    bSourceValid = IsValid(ResolvedSource);
+    if (!bSourceValid) return;
 
     ResolvedSource->OnActiveManagerTagsChanged.AddDynamic(
         this, &UDWidget_GameEventTaskSubsystem::HandleActiveManagerTagsChanged);
+
+    // Seed initial value through the same event future changes use.
+    OnActiveEventTagsUpdated(ResolvedSource->GetTagsInQueue());
 }
 
 void UDWidget_GameEventTaskSubsystem::UnbindDelegates()
@@ -23,15 +27,9 @@ void UDWidget_GameEventTaskSubsystem::UnbindDelegates()
         this, &UDWidget_GameEventTaskSubsystem::HandleActiveManagerTagsChanged);
 }
 
-void UDWidget_GameEventTaskSubsystem::RefreshFields()
-{
-    bSourceValid = IsValid(ResolvedSource);
-    CachedActiveEventTags = bSourceValid
-        ? ResolvedSource->GetTagsInQueue()
-        : TArray<FGameplayTag>();
-}
-
 void UDWidget_GameEventTaskSubsystem::HandleActiveManagerTagsChanged()
 {
-    RefreshAll();
+    if (!IsValid(ResolvedSource)) return;
+
+    OnActiveEventTagsUpdated(ResolvedSource->GetTagsInQueue());
 }

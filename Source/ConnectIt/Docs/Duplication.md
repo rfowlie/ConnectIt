@@ -94,15 +94,15 @@ Each entry: **What / Where** → **Evidence** → **Hypothesis** → **Recommend
 
 ## #7: Two near-identical permanent no-ops with the same known fix
 
-**What / Where**: `ConnectIt_TileStateInterpreter::FindTileActor` (`Source/ConnectIt/Interpreter/ConnectIt_TileStateInterpreter.cpp:108`) and `ConnectIt_PieceSpawnInterpreter::GetWorldPositionForTile` (`Source/ConnectIt/Interpreter/ConnectIt_PieceSpawnInterpreter.cpp`) — both permanently return a null/empty result via the same commented-out lookup call.
+**What / Where**: `ConnectIt_TileStateInterpreter::FindTileActor` (`Source/ConnectIt/Interpreter/ConnectIt_TileStateInterpreter.cpp:108`) and (formerly) `ConnectIt_PieceSpawnInterpreter::GetWorldPositionForTile` — both permanently returned a null/empty result via the same commented-out lookup call. **The `GetWorldPositionForTile` half is now fixed** (as part of the `UGridPieceSpawnInterpreter` rework — see `ConnectIt_PieceSpawnInterpreter.cpp`'s `GetWorldPositionForTile_Implementation`); `FindTileActor` is not, and remains broken.
 
-**Evidence**: both functions have a commented-out `GridSub->GetTileAtPosition(Position)` call from an old subsystem-based tile-lookup mapping that was removed, and neither was updated to use its replacement. `FindTileActor` unconditionally returns `nullptr`, making `SendTagToTile` (and therefore all `ConnectIt.Tile.*` visual feedback through this interpreter) a confirmed no-op — this bug's user-facing consequence is tracked in [Known Issues](README.md#known-issues). `GetWorldPositionForTile` always returns `FVector()`.
+**Evidence**: both functions had a commented-out `GridSub->GetTileAtPosition(Position)` call from an old subsystem-based tile-lookup mapping that was removed, neither originally updated to use its replacement. `FindTileActor` still unconditionally returns `nullptr`, making `SendTagToTile` (and therefore all `ConnectIt.Tile.*` visual feedback through that interpreter) a confirmed no-op — this bug's user-facing consequence is tracked in [Known Issues](README.md#known-issues).
 
-**Hypothesis**: the same migration gap surfacing in two call sites — both were written against an older tile-lookup API that has since been replaced by `UGridTileRegistryComponent::GetTileAtPosition(FGridPosition)` (exposed via `AConnectIt_BoardManager::GetTileRegistry()`, and already the position↔tile lookup every other part of the project uses), but only the removal was carried through, not the replacement.
+**Hypothesis**: the same migration gap surfacing in two call sites — both were written against an older tile-lookup API that has since been replaced by `UGridTileRegistryComponent::GetTileAtPosition(FGridPosition)` (exposed via `AConnectIt_BoardManager::GetTileRegistry()`, and already the position↔tile lookup every other part of the project uses), but only the removal was carried through, not the replacement. `GetWorldPositionForTile`'s fix confirms this was the correct, sufficient fix for its half.
 
-**Recommendation**: Single shared fix — route both functions through `UGridTileRegistryComponent::GetTileAtPosition`. Worth fixing together in one pass given the identical root cause, rather than as two unrelated tickets.
+**Recommendation**: Route `FindTileActor` through the same `UGridTileRegistryComponent::GetTileAtPosition` fix `GetWorldPositionForTile` just received.
 
-**Confidence**: High (both confirmed via direct inspection; the fix target already exists and is in active use elsewhere).
+**Confidence**: High (`GetWorldPositionForTile`'s fix already confirmed the approach works; `FindTileActor` is the same class of bug, unaddressed).
 
 ---
 

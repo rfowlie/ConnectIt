@@ -1,16 +1,30 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 #include "Debug/DWidget_TurnBasedParticipantManagerComponent.h"
-
 #include "Turn/Participant/TurnBasedParticipantManagerComponent.h"
+#include "GameFramework/GameStateBase.h"
+
 
 void UDWidget_TurnBasedParticipantManagerComponent::BindDelegates()
 {
-    APlayerController* OwningPC = GetOwningPlayer();
-    if (!IsValid(OwningPC)) return;
+    AGameStateBase* GameState = GetWorld()->GetGameState<AGameStateBase>();
+    if (!IsValid(GameState))
+    {
+        UE_LOG(LogDWidget, Error,
+            TEXT("UDWidget_TurnBasedParticipantManagerComponent::BindDelegates - GameState Invalid"));
+        return;
+    }
 
-    ResolvedSource = OwningPC->FindComponentByClass<UTurnBasedParticipantManagerComponent>();
-    if (!IsValid(ResolvedSource)) return;
+    // GetWorld()->OnWorldBeginPlay.AddUFunction(this, "BindDelegates");
+
+    ResolvedSource = GameState->GetComponentByClass<UTurnBasedParticipantManagerComponent>();
+    bSourceValid = IsValid(ResolvedSource);
+    if (!bSourceValid)
+    {
+        UE_LOG(LogDWidget, Error,
+            TEXT("UDWidget_TurnBasedParticipantManagerComponent::BindDelegates - Source Invalid"));
+        return;
+    }
 
     ResolvedSource->OnTurnPhaseChanged.AddDynamic(
         this, &UDWidget_TurnBasedParticipantManagerComponent::HandleTurnPhaseChanged);
@@ -22,11 +36,18 @@ void UDWidget_TurnBasedParticipantManagerComponent::BindDelegates()
         this, &UDWidget_TurnBasedParticipantManagerComponent::HandleAllParticipantsReady);
     ResolvedSource->OnGameOver.AddDynamic(
         this, &UDWidget_TurnBasedParticipantManagerComponent::HandleGameOver);
+
+    PushCurrentInfo();
 }
 
 void UDWidget_TurnBasedParticipantManagerComponent::UnbindDelegates()
 {
-    if (!IsValid(ResolvedSource)) return;
+    if (!IsValid(ResolvedSource))
+    {
+        UE_LOG(LogDWidget, Error,
+            TEXT("UDWidget_TurnBasedParticipantManagerComponent::UnbindDelegates - Source Invalid"));
+        return;
+    }
 
     ResolvedSource->OnTurnPhaseChanged.RemoveDynamic(
         this, &UDWidget_TurnBasedParticipantManagerComponent::HandleTurnPhaseChanged);
@@ -40,38 +61,48 @@ void UDWidget_TurnBasedParticipantManagerComponent::UnbindDelegates()
         this, &UDWidget_TurnBasedParticipantManagerComponent::HandleGameOver);
 }
 
-void UDWidget_TurnBasedParticipantManagerComponent::RefreshFields()
-{
-    bSourceValid = IsValid(ResolvedSource);
-    if (!bSourceValid) return;
-
-    CachedTurnPhase = ResolvedSource->CurrentPhase;
-    CachedActiveParticipantIndex = ResolvedSource->ActiveParticipantIndex;
-    CachedTurnNumber = ResolvedSource->TurnNumber;
-    CachedParticipants = ResolvedSource->Participants;
-}
-
 void UDWidget_TurnBasedParticipantManagerComponent::HandleTurnPhaseChanged(ETurnPhase NewPhase)
 {
-    RefreshAll();
+    OnTurnPhaseUpdated(NewPhase);
 }
 
 void UDWidget_TurnBasedParticipantManagerComponent::HandleActiveControllerChanged(AController* NewActiveController)
 {
-    RefreshAll();
+    if (!IsValid(ResolvedSource)) return;
+
+    OnActiveParticipantIndexUpdated(ResolvedSource->ActiveParticipantIndex);
+    OnTurnNumberUpdated(ResolvedSource->TurnNumber);
 }
 
 void UDWidget_TurnBasedParticipantManagerComponent::HandleParticipantForfeited(const FTurnParticipantInfo& ParticipantInfo)
 {
-    RefreshAll();
+    if (!IsValid(ResolvedSource)) return;
+
+    OnParticipantsUpdated(ResolvedSource->Participants);
 }
 
 void UDWidget_TurnBasedParticipantManagerComponent::HandleAllParticipantsReady()
 {
-    RefreshAll();
+    PushCurrentInfo();
 }
 
 void UDWidget_TurnBasedParticipantManagerComponent::HandleGameOver()
 {
-    RefreshAll();
+    PushCurrentInfo();
+}
+
+void UDWidget_TurnBasedParticipantManagerComponent::PushCurrentInfo()
+{
+    if (!IsValid(ResolvedSource))
+    {
+        UE_LOG(LogDWidget, Error,
+            TEXT("UDWidget_TurnBasedParticipantManagerComponent::PushCurrentInfo - Source Invalid"));
+        return;
+    }
+
+    const FTurnBasedParticipantManagerInfo Info = ResolvedSource->GetInfo();
+    OnTurnPhaseUpdated(Info.TurnPhase);
+    OnActiveParticipantIndexUpdated(Info.ActiveParticipantIndex);
+    OnTurnNumberUpdated(Info.TurnNumber);
+    OnParticipantsUpdated(Info.Participants);
 }

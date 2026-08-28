@@ -29,6 +29,7 @@ public class UnrealGridMechanics : ModuleRules
 				"GameplayTags",
 				"GameplayTasks",
 				"GameplayAbilities",
+				"UnrealGameMechanics",
 				// ... add other public dependencies that you statically link with here ...
 			}
 			);

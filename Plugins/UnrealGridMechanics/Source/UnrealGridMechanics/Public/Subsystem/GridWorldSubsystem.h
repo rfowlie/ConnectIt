@@ -80,7 +80,7 @@ private:
     TMap<AGridTileBase*, bool> RegisteredTiles;
 
     UPROPERTY()
-    TMap<AGridPieceBase*, bool> RegisteredPieces;
+    TArray<AGridPieceBase*> RegisteredPieces;
 
     UFUNCTION()
     void BroadcastGridTileHoverChanged(AGridTileBase* InTile);

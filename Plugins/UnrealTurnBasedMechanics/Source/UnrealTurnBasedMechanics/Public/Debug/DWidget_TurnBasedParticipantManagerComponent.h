@@ -11,15 +11,18 @@
 class UTurnBasedParticipantManagerComponent;
 
 // Tracks UTurnBasedParticipantManagerComponent specifically -- turn phase,
-// active participant, turn number, and the participant list. Kept as its
-// own widget (rather than folded into a game-state widget) so each widget's
-// refresh footprint maps to exactly one class's delegates -- see the
-// consuming project's debug-widget workflow doc for the full rationale and
-// the complete widget<->class mapping.
+// active participant index, turn number, and the participant list, pushed
+// straight through to BP as each change (see UDWidgetBase's own class
+// comment for the push/GetInfo() convention). Kept as its own widget
+// (rather than folded into a game-state widget) so each widget's update
+// footprint maps to exactly one class's delegates -- see the consuming
+// project's debug-widget workflow doc for the full rationale and the
+// complete widget<->class mapping.
 //
-// GetTurnNumber() benefits directly from TurnNumber's ReplicatedUsing =
-// OnRep_TurnNumber -- OnTurnPhaseChanged is guaranteed to fire on every
-// turn advance, so this widget needs no fallback signal.
+// OnActiveControllerChanged hands out AController*, not the index this
+// widget actually wants -- the handler reads ResolvedSource
+// ::ActiveParticipantIndex directly instead (already updated by the time
+// this fires) rather than leaking the controller pointer into BP.
 UCLASS(Abstract)
 class UNREALTURNBASEDMECHANICS_API UDWidget_TurnBasedParticipantManagerComponent : public UDWidgetBase
 {
@@ -27,19 +30,9 @@ class UNREALTURNBASEDMECHANICS_API UDWidget_TurnBasedParticipantManagerComponent
 
 public:
 
-    UFUNCTION(BlueprintPure, Category = "Debug")
-    ETurnPhase GetTurnPhase() const { return CachedTurnPhase; }
-
-    UFUNCTION(BlueprintPure, Category = "Debug")
-    int32 GetActiveParticipantIndex() const { return CachedActiveParticipantIndex; }
-
-    UFUNCTION(BlueprintPure, Category = "Debug")
-    int32 GetTurnNumber() const { return CachedTurnNumber; }
-
-    UFUNCTION(BlueprintPure, Category = "Debug")
-    const TArray<FTurnParticipantInfo>& GetParticipants() const { return CachedParticipants; }
-
-    // False until UTurnBasedParticipantManagerComponent has actually been resolved
+    // False until UTurnBasedParticipantManagerComponent has actually been
+    // resolved -- the one deliberately pull-only exception to the push
+    // model, checked once rather than pushed.
     UFUNCTION(BlueprintPure, Category = "Debug")
     bool IsSourceValid() const { return bSourceValid; }
 
@@ -47,7 +40,18 @@ protected:
 
     virtual void BindDelegates() override;
     virtual void UnbindDelegates() override;
-    virtual void RefreshFields() override;
+
+    UFUNCTION(BlueprintImplementableEvent, BlueprintCallable, Category = "Debug")
+    void OnTurnPhaseUpdated(ETurnPhase NewPhase);
+
+    UFUNCTION(BlueprintImplementableEvent, BlueprintCallable, Category = "Debug")
+    void OnActiveParticipantIndexUpdated(int32 NewIndex);
+
+    UFUNCTION(BlueprintImplementableEvent, BlueprintCallable, Category = "Debug")
+    void OnTurnNumberUpdated(int32 NewTurnNumber);
+
+    UFUNCTION(BlueprintImplementableEvent, BlueprintCallable, Category = "Debug")
+    void OnParticipantsUpdated(const TArray<FTurnParticipantInfo>& NewParticipants);
 
 private:
 
@@ -60,18 +64,19 @@ private:
     UFUNCTION()
     void HandleParticipantForfeited(const FTurnParticipantInfo& ParticipantInfo);
 
+    // Zero-param pings with no single field they map to -- re-derive and
+    // push everything via GetInfo(), same fallback shape the zero-param
+    // board-state/game-event-subsystem cases already use.
     UFUNCTION()
     void HandleAllParticipantsReady();
 
     UFUNCTION()
     void HandleGameOver();
 
+    void PushCurrentInfo();
+
     UPROPERTY()
     TObjectPtr<UTurnBasedParticipantManagerComponent> ResolvedSource = nullptr;
 
-    ETurnPhase CachedTurnPhase = ETurnPhase::WaitingForParticipants;
-    int32 CachedActiveParticipantIndex = INDEX_NONE;
-    int32 CachedTurnNumber = 0;
-    TArray<FTurnParticipantInfo> CachedParticipants;
     bool bSourceValid = false;
 };

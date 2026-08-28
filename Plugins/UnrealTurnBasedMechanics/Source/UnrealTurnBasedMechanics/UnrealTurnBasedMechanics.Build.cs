@@ -52,7 +52,6 @@ public class UnrealTurnBasedMechanics : ModuleRules
 				// ... add private dependencies that you statically link with here ...
 				"UnrealGameMechanics",
 				"UnrealGridMechanics"
-					
 			}
 			);
 		

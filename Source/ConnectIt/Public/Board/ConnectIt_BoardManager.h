@@ -16,6 +16,7 @@ class UConnectIt_PieceSpawnInterpreter;
 class UConnectIt_ScoreInterpreter;
 class UGridTileRegistryComponent;
 class UGridPieceRegistryComponent;
+class UGridPieceSpawnInterpreter;
 class UConnectIt_BoardRulesComponent;
 class UConnectIt_BoardShiftComponent;
 
@@ -49,6 +50,13 @@ public:
 
     UFUNCTION(BlueprintPure, Category = "ConnectIt|Board")
     UGridPieceRegistryComponent* GetPieceRegistry() const { return PieceRegistryComponent; }
+
+    // Project-agnostic "position a piece and play its visual" executor --
+    // UGridPieceRegistryComponent resolves this as a sibling to carry out
+    // the actual spawn/despawn visual once it's retrieved/released a piece
+    // from the pool. See UGridPieceSpawnInterpreter's own class comment.
+    UFUNCTION(BlueprintPure, Category = "ConnectIt|Board")
+    UGridPieceSpawnInterpreter* GetGridPieceSpawnInterpreter() const { return GridPieceSpawnInterpreter; }
 
     UFUNCTION(BlueprintPure, Category = "ConnectIt|Board")
     UConnectIt_ConfigComponent* GetConfigComponent() const { return ConnectItConfigComponent; }
@@ -102,6 +110,16 @@ protected:
     UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly,
         Category = "ConnectIt|Components")
     TObjectPtr<UGridPieceRegistryComponent> PieceRegistryComponent = nullptr;
+
+    // Sibling of PieceRegistryComponent, resolved by it via
+    // FindComponentByClass -- owns positioning a piece and waiting for its
+    // visual completion signal. Separate subobject (not the same component
+    // as PieceSpawnInterpreter below) because UConnectIt_PieceSpawnInterpreter
+    // composes with this rather than subclassing it -- see that class's
+    // header comment.
+    UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly,
+        Category = "ConnectIt|Components")
+    TObjectPtr<UGridPieceSpawnInterpreter> GridPieceSpawnInterpreter = nullptr;
 
     UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly,
         Category = "ConnectIt|Components")

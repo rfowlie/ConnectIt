@@ -383,6 +383,7 @@ void UTurnBasedActionsComponent::PushAction(UTurnBasedActionBase* Action)
     ActionStack.Add(Action);
     Action->Activate(GetOwningController());
     OnActionPushed.Broadcast(Action);
+    OnActionPushedSafe.Broadcast(FTurnActionSnapshot{ Action->ActionTag });
 
     UE_LOG(LogTurnBasedMechanics, Log,
         TEXT("TurnBasedActionsComponent: Pushed '%s' "
@@ -419,6 +420,8 @@ UTurnBasedActionBase* UTurnBasedActionsComponent::SafePopAction()
     }
 
     OnActionPopped.Broadcast(Popped);
+    OnActionPoppedSafe.Broadcast(
+        FTurnActionSnapshot{ IsValid(Popped) ? Popped->ActionTag : FGameplayTag() });
 
     // Reactivate new top
     if (ActionStack.Num() > 0 && IsValid(ActionStack.Last()))
@@ -478,6 +481,7 @@ void UTurnBasedActionsComponent::ClearAndPush(UTurnBasedActionBase* NewRoot)
     ActionStack.Add(NewRoot);
     NewRoot->Activate(GetOwningController());
     OnActionPushed.Broadcast(NewRoot);
+    OnActionPushedSafe.Broadcast(FTurnActionSnapshot{ NewRoot->ActionTag });
     
     UE_LOG(LogTurnBasedMechanics, Log,
         TEXT("TurnBasedActionsComponent: Stack cleared and '%s' pushed "
@@ -615,6 +619,26 @@ bool UTurnBasedActionsComponent::IsRootOnTop() const
     return ActionStack.Last() == RootAction;
 }
 
+FTurnBasedActionsComponentInfo UTurnBasedActionsComponent::GetInfo() const
+{
+    FTurnBasedActionsComponentInfo Info;
+
+    if (UTurnBasedActionBase* Top = GetTopAction())
+    {
+        Info.TopActionTag = Top->ActionTag;
+    }
+
+    if (UTurnBasedActionBase* Root = GetRootAction())
+    {
+        Info.RootActionTag = Root->ActionTag;
+    }
+
+    Info.StackDepth = GetStackDepth();
+    Info.bAwaitingRequestConfirmation = IsAwaitingRequestConfirmation();
+
+    return Info;
+}
+
 TArray<UTurnBasedAction*> UTurnBasedActionsComponent::GetAllRuntimeActions() const
 {
     TArray<UTurnBasedAction*> Out;
@@ -708,6 +732,8 @@ void UTurnBasedActionsComponent::HandleActionCompleted(UTurnBasedAction* Action)
     LogActionRecord(Action, TEXT("Completed"));
     SafePopAction();
     OnActionCompleted.Broadcast(Action);
+    OnActionCompletedSafe.Broadcast(
+        FTurnActionSnapshot{ IsValid(Action) ? Action->ActionTag : FGameplayTag() });
     CheckAutoEndTurn();
 }
 
@@ -716,6 +742,8 @@ void UTurnBasedActionsComponent::HandleActionCancelled(UTurnBasedAction* Action)
     LogActionRecord(Action, TEXT("Cancelled"));
     SafePopAction();
     OnActionCancelled.Broadcast(Action);
+    OnActionCancelledSafe.Broadcast(
+        FTurnActionSnapshot{ IsValid(Action) ? Action->ActionTag : FGameplayTag() });
 }
 
 void UTurnBasedActionsComponent::HandleBoardChangeRequested(const FTurnActionRequest& Request)

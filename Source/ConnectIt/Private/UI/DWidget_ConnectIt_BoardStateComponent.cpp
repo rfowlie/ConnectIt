@@ -45,30 +45,29 @@ void UDWidget_ConnectIt_BoardStateComponent::BindBoardManager(AConnectIt_BoardMa
     if (!IsValid(InBoardManager)) return;
 
     ResolvedSource = InBoardManager->GetBoardStateComponent();
-
-    if (IsValid(ResolvedSource))
-    {
-        ResolvedSource->OnBoardStateChanged.AddDynamic(
-            this, &UDWidget_ConnectIt_BoardStateComponent::HandleBoardStateChanged);
-    }
-}
-
-void UDWidget_ConnectIt_BoardStateComponent::RefreshFields()
-{
     bSourceValid = IsValid(ResolvedSource);
+
     if (!bSourceValid) return;
 
-    CachedCurrentState = ResolvedSource->GetCurrentState();
-    CachedLastChangeEvent = ResolvedSource->GetChangeEvent();
+    ResolvedSource->OnBoardStateChanged.AddDynamic(
+        this, &UDWidget_ConnectIt_BoardStateComponent::HandleBoardStateChanged);
+
+    // Seed initial values through the same events future changes use.
+    const FConnectItBoardStateInfo Info = ResolvedSource->GetInfo();
+    OnCurrentStateUpdated(Info.CurrentState);
+    OnLastChangeEventUpdated(Info.LastChangeEvent);
 }
 
 void UDWidget_ConnectIt_BoardStateComponent::HandleBoardManagerReady(AConnectIt_BoardManager* InBoardManager)
 {
     BindBoardManager(InBoardManager);
-    RefreshAll();
 }
 
 void UDWidget_ConnectIt_BoardStateComponent::HandleBoardStateChanged()
 {
-    RefreshAll();
+    if (!IsValid(ResolvedSource)) return;
+
+    const FConnectItBoardStateInfo Info = ResolvedSource->GetInfo();
+    OnCurrentStateUpdated(Info.CurrentState);
+    OnLastChangeEventUpdated(Info.LastChangeEvent);
 }

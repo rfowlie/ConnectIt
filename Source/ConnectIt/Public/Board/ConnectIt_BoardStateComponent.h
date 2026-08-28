@@ -7,6 +7,25 @@
 #include "Board/BoardStateComponentBase.h"
 #include "ConnectIt_BoardStateComponent.generated.h"
 
+// Everything a debug widget needs to know about this component's current
+// values in one call -- used to seed initial state once, right after
+// binding, through the same events used for later reactive updates (see
+// UDWidgetBase's own class comment for the convention this follows).
+// OnBoardStateChanged itself stays zero-param (shared with every board
+// interpreter, not just debug widgets) -- this just wraps the same
+// GetCurrentState()/GetChangeEvent() reads a listener already does after
+// that ping.
+USTRUCT(BlueprintType)
+struct CONNECTIT_API FConnectItBoardStateInfo
+{
+    GENERATED_BODY()
+
+    UPROPERTY(BlueprintReadOnly)
+    FConnectItBoardState CurrentState;
+
+    UPROPERTY(BlueprintReadOnly)
+    FConnectItBoardChangeEvent LastChangeEvent;
+};
 
 UCLASS(ClassGroup=(ConnectIt), meta=(BlueprintSpawnableComponent))
 class CONNECTIT_API UConnectIt_BoardStateComponent : public UBoardStateComponentBase
@@ -69,6 +88,14 @@ public:
     const FConnectItBoardChangeEvent& GetChangeEvent() const
     {
         return BoardSnapshot.ChangeEvent;
+    }
+
+    // Everything a debug widget needs, in one call -- see
+    // FConnectItBoardStateInfo's own comment.
+    UFUNCTION(BlueprintPure, Category = "Board State")
+    FConnectItBoardStateInfo GetInfo() const
+    {
+        return { BoardSnapshot.CurrentState, BoardSnapshot.ChangeEvent };
     }
 
     /*

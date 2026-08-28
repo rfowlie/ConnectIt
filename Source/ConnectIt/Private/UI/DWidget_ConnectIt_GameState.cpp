@@ -3,16 +3,28 @@
 #include "UI/DWidget_ConnectIt_GameState.h"
 #include "Library/ConnectIt_GameUtilityLibrary.h"
 
+
 void UDWidget_ConnectIt_GameState::BindDelegates()
 {
     ResolvedSource = UConnectIt_GameUtilityLibrary::GetConnectItGameState(this);
+    bSourceValid = IsValid(ResolvedSource);
 
-    if (!IsValid(ResolvedSource)) return;
+    if (!bSourceValid)
+    {
+        UE_LOG(LogDWidget, Error,
+            TEXT("UDWidget_ConnectIt_GameState::BindDelegates - Source Invalid"));
+        return;
+    }
 
     ResolvedSource->OnMatchPhaseChanged.AddDynamic(
-        this, &UDWidget_ConnectIt_GameState::HandleMatchPhaseChanged);
+        this, &UDWidget_ConnectIt_GameState::OnMatchPhaseUpdated);
     ResolvedSource->OnMatchResultUpdated.AddDynamic(
-        this, &UDWidget_ConnectIt_GameState::HandleMatchResultUpdated);
+        this, &UDWidget_ConnectIt_GameState::OnMatchResultUpdated);
+
+    // Seed initial values through the same events future changes use.
+    const FConnectItGameStateInfo Info = ResolvedSource->GetInfo();
+    OnMatchPhaseUpdated(Info.MatchPhase);
+    OnMatchResultUpdated(Info.MatchResult);
 }
 
 void UDWidget_ConnectIt_GameState::UnbindDelegates()
@@ -20,26 +32,7 @@ void UDWidget_ConnectIt_GameState::UnbindDelegates()
     if (!IsValid(ResolvedSource)) return;
 
     ResolvedSource->OnMatchPhaseChanged.RemoveDynamic(
-        this, &UDWidget_ConnectIt_GameState::HandleMatchPhaseChanged);
+        this, &UDWidget_ConnectIt_GameState::OnMatchPhaseUpdated);
     ResolvedSource->OnMatchResultUpdated.RemoveDynamic(
-        this, &UDWidget_ConnectIt_GameState::HandleMatchResultUpdated);
-}
-
-void UDWidget_ConnectIt_GameState::RefreshFields()
-{
-    bSourceValid = IsValid(ResolvedSource);
-    if (!bSourceValid) return;
-
-    CachedMatchPhase = ResolvedSource->GetMatchPhase();
-    CachedMatchResult = ResolvedSource->MatchResult;
-}
-
-void UDWidget_ConnectIt_GameState::HandleMatchPhaseChanged(EMatchPhase NewPhase)
-{
-    RefreshAll();
-}
-
-void UDWidget_ConnectIt_GameState::HandleMatchResultUpdated(const FConnectItMatchResult& Result)
-{
-    RefreshAll();
+        this, &UDWidget_ConnectIt_GameState::OnMatchResultUpdated);
 }

@@ -17,8 +17,7 @@ UCLASS(BlueprintType, Blueprintable)
 class CONNECTIT_API AConnectIt_GridPiece : public AGridPieceBase,
 	public IGridFactionInterface,
 	public IGridLevelInterface,
-	public IGridTileHandler,
-	public IActorPoolInterface
+	public IGridTileHandler
 {
 	GENERATED_BODY()
 

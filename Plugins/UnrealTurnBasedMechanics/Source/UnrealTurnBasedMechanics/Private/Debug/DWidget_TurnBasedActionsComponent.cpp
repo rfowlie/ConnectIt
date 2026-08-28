@@ -1,10 +1,7 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 #include "Debug/DWidget_TurnBasedActionsComponent.h"
-#include "Action/TurnBasedAction.h"
-#include "Action/TurnBasedActionBase.h"
 #include "Action/TurnBasedActionsComponent.h"
-#include "TurnBasedMechanicsStructs.h"
 
 
 void UDWidget_TurnBasedActionsComponent::BindDelegates()
@@ -13,74 +10,70 @@ void UDWidget_TurnBasedActionsComponent::BindDelegates()
     if (!IsValid(OwningPC)) return;
 
     ResolvedSource = OwningPC->FindComponentByClass<UTurnBasedActionsComponent>();
-    if (!IsValid(ResolvedSource)) return;
+    if (!IsValid(ResolvedSource))
+    {
+        UE_LOG(LogDWidget, Error,
+            TEXT("UDWidget_ConnectIt_GameState::BindDelegates - Source Invalid"));
+        return;
+    }
 
-    ResolvedSource->OnActionPushed.AddDynamic(
-        this, &UDWidget_TurnBasedActionsComponent::HandleActionStackChanged);
-    ResolvedSource->OnActionPopped.AddDynamic(
-        this, &UDWidget_TurnBasedActionsComponent::HandleActionStackChanged);
-    ResolvedSource->OnActionCompleted.AddDynamic(
-        this, &UDWidget_TurnBasedActionsComponent::HandleActionResolved);
-    ResolvedSource->OnActionCancelled.AddDynamic(
-        this, &UDWidget_TurnBasedActionsComponent::HandleActionResolved);
+    ResolvedSource->OnActionPushedSafe.AddDynamic(
+        this, &UDWidget_TurnBasedActionsComponent::HandleActionStackChangedSafe);
+    ResolvedSource->OnActionPoppedSafe.AddDynamic(
+        this, &UDWidget_TurnBasedActionsComponent::HandleActionStackChangedSafe);
+    ResolvedSource->OnActionCompletedSafe.AddDynamic(
+        this, &UDWidget_TurnBasedActionsComponent::HandleActionStackChangedSafe);
+    ResolvedSource->OnActionCancelledSafe.AddDynamic(
+        this, &UDWidget_TurnBasedActionsComponent::HandleActionStackChangedSafe);
     ResolvedSource->OnBoardChangeRequested.AddDynamic(
         this, &UDWidget_TurnBasedActionsComponent::HandleBoardChangeRequested);
+
+    PushCurrentInfo();
 }
 
 void UDWidget_TurnBasedActionsComponent::UnbindDelegates()
 {
-    if (!IsValid(ResolvedSource)) return;
+    if (!IsValid(ResolvedSource))
+    {
+        UE_LOG(LogDWidget, Error,
+            TEXT("UDWidget_TurnBasedActionsComponent::UnbindDelegates - Source Invalid"));
+        return;
+    }
 
-    ResolvedSource->OnActionPushed.RemoveDynamic(
-        this, &UDWidget_TurnBasedActionsComponent::HandleActionStackChanged);
-    ResolvedSource->OnActionPopped.RemoveDynamic(
-        this, &UDWidget_TurnBasedActionsComponent::HandleActionStackChanged);
-    ResolvedSource->OnActionCompleted.RemoveDynamic(
-        this, &UDWidget_TurnBasedActionsComponent::HandleActionResolved);
-    ResolvedSource->OnActionCancelled.RemoveDynamic(
-        this, &UDWidget_TurnBasedActionsComponent::HandleActionResolved);
+    ResolvedSource->OnActionPushedSafe.RemoveDynamic(
+        this, &UDWidget_TurnBasedActionsComponent::HandleActionStackChangedSafe);
+    ResolvedSource->OnActionPoppedSafe.RemoveDynamic(
+        this, &UDWidget_TurnBasedActionsComponent::HandleActionStackChangedSafe);
+    ResolvedSource->OnActionCompletedSafe.RemoveDynamic(
+        this, &UDWidget_TurnBasedActionsComponent::HandleActionStackChangedSafe);
+    ResolvedSource->OnActionCancelledSafe.RemoveDynamic(
+        this, &UDWidget_TurnBasedActionsComponent::HandleActionStackChangedSafe);
     ResolvedSource->OnBoardChangeRequested.RemoveDynamic(
         this, &UDWidget_TurnBasedActionsComponent::HandleBoardChangeRequested);
 }
 
-void UDWidget_TurnBasedActionsComponent::RefreshFields()
+void UDWidget_TurnBasedActionsComponent::HandleActionStackChangedSafe(const FTurnActionSnapshot& Snapshot)
 {
-    bSourceValid = IsValid(ResolvedSource);
-    if (!bSourceValid) return;
-
-    if (UTurnBasedActionBase* Top = ResolvedSource->GetTopAction())
-    {
-        CachedTopActionTag = Top->ActionTag;
-    }
-    else
-    {
-        CachedTopActionTag = FGameplayTag();
-    }
-
-    if (UTurnBasedActionBase* Root = ResolvedSource->GetRootAction())
-    {
-        CachedRootActionTag = Root->ActionTag;
-    }
-    else
-    {
-        CachedRootActionTag = FGameplayTag();
-    }
-
-    CachedStackDepth = ResolvedSource->GetStackDepth();
-    bCachedAwaitingRequestConfirmation = ResolvedSource->IsAwaitingRequestConfirmation();
-}
-
-void UDWidget_TurnBasedActionsComponent::HandleActionStackChanged(UTurnBasedActionBase* Action)
-{
-    RefreshAll();
-}
-
-void UDWidget_TurnBasedActionsComponent::HandleActionResolved(UTurnBasedAction* Action)
-{
-    RefreshAll();
+    PushCurrentInfo();
 }
 
 void UDWidget_TurnBasedActionsComponent::HandleBoardChangeRequested(const FTurnActionRequest& Request)
 {
-    RefreshAll();
+    PushCurrentInfo();
+}
+
+void UDWidget_TurnBasedActionsComponent::PushCurrentInfo()
+{
+    if (!IsValid(ResolvedSource))
+    {
+        UE_LOG(LogDWidget, Error,
+            TEXT("UDWidget_TurnBasedActionsComponent::PushCurrentInfo - Source Invalid"));
+        return;
+    }
+
+    const FTurnBasedActionsComponentInfo Info = ResolvedSource->GetInfo();
+    OnTopActionUpdated(Info.TopActionTag);
+    OnRootActionUpdated(Info.RootActionTag);
+    OnStackDepthUpdated(Info.StackDepth);
+    OnAwaitingRequestConfirmationUpdated(Info.bAwaitingRequestConfirmation);
 }

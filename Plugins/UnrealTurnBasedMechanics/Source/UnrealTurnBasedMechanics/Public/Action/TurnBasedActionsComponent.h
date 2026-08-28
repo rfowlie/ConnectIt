@@ -19,6 +19,44 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnTurnActionsEvent, UTurnBasedActio
 DECLARE_MULTICAST_DELEGATE_OneParam(FOnBoardChangeRequested_Native, const FTurnActionRequest&);
 DECLARE_MULTICAST_DELEGATE(FOnTurnEndRequested_Native);
 
+// Safe, copied stand-in for the live UTurnBasedActionBase*/UTurnBasedAction*
+// OnActionPushed/OnActionPopped/OnActionCompleted/OnActionCancelled hand
+// out -- observer-style consumers (debug widgets) that only ever need to
+// know WHICH action, not a mutable reference TO it (Complete()/Cancel()
+// live on the real object), bind the OnAction*Safe siblings below instead.
+USTRUCT(BlueprintType)
+struct FTurnActionSnapshot
+{
+    GENERATED_BODY()
+
+    UPROPERTY(BlueprintReadOnly, Category = "Turn Based|Debug")
+    FGameplayTag ActionTag;
+};
+
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnActionStackSnapshotChanged, const FTurnActionSnapshot&, Snapshot);
+
+// Everything a debug widget needs to know about this component's current
+// state in one call -- used to seed initial values once, right after
+// binding, through the same events used for later reactive updates (see
+// UDWidgetBase's own class comment for the convention this follows).
+USTRUCT(BlueprintType)
+struct FTurnBasedActionsComponentInfo
+{
+    GENERATED_BODY()
+
+    UPROPERTY(BlueprintReadOnly, Category = "Turn Based|Debug")
+    FGameplayTag TopActionTag;
+
+    UPROPERTY(BlueprintReadOnly, Category = "Turn Based|Debug")
+    FGameplayTag RootActionTag;
+
+    UPROPERTY(BlueprintReadOnly, Category = "Turn Based|Debug")
+    int32 StackDepth = 0;
+
+    UPROPERTY(BlueprintReadOnly, Category = "Turn Based|Debug")
+    bool bAwaitingRequestConfirmation = false;
+};
+
 UCLASS(ClassGroup=(TurnBased), meta=(BlueprintSpawnableComponent))
 class UNREALTURNBASEDMECHANICS_API UTurnBasedActionsComponent : public UActorComponent
 {
@@ -235,10 +273,31 @@ public:
     UPROPERTY(BlueprintAssignable, Category = "Turn Based|Actions")
     FOnTurnActionsEvent OnActionCancelled;
 
+    // Safe siblings of the four above -- broadcast alongside them (same
+    // call site, same moment), carrying a copied FTurnActionSnapshot
+    // instead of the live action pointer. Observer-style consumers (debug
+    // widgets) should bind these, not the raw-pointer originals above.
+    UPROPERTY(BlueprintAssignable, Category = "Turn Based|Debug")
+    FOnActionStackSnapshotChanged OnActionPushedSafe;
+
+    UPROPERTY(BlueprintAssignable, Category = "Turn Based|Debug")
+    FOnActionStackSnapshotChanged OnActionPoppedSafe;
+
+    UPROPERTY(BlueprintAssignable, Category = "Turn Based|Debug")
+    FOnActionStackSnapshotChanged OnActionCompletedSafe;
+
+    UPROPERTY(BlueprintAssignable, Category = "Turn Based|Debug")
+    FOnActionStackSnapshotChanged OnActionCancelledSafe;
+
     // --- Debug ---
 
     UPROPERTY(BlueprintReadOnly, Category = "Turn Based|Debug")
     TArray<FTurnBasedActionRecord> ActionHistory;
+
+    // Everything a debug widget needs, in one call -- see
+    // FTurnBasedActionsComponentInfo's own comment.
+    UFUNCTION(BlueprintPure, Category = "Turn Based|Debug")
+    FTurnBasedActionsComponentInfo GetInfo() const;
 
 protected:
 

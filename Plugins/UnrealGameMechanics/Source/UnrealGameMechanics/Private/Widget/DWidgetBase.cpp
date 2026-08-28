@@ -2,6 +2,9 @@
 
 #include "Widget/DWidgetBase.h"
 
+DEFINE_LOG_CATEGORY(LogDWidget);
+
+
 void UDWidgetBase::NativeConstruct()
 {
     Super::NativeConstruct();
@@ -11,8 +14,6 @@ void UDWidgetBase::NativeConstruct()
         BindDelegates();
         bBound = true;
     }
-
-    RefreshAll();
 }
 
 void UDWidgetBase::NativeDestruct()
@@ -24,10 +25,4 @@ void UDWidgetBase::NativeDestruct()
     }
 
     Super::NativeDestruct();
-}
-
-void UDWidgetBase::RefreshAll()
-{
-    RefreshFields();
-    OnDebugStateUpdated();
 }

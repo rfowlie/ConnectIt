@@ -18,6 +18,7 @@
 #include "Board/ConnectIt_BoardShiftComponent.h"
 #include "Library/ConnectIt_GameUtilityLibrary.h"
 #include "Piece/GridPieceRegistryComponent.h"
+#include "Piece/GridPieceSpawnInterpreter.h"
 #include "Tile/GridTileRegistryComponent.h"
 #include "Turn/Participant/TurnBasedParticipantManagerComponent.h"
 
@@ -31,6 +32,10 @@ AConnectIt_BoardManager::AConnectIt_BoardManager()
     PieceRegistryComponent =
         CreateDefaultSubobject<UGridPieceRegistryComponent>(
             TEXT("PieceRegistry"));
+
+    GridPieceSpawnInterpreter =
+        CreateDefaultSubobject<UGridPieceSpawnInterpreter>(
+            TEXT("GridPieceSpawnInterpreter"));
 
     BoardStateComponent =
         CreateDefaultSubobject<UConnectIt_BoardStateComponent>(
@@ -109,10 +114,11 @@ void AConnectIt_BoardManager::BindInterpreters()
         TileStateInterpreter->BindToBoardStateComponent(BoardStateComponent);
     }
 
-    if (IsValid(PieceSpawnInterpreter))
-    {
-        PieceSpawnInterpreter->BindToBoardStateComponent(BoardStateComponent);
-    }
+    // PieceSpawnInterpreter no longer binds here -- it composes with
+    // GridPieceRegistryComponent/GridPieceSpawnInterpreter (resolved as
+    // siblings via FindComponentByClass in its own BeginPlay) and
+    // self-registers directly against UGameEventTaskSubsystem tags, same
+    // self-registering idiom UConnectIt_BoardShiftComponent already uses.
 
     if (IsValid(ScoreInterpreter))
     {

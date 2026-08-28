@@ -101,6 +101,49 @@ of that tag (e.g. a permanent VFX manager bound once at BeginPlay), instead of
 having to re-register after every single event.
 
 
+EXTENDING UGameEventTask_Async WITH ITS OWN IDENTITY
+-------------------------------------------------------
+OnExecuteDelegate is zero-param and single-cast (DECLARE_DYNAMIC_DELEGATE) -- fine
+when a listener registers one persistent task per tag, each with its own distinct
+bound handler function (the common case: a zero-param callback already knows which
+tag fired, because it's the only thing that ever calls it). It stops being enough
+the moment ONE shared handler needs to register against SEVERAL tags at once and
+tell them apart -- a zero-param delegate can't carry that information.
+
+If you hit that shape, subclass UGameEventTask_Async and give the subclass its own
+identity field plus its own one-param forwarding delegate:
+
+    UCLASS(BlueprintType)
+    class UGameEventTask_Tagged : public UGameEventTask_Async
+    {
+        GENERATED_BODY()
+    public:
+        UGameEventTask_Tagged() { OnExecuteDelegate.BindDynamic(this, &ThisClass::HandleExecute); }
+
+        UPROPERTY(BlueprintReadOnly)
+        FGameplayTag AssociatedTag;
+
+        UPROPERTY(BlueprintReadWrite)
+        FOnTaggedTaskExecute OnTaggedExecute; // DECLARE_DYNAMIC_DELEGATE_OneParam(..., FGameplayTag, Tag)
+
+    private:
+        UFUNCTION()
+        void HandleExecute() { OnTaggedExecute.Execute(AssociatedTag); }
+    };
+
+The subclass binds the inherited zero-param OnExecuteDelegate to its own internal
+handler in its constructor, and re-forwards through a new one-param delegate the
+owner binds instead. One instance per watched tag, `AssociatedTag` set to match,
+all routed to the same shared owner-side handler, which switches on the tag it's
+handed. This is a documented technique, not a shipped class -- no concrete
+UGameEventTask_Tagged currently exists in this project. It was built and then
+removed for being unneeded complexity at the time (each of
+UConnectIt_PieceSpawnInterpreter's five watched tags ended up with its own
+distinct bound handler instead, so there was no shared-handler disambiguation
+problem to solve) -- reach for this shape only once you actually have a single
+handler that needs to serve more than one tag.
+
+
 THE QueueTagContainer PRIMITIVE (the queue -- this is the primary way to fire a tag)
 --------------------------------------------------------------------------------------
     UFUNCTION(BlueprintCallable)

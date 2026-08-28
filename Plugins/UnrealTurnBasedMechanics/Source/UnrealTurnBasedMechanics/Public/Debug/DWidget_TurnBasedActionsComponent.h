@@ -8,15 +8,17 @@
 #include "DWidget_TurnBasedActionsComponent.generated.h"
 
 class UTurnBasedActionsComponent;
-class UTurnBasedActionBase;
-class UTurnBasedAction;
+struct FTurnActionSnapshot;
 struct FTurnActionRequest;
 
-// Tracks UTurnBasedActionsComponent specifically -- top/root action stack
-// state. Caches ActionTag only, never the live action pointer
-// GetTopAction()/GetRootAction() return -- those objects have
+// Tracks UTurnBasedActionsComponent specifically -- top/root action tags,
+// stack depth, awaiting-confirmation state, pushed straight through to BP
+// as each changes (see UDWidgetBase's own class comment for the
+// push/GetInfo() convention). Binds OnAction*Safe (FTurnActionSnapshot,
+// a copied tag) rather than the raw-pointer OnActionPushed/OnActionPopped/
+// OnActionCompleted/OnActionCancelled -- those hand out live objects with
 // BlueprintCallable Complete()/Cancel() on them, so nothing reachable from
-// this widget's cached fields can accidentally mutate live game state.
+// this widget can accidentally mutate live game state.
 //
 // Resolved via the owning player's ActionsComponent -- this class is
 // per-controller, not a world/GameState singleton like some sibling widgets.
@@ -27,48 +29,45 @@ class UNREALTURNBASEDMECHANICS_API UDWidget_TurnBasedActionsComponent : public U
 
 public:
 
-    UFUNCTION(BlueprintPure, Category = "Debug")
-    FGameplayTag GetTopActionTag() const { return CachedTopActionTag; }
-
-    UFUNCTION(BlueprintPure, Category = "Debug")
-    FGameplayTag GetRootActionTag() const { return CachedRootActionTag; }
-
-    UFUNCTION(BlueprintPure, Category = "Debug")
-    int32 GetStackDepth() const { return CachedStackDepth; }
-
-    UFUNCTION(BlueprintPure, Category = "Debug")
-    bool IsAwaitingRequestConfirmation() const { return bCachedAwaitingRequestConfirmation; }
-
     // False until the owning player's UTurnBasedActionsComponent has
-    // actually been resolved
+    // actually been resolved -- the one deliberately pull-only exception
+    // to the push model, checked once rather than pushed.
     UFUNCTION(BlueprintPure, Category = "Debug")
-    bool IsSourceValid() const { return bSourceValid; }
+    bool IsSourceValid() const { return ResolvedSource != nullptr; }
 
 protected:
 
     virtual void BindDelegates() override;
     virtual void UnbindDelegates() override;
-    virtual void RefreshFields() override;
+
+    UFUNCTION(BlueprintImplementableEvent, BlueprintCallable, Category = "Debug")
+    void OnTopActionUpdated(FGameplayTag ActionTag);
+
+    UFUNCTION(BlueprintImplementableEvent, BlueprintCallable, Category = "Debug")
+    void OnRootActionUpdated(FGameplayTag ActionTag);
+
+    UFUNCTION(BlueprintImplementableEvent, BlueprintCallable, Category = "Debug")
+    void OnStackDepthUpdated(int32 NewStackDepth);
+
+    UFUNCTION(BlueprintImplementableEvent, BlueprintCallable, Category = "Debug")
+    void OnAwaitingRequestConfirmationUpdated(bool bAwaiting);
 
 private:
 
-    // Shared by OnActionPushed/OnActionPopped -- both are FOnActionBaseEvent
+    // Shared by all four OnAction*Safe delegates and OnBoardChangeRequested
+    // -- none of them map to a single field 1:1 (e.g. after a pop, the new
+    // top is a DIFFERENT action than the one popped), so every one of them
+    // re-derives the full current picture via GetInfo() rather than trying
+    // to thread its own event's payload through piecemeal.
     UFUNCTION()
-    void HandleActionStackChanged(UTurnBasedActionBase* Action);
-
-    // Shared by OnActionCompleted/OnActionCancelled -- both are FOnTurnActionsEvent
-    UFUNCTION()
-    void HandleActionResolved(UTurnBasedAction* Action);
+    void HandleActionStackChangedSafe(const FTurnActionSnapshot& Snapshot);
 
     UFUNCTION()
     void HandleBoardChangeRequested(const FTurnActionRequest& Request);
 
+    void PushCurrentInfo();
+
     UPROPERTY()
     TObjectPtr<UTurnBasedActionsComponent> ResolvedSource = nullptr;
-
-    FGameplayTag CachedTopActionTag;
-    FGameplayTag CachedRootActionTag;
-    int32 CachedStackDepth = 0;
-    bool bCachedAwaitingRequestConfirmation = false;
-    bool bSourceValid = false;
+    
 };

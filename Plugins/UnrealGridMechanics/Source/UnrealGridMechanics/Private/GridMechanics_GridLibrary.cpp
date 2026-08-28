@@ -24,6 +24,11 @@ const TMap<EGridDirection, FGridDirectionVector> UGridMechanics_GridLibrary::Gri
 // Direction <-> Vector / Rotation
 // ============================================================
 
+bool UGridMechanics_GridLibrary::GridPositionIsEqual(const FGridPosition& A, const FGridPosition& B)
+{
+	return A == B;
+}
+
 FGridDirectionVector UGridMechanics_GridLibrary::GetGridDirectionVector(EGridDirection Direction)
 {
 	// FindRef returns a default-constructed FGridDirectionVector (0,0) if Direction isn't a valid key

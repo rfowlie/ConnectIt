@@ -20,6 +20,32 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnActiveControllerChanged, AControl
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnAllParticipantsReady);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnGameOver);
 
+// Everything a debug widget needs to know about this component's current
+// values in one call -- used to seed initial state once, right after
+// binding, through the same events used for later reactive updates (see
+// UDWidgetBase's own class comment for the convention this follows).
+// Deliberately carries ActiveParticipantIndex (int32), not a controller
+// reference -- OnActiveControllerChanged hands out AController*, but a
+// widget only ever wants the index, so the translation happens once here
+// rather than leaking the controller pointer itself.
+USTRUCT(BlueprintType)
+struct FTurnBasedParticipantManagerInfo
+{
+    GENERATED_BODY()
+
+    UPROPERTY(BlueprintReadOnly)
+    ETurnPhase TurnPhase = ETurnPhase::WaitingForParticipants;
+
+    UPROPERTY(BlueprintReadOnly)
+    int32 ActiveParticipantIndex = -1;
+
+    UPROPERTY(BlueprintReadOnly)
+    int32 TurnNumber = 0;
+
+    UPROPERTY(BlueprintReadOnly)
+    TArray<FTurnParticipantInfo> Participants;
+};
+
 UCLASS(ClassGroup=(TurnBased), meta=(BlueprintSpawnableComponent))
 class UNREALTURNBASEDMECHANICS_API UTurnBasedParticipantManagerComponent : public UActorComponent
 {
@@ -130,6 +156,14 @@ public:
     bool IsActiveParticipant(AController* Controller) const
     {
         return IsValid(Controller) && GetControllerAtIndex(ActiveParticipantIndex) == Controller;
+    }
+
+    // Everything a debug widget needs, in one call -- see
+    // FTurnBasedParticipantManagerInfo's own comment.
+    UFUNCTION(BlueprintPure, Category = "Turn Based|Debug")
+    FTurnBasedParticipantManagerInfo GetInfo() const
+    {
+        return { CurrentPhase, ActiveParticipantIndex, TurnNumber, Participants };
     }
 
     virtual void GetLifetimeReplicatedProps(

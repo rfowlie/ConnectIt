@@ -8,7 +8,11 @@
 #include "Framework/GameState/ConnectIt_GameState.h"
 #include "DWidget_ConnectIt_GameState.generated.h"
 
-// Tracks AConnectIt_GameState specifically -- match phase and match result.
+// Tracks AConnectIt_GameState specifically -- match phase and match result,
+// pushed straight through to BP as each changes (see UDWidgetBase's own
+// class comment for the push/GetInfo() convention). No cached fields, no
+// pull-based Get*() accessors -- BP holds whatever state it needs from the
+// events it receives.
 // Deliberately does not surface the board-derived convenience wrappers
 // (GetFactionScore/IsTileOccupied/etc.) that live on AConnectIt_GameState --
 // those read through to UConnectIt_BoardStateComponent, and duplicating them
@@ -21,13 +25,10 @@ class CONNECTIT_API UDWidget_ConnectIt_GameState : public UDWidgetBase
 
 public:
 
-    UFUNCTION(BlueprintPure, Category = "ConnectIt|Debug")
-    EMatchPhase GetMatchPhase() const { return CachedMatchPhase; }
-
-    UFUNCTION(BlueprintPure, Category = "ConnectIt|Debug")
-    const FConnectItMatchResult& GetMatchResult() const { return CachedMatchResult; }
-
-    // False until AConnectIt_GameState has actually been resolved
+    // False until AConnectIt_GameState has actually been resolved -- the
+    // one deliberately pull-only exception to the push model, checked once
+    // rather than pushed, since "is this bound yet" is a one-time gate,
+    // not a recurring update.
     UFUNCTION(BlueprintPure, Category = "ConnectIt|Debug")
     bool IsSourceValid() const { return bSourceValid; }
 
@@ -35,20 +36,17 @@ protected:
 
     virtual void BindDelegates() override;
     virtual void UnbindDelegates() override;
-    virtual void RefreshFields() override;
+
+    UFUNCTION(BlueprintImplementableEvent, BlueprintCallable, Category = "ConnectIt|Debug")
+    void OnMatchPhaseUpdated(EMatchPhase InMatchPhase);
+
+    UFUNCTION(BlueprintImplementableEvent, BlueprintCallable, Category = "ConnectIt|Debug")
+    void OnMatchResultUpdated(const FConnectItMatchResult& Result);
 
 private:
-
-    UFUNCTION()
-    void HandleMatchPhaseChanged(EMatchPhase NewPhase);
-
-    UFUNCTION()
-    void HandleMatchResultUpdated(const FConnectItMatchResult& Result);
 
     UPROPERTY()
     TObjectPtr<AConnectIt_GameState> ResolvedSource = nullptr;
 
-    EMatchPhase CachedMatchPhase = EMatchPhase::WaitingForParticipants;
-    FConnectItMatchResult CachedMatchResult;
     bool bSourceValid = false;
 };
