@@ -4,17 +4,20 @@ ConnectIt Board Manager Subsystem — Workflow
 WHAT THIS IS
 ------------
 UConnectIt_BoardManagerSubsystem (Source/ConnectIt/Public|Private/Framework/Subsystem/
-ConnectIt_BoardManagerSubsystem.h/.cpp) is a per-world UWorldSubsystem that:
-
-  1. Caches the single AConnectIt_BoardManager actor in the level, so lookups don't
-     need to repeatedly scan the world for it.
-  2. Relays the board manager's own events (piece placed, line scored, player win,
-     shift applied) so listeners never need to know whether the board manager
-     reference is valid yet before binding.
+ConnectIt_BoardManagerSubsystem.h/.cpp) is a per-world UWorldSubsystem that caches
+the single AConnectIt_BoardManager actor in the level, so lookups don't need to
+repeatedly scan the world for it.
 
 It always exists for the lifetime of the world (subsystems are created at world
 init), which is the whole point: it is always safe to bind to or query, even before
 AConnectIt_BoardManager itself has spawned or run BeginPlay.
+
+NOTE: this subsystem does not relay any board events. Shift / piece placed / line
+scored / player win are all UGameEventTaskSubsystem tags (ConnectIt_Event_Shift/
+PiecePlaced/LineScored/PlayerWin) -- see Workflows/GameEventSubsystem_Workflow.txt.
+This subsystem used to also relay OnShiftApplied as a direct delegate (while the
+other three events had already moved to tags) -- that was a deferred migration,
+now finished; this subsystem is purely a cache.
 
 
 WHY IT EXISTS
@@ -49,9 +52,8 @@ server and every client's local replicated copy of the actor. This matters becau
 most GetBoardManager call sites are client-side -- if registration only happened on
 the server, clients would never populate their local cache.
 
-RegisterBoardManager() is safe to call more than once (e.g. PIE re-entry): it
-unbinds the event relay from any previously-cached board manager, then rebinds to
-the new one. Last caller wins.
+RegisterBoardManager() is safe to call more than once (e.g. PIE re-entry) -- last
+caller wins.
 
 
 TWO THINGS CONSUMERS WANT, AND WHICH ONE YOU NEED
@@ -61,7 +63,7 @@ right one matters -- using the wrong one is exactly the "backwards" pattern this
 subsystem was built to get away from.
 
   (A) "I need to CALL something on the board manager"
-      e.g. GetPlayerLoadout(), GetEnemyLoadout(), ProcessRequest(), InitialiseBoard()
+      e.g. ProcessRequest(), InitialiseBoard()
 
       You need the actual object reference. Use one of:
 
@@ -95,43 +97,34 @@ subsystem was built to get away from.
                                                             use the reference it
                                                             passes when it fires
 
+      IMPORTANT -- do the check before you bind, not instead of it. Binding
+      to OnBoardManagerReady without checking GetBoardManager() first is a
+      bug: RegisterBoardManager() may have already run (and already
+      broadcast) before your code executes, and a dynamic multicast
+      delegate does not replay past broadcasts to listeners that bind
+      after the fact -- you would wait forever for an event that already
+      happened. Always check the synchronous accessor first; only bind if
+      it comes back null.
+
+      Does the subsystem clear OnBoardManagerReady after it fires? No, and
+      it shouldn't -- RegisterBoardManager() is safe to call more than
+      once (PIE re-entry, a hypothetical board manager replacement), and
+      clearing the delegate after the first broadcast would silently break
+      any future re-registration from ever notifying listeners again. If a
+      specific listener only needs the reference once, it should unbind
+      itself (RemoveDynamic) inside its own handler once it's done -- a
+      per-listener decision the subsystem has no way to make on their
+      behalf.
+
   (B) "I want to REACT to something that happens on the board"
-      e.g. a piece was placed, a line was scored, someone won, a shift was applied
+      e.g. a shift was applied, a piece was placed, a line was scored, someone won
 
-      You do NOT need the board manager reference at all. Bind directly to the
-      subsystem's relay delegates -- these exist and can be bound at any time,
-      regardless of whether the board manager has spawned yet:
-
-        UConnectIt_BoardManagerSubsystem::OnPiecePlaced   (FGridPosition Position)
-        UConnectIt_BoardManagerSubsystem::OnLineScored    (int32 FactionSlot, float PointsScored)
-        UConnectIt_BoardManagerSubsystem::OnPlayerWin     (int32 WinningFactionSlot)
-        UConnectIt_BoardManagerSubsystem::OnShiftApplied  (const FShiftOperation&, const FShiftResult&)
-
-      These mirror AConnectIt_BoardManager's own delegates of the same name. The
-      subsystem binds itself to the real board manager's delegates once, inside
-      RegisterBoardManager, and relays every broadcast through. Do NOT bind
-      directly to Board->OnPiecePlaced / Board->OnLineScored / etc. -- that
-      reintroduces the exact "must prove the board manager exists before I can
-      bind" problem this subsystem exists to remove.
-
-      Example of what NOT to do (old pattern, still findable in old code before
-      this subsystem existed):
-
-          AConnectIt_BoardManager* Board = GetBoardActor();
-          if (!IsValid(Board)) { log error; return; }   // binding depends on this
-          Board->OnPlayerWin.AddDynamic(this, &AMyClass::HandleGameOver);
-
-      What to do instead:
-
-          if (UConnectIt_BoardManagerSubsystem* Subsystem =
-              GetWorld()->GetSubsystem<UConnectIt_BoardManagerSubsystem>())
-          {
-              Subsystem->OnPlayerWin.AddDynamic(this, &AMyClass::HandleGameOver);
-          }
-
-      This binding no longer depends on the board manager already being resolved.
-      See AConnectIt_GameMode::InitialiseBoard() (Source/ConnectIt/Private/Framework/
-      GameMode/ConnectIt_GameMode.cpp) for the real migrated example.
+      You do NOT need the board manager reference at all, and you do NOT bind
+      here. Bind to the matching tag on UGameEventTaskSubsystem instead -- see
+      Workflows/GameEventSubsystem_Workflow.txt for the full pattern
+      (BindOnTagBegin for "tell me now", a registered UGameEventTask_Async for
+      "wait for my visual to finish"; read payload data via
+      UConnectIt_BoardStateComponent::GetChangeEvent()).
 
 
 QUICK REFERENCE
@@ -145,9 +138,11 @@ QUICK REFERENCE
       -> UConnectIt_BoardManagerSubsystem::GetBoardManager(), fall back to
          binding OnBoardManagerReady if null
 
-  Need to REACT to a board event (piece placed / line scored / win / shift)?
-      -> Bind directly to the matching delegate on UConnectIt_BoardManagerSubsystem.
-         Never bind to the board manager's own delegates directly.
+  Need to REACT to a shift / piece placed / line scored / player win?
+      -> Bind to the matching tag on UGameEventTaskSubsystem. See
+         Workflows/GameEventSubsystem_Workflow.txt. AConnectIt_GameMode::
+         InitialiseBoard() (Source/ConnectIt/Private/Framework/GameMode/
+         ConnectIt_GameMode.cpp) is a real BindOnTagComplete example.
 
 
 FILES INVOLVED
@@ -156,4 +151,6 @@ FILES INVOLVED
   Source/ConnectIt/Private/Framework/Subsystem/ConnectIt_BoardManagerSubsystem.cpp
   Source/ConnectIt/Private/Board/ConnectIt_BoardManager.cpp        (BeginPlay registration)
   Source/ConnectIt/Private/Library/ConnectIt_GameUtilityLibrary.cpp (GetBoardManager)
-  Source/ConnectIt/Private/Framework/GameMode/ConnectIt_GameMode.cpp (migrated example)
+
+For all board events including shift, see Workflows/GameEventSubsystem_Workflow.txt
+instead -- none of them are relayed by this subsystem.

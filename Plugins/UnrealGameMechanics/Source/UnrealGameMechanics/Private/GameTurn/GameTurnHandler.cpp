@@ -40,22 +40,22 @@ void UGameTurnHandler::RegisterAsyncTaskTurnEnd(UGameEventTask_Async* AsyncTask,
 	GameEventTurnEnd->RegisterAsyncTask(AsyncTask, Phase);
 }
 
-void UGameTurnHandler::OnTurnStartPreAsync()
+void UGameTurnHandler::OnTurnStartPreAsync(FGameplayTag Tag)
 {
 	if (TurnStartPreAsync.IsBound()) { TurnStartPreAsync.Broadcast(FactionTagActive); }
 }
 
-void UGameTurnHandler::OnTurnStartPostAsync()
+void UGameTurnHandler::OnTurnStartPostAsync(FGameplayTag Tag)
 {
 	if (TurnStartPostAsync.IsBound()) { TurnStartPostAsync.Broadcast(FactionTagActive); }
 }
 
-void UGameTurnHandler::OnTurnEndPreAsync()
+void UGameTurnHandler::OnTurnEndPreAsync(FGameplayTag Tag)
 {
 	if (TurnEndPreAsync.IsBound()) { TurnEndPreAsync.Broadcast(FactionTagActive); }
 }
 
-void UGameTurnHandler::OnTurnEndPostAsync()
+void UGameTurnHandler::OnTurnEndPostAsync(FGameplayTag Tag)
 {
 	if (TurnEndPostAsync.IsBound()) { TurnEndPostAsync.Broadcast(FactionTagActive); }
 }

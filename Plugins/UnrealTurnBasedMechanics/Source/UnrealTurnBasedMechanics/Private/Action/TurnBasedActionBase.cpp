@@ -70,3 +70,7 @@ void UTurnBasedActionBase::Deactivate_Internal_Implementation()
 void UTurnBasedActionBase::ForceDeactivate_Internal_Implementation()
 {
 }
+
+void UTurnBasedActionBase::PostInitialiseAction_Implementation()
+{
+}

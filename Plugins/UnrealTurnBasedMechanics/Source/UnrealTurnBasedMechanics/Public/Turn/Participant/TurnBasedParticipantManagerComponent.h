@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "GameplayTagContainer.h"
 #include "TurnBasedMechanicsEnums.h"
 #include "TurnBasedMechanicsStructs.h"
 #include "Components/ActorComponent.h"
@@ -17,8 +18,33 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnTurnPhaseChanged, ETurnPhase, New
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnParticipantForfeited, const FTurnParticipantInfo&, ParticipantInfo);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnActiveControllerChanged, AController*, NewActiveController);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnAllParticipantsReady);
-DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnTurnResolutionStarted);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnGameOver);
+
+// Everything a debug widget needs to know about this component's current
+// values in one call -- used to seed initial state once, right after
+// binding, through the same events used for later reactive updates (see
+// UDWidgetBase's own class comment for the convention this follows).
+// Deliberately carries ActiveParticipantIndex (int32), not a controller
+// reference -- OnActiveControllerChanged hands out AController*, but a
+// widget only ever wants the index, so the translation happens once here
+// rather than leaking the controller pointer itself.
+USTRUCT(BlueprintType)
+struct FTurnBasedParticipantManagerInfo
+{
+    GENERATED_BODY()
+
+    UPROPERTY(BlueprintReadOnly)
+    ETurnPhase TurnPhase = ETurnPhase::WaitingForParticipants;
+
+    UPROPERTY(BlueprintReadOnly)
+    int32 ActiveParticipantIndex = -1;
+
+    UPROPERTY(BlueprintReadOnly)
+    int32 TurnNumber = 0;
+
+    UPROPERTY(BlueprintReadOnly)
+    TArray<FTurnParticipantInfo> Participants;
+};
 
 UCLASS(ClassGroup=(TurnBased), meta=(BlueprintSpawnableComponent))
 class UNREALTURNBASEDMECHANICS_API UTurnBasedParticipantManagerComponent : public UActorComponent
@@ -43,13 +69,6 @@ public:
         Category = "Turn Based|Config")
     float ReconnectTimeout = 30.f;
 
-    // Duration of the resolution phase between TurnEnd and next TurnStart
-    // External systems hook OnTurnResolutionStarted to drive their logic
-    // Manager advances to next turn after this duration automatically
-    UPROPERTY(EditAnywhere, BlueprintReadOnly,
-        Category = "Turn Based|Config")
-    float TurnResolutionDuration = 2.0f;
-
     // Turn order strategy -- must implement ITurnOrderInterface
     // Instanced inline in Details panel
     // Defaults to USequentialTurnOrderStrategy if not set
@@ -65,7 +84,14 @@ public:
     UPROPERTY(BlueprintReadOnly, ReplicatedUsing = OnRep_ActiveParticipantIndex, Category = "Turn Based|State")
     int32 ActiveParticipantIndex = -1;
 
-    UPROPERTY(BlueprintReadOnly, Replicated, Category = "Turn Based|State")
+    // ReplicatedUsing rather than plain Replicated -- TurnNumber is
+    // monotonic and never repeats within a match, so unlike CurrentPhase it
+    // can never "settle back" to a value the client already has and go
+    // unsent for a tick. Gives listeners (e.g. a debug UI) a signal that's
+    // guaranteed to fire on every single turn advance, independent of
+    // whichever unrelated RPC/property happens to also be in flight that
+    // tick. See OnRep_TurnNumber.
+    UPROPERTY(BlueprintReadOnly, ReplicatedUsing = OnRep_TurnNumber, Category = "Turn Based|State")
     int32 TurnNumber = 0;
 
     // Replicated -- what clients need to see
@@ -112,26 +138,49 @@ public:
     UPROPERTY(BlueprintAssignable, Category = "Turn Based")
     FOnAllParticipantsReady OnAllParticipantsReady;
 
-    // Hook for external systems during resolution phase
-    // Cinematics, scoring visuals, dialogue etc. bind here
-    // Manager auto-advances after TurnResolutionDuration
-    UPROPERTY(BlueprintAssignable, Category = "Turn Based")
-    FOnTurnResolutionStarted OnTurnResolutionStarted;
-
     UPROPERTY(BlueprintAssignable, Category = "Turn Based")
     FOnGameOver OnGameOver;
 
     // --- Helpers ---
-    
+
     // returns null on clients
     AController* GetControllerAtIndex(int32 Index) const;
-    
+
+    // Server-authoritative -- true if Controller is the actively-taking-turn
+    // participant right now. Safe to call from server-side code that needs
+    // to validate a request actually comes from whoever's turn it is; do
+    // NOT use UTurnBasedParticipantComponent::IsMyTurn() for this -- that
+    // flag is client-side-only (see its own doc comment) and always false
+    // on the server.
+    UFUNCTION(BlueprintPure, Category = "Turn Based")
+    bool IsActiveParticipant(AController* Controller) const
+    {
+        return IsValid(Controller) && GetControllerAtIndex(ActiveParticipantIndex) == Controller;
+    }
+
+    // Everything a debug widget needs, in one call -- see
+    // FTurnBasedParticipantManagerInfo's own comment.
+    UFUNCTION(BlueprintPure, Category = "Turn Based|Debug")
+    FTurnBasedParticipantManagerInfo GetInfo() const
+    {
+        return { CurrentPhase, ActiveParticipantIndex, TurnNumber, Participants };
+    }
+
     virtual void GetLifetimeReplicatedProps(
         TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
 protected:
 
     virtual void BeginPlay() override;
+
+    // Tag triggered on UGameEventTaskSubsystem when a turn ends -- external
+    // systems register gated async tasks against this tag (same pattern as
+    // any other gated sequence step) instead of a bespoke hold API. Must be
+    // set by the project (this plugin has no opinion on the tag's name) --
+    // AdvanceToNextParticipant only runs once every registered task for
+    // this tag completes, or immediately if none are registered.
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Turn Based|Config")
+    FGameplayTag TurnEndEventTag;
 
 private:
 
@@ -141,7 +190,6 @@ private:
     
     // --- Timers ---
     FTimerHandle TurnTimerHandle;
-    FTimerHandle ResolutionTimerHandle;
     FTimerHandle ReconnectTimerHandle;
 
     int32 DisconnectedParticipantIndex = -1;
@@ -151,10 +199,19 @@ private:
     void SetPhase(ETurnPhase NewPhase);
     void StartTurn(int32 ParticipantIndex);
     void EndTurn(ETurnEndReason Reason);
-   
-    void AdvanceToNextParticipant();
+
+    // UFUNCTION() -- bound to TurnEndEventTag's OnManagerComplete via
+    // BindOnTagComplete (reflection-based, needs a UFUNCTION to find it).
+    // Tag param is unused -- this only ever binds to TurnEndEventTag, so
+    // there's nothing to disambiguate -- but the signature must match
+    // OnManagerComplete's (FGameplayTag) exactly, since BindOnTagComplete's
+    // underlying FScriptDelegate::BindUFunction bind is not compile-time
+    // signature-checked; a mismatch here would misbehave at runtime, not
+    // fail to build.
+    UFUNCTION()
+    void AdvanceToNextParticipant(FGameplayTag Tag);
+
     void HandleTurnTimeout();
-    void HandleResolutionComplete();
     void HandleReconnectTimeout();
     void CheckReadyStatus();
     bool CheckGameOver() const;
@@ -193,4 +250,7 @@ private:
 
     UFUNCTION()
     void OnRep_ActiveParticipantIndex();
+
+    UFUNCTION()
+    void OnRep_TurnNumber();
 };

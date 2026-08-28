@@ -6,6 +6,7 @@
 #include "Board/ConnectIt_BoardManager.h"
 #include "Action/ActionLoadoutDataAsset.h"
 #include "Action/TurnBasedActionsComponent.h"
+#include "Framework/Data/ConnectIt_ConfigComponent.h"
 
 
 AConnectIt_AIController::AConnectIt_AIController()
@@ -34,7 +35,7 @@ void AConnectIt_AIController::InitialiseFromBoardManager()
         return;
     }
 
-    if (UActionLoadoutDataAsset* LoadOut = BoardManager->GetEnemyLoadout())
+    if (UActionLoadoutDataAsset* LoadOut = BoardManager->GetConfigComponent()->EnemyLoadout)
     {
         ActionsComponent->InitialiseFromLoadout(LoadOut);
     }

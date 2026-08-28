@@ -52,7 +52,22 @@ struct CONNECTIT_API FConnectItMatchResult
 
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnMatchResultUpdated, const FConnectItMatchResult&, Result);
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FonMatchPhaseUpdated, EMatchPhase, UpdatedPhase);
+
+// Everything a debug widget needs to know about this game state's current
+// values in one call -- used to seed initial state once, right after
+// binding, through the same events used for later reactive updates (see
+// UDWidgetBase's own class comment for the convention this follows).
+USTRUCT(BlueprintType)
+struct CONNECTIT_API FConnectItGameStateInfo
+{
+    GENERATED_BODY()
+
+    UPROPERTY(BlueprintReadOnly)
+    EMatchPhase MatchPhase = EMatchPhase::WaitingForParticipants;
+
+    UPROPERTY(BlueprintReadOnly)
+    FConnectItMatchResult MatchResult;
+};
 
 UCLASS()
 class CONNECTIT_API AConnectIt_GameState : public ATurnBasedGameState
@@ -119,6 +134,11 @@ public:
     // Returns true if the local player is the active participant
     UFUNCTION(BlueprintPure, Category = "ConnectIt|Turn")
     bool IsLocalPlayerTurn() const;
+
+    // Everything a debug widget needs, in one call -- see
+    // FConnectItGameStateInfo's own comment.
+    UFUNCTION(BlueprintPure, Category = "ConnectIt|Debug")
+    FConnectItGameStateInfo GetInfo() const { return { GetMatchPhase(), MatchResult }; }
 
     virtual void GetLifetimeReplicatedProps(
         TArray<FLifetimeProperty>& OutLifetimeProps) const override;

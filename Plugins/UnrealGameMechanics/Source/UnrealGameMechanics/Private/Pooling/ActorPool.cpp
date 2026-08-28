@@ -133,6 +133,7 @@ void UActorPool::DeactivateActor(AActor* Actor) const
 {
     if (Actor->GetClass()->ImplementsInterface(UActorPoolInterface::StaticClass()))
     {
+        UE_LOG(LogTemp, Log, TEXT("Actor Pool - Deactivate Object: %s"), *Actor->GetName());
         IActorPoolInterface::Execute_DeactivatePoolObject(Actor);
     }
     else

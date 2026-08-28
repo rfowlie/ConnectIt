@@ -5,6 +5,7 @@
 #include "GameFramework/Controller.h"
 #include "Framework/GameState/TurnBasedGameState.h"
 #include "Turn/Participant/TurnBasedParticipantComponent.h"
+#include "Turn/Participant/TurnBasedParticipantManagerComponent.h"
 #include "Action/TurnBasedActionsComponent.h"
 
 
@@ -162,8 +163,15 @@ void UTurnBasedControllerCoordinatorComponent::HandleTurnNotification(
     {
         case ETurnPhase::TurnStart:
         case ETurnPhase::TurnActive:
-            ActionsComponent->NotifyTurnStarted(Notification.TurnNumber);
+        {
+            // Notification.ParticipantInfo already carries TurnsTaken --
+            // BuildNotification copies the full FTurnParticipantInfo by value
+            FTurnStartContext Context;
+            Context.TurnNumber       = Notification.TurnNumber;
+            Context.ActiveParticipant = Notification.ParticipantInfo;
+            ActionsComponent->NotifyTurnStarted(Context);
             break;
+        }
 
         case ETurnPhase::TurnEnd:
         case ETurnPhase::TurnTimeout:
@@ -180,7 +188,33 @@ void UTurnBasedControllerCoordinatorComponent::HandleOpponentTurnStarted(
     int32 ActiveParticipantSlotIndex)
 {
     if (!IsValid(ActionsComponent)) return;
-    ActionsComponent->NotifyOpponentTurnStarted();
+    if (!IsValid(ParticipantComponent)) return;
+
+    // Participants/TurnNumber already replicate independently on the
+    // manager component (GameState-resident, reachable on both server and
+    // clients) -- no need to widen the ClientReceiveOpponentTurnStarted RPC
+    // itself, just read them here once the RPC arrives.
+    UTurnBasedParticipantManagerComponent* Manager =
+        ParticipantComponent->GetParticipantManager();
+
+    FTurnStartContext Context;
+    if (IsValid(Manager))
+    {
+        Context.TurnNumber = Manager->TurnNumber;
+
+        const FTurnParticipantInfo* Found = Manager->Participants.FindByPredicate(
+            [ActiveParticipantSlotIndex](const FTurnParticipantInfo& Info)
+            {
+                return Info.SlotIndex == ActiveParticipantSlotIndex;
+            });
+
+        if (Found)
+        {
+            Context.ActiveParticipant = *Found;
+        }
+    }
+
+    ActionsComponent->NotifyOpponentTurnStarted(Context);
 }
 
 // --- Actions -> Participant ---

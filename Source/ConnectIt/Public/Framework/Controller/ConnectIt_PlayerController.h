@@ -22,6 +22,9 @@ class CONNECTIT_API AConnectIt_PlayerController : public ATurnBasedPlayerControl
 {
     GENERATED_BODY()
 
+public:
+
+    
 protected:
 
     virtual void BeginPlay() override;
@@ -49,6 +52,17 @@ private:
     void ServerRouteBoardChangeRequest(FTurnActionRequest Request);
     void ServerRouteBoardChangeRequest_Implementation(
         FTurnActionRequest Request);
+
+    // --- ClientRPC ---
+
+    // Reports the server's accept/reject answer for Request back to this
+    // client -- called from every exit path of
+    // ServerRouteBoardChangeRequest_Implementation, not just the ones that
+    // reach ProcessRequest. Forwards straight into
+    // UTurnBasedActionsComponent::NotifyBoardChangeOutcome, the generic
+    // entry point that actually resolves the awaiting-confirmation state.
+    UFUNCTION(Client, Reliable)
+    void ClientNotifyBoardChangeOutcome(FTurnActionRequest Request, bool bSucceeded);
 
     // Cached reference -- found once in InitialiseFromBoardManager
     UPROPERTY()

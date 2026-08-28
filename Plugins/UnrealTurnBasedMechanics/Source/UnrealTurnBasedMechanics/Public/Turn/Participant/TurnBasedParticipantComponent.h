@@ -25,6 +25,7 @@ class UNREALTURNBASEDMECHANICS_API UTurnBasedParticipantComponent : public UActo
 public:
 
     UTurnBasedParticipantComponent();
+    virtual void GetLifetimeReplicatedProps(TArray<class FLifetimeProperty>& OutLifetimeProps) const override;
 
     // --- State ---
 
@@ -36,6 +37,14 @@ public:
     
     UFUNCTION(BlueprintPure, Category = "Turn Based|Participant")
     bool IsMyTurn() const { return bIsMyTurn; }
+
+    // Resolves the match's manager component (lives on GameState, so this
+    // is reachable on both server and clients). Public so callers outside
+    // the friend relationship -- e.g. UTurnBasedControllerCoordinatorComponent
+    // building an FTurnStartContext for an opponent's turn -- can read the
+    // manager's already-replicated TurnNumber/Participants directly instead
+    // of re-deriving this same resolution themselves.
+    UTurnBasedParticipantManagerComponent* GetParticipantManager() const;
 
     // --- Server RPCs ---
 
@@ -80,11 +89,13 @@ protected:
 
     virtual void BeginPlay() override;
 
-private:
-
-    UPROPERTY()
+    UPROPERTY(Replicated)
     int32 CachedSlotIndex = -1;
+    
+    UPROPERTY(Replicated)
     EParticipantType ParticipantType = EParticipantType::Human;
+
+private:    
 
     // Client-side only -- set by ClientReceiveTurnNotification
     // Never valid on server -- use manager ActiveParticipantIndex instead
@@ -92,6 +103,4 @@ private:
 
     static bool IsMyTurnStartingPhase(ETurnPhase Phase);
     static bool IsMyTurnEndingPhase(ETurnPhase Phase);
-
-    UTurnBasedParticipantManagerComponent* GetParticipantManager() const;
 };

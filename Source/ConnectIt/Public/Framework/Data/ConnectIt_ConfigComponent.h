@@ -27,16 +27,6 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "ConnectIt|Config")
 	TObjectPtr<UActionLoadoutDataAsset> EnemyLoadout = nullptr;
 
-	// --- Rules ---
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "ConnectIt|Config")
-	float WinScoreThreshold = 100.f;
-
-	// How many tiles in a line required to score
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "ConnectIt|Config",
-		meta = (ClampMin = 3))
-	int32 ConnectLength = 4;
-
 	// --- AI ---
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "ConnectIt|Config")

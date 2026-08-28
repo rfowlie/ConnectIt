@@ -7,6 +7,25 @@
 #include "Board/BoardStateComponentBase.h"
 #include "ConnectIt_BoardStateComponent.generated.h"
 
+// Everything a debug widget needs to know about this component's current
+// values in one call -- used to seed initial state once, right after
+// binding, through the same events used for later reactive updates (see
+// UDWidgetBase's own class comment for the convention this follows).
+// OnBoardStateChanged itself stays zero-param (shared with every board
+// interpreter, not just debug widgets) -- this just wraps the same
+// GetCurrentState()/GetChangeEvent() reads a listener already does after
+// that ping.
+USTRUCT(BlueprintType)
+struct CONNECTIT_API FConnectItBoardStateInfo
+{
+    GENERATED_BODY()
+
+    UPROPERTY(BlueprintReadOnly)
+    FConnectItBoardState CurrentState;
+
+    UPROPERTY(BlueprintReadOnly)
+    FConnectItBoardChangeEvent LastChangeEvent;
+};
 
 UCLASS(ClassGroup=(ConnectIt), meta=(BlueprintSpawnableComponent))
 class CONNECTIT_API UConnectIt_BoardStateComponent : public UBoardStateComponentBase
@@ -32,9 +51,9 @@ public:
     // alongside the state it describes.
     // Fires OnBoardStateChanged on server immediately
     // Clients receive via OnRep -- AConnectIt_BoardManager reads ChangeEvent
-    // from that same signal on both machines to drive typed delegates and
-    // gated visual sequencing (see HandleBoardStateChanged)
-    void ApplyAndBroadcast(
+    // from that same signal on both machines to drive gated visual
+    // sequencing (see HandleBoardStateChanged)
+    void SetBoardState(
         const FConnectItBoardState& NewState,
         const FConnectItBoardChangeEvent& ChangeEvent);
 
@@ -60,18 +79,41 @@ public:
         return BoardSnapshot.PreviousState;
     }
 
-    // Convenience -- reads from current state
+    // What specifically changed on the most recent ApplyAndBroadcast call.
+    // Listeners bound to a UGameEventTaskSubsystem board event tag (which
+    // carries no parameters) call this to read payload data -- position,
+    // faction, points scored, winner -- instead of it being threaded
+    // through a delegate parameter
     UFUNCTION(BlueprintPure, Category = "Board State")
-    bool IsTileValidForPlacement(const FGridPosition Position) const
+    const FConnectItBoardChangeEvent& GetChangeEvent() const
     {
-        return BoardSnapshot.CurrentState.IsTileValidForPlacement(Position);
+        return BoardSnapshot.ChangeEvent;
     }
 
+    // Everything a debug widget needs, in one call -- see
+    // FConnectItBoardStateInfo's own comment.
     UFUNCTION(BlueprintPure, Category = "Board State")
-    float GetFactionScore(int32 FactionSlot) const
+    FConnectItBoardStateInfo GetInfo() const
     {
-        return BoardSnapshot.CurrentState.GetScore(FactionSlot);
+        return { BoardSnapshot.CurrentState, BoardSnapshot.ChangeEvent };
     }
+
+    /*
+     *  TODO: remove, let's try not repeat ourselves
+     *  unless we opt to move all the helper functions out of the struct into here
+     */
+    // // Convenience -- reads from current state
+    // UFUNCTION(BlueprintPure, Category = "Board State")
+    // bool IsTileValidForPlacement(const FGridPosition Position) const
+    // {
+    //     return BoardSnapshot.CurrentState.IsTileValidForPlacement(Position);
+    // }
+    //
+    // UFUNCTION(BlueprintPure, Category = "Board State")
+    // float GetFactionScore(int32 FactionSlot) const
+    // {
+    //     return BoardSnapshot.CurrentState.GetScore(FactionSlot);
+    // }
 
     virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
@@ -83,10 +125,17 @@ private:
     UPROPERTY(ReplicatedUsing = OnRep_BoardSnapshot)
     FConnectItBoardStateSnapshot BoardSnapshot;
 
-    // Captures current state as previous before applying new state
-    // Server only -- called inside ApplyAndBroadcast
-    void CaptureSnapshot();
-
     UFUNCTION()
     void OnRep_BoardSnapshot();
+
+    // Reads the just-recorded ChangeEvent and enqueues this board change's
+    // event tags on UGameEventTaskSubsystem, one QueueTagContainer call per
+    // event, in the fixed order shift/piece-placed, then line-scored, then
+    // player-win (shift and piece-placed are always mutually exclusive on a
+    // single ChangeEvent). Called symmetrically from both SetBoardState
+    // (server) and OnRep_BoardSnapshot (client), right after BroadcastChange
+    // -- ported from the now-deprecated UConnectIt_BoardSequencerComponent,
+    // which used to derive the same step list from a separate listener
+    // rather than the component that already owns this data.
+    void EnqueueBoardEventTags() const;
 };

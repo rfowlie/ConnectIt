@@ -21,6 +21,12 @@ class UNREALGRIDMECHANICS_API UGridMechanics_GridLibrary : public UBlueprintFunc
 public:
 
 	// ============================================================
+	// FGridPosition Blueprint Helpers
+	// ============================================================
+	UFUNCTION(BlueprintPure, Category = "Grid Mechanics | Library | GridPosition")
+	static bool GridPositionIsEqual(const FGridPosition& A, const FGridPosition& B);
+	
+	// ============================================================
 	// Direction <-> Vector / Rotation
 	// ============================================================
 

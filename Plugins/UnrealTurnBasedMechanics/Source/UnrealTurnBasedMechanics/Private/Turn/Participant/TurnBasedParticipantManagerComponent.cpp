@@ -3,6 +3,7 @@
 #include "Turn/Participant/TurnBasedParticipantManagerComponent.h"
 #include "UnrealTurnBasedMechanics.h"
 #include "Framework/GameState/TurnBasedGameState.h"
+#include "GameEvent/GameEventTaskSubsystem.h"
 #include "Net/UnrealNetwork.h"
 #include "Framework/PlayerState/TurnBasedPlayerState.h"
 #include "Turn/Order/SequentialTurnOrderStrategy.h"
@@ -27,6 +28,24 @@ void UTurnBasedParticipantManagerComponent::BeginPlay()
         UE_LOG(LogTurnBasedMechanics, Log,
             TEXT("TurnBasedParticipantManager: No strategy set "
                  "— defaulting to Sequential"));
+    }
+
+    if (TurnEndEventTag.IsValid())
+    {
+        if (UGameEventTaskSubsystem* GameEventSubsystem =
+            GetWorld() ? GetWorld()->GetSubsystem<UGameEventTaskSubsystem>() : nullptr)
+        {
+            GameEventSubsystem->BindOnTagComplete(TurnEndEventTag, this,
+                GET_FUNCTION_NAME_CHECKED(UTurnBasedParticipantManagerComponent, AdvanceToNextParticipant));
+        }
+    }
+    else
+    {
+        UE_LOG(LogTurnBasedMechanics, Error,
+            TEXT("TurnBasedParticipantManager: TurnEndEventTag not set on %s "
+                 "— EndTurn will fall back to advancing immediately with no "
+                 "gated turn-end sequence."),
+            *GetOwner()->GetName());
     }
 }
 
@@ -280,6 +299,7 @@ void UTurnBasedParticipantManagerComponent::StartTurn(int32 ParticipantIndex)
     ActiveParticipantIndex = ParticipantIndex;
     ReplicatedTurnDuration = TurnDuration;
     TurnNumber++;
+    Participants[ParticipantIndex].TurnsTaken++;
 
     // Match is now actively running a turn
     // Fired before turn notifications so clients know updating has ended
@@ -319,23 +339,30 @@ void UTurnBasedParticipantManagerComponent::EndTurn(ETurnEndReason Reason)
 
     // Enter updating -- all clients suspend input while resolution plays
     SetMatchPhase(EMatchPhase::Updating);
-    OnTurnResolutionStarted.Broadcast();
 
-    GetWorld()->GetTimerManager().SetTimer(
-        ResolutionTimerHandle,
-        this,
-        &UTurnBasedParticipantManagerComponent::HandleResolutionComplete,
-        TurnResolutionDuration,
-        false
-    );
+    // Gate AdvanceToNextParticipant on TurnEndEventTag -- fires immediately
+    // if nothing is registered against it, or once every registered gated
+    // task completes. See BeginPlay for the AdvanceToNextParticipant bind.
+    // QueueTagContainer (not the subsystem's private TriggerTag) is the
+    // correct entry point for any external caller -- it also means this
+    // enqueue takes its place in the subsystem's own FIFO queue, which is
+    // what guarantees it can't start firing until every board-event tag a
+    // project might have enqueued ahead of it (e.g. ConnectIt's
+    // ConnectIt_BoardStateComponent) has already fully completed.
+    UGameEventTaskSubsystem* GameEventSubsystem =
+        GetWorld() ? GetWorld()->GetSubsystem<UGameEventTaskSubsystem>() : nullptr;
+
+    if (IsValid(GameEventSubsystem) && TurnEndEventTag.IsValid())
+    {
+        GameEventSubsystem->QueueTagContainer(FGameplayTagContainer(TurnEndEventTag));
+    }
+    else
+    {
+        AdvanceToNextParticipant(TurnEndEventTag);
+    }
 }
 
-void UTurnBasedParticipantManagerComponent::HandleResolutionComplete()
-{
-    AdvanceToNextParticipant();
-}
-
-void UTurnBasedParticipantManagerComponent::AdvanceToNextParticipant()
+void UTurnBasedParticipantManagerComponent::AdvanceToNextParticipant(FGameplayTag Tag)
 {
     check(!IsRunningClientOnly());
     check(TurnOrderStrategy.GetInterface() != nullptr);
@@ -454,7 +481,7 @@ bool UTurnBasedParticipantManagerComponent::CheckGameOver() const
     return true;
 }
 
-void UTurnBasedParticipantManagerComponent::BroadcastTurnStart(int32 ActiveIndex)
+void UTurnBasedParticipantManagerComponent::BroadcastTurnStart(const int32 ActiveIndex)
 {
     if (!Participants.IsValidIndex(ActiveIndex)) return;
 
@@ -482,6 +509,11 @@ void UTurnBasedParticipantManagerComponent::BroadcastTurnStart(int32 ActiveIndex
 
     // Notify listeners that board ownership should transfer
     OnActiveControllerChanged.Broadcast(GetControllerAtIndex(ActiveIndex));
+}
+
+void UTurnBasedParticipantManagerComponent::BroadcastControllerChanged(int32 ActiveIndex)
+{
+    // TODO: where and why do we need this?
 }
 
 // --- Helpers ---
@@ -583,4 +615,14 @@ void UTurnBasedParticipantManagerComponent::OnRep_CurrentPhase()
 void UTurnBasedParticipantManagerComponent::OnRep_ActiveParticipantIndex()
 {
     // Clients react here -- e.g. highlight active player in UI
+}
+
+void UTurnBasedParticipantManagerComponent::OnRep_TurnNumber()
+{
+    // Reuses OnTurnPhaseChanged rather than a dedicated delegate -- TurnNumber
+    // and CurrentPhase change together every turn, and listeners only ever
+    // care that turn state changed, not specifically which property tripped
+    // the notification. See TurnNumber's own doc comment for why this needs
+    // its own ReplicatedUsing instead of piggybacking on OnRep_CurrentPhase.
+    OnTurnPhaseChanged.Broadcast(CurrentPhase);
 }

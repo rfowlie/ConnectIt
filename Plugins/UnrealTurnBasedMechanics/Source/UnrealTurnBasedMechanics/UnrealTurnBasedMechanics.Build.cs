@@ -25,11 +25,15 @@ public class UnrealTurnBasedMechanics : ModuleRules
 		PublicDependencyModuleNames.AddRange(
 			new string[]
 			{
-				"Core", 
+				"Core",
+				"InputCore",
 				"EnhancedInput",
-				"GameplayTags", 
-				"UnrealGridMechanics"
+				"GameplayTags",
+				
 				// ... add other public dependencies that you statically link with here ...
+				"UnrealGameMechanics",
+				"UnrealGridMechanics"
+				
 			}
 			);
 			
@@ -46,8 +50,8 @@ public class UnrealTurnBasedMechanics : ModuleRules
 				"AIModule",
 				
 				// ... add private dependencies that you statically link with here ...
+				"UnrealGameMechanics",
 				"UnrealGridMechanics"
-					
 			}
 			);
 		

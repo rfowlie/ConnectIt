@@ -17,8 +17,7 @@ UCLASS(BlueprintType, Blueprintable)
 class CONNECTIT_API AConnectIt_GridPiece : public AGridPieceBase,
 	public IGridFactionInterface,
 	public IGridLevelInterface,
-	public IGridTileHandler,
-	public IActorPoolInterface
+	public IGridTileHandler
 {
 	GENERATED_BODY()
 
@@ -52,6 +51,7 @@ public:
 
 protected:
 
+	// TODO: rename to Initialize_Internal as this fires during the initialize function
 	// Called when FactionID replicates to clients
 	// Blueprint override to update mesh, material, particle etc.
 	UFUNCTION(BlueprintNativeEvent, Category = "ConnectIt|Piece")

@@ -4,11 +4,12 @@
 
 #include "CoreMinimal.h"
 #include "UObject/Object.h"
+#include "InputCoreTypes.h"
 #include "GameplayTagContainer.h"
 #include "TurnBasedActionBase.generated.h"
 
 class UTurnBasedActionBase;
-
+struct FKey;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnActionBaseEvent, UTurnBasedActionBase*, Action);
 DECLARE_MULTICAST_DELEGATE_OneParam(FOnActionBaseEvent_Native, UTurnBasedActionBase*);
@@ -78,6 +79,16 @@ protected:
     // Override if force stop needs different behaviour than normal deactivate
     UFUNCTION(BlueprintNativeEvent, Category = "Action")
     void ForceDeactivate_Internal();
+
+    // Called once OwningController first becomes valid -- for UTurnBasedAction
+    // that's inside InitialiseAction (well before Activate), for
+    // UTurnBasedSpectatorAction that's inside its own InitialiseAction, called
+    // from UTurnBasedActionsComponent::CreateSystemActions. Both branches get
+    // this at the same early, well-defined point. Override to resolve and
+    // cache dependencies via OwningController once, eagerly, instead of
+    // repeatedly looking them up at point of use.
+    UFUNCTION(BlueprintNativeEvent, Category = "Action")
+    void PostInitialiseAction();
 
     UPROPERTY(BlueprintReadOnly, Category = "Action")
     TObjectPtr<AController> OwningController = nullptr;

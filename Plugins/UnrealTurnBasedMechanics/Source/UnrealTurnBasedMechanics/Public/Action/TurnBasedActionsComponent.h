@@ -16,13 +16,49 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnTurnEndReady);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnTurnEndRequested);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnTurnActionsEvent, UTurnBasedAction*, Action);
 
-DECLARE_MULTICAST_DELEGATE_OneParam(FOnBoardChangeRequested_Native,
-    const FTurnActionRequest&);
+DECLARE_MULTICAST_DELEGATE_OneParam(FOnBoardChangeRequested_Native, const FTurnActionRequest&);
 DECLARE_MULTICAST_DELEGATE(FOnTurnEndRequested_Native);
 
+// Safe, copied stand-in for the live UTurnBasedActionBase*/UTurnBasedAction*
+// OnActionPushed/OnActionPopped/OnActionCompleted/OnActionCancelled hand
+// out -- observer-style consumers (debug widgets) that only ever need to
+// know WHICH action, not a mutable reference TO it (Complete()/Cancel()
+// live on the real object), bind the OnAction*Safe siblings below instead.
+USTRUCT(BlueprintType)
+struct FTurnActionSnapshot
+{
+    GENERATED_BODY()
+
+    UPROPERTY(BlueprintReadOnly, Category = "Turn Based|Debug")
+    FGameplayTag ActionTag;
+};
+
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnActionStackSnapshotChanged, const FTurnActionSnapshot&, Snapshot);
+
+// Everything a debug widget needs to know about this component's current
+// state in one call -- used to seed initial values once, right after
+// binding, through the same events used for later reactive updates (see
+// UDWidgetBase's own class comment for the convention this follows).
+USTRUCT(BlueprintType)
+struct FTurnBasedActionsComponentInfo
+{
+    GENERATED_BODY()
+
+    UPROPERTY(BlueprintReadOnly, Category = "Turn Based|Debug")
+    FGameplayTag TopActionTag;
+
+    UPROPERTY(BlueprintReadOnly, Category = "Turn Based|Debug")
+    FGameplayTag RootActionTag;
+
+    UPROPERTY(BlueprintReadOnly, Category = "Turn Based|Debug")
+    int32 StackDepth = 0;
+
+    UPROPERTY(BlueprintReadOnly, Category = "Turn Based|Debug")
+    bool bAwaitingRequestConfirmation = false;
+};
+
 UCLASS(ClassGroup=(TurnBased), meta=(BlueprintSpawnableComponent))
-class UNREALTURNBASEDMECHANICS_API UTurnBasedActionsComponent
-    : public UActorComponent
+class UNREALTURNBASEDMECHANICS_API UTurnBasedActionsComponent : public UActorComponent
 {
     GENERATED_BODY()
 
@@ -60,6 +96,15 @@ public:
         Category = "Turn Based|Behaviour")
     TSubclassOf<UTurnBasedSpectatorAction> PauseViewerActionClass = nullptr;
 
+    // Pushed while a board-change request this participant just sent is in
+    // flight, blocking further stack mutation until the server answers via
+    // NotifyBoardChangeOutcome. Conceptually distinct from
+    // IdleViewerActionClass (turn already ended) -- this is mid-turn,
+    // waiting on the participant's own pending request.
+    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly,
+        Category = "Turn Based|Behaviour")
+    TSubclassOf<UTurnBasedSpectatorAction> AwaitingConfirmationActionClass = nullptr;
+
     // When true RequestTurnEnd fires automatically when
     // CanAutoEndTurn() returns true after an action completes
     UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Turn Based|Behaviour")
@@ -77,13 +122,13 @@ public:
     // Fires OnTurnStarted BlueprintNativeEvent
     // Default implementation clears stack and pushes RootAction
     UFUNCTION(BlueprintCallable, Category = "Turn Based|Actions")
-    void NotifyTurnStarted(int32 InTurnNumber);
+    void NotifyTurnStarted(const FTurnStartContext& Context);
 
     // Called when opponent's turn starts
     // Fires OnOpponentTurnStarted BlueprintNativeEvent
     // Default implementation clears stack and pushes SpectatorViewerAction
     UFUNCTION(BlueprintCallable, Category = "Turn Based|Actions")
-    void NotifyOpponentTurnStarted();
+    void NotifyOpponentTurnStarted(const FTurnStartContext& Context);
 
     // Called when this participant's turn ends
     // Clears stack and pushes IdleViewerAction
@@ -180,6 +225,22 @@ public:
     UFUNCTION(BlueprintPure, Category = "Turn Based|Actions")
     bool IsInitialised() const { return bIsInitialised; }
 
+    // --- Board Change Confirmation ---
+
+    // The only thing project-specific glue needs to call once the server's
+    // answer to a board-change request is known -- e.g. from a Client RPC
+    // fired by the project's own PlayerController. No-ops if Request doesn't
+    // match whatever this component is currently awaiting (see
+    // HandleBoardChangeRequested). On success, force-completes the action
+    // that made the request; on failure, simply reactivates it so the
+    // player can retry -- neither this component nor the plugin needs to
+    // know *why* a request succeeded or failed, only that it did.
+    UFUNCTION(BlueprintCallable, Category = "Turn Based|Actions")
+    void NotifyBoardChangeOutcome(const FTurnActionRequest& Request, bool bSucceeded);
+
+    UFUNCTION(BlueprintPure, Category = "Turn Based|Actions")
+    bool IsAwaitingRequestConfirmation() const { return bAwaitingRequestConfirmation; }
+
     // --- Delegates ---
 
     // Board change request passthrough
@@ -212,10 +273,31 @@ public:
     UPROPERTY(BlueprintAssignable, Category = "Turn Based|Actions")
     FOnTurnActionsEvent OnActionCancelled;
 
+    // Safe siblings of the four above -- broadcast alongside them (same
+    // call site, same moment), carrying a copied FTurnActionSnapshot
+    // instead of the live action pointer. Observer-style consumers (debug
+    // widgets) should bind these, not the raw-pointer originals above.
+    UPROPERTY(BlueprintAssignable, Category = "Turn Based|Debug")
+    FOnActionStackSnapshotChanged OnActionPushedSafe;
+
+    UPROPERTY(BlueprintAssignable, Category = "Turn Based|Debug")
+    FOnActionStackSnapshotChanged OnActionPoppedSafe;
+
+    UPROPERTY(BlueprintAssignable, Category = "Turn Based|Debug")
+    FOnActionStackSnapshotChanged OnActionCompletedSafe;
+
+    UPROPERTY(BlueprintAssignable, Category = "Turn Based|Debug")
+    FOnActionStackSnapshotChanged OnActionCancelledSafe;
+
     // --- Debug ---
 
     UPROPERTY(BlueprintReadOnly, Category = "Turn Based|Debug")
     TArray<FTurnBasedActionRecord> ActionHistory;
+
+    // Everything a debug widget needs, in one call -- see
+    // FTurnBasedActionsComponentInfo's own comment.
+    UFUNCTION(BlueprintPure, Category = "Turn Based|Debug")
+    FTurnBasedActionsComponentInfo GetInfo() const;
 
 protected:
 
@@ -227,13 +309,13 @@ protected:
     // Default: ClearAndPush(RootAction)
     // Subclass: call Super then push additional actions on top
     UFUNCTION(BlueprintNativeEvent, Category = "Turn Based|Actions")
-    void OnTurnStarted(int32 TurnNumber);
+    void OnTurnStarted(const FTurnStartContext& Context);
 
     // Override to customise opponent turn start behaviour
     // Default: ClearAndPush(SpectatorViewerAction)
     // Subclass: call Super then customise
     UFUNCTION(BlueprintNativeEvent, Category = "Turn Based|Actions")
-    void OnOpponentTurnStarted();
+    void OnOpponentTurnStarted(const FTurnStartContext& Context);
 
     // Override to customise turn end condition
     // Default: all bIsRequired actions have CompletionsThisTurn > 0
@@ -266,10 +348,21 @@ private:
     TObjectPtr<UTurnBasedSpectatorAction> PauseViewerAction = nullptr;
 
     UPROPERTY()
+    TObjectPtr<UTurnBasedSpectatorAction> AwaitingConfirmationAction = nullptr;
+
+    UPROPERTY()
     TObjectPtr<UActionLoadoutDataAsset> Loadout = nullptr;
 
     bool bIsInitialised     = false;
     int32 CurrentTurnNumber = 0;
+
+    // --- Board Change Confirmation ---
+    // Set by HandleBoardChangeRequested when AwaitingConfirmationAction is
+    // pushed; cleared by NotifyBoardChangeOutcome before it mutates the
+    // stack itself. While true, PushAction/SafePopAction/TryPushActionByRef/
+    // ClearAndPush all refuse to run -- see each for the guard.
+    bool bAwaitingRequestConfirmation = false;
+    FTurnActionRequest PendingRequest;
 
     // Force deactivates and empties the action stack without pushing
     // a replacement -- shared by ClearAndPush and NotifyMatchEnded

@@ -7,6 +7,7 @@
 #include "ConnectIt_PlacePieceAction.generated.h"
 
 
+class UTurnBasedParticipantComponent;
 class UConnectIt_BoardStateComponent;
 class AConnectIt_GridPiece;
 class AConnectIt_BoardManager;
@@ -23,9 +24,9 @@ class CONNECTIT_API UConnectIt_PlacePieceAction : public UTurnBasedAction
 {
     GENERATED_BODY()
 
-public:
-
     UConnectIt_PlacePieceAction();
+
+public:
 
     // GameplayTags sent to tiles to drive their visual state
     // Set in editor -- tile Blueprint responds to these tags
@@ -48,6 +49,12 @@ protected:
     // base internal
     virtual void Activate_Internal_Implementation() override;
 
+    // Resolves and caches BoardManager/TurnBasedParticipantManager via
+    // OwningController -- called once by UTurnBasedAction::InitialiseAction,
+    // well before Activate. Eager, fail-loud dependency resolution instead
+    // of repeated on-demand lookups at point of use.
+    virtual void PostInitialiseAction_Implementation() override;
+
     // turn internal
     virtual void OnCancelled_Implementation() override;
     virtual void OnCompleted_Implementation() override;
@@ -59,7 +66,9 @@ protected:
     virtual void ClearSelectionState_Implementation() override;
 
 private:
+    UPROPERTY()
+    TObjectPtr<AConnectIt_BoardManager> BoardManager = nullptr;
 
     // Gets owning faction ID from participant component slot index
-    int32 GetOwningFactionID() const;
+    int32 GetOwningControllerFactionID() const;
 };

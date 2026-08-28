@@ -62,11 +62,11 @@ void UGridWorldSubsystem::RegisterPiece(AGridPieceBase* Piece)
         return;
     }
 
-    if (RegisteredPieces.Contains(Piece))
-    {
-        UE_LOG(LogTemp, Warning,
-               TEXT("GridWorldSubsystem: RegisterPiece called with already registered piece"));
-    }
+    // Re-registering an already-registered piece is expected, not a bug --
+    // UGridPieceRegistryComponent registers a piece every time it's
+    // retrieved from the pool, including reactivation of a previously
+    // deactivated (and therefore unregistered) piece.
+    if (RegisteredPieces.Contains(Piece)) return;
 
     RegisteredPieces.Add(Piece);
     OnPieceRegistered.Broadcast(Piece);
@@ -87,9 +87,11 @@ bool UGridWorldSubsystem::IsPieceRegistered(const AGridPieceBase* Piece) const
 
 TArray<AGridPieceBase*> UGridWorldSubsystem::GetAllPieces() const
 {
-    TArray<AGridPieceBase*> Out;
-    RegisteredPieces.GenerateKeyArray(Out);
-    return Out;
+    // RegisteredPieces only ever contains what UGridPieceRegistryComponent
+    // currently has checked out of the pool (registered on retrieval,
+    // unregistered before release) -- correct by construction, no filtering
+    // needed here.
+    return RegisteredPieces;
 }
 
 void UGridWorldSubsystem::BroadcastGridTileHoverChanged(AGridTileBase* InTile)

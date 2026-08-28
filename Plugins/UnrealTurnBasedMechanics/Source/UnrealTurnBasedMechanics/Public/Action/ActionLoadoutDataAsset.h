@@ -52,6 +52,15 @@ public:
         Category = "Loadout|System Actions")
     TSubclassOf<UTurnBasedSpectatorAction> PauseViewerActionClass = nullptr;
 
+    // Pushed while a board-change request this participant just sent is in
+    // flight, blocking further stack mutation until the server answers.
+    // Conceptually distinct from IdleViewerActionClass (turn already ended)
+    // -- this is mid-turn, waiting on the participant's own pending request.
+    // See UTurnBasedActionsComponent::NotifyBoardChangeOutcome.
+    UPROPERTY(EditAnywhere, BlueprintReadOnly,
+        Category = "Loadout|System Actions")
+    TSubclassOf<UTurnBasedSpectatorAction> AwaitingConfirmationActionClass = nullptr;
+
     // --- Turn Actions ---
     // Instanced inline -- designer configures each entry directly
     // Accessed by component via GetPermittedActions()
@@ -81,6 +90,9 @@ public:
 
     UFUNCTION(BlueprintCallable, Category = "Loadout")
     UTurnBasedSpectatorAction* GetPauseAction(UObject* Outer) const;
+
+    UFUNCTION(BlueprintCallable, Category = "Loadout")
+    UTurnBasedSpectatorAction* GetAwaitingConfirmationAction(UObject* Outer) const;
 
     // --- Turn Action Accessors ---
 

@@ -1,0 +1,27 @@
+# UnrealCodingUtils — Systems & Conventions
+
+[README.md](README.md) is the exhaustive per-class reference — every class, its base, its purpose, its key API. This document is the other half: a narrative walkthrough of this plugin's scope and philosophy, and the conventions in use across it, for anyone orienting themselves before adding the next small helper. Read this first; use README.md to look up the specific class once you know what's here.
+
+## Systems Overview
+
+### A Deliberately Small, Dependency-Free Grab-Bag (`Library/`)
+
+There isn't really a "system" to walk through yet — that's the point. `UnrealCodingUtils` exists as a landing spot for small, generic C++ helpers that don't belong to any particular gameplay system and would otherwise have nowhere natural to live: not important enough to justify their own plugin, not gameplay-specific enough to belong in `UnrealGameMechanics`, `UnrealAIMechanics`, or `UnrealGameIntelligence`. The whole plugin currently holds one class, `UCodingUtilsComponentLibrary`, with one static function, `IsAuthoritative(const UActorComponent*)`.
+
+That function is a small but genuinely useful gap-fill: `AActor::HasAuthority()` exists, but there's no equivalent directly on `UActorComponent`, even though "does this component's owner have server authority" is a question components frequently need to answer for themselves (gating replicated logic, deciding whether to run a side-effect locally vs. waiting for the server). The implementation is three short-circuited checks — the component is valid, its owner is valid, the owner has authority — exposed as a `BlueprintPure` static so it can be called from either C++ or a Blueprint graph without needing to reach for the owning actor manually first.
+
+The plugin's own `Key Dependencies` in README.md tell the rest of the story: `Core` only in Public, and it's explicitly called out there as "intentionally the lightest-dependency first-party plugin in the repo." That's a constraint, not an oversight — see Conventions below and README's own "When NOT to Use It" section, which draws the scope line explicitly: if a candidate helper needs `GameplayTags`, `UMG`, or any other gameplay-facing module, it belongs in one of the more specific plugins instead, not here. The plugin is expected to grow (per its own Purpose statement in README.md) — but only along this narrow axis: small, static, broadly-reusable, and free of gameplay dependencies. A second or third function landing in `Library/`, or a second subfolder alongside it for a different helper category, would be entirely in keeping with the plugin's stated intent; a helper that pulls in a gameplay module would not be.
+
+## Conventions
+
+- **Type prefix**: standard `U` only — the plugin is too small so far to have exercised any other prefix (no interfaces, structs, enums, or actors exist here yet).
+- **Static Blueprint Function Library pattern**: the one helper is a `static` function on a `UBlueprintFunctionLibrary`, not an instantiable object — matching the "stateless utility" scope described in README.md's Notable Design Patterns. Any future addition to this plugin should default to the same shape unless there's a concrete reason a helper needs to hold state.
+- **`Category = "Chimera|Utils"`** — the one verbatim `UFUNCTION` tag currently in the plugin, on `IsAuthoritative`. "Chimera" isn't this plugin's name or the consuming project's name; it's naming residue carried over from an unrelated predecessor codebase this helper originated in, never renamed when the function found its home here. See Known Rough Edges below.
+- **`BlueprintPure`, not `BlueprintCallable`**: `IsAuthoritative` is tagged `BlueprintPure`, appropriate for a side-effect-free query — worth keeping in mind as a default for future additions to this plugin, since "small stateless helper" functions are exactly the case `BlueprintPure` fits best.
+- **Comment style**: every file still carries the default `// Fill out your copyright notice...` header (never replaced with a real banner) — consistent with `UnrealAIMechanics`, its sibling small plugin. The one function has two short inline comments explaining *why* it exists (`HasAuthority()` isn't available on `UActorComponent`) rather than restating *what* the code does — a good model to follow for the plugin's next addition given how little code there currently is to set a stronger precedent.
+
+## Known Rough Edges
+
+This plugin doesn't have its own cross-cutting duplication/issues file the way the consuming project does — this is noted here rather than starting a second file for one plugin's internal finding. It also has a pointer from the relevant row in [README.md](README.md)'s class table.
+
+- **"Chimera" naming residue.** `UCodingUtilsComponentLibrary::IsAuthoritative` is tagged `Category = "Chimera|Utils"` rather than anything referencing this plugin or its actual domain. It's cosmetic — the function works identically regardless of its Category string, and nothing else in the plugin references "Chimera" anywhere — but it's a visible seam from wherever this helper was lifted from, and the obvious fix (retag it to something like `"CodingUtils|Components"` or similar, matching the plugin's own naming) is a trivial, low-risk cleanup whenever someone's next touching this file. See [README.md](README.md#library) (`UCodingUtilsComponentLibrary` row) and the project-level [naming conventions notes](../../../Source/ConnectIt/Docs/Conventions.md#discrepancies).

@@ -1,58 +1,83 @@
-ConnectIt Game Event Subsystem — Workflow
-===========================================
+ConnectIt Board Events + Gated Visual Sequencing — Workflow
+==============================================================
 
 WHAT THIS IS
 ------------
-UConnectIt_GameEventSubsystem (Source/ConnectIt/Public|Private/Framework/Subsystem/
-ConnectIt_GameEventSubsystem.h/.cpp) is a per-world UWorldSubsystem that holds a
-gameplay-tag-keyed registry of UGameEventTaskManager instances (UGameEventTaskManager
-lives in the UnrealGameMechanics plugin).
+UGameEventTaskSubsystem (Plugins/UnrealGameMechanics/Source/UnrealGameMechanics/
+Public|Private/GameEvent/GameEventTaskSubsystem.h/.cpp) is a per-world UWorldSubsystem
+that holds a gameplay-tag-keyed registry of UGameEventTaskManager instances
+(UGameEventTaskManager/UGameEventTask_Async/IGameEventTaskHandler also live in
+UnrealGameMechanics, same GameEvent folder).
+
+It is generic, project-agnostic infrastructure -- it has no dependency on anything
+ConnectIt-specific. ConnectIt (specifically UConnectIt_BoardStateComponent) is a
+*caller* of this subsystem, not its owner. This matters: the subsystem always exists
+for the lifetime of the world, so any visual/UI system can bind against it before
+any particular ConnectIt actor has even spawned -- the same reason
+UConnectIt_BoardManagerSubsystem exists as a stable caching/relay point for the
+board manager reference itself (see BoardManagerSubsystem_Workflow.txt).
 
 A UGameEventTaskManager lets multiple listeners register gated, phase-ordered work
 against a trigger, and only reports "done" once every registered task has actually
-finished (not just been kicked off). This subsystem is what lets ConnectIt's board
-events force real visual ordering -- e.g. the piece-drop animation fully finishes
-before the score VFX plays, which fully finishes before the win banner shows --
-instead of everything firing at once and looking wrong.
-
-You never touch a UGameEventTaskManager directly. Everything goes through this
-subsystem's pass-through functions, keyed by FGameplayTag.
+finished (not just been kicked off). This subsystem adds two things on top:
+  1. A tag-keyed registry, so nothing needs to hold a raw UGameEventTaskManager*.
+  2. QueueTagContainer -- a genuine FIFO queue of tag-groups (see below). TriggerTag
+     itself is private; every external caller goes through this queue now.
 
 
 WHY IT EXISTS
 -------------
-Before this, ConnectIt's board events (piece placed, line scored, player win) fired
-as plain delegate broadcasts directly from server-only code in AConnectIt_BoardManager
--- which meant real remote clients never saw them at all (dynamic delegate broadcasts
-are local function calls, not RPCs). See BoardManagerSubsystem_Workflow.txt and
-AConnectIt_BoardManager::HandleBoardStateChanged for how that got fixed by moving
+ConnectIt's board events (shift, piece placed, line scored, player win) used to
+fire as plain delegate broadcasts directly from server-only code in
+AConnectIt_BoardManager -- which meant real remote clients never saw them (dynamic
+delegate broadcasts are local function calls, not RPCs). That got fixed by moving
 event firing onto the already-correctly-replicated BoardStateComponent signal.
+Shift had a second, related problem on top of that: it also *animated before*
+committing state at all (tick a fixed-duration animation, then mutate state once
+it finished) -- now state commits immediately and the animation is a reaction to
+it, same as every other event here.
 
 Fixing *that* still left everything firing simultaneously with no way to sequence
-visual responses. This subsystem is the general-purpose mechanism for that: register
-your visual/audio/UI response against the relevant tag, and it only runs (and the
-next thing in the chain only starts) once your response says it's actually done.
+visual responses -- shift animation, piece-drop animation, score VFX, and win
+banner all firing at once looks wrong. This subsystem is the mechanism for gating
+that: register your visual/audio/UI response against the relevant tag, and it
+only runs (and the next thing in the queue only starts) once your response says
+it's actually done.
+
+A further round folded a second, redundant queue out of the picture entirely --
+see "HOW ConnectIt_BoardStateComponent USES THIS" below for what changed and why.
 
 
-THE THREE BOARD EVENT TAGS
+THE FOUR BOARD EVENT TAGS
 ----------------------------
-Declared in ConnectIt_GameplayTags.h/.cpp, fired in this order by
-AConnectIt_BoardManager for every piece placement, each one gated on the previous
-fully completing:
+Declared in ConnectIt_GameplayTags.h/.cpp:
 
-  ConnectIt_Event_PiecePlaced   "ConnectIt.Event.PiecePlaced"
+  ConnectIt_Event_Shift         "ConnectIt.Event.Shift"        (a shift request only)
+  ConnectIt_Event_PiecePlaced   "ConnectIt.Event.PiecePlaced"  (a placement request only)
   ConnectIt_Event_LineScored    "ConnectIt.Event.LineScored"   (skipped if nothing scored)
   ConnectIt_Event_PlayerWin     "ConnectIt.Event.PlayerWin"    (skipped if nobody won)
 
-If nothing is registered against a tag yet, that tag's manager completes with zero
-phases immediately, and the chain falls through to the next step synchronously --
-so the sequencing is opt-in per listener, not something you have to wire up before
-the game functions.
+UConnectIt_BoardStateComponent::EnqueueBoardEventTags builds an ordered sequence of
+QueueTagContainer calls from FConnectItBoardChangeEvent's flags. A shift ChangeEvent
+and a placement ChangeEvent are always disjoint (each SetBoardState call represents
+exactly one kind of change): Shift never co-occurs with PiecePlaced/LineScored/
+PlayerWin; a placement ChangeEvent always leads with PiecePlaced, then conditionally
+appends LineScored and/or PlayerWin. One QueueTagContainer call fires per event, in
+that fixed order -- see "HOW ConnectIt_BoardStateComponent USES THIS" below for the
+exact call site.
 
-If a new placement arrives while the previous one's sequence is still running (e.g.
-a slow win animation still playing), it's queued and runs after the current one
-finishes -- see PendingChangeEventQueue in AConnectIt_BoardManager. Nothing gets
-dropped or interleaved.
+ConnectIt_Event_Shift is also where the shift *animation itself* is registered
+as a gated task -- UConnectIt_BoardShiftComponent self-registers a persistent
+UGameEventTask_Async against it in its own BeginPlay (bound to
+HandleShiftAnimationExecute, which reads the ChangeEvent's shift payload and plays
+the animation), the same idiom any other listener would use. This is what replaced
+the old animate-then-commit-state flow: state commits immediately, and the
+animation plays as a reaction, gated the same way every other visual step already is.
+
+If nothing is registered against a tag yet, that tag's manager completes with zero
+phases immediately, and the queue falls through to the next tag synchronously --
+sequencing is opt-in per listener, not something you have to wire up before the
+game functions.
 
 
 HOW TO REGISTER A GATED VISUAL RESPONSE
@@ -60,8 +85,8 @@ HOW TO REGISTER A GATED VISUAL RESPONSE
 1. Create a UGameEventTask_Async (Plugins/UnrealGameMechanics/.../GameEventTask_Async.h).
 2. Bind its OnExecuteDelegate to your actual work (start the animation, play the
    VFX, whatever needs to run).
-3. Call your work's completion -> Task->OnComplete.Broadcast(Task) when it's
-   genuinely finished (after the montage ends, the widget animation completes, etc).
+3. Call Task->OnComplete.Broadcast(Task) when your work is genuinely finished
+   (after the montage ends, the widget animation completes, etc).
 4. Register it:
 
      GameEventSubsystem->RegisterAsyncTask(ConnectIt_Event_LineScored, Task, Phase);
@@ -71,40 +96,213 @@ HOW TO REGISTER A GATED VISUAL RESPONSE
    before another starts; same-phase tasks all run in parallel and are waited on
    together.
 
-Mark Task->bIsPersistentTask = true if you want this to automatically re-register
-for every future trigger of that tag (e.g. a permanent VFX manager bound once at
-BeginPlay), instead of having to re-register after every single event.
+Mark Task->bIsPersistentTask = true to auto-re-register for every future trigger
+of that tag (e.g. a permanent VFX manager bound once at BeginPlay), instead of
+having to re-register after every single event.
 
 
-HOW TO BIND TO A TAG'S BEGIN/COMPLETE (WITHOUT TOUCHING THE MANAGER)
-------------------------------------------------------------------------
-    GameEventSubsystem->BindOnTagComplete(Tag, this, GET_FUNCTION_NAME_CHECKED(...));
-    GameEventSubsystem->BindOnTagBegin(Tag, this, GET_FUNCTION_NAME_CHECKED(...));
+EXTENDING UGameEventTask_Async WITH ITS OWN IDENTITY
+-------------------------------------------------------
+OnExecuteDelegate is zero-param and single-cast (DECLARE_DYNAMIC_DELEGATE) -- fine
+when a listener registers one persistent task per tag, each with its own distinct
+bound handler function (the common case: a zero-param callback already knows which
+tag fired, because it's the only thing that ever calls it). It stops being enough
+the moment ONE shared handler needs to register against SEVERAL tags at once and
+tell them apart -- a zero-param delegate can't carry that information.
 
-Both take a (Listener, FunctionName) pair -- the same mechanism Blueprint's "Bind
-Event to X" nodes use. This is how AConnectIt_BoardManager itself chains the three
-board event tags together (HandlePiecePlacedSequenceComplete etc.) -- it never
-holds a UGameEventTaskManager* either.
+If you hit that shape, subclass UGameEventTask_Async and give the subclass its own
+identity field plus its own one-param forwarding delegate:
+
+    UCLASS(BlueprintType)
+    class UGameEventTask_Tagged : public UGameEventTask_Async
+    {
+        GENERATED_BODY()
+    public:
+        UGameEventTask_Tagged() { OnExecuteDelegate.BindDynamic(this, &ThisClass::HandleExecute); }
+
+        UPROPERTY(BlueprintReadOnly)
+        FGameplayTag AssociatedTag;
+
+        UPROPERTY(BlueprintReadWrite)
+        FOnTaggedTaskExecute OnTaggedExecute; // DECLARE_DYNAMIC_DELEGATE_OneParam(..., FGameplayTag, Tag)
+
+    private:
+        UFUNCTION()
+        void HandleExecute() { OnTaggedExecute.Execute(AssociatedTag); }
+    };
+
+The subclass binds the inherited zero-param OnExecuteDelegate to its own internal
+handler in its constructor, and re-forwards through a new one-param delegate the
+owner binds instead. One instance per watched tag, `AssociatedTag` set to match,
+all routed to the same shared owner-side handler, which switches on the tag it's
+handed. This is a documented technique, not a shipped class -- no concrete
+UGameEventTask_Tagged currently exists in this project. It was built and then
+removed for being unneeded complexity at the time (each of
+UConnectIt_PieceSpawnInterpreter's five watched tags ended up with its own
+distinct bound handler instead, so there was no shared-handler disambiguation
+problem to solve) -- reach for this shape only once you actually have a single
+handler that needs to serve more than one tag.
 
 
-WHEN TO USE THIS VS. THE TYPED DELEGATES / SUBSYSTEM RELAY
-----------------------------------------------------------------
+THE QueueTagContainer PRIMITIVE (the queue -- this is the primary way to fire a tag)
+--------------------------------------------------------------------------------------
+    UFUNCTION(BlueprintCallable)
+    void QueueTagContainer(const FGameplayTagContainer& Tags);
+
+Enqueues Tags to fire together, then tries to start executing immediately if
+nothing else is currently running. Every tag inside one container triggers in
+parallel; the queue does not move on to the next queued container until every
+tag in the current one has fully completed (OnManagerComplete for all of them).
+
+Serialized globally: only one container's tags are actually firing at a time
+across the whole subsystem/world -- further QueueTagContainer calls while one is
+running are queued and drained in order. Containers never run concurrently or
+interleave with each other.
+
+TriggerTag itself (the thing that actually calls a tag manager's InitiateAllTasks)
+is private -- every caller outside this subsystem goes through QueueTagContainer,
+even for a single tag (wrap it: FGameplayTagContainer(Tag)). This is what makes a
+caller like UConnectIt_BoardStateComponent's multiple back-to-back
+QueueTagContainer calls (one per board event) naturally serialize through this
+one queue, instead of needing a second, caller-side queue on top -- see
+"HOW ConnectIt_BoardStateComponent USES THIS" below for exactly that case, and
+why an earlier version of this doc described a redundant second queue that no
+longer exists.
+
+
+THE QueueTagSequence PRIMITIVE (DEPRECATED -- superseded by QueueTagContainer)
+------------------------------------------------------------------------------
+    UFUNCTION(BlueprintCallable, meta = (DeprecatedFunction))
+    void QueueTagSequence(
+        const TArray<FGameplayTagContainer>& Steps,
+        FOnTagSequenceStepComplete OnStepComplete,
+        FOnTagSequenceComplete OnComplete);
+
+Used to be the only ordered-chaining primitive on this subsystem: pass an array of
+tag-group "steps" and it ran them in order, one QueueTagSequence call covering an
+entire chain. Superseded once QueueTagContainer became a genuine FIFO queue in its
+own right -- a caller that used to build a Steps array and call this once can
+instead call QueueTagContainer once per former step, in order, and this
+subsystem's own queue already serializes them the same way Steps used to.
+
+Kept (not deleted) so nothing calling it outright breaks, but has zero remaining
+callers in this project as of the round that added QueueTagContainer -- its former
+sole caller, UConnectIt_BoardSequencerComponent::TryStartNextSequence, was removed
+along with that component (see below). Internally unchanged: still calls the
+subsystem's private TriggerTag directly (it's a member function, so that's fine)
+and still binds/unbinds its own HandleSequenceStepTagComplete scoped per call --
+deliberately kept fully independent of QueueTagContainer's own bind/unbind
+bookkeeping, so the two mechanisms can't interfere with each other if something
+ever calls both.
+
+
+HOW ConnectIt_BoardStateComponent USES THIS
+------------------------------------------------
+UConnectIt_BoardStateComponent::EnqueueBoardEventTags reads its own just-recorded
+BoardSnapshot.ChangeEvent and calls QueueTagContainer once per flag that's set, in
+the fixed order shift/piece-placed (mutually exclusive, always first), then
+line-scored, then player-win. Called from the two places that already fire
+OnBoardStateChanged symmetrically -- SetBoardState (server) and OnRep_BoardSnapshot
+(client) -- so tag firing happens identically on both machines, off the same
+replicated data.
+
+This directly replaced UConnectIt_BoardSequencerComponent, a sibling ActorComponent
+on AConnectIt_BoardManager that used to do this same deciphering from its own
+listener bound to BoardStateComponent->OnBoardStateChanged, plus maintain a second,
+separate queue (PendingChangeEventQueue/bSequenceInFlight) purely to stop one
+board-change's tag firing from starting before the previous one had finished. That
+second queue was strictly redundant once QueueTagContainer became a real FIFO queue
+in its own right -- ConnectIt_BoardStateComponent's own successive QueueTagContainer
+calls (across multiple SetBoardState calls, not just within one) now serialize
+correctly through this subsystem's queue alone, no caller-side queue needed on top.
+UConnectIt_BoardSequencerComponent is kept in the codebase (deprecated, not deleted,
+not instantiated by anything) -- see its own class comment for detail.
+
+ConnectIt_BoardStateComponent's role is purely to decide WHICH tags fire WHEN, same
+as before. It does not maintain any notification API of its own for shift / piece
+placed / line scored / player win -- see below for why, and what to bind to instead.
+
+
+CONSOLIDATED ONTO THIS SUBSYSTEM (no more typed delegates for these four events)
+----------------------------------------------------------------------------------------
+AConnectIt_BoardManager used to also own OnPiecePlaced/OnLineScored/OnPlayerWin/
+OnShiftApplied delegates (the last one relayed by UConnectIt_BoardManagerSubsystem),
+*in addition to* these tags -- two parallel notification systems for the same
+events, kept in hand-written lockstep by the board manager. That produced a real
+bug: the "tell me now" delegates ended up accidentally gated on step completion
+instead of firing immediately, because the two systems got tangled together. All
+of them were removed; this subsystem is now the only channel for these four events.
+
   "Just tell me this happened, right now, no waiting"
-      -> Bind to AConnectIt_BoardManager's OnPiecePlaced/OnLineScored/OnPlayerWin,
-         or their relay on UConnectIt_BoardManagerSubsystem. These fire immediately,
-         strictly before the gated visual step for that same event even starts.
+      -> UGameEventTaskSubsystem::BindOnTagBegin(Tag, this, FunctionName) -- fires
+         the instant TriggerTag runs, before any registered task even executes.
 
   "I need to run something and have the NEXT step wait until I'm done"
-      -> Register a UGameEventTask_Async against the matching tag on this subsystem.
+      -> Register a UGameEventTask_Async against the matching tag (see above).
+
+  "I need the actual data (position / faction / points / winner / shift op)"
+      -> The tag signal itself carries no parameters. Call
+         UConnectIt_BoardStateComponent::GetChangeEvent() (BlueprintPure) to read
+         what happened -- it's the same replicated data driving the queue,
+         available on both server and client the instant any tag fires.
+
+This is now the only channel for all four board events, including shift --
+UConnectIt_BoardManagerSubsystem does not relay anything any more (see
+BoardManagerSubsystem_Workflow.txt).
+
+
+TURN SYSTEM WAITS ON THIS -- FOR FREE, VIA QUEUE ORDERING
+-------------------------------------------------------------
+UTurnBasedParticipantManagerComponent's turn-end resolution used to need explicit
+help waiting on gated visual sequences (a bespoke hold counter, then later a
+persistent AConnectIt_BoardManager task that polled a board sequencer component's
+IsIdle() state). Neither is needed any more, now that QueueTagContainer is a real
+FIFO queue and ConnectIt_BoardStateComponent enqueues its own board-event tags
+directly:
+
+  - UTurnBasedParticipantManagerComponent has a project-configurable TurnEndEventTag
+    (set to ConnectIt_Event_TurnEnd for ConnectIt). BeginPlay binds
+    AdvanceToNextParticipant to that tag's OnManagerComplete via BindOnTagComplete,
+    once. EndTurn() calls TriggerTag(TurnEndEventTag) internally (via the same
+    bind/trigger pattern QueueTagContainer itself uses) -- no bespoke hold API, no
+    bridge functions, no listener on AConnectIt_BoardManager at all.
+
+  - Tracing the actual client/server RPC timing confirms two full RPC round-trips
+    always separate a board-event enqueue from the ConnectIt_Event_TurnEnd enqueue
+    that follows it, on the same server-side queue instance: client places a piece
+    -> server enqueues that change's board-event tags synchronously -> a Client RPC
+    round-trip notifies the client of the outcome -> the client requests turn end
+    -> a Server RPC round-trip carries that back -> only then does the server's
+    EndTurn() run and enqueue ConnectIt_Event_TurnEnd. Because QueueTagContainer is
+    a genuine FIFO queue, ConnectIt_Event_TurnEnd's tag can't start firing until
+    every board-event tag ahead of it in that same queue has already fully
+    completed -- the exact "wait for board-change visuals to finish" guarantee a
+    previous round enforced by hand (polling a board sequencer component's
+    IsIdle()), now implicit in ordering alone.
+
+  - With zero registered tasks for the tag (e.g. a project that hasn't wired
+    anything up yet), TriggerTag fires OnManagerComplete synchronously -- turn end
+    proceeds immediately, same as it always has for a trivially-idle board.
+
+AConnectIt_BoardManager has no turn-end-specific code left at all as a result --
+no persistent task, no polling, nothing. See its ParticipantManagerRef comment
+for a short version of this same reasoning.
 
 
 FILES INVOLVED
 ---------------
-  Source/ConnectIt/Public/Framework/Subsystem/ConnectIt_GameEventSubsystem.h
-  Source/ConnectIt/Private/Framework/Subsystem/ConnectIt_GameEventSubsystem.cpp
-  Source/ConnectIt/Public/ConnectIt_GameplayTags.h (the three tags)
-  Source/ConnectIt/Public/Board/ConnectIt_BoardManager.h (sequencing state/handlers)
-  Source/ConnectIt/Private/Board/ConnectIt_BoardManager.cpp (HandleBoardStateChanged,
-      BindGameEventSequencing, TryStartNextSequence, the three *SequenceComplete handlers)
+  Plugins/UnrealGameMechanics/Source/UnrealGameMechanics/Public/GameEvent/GameEventTaskSubsystem.h
+  Plugins/UnrealGameMechanics/Source/UnrealGameMechanics/Private/GameEvent/GameEventTaskSubsystem.cpp
   Plugins/UnrealGameMechanics/Source/UnrealGameMechanics/Public+Private/GameEvent/
       GameEventTaskManager.h/.cpp (the underlying phase-barrier executor)
+  Source/ConnectIt/Public/ConnectIt_GameplayTags.h (the board event tags)
+  Source/ConnectIt/Public/Board/ConnectIt_BoardStateComponent.h (GetChangeEvent,
+      EnqueueBoardEventTags -- the event deciphering + queue calls)
+  Source/ConnectIt/Private/Board/ConnectIt_BoardStateComponent.cpp
+  Source/ConnectIt/Public/Board/ConnectIt_BoardSequencerComponent.h (DEPRECATED --
+      kept for reference only, not instantiated anywhere; see its class comment)
+  Source/ConnectIt/Private/Board/ConnectIt_BoardSequencerComponent.cpp
+  Source/ConnectIt/Private/Framework/GameMode/ConnectIt_GameMode.cpp (a real
+      BindOnTagComplete consumer -- HandleGameOver)
+  Plugins/UnrealTurnBasedMechanics/.../Turn/Participant/
+      TurnBasedParticipantManagerComponent.h/.cpp (TurnEndEventTag, EndTurn)

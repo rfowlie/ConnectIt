@@ -5,6 +5,7 @@
 #include "TurnBasedMechanicsStructs.h"
 #include "GameFramework/Controller.h"
 #include "GameFramework/GameStateBase.h"
+#include "Net/UnrealNetwork.h"
 #include "Turn/Participant/TurnBasedParticipantManagerComponent.h"
 
 
@@ -14,7 +15,14 @@ UTurnBasedParticipantComponent::UTurnBasedParticipantComponent()
     SetIsReplicatedByDefault(true);
 }
 
-void UTurnBasedParticipantComponent::ClientReceiveOpponentTurnStarted_Implementation(int32 ActiveParticipantSlotIndex)
+void UTurnBasedParticipantComponent::GetLifetimeReplicatedProps(TArray<class FLifetimeProperty>& OutLifetimeProps) const
+{
+    Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+    DOREPLIFETIME(UTurnBasedParticipantComponent, CachedSlotIndex);
+    DOREPLIFETIME(UTurnBasedParticipantComponent, ParticipantType);
+}
+
+void UTurnBasedParticipantComponent::ClientReceiveOpponentTurnStarted_Implementation(const int32 ActiveParticipantSlotIndex)
 {
     // Not my turn
     bIsMyTurn = false;
@@ -75,13 +83,13 @@ void UTurnBasedParticipantComponent::ClientReceiveTurnNotification_Implementatio
 
 // --- Static Helpers ---
 
-bool UTurnBasedParticipantComponent::IsMyTurnStartingPhase(ETurnPhase Phase)
+bool UTurnBasedParticipantComponent::IsMyTurnStartingPhase(const ETurnPhase Phase)
 {
     return Phase == ETurnPhase::TurnStart
         || Phase == ETurnPhase::TurnActive;
 }
 
-bool UTurnBasedParticipantComponent::IsMyTurnEndingPhase(ETurnPhase Phase)
+bool UTurnBasedParticipantComponent::IsMyTurnEndingPhase(const ETurnPhase Phase)
 {
     return Phase == ETurnPhase::TurnEnd
         || Phase == ETurnPhase::TurnTimeout

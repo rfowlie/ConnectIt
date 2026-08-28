@@ -107,7 +107,7 @@ void UGameEventTaskManager::InitiateAsyncTasks()
 			});
 	}
 
-	if (OnManagerBegin.IsBound()) {	OnManagerBegin.Broadcast(); }
+	if (OnManagerBegin.IsBound()) {	OnManagerBegin.Broadcast(EventTag); }
 	
 	AsyncTaskMap.GetKeys(PhaseOrder);
 	PhaseOrder.Sort();
@@ -119,23 +119,46 @@ void UGameEventTaskManager::CheckTasksComplete() const
 {
 	if (TaskSet.IsEmpty())
 	{
-		if (OnManagerComplete.IsBound()) { OnManagerComplete.Broadcast(); }
+		if (OnManagerComplete.IsBound()) { OnManagerComplete.Broadcast(EventTag); }
 	}
 }
 
 void UGameEventTaskManager::ExecuteNextPhase()
 {
 	PhaseIndex++;
+	
 	// if at end of array completely finished
 	if (!PhaseOrder.IsValidIndex(PhaseIndex))
 	{
-		if (OnManagerComplete.IsBound()) { OnManagerComplete.Broadcast(); }
+		if (OnManagerComplete.IsBound()) { OnManagerComplete.Broadcast(EventTag); }
 		bAsyncTasksInitiated = false;
 		return;
 	}
 
+	const int32 CurrentPhase = PhaseOrder[PhaseIndex];
+	FAsyncTaskArray* PhaseTasks = AsyncTaskMap.Find(CurrentPhase);
+
+	// Should not happen -- PhaseOrder is built directly from AsyncTaskMap's
+	// own keys in InitiateAsyncTasks, and RegisterAsyncTask refuses new
+	// phases once bAsyncTasksInitiated is set, so every entry here is
+	// expected to still be a valid key. Guard anyway (TMap::operator[] is
+	// FindChecked -- it would crash, not fail gracefully) and skip forward
+	// rather than returning: returning here would leave this manager wedged
+	// with bAsyncTasksInitiated stuck true and OnManagerComplete never
+	// firing, silently blocking whatever's waiting on this tag forever --
+	// worse than a loud log and moving on.
+	if (!PhaseTasks)
+	{
+		UE_LOG(LogTemp, Error,
+			TEXT("UGameEventTaskManager::ExecuteNextPhase - no task bucket "
+				 "for phase %d -- skipping"),
+			CurrentPhase);
+		ExecuteNextPhase();
+		return;
+	}
+
 	// bind to all tasks in current phase and initiate them
-	for (const auto AsyncTask : AsyncTaskMap[PhaseOrder[PhaseIndex]].Tasks)
+	for (const auto AsyncTask : PhaseTasks->Tasks)
 	{
 		AsyncTask->OnComplete.AddUniqueDynamic(this, &ThisClass::UGameEventTaskManager::CheckPhaseComplete);
 		AsyncTask->OnExecuteDelegate.Execute();

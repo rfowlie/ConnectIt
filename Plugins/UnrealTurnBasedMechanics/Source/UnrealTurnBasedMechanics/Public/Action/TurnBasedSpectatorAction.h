@@ -25,8 +25,16 @@ class UNREALTURNBASEDMECHANICS_API UTurnBasedSpectatorAction : public UTurnBased
 
 public:
 
+    // Called once by UTurnBasedActionsComponent::CreateSystemActions right
+    // after construction -- sets OwningController and fires
+    // PostInitialiseAction, giving viewer actions the same early,
+    // pre-Activate dependency-resolution point UTurnBasedAction already has
+    // via its own InitialiseAction. Before this existed, OwningController
+    // only became valid when Activate() ran.
+    void InitialiseAction(AController* InOwningController);
+
     // Explicit deactivate -- same as ForceDeactivate for viewer actions
     // Provided for clarity at call sites
     void Deactivate();
-    
+
 };

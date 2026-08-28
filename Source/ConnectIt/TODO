@@ -1,53 +1,126 @@
-- [done, claude] Update ConnectIt_PlayerController to inherit from TurnBasedController
-- [in progress, claude] Check setup for all ConnectIt Framework Actors
-  - Found: CI_GameMode_Play / CI_PlayerController_Play blueprints in
-    _ConnectItNetworked are parented to the generic plugin base classes
-    (ATurnBasedGameMode / ATurnBasedPlayerControllerBase) instead of
-    AConnectIt_GameMode / AConnectIt_PlayerController -- L_NetworkTest
-    currently runs none of the ConnectIt gameplay logic. Needs editor-side
-    reparenting (rfowlie to do).
-  - Found: AConnectIt_GameMode_Play (Source/ConnectIt/.../GameMode/) is an
-    empty, unreferenced stub -- not used by any Blueprint or C++. Decide
-    whether to delete it, along with IConnectIt_FacadeHandlerInterface /
-    IConnectIt_GameStateHandlerInterface which nothing else implements.
-- [done, claude] Turn facade into board query object that can be accessed
-  through the ConnectIt Function Library
-  - Added GetAllGridTiles / GetEmptyGridTiles / IsTileEmpty /
-    GetGridTilesWithFactionPieces / GetTileAtPosition /
-    GetRandomEmptyGridTile / IsGameBoardFull / HasFactionWon to
-    UConnectIt_GameUtilityLibrary, reading from the replicated board
-    state (UConnectIt_BoardStateComponent) instead of the old
-    UConnectIt_GameFacade (which reads from the non-networked
-    UConnectIt_State_Game / UGameTurnParticipant stack).
-  - Left UConnectIt_GameFacade/ViewModel/State_* in place -- they may
-    still back the old _ConnectIt (non-networked) content. Revisit once
-    it's confirmed nothing in _ConnectIt still needs them.
-- [done, claude] make abstract grid cursor manager
-  - Added AGridCursorManagerBase (UnrealGridMechanics/Cursor) -- abstract
-    actor owning the hover subscription (UGridWorldSubsystem::
-    OnGridTileHoverChanged, the same pipeline UTurnBasedAction hover
-    validation uses) and Enable/PauseCursor state. Subclasses only
-    implement UpdateCursor(Tile) for the visual.
-  - Refactored AGridCursorSimpleBase to derive from it -- now just the
-    mesh-follow visual, nothing else.
-  - Found + fixed along the way: AGridCursorSimpleBase was previously
-    listening to UGridTrackerSubsystem::OnGridTileHoveredStart, which
-    never fires -- AGridTileBase::BeginPlay only registers with the
-    newer UGridWorldSubsystem (registration with GridTrackerSubsystem is
-    commented out). The cursor was dead code; it now works via the
-    subsystem tiles actually register with.
-  - Also fixed an inverted bool in the old EnableCursor/PauseCursor pair
-    (EnableCursor(true) was calling PauseCursor(true), which disabled
-    updates while unhiding the actor).
-  - Not wired into any Blueprint yet -- no asset currently references
-    GridCursorSimpleBase, so this needs a BP_ or placement in a level to
-    actually be used.
+# ConnectIt TODOs
 
-- [done, claude] Fix ConnectIt_PlacePieceAction -- IsValidHoverTile_Implementation
-  and HandleValidSelection_Implementation were stubbed out (hardcoded
-  return false / empty body), referencing a nonexistent
-  AGridTileBase::GetGridPosition(). No tile could ever be hovered or
-  placed. Restored using UConnectIt_GameUtilityLibrary::GetGridPositionForTile
-  to resolve position via the tile registry instead. Not verified against
-  a real engine build (no local UE install in this environment) -- build
-  and playtest in editor before trusting it.
+Swept from `// TODO` comments in Source/ConnectIt on 2026-08-14. Each entry
+below is the original comment's location plus what investigating it found --
+not just a restatement of the one-liner.
+
+## Live pipeline (_ConnectItNetworked)
+
+- [open] AConnectIt_PlayerController.cpp:92 -- ServerRouteBoardChangeRequest_Implementation
+  only stamps Request.FactionID from the server-authoritative
+  ParticipantComponent->GetActiveParticipantSlotIndex() when the incoming
+  value is < 0. Every current action (PlacePiece/Shift/TutorialShiftIntro)
+  already sets FactionID >= 0 itself before the RPC ever fires, so this
+  "stamp if unset" path is dead in practice -- and more importantly, it
+  means the server currently trusts whatever FactionID a client sends as
+  long as it's >= 0, only checking that it's *that participant's turn*, not
+  that the FactionID actually matches them. A modified client could submit
+  a different faction's ID and have it accepted. Fix is likely to stamp
+  FactionID from ParticipantComponent unconditionally, not just when unset.
+
+- [open] ConnectIt_TileStateInterpreter.cpp:108 -- FindTileActor unconditionally
+  returns nullptr (the TODO explains why: "removed the mapping from
+  subsystem and placed on different component", with the old
+  GridSub->GetTileAtPosition(Position) call commented out just above).
+  This makes SendTagToTile a permanent no-op -- ProcessTileChange still
+  correctly detects tile-active/occupation/multiplier changes, but no
+  ConnectIt.Tile.* gameplay tag ever actually reaches a tile actor through
+  this interpreter, so tiles get no visual feedback from it. The
+  replacement mapping already exists:
+  UGridTileRegistryComponent::GetTileAtPosition(FGridPosition) (confirmed
+  present, Plugins/UnrealGridMechanics/.../Tile/GridTileRegistryComponent.h) --
+  same registry AConnectIt_BoardManager::GetTileRegistry() already exposes
+  and every other position<->tile lookup in the project now goes through.
+
+- [open] PieceControlInfluenceMap.cpp:26 -- confirmed real bug, not just a
+  stale comment. Update() computes Count += TileData->FactionPiece ==
+  Snapshot.FactionTurn ? 1 : -1 per neighboring tile. FConnectItBoardState
+  ::FactionTurn defaults to -1 (ConnectIt_Structs.h:51) and grepping every
+  assignment of FactionTurn project-wide shows it's only ever set inside
+  the MinMax/AI tree-search code (simulated hypothetical states, not the
+  real board) -- never in ConnectIt_BoardStateComponent/ConnectIt_BoardManager,
+  where the live snapshot actually gets built. So on the real board,
+  Snapshot.FactionTurn is permanently -1. -1 is also FConnectItTileData's
+  "empty" sentinel (FactionPiece == -1), so every empty neighboring tile
+  currently scores as if it belonged to the active faction, and every
+  occupied tile (any faction, including the active one) scores as
+  opposing. The influence map is not measuring what it's meant to. Needs
+  Snapshot.FactionTurn actually populated from the real active
+  participant/faction before this comparison means anything.
+
+## Legacy / non-networked _ConnectIt (may be moot -- see note below)
+
+- [open] ConnectIt_GameViewModel.h:25 -- PlacePiece "will need to work with
+  animations etc." Likely already superseded: the networked pipeline
+  solved exactly this ("commit state, then let visuals react") via
+  AConnectIt_BoardManager's gated visual sequencing
+  (UConnectIt_BoardSequencerComponent + UGameEventTaskSubsystem tag
+  sequences) built earlier this session. Worth closing this out once it's
+  confirmed nothing still calls this ViewModel path.
+
+- [open] ConnectIt_PlayerData.cpp:10 -- AddToScore has no callback/delegate
+  when a player's score changes. Same likely-superseded situation as
+  above -- the networked pipeline already broadcasts
+  ConnectIt_Event_LineScored with PointsScored on FConnectItBoardChangeEvent.
+
+- [open] ConnectIt_GameFacade.h:39 -- GetGridTiles() returns TArray<AGridTileBase*>
+  by value; TODO asks whether it should return a const array instead.
+  Minor API-design question, not a functional issue.
+
+- [open] ConnectIt_GameFacade.h:49 -- GetGridTilesWithPlayerPieces(int32 PlayerID)
+  "logic messy... should probably also pass in player data not ID". Minor
+  API-design question, not a functional issue.
+
+- [open] ConnectIt_GameFacade.h:67 -- GetAllPlayerData() returns raw
+  UConnectIt_PlayerData* pointers to live objects, so callers can mutate
+  through them even though the class's own doc comment says it exists for
+  "access[ing] information about the game without being able to change
+  anything" -- the TODO notes the old BP version cloned the data before
+  returning it specifically to prevent this. Real gap between documented
+  contract and actual behavior, if this facade is still in use.
+
+- [open] ConnectIt_State_Game.cpp:70 -- BroadCastGameState has an
+  unresolved debugging question ("why is this not working? Because not Tag
+  set?") plus a commented-out `// return;` right below it, suggesting the
+  function was fully short-circuited at some point while chasing this and
+  only partially reverted. Whether GameState->GetGameStateTag() can return
+  an unset tag for some state, and what that does to bound listeners, was
+  never confirmed. Needs runtime testing in whatever still exercises this
+  legacy state machine.
+
+## Dead / example code (lowest priority)
+
+- [open] ConcreteMinMaxExample.h:159 -- inside TMinMaxManagerBase2::EvaluateTree,
+  hardcodes -FLT_MAX/FLT_MAX alpha-beta bounds instead of taking them as
+  parameters. The entire file is commented-out reference/example code (not
+  compiled, not referenced anywhere) -- only relevant if this example is
+  promoted to real code later.
+
+- [open] ConnectIt_MinMaxManager.cpp:180 -- "testing if this works..." left
+  on the one delegate assignment (IsGameOverDelegate) made in the
+  constructor. Reads like a leftover exploratory note rather than an
+  active concern. BuildChildrenDelegate/MoveOrdererDelegate/EvaluatorDelegate
+  aren't assigned in this constructor at all -- worth a quick check that
+  that's intentional (set elsewhere / not needed here) rather than an
+  oversight, then just delete the comment.
+
+- [open] ConnectIt_GridPiece.h:55 -- suggests renaming OnFactionVisualUpdate
+  to Initialize_Internal. Confirmed accurate: ConnectIt_GridPiece.cpp calls
+  it from both InitialisePiece (server, immediately on pool retrieval) and
+  OnRep_FactionID (clients, on replication) -- so the current name implies
+  "fires on replication" when it actually means "update visuals for this
+  faction," called from two different moments. Pure rename, no behavioral
+  change.
+
+- [open] ConnectIt_BoardStateComponent.h:75 -- dead, already-commented-out
+  convenience wrappers (IsTileValidForPlacement/GetFactionScore) that just
+  duplicate GetCurrentState().IsTileValidForPlacement(...)/.GetScore(...).
+  The TODO already states the resolution ("remove"); the code just hasn't
+  had the commented block deleted yet. Pure cleanup.
+
+- [open] ConnectIt_BoardStateComponent.cpp:47 -- InitialiseBoardState's
+  broadcast-on-init call is already commented out, and the TODO explains
+  why (levels should start with tiles/pieces already in place; broadcasting
+  a "change" at init time is conceptually wrong). This already reflects the
+  intended behavior -- the TODO marker itself could be deleted and the
+  explanation kept as a permanent comment instead.

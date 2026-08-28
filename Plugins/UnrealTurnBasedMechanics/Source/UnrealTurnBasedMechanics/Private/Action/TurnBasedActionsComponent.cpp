@@ -8,6 +8,8 @@
 #include "Action/ActionLoadoutDataAsset.h"
 #include "GameFramework/Controller.h"
 #include "EnhancedInputComponent.h"
+#include "EnhancedInputSubsystems.h"
+#include "Net/UnrealNetwork.h"
 
 
 UTurnBasedActionsComponent::UTurnBasedActionsComponent()
@@ -42,7 +44,7 @@ void UTurnBasedActionsComponent::InitialiseFromLoadout(UActionLoadoutDataAsset* 
     UE_LOG(LogTurnBasedMechanics, Log,
         TEXT("TurnBasedActionsComponent: %s initialised — "
              "loadout '%s', %d runtime actions "
-             "root: %s, idle: %s, spectator: %s, pause: %s"),
+             "root: %s, idle: %s, spectator: %s, pause: %s, awaiting: %s"),
         *GetOwner()->GetName(),
         *InLoadout->LoadoutName,
         RuntimeActions.Num(),
@@ -53,7 +55,9 @@ void UTurnBasedActionsComponent::InitialiseFromLoadout(UActionLoadoutDataAsset* 
         IsValid(SpectatorViewerAction)
             ? *SpectatorViewerAction->ActionTag.ToString() : TEXT("none"),
         IsValid(PauseViewerAction)
-            ? *PauseViewerAction->ActionTag.ToString() : TEXT("none"));
+            ? *PauseViewerAction->ActionTag.ToString() : TEXT("none"),
+        IsValid(AwaitingConfirmationAction)
+            ? *AwaitingConfirmationAction->ActionTag.ToString() : TEXT("none"));
 }
 
 void UTurnBasedActionsComponent::CloneActionsFromLoadout()
@@ -66,15 +70,24 @@ void UTurnBasedActionsComponent::CloneActionsFromLoadout()
         ? Cast<UEnhancedInputComponent>(Controller->InputComponent.Get())
         : nullptr;
 
+    /*
+     * TODO: don't love this cast
+     * do we need to be using AController instead of PlayerController
+     * Will AI controller even need an actions component?
+     */
+    APlayerController* PC = Cast<APlayerController>(Controller);
+    UEnhancedInputLocalPlayerSubsystem* EILP = (IsValid(PC) && IsValid(PC->GetLocalPlayer()))
+        ? ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(PC->GetLocalPlayer())
+        : nullptr;
+
     for (UTurnBasedAction* Source : Loadout->GetPermittedActions())
     {
         if (!IsValid(Source)) continue;
 
-        UTurnBasedAction* Clone = DuplicateObject<UTurnBasedAction>(
-            Source, this);
+        UTurnBasedAction* Clone = DuplicateObject<UTurnBasedAction>(Source, this);
         if (!IsValid(Clone)) continue;
 
-        Clone->InitialiseAction(Controller, EIC);
+        Clone->InitialiseAction(Controller, EIC, EILP);
         BindActionDelegates(Clone);
         RuntimeActions.Add(Clone);
 
@@ -104,12 +117,16 @@ void UTurnBasedActionsComponent::CreateSystemActions()
     UEnhancedInputComponent* EIC = IsValid(Controller)
         ? Cast<UEnhancedInputComponent>(Controller->InputComponent.Get())
         : nullptr;
+    APlayerController* PC = Cast<APlayerController>(Controller);
+    UEnhancedInputLocalPlayerSubsystem* EILP = (IsValid(PC) && IsValid(PC->GetLocalPlayer()))
+        ? ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(PC->GetLocalPlayer())
+        : nullptr;
 
     // Root action -- mandatory
     RootAction = Loadout->GetRootAction(this);
     if (IsValid(RootAction))
     {
-        RootAction->InitialiseAction(Controller, EIC);
+        RootAction->InitialiseAction(Controller, EIC, EILP);
         BindActionDelegates(RootAction);
     }
     else
@@ -123,15 +140,28 @@ void UTurnBasedActionsComponent::CreateSystemActions()
     }
 
     // Viewer actions -- optional but warned in DataAsset validation
-    IdleViewerAction      = Loadout->GetIdleViewerAction(this);
-    SpectatorViewerAction = Loadout->GetSpectatorAction(this);
-    PauseViewerAction     = Loadout->GetPauseAction(this);
+    IdleViewerAction           = Loadout->GetIdleViewerAction(this);
+    SpectatorViewerAction      = Loadout->GetSpectatorAction(this);
+    PauseViewerAction          = Loadout->GetPauseAction(this);
+    AwaitingConfirmationAction = Loadout->GetAwaitingConfirmationAction(this);
+
+    // Give each viewer action OwningController early (same point RootAction
+    // gets it via InitialiseAction above), not deferred until Activate
+    if (IsValid(IdleViewerAction))           IdleViewerAction->InitialiseAction(Controller);
+    if (IsValid(SpectatorViewerAction))      SpectatorViewerAction->InitialiseAction(Controller);
+    if (IsValid(PauseViewerAction))          PauseViewerAction->InitialiseAction(Controller);
+    if (IsValid(AwaitingConfirmationAction)) AwaitingConfirmationAction->InitialiseAction(Controller);
 
     WarnIfViewerActionMissing(IdleViewerAction, TEXT("IdleViewerActionClass"),
         TEXT("Stack will remain unchanged on turn end."));
 
     WarnIfViewerActionMissing(SpectatorViewerAction, TEXT("SpectatorViewerActionClass"),
         TEXT("Stack will remain unchanged on opponent turn start."));
+
+    WarnIfViewerActionMissing(AwaitingConfirmationAction, TEXT("AwaitingConfirmationActionClass"),
+        TEXT("Board-change requests will still correctly wait for server "
+             "confirmation before completing, but with no input/stack "
+             "blocking or waiting UI in the meantime."));
 }
 
 void UTurnBasedActionsComponent::WarnIfViewerActionMissing(
@@ -196,9 +226,9 @@ void UTurnBasedActionsComponent::HandleNextActionRequested(TSubclassOf<UTurnBase
 
 // --- Turn Lifecycle ---
 
-void UTurnBasedActionsComponent::NotifyTurnStarted(int32 InTurnNumber)
+void UTurnBasedActionsComponent::NotifyTurnStarted(const FTurnStartContext& Context)
 {
-    CurrentTurnNumber = InTurnNumber;
+    CurrentTurnNumber = Context.TurnNumber;
 
     // Tick cooldowns -- it is our turn
     TickCooldowns(true);
@@ -210,28 +240,32 @@ void UTurnBasedActionsComponent::NotifyTurnStarted(int32 InTurnNumber)
     }
 
     // Fire designer hook -- default clears stack and pushes root
-    OnTurnStarted(InTurnNumber);
+    OnTurnStarted(Context);
 
     UE_LOG(LogTurnBasedMechanics, Log,
         TEXT("TurnBasedActionsComponent: Turn %d started on %s "
-             "— stack depth: %d"),
+             "(own turn #%d) — stack depth: %d"),
         CurrentTurnNumber,
         *GetOwner()->GetName(),
+        Context.ActiveParticipant.TurnsTaken,
         ActionStack.Num());
 }
 
-void UTurnBasedActionsComponent::NotifyOpponentTurnStarted()
+void UTurnBasedActionsComponent::NotifyOpponentTurnStarted(const FTurnStartContext& Context)
 {
     // Tick cooldowns -- not our turn
     TickCooldowns(false);
 
     // Fire designer hook -- default clears stack and pushes spectator
-    OnOpponentTurnStarted();
+    OnOpponentTurnStarted(Context);
 
     UE_LOG(LogTurnBasedMechanics, Log,
         TEXT("TurnBasedActionsComponent: Opponent turn started on %s "
-             "— stack depth: %d"),
+             "— turn %d, %s's own turn #%d, stack depth: %d"),
         *GetOwner()->GetName(),
+        Context.TurnNumber,
+        *Context.ActiveParticipant.GetDisplayName(),
+        Context.ActiveParticipant.TurnsTaken,
         ActionStack.Num());
 }
 
@@ -322,6 +356,15 @@ void UTurnBasedActionsComponent::TickCooldowns(bool bIsMyTurn)
 
 void UTurnBasedActionsComponent::PushAction(UTurnBasedActionBase* Action)
 {
+    if (bAwaitingRequestConfirmation)
+    {
+        UE_LOG(LogTurnBasedMechanics, Warning,
+            TEXT("TurnBasedActionsComponent: PushAction blocked -- "
+                 "awaiting board-change request confirmation on %s"),
+            *GetOwner()->GetName());
+        return;
+    }
+
     if (!IsValid(Action))
     {
         UE_LOG(LogTurnBasedMechanics, Warning,
@@ -340,6 +383,7 @@ void UTurnBasedActionsComponent::PushAction(UTurnBasedActionBase* Action)
     ActionStack.Add(Action);
     Action->Activate(GetOwningController());
     OnActionPushed.Broadcast(Action);
+    OnActionPushedSafe.Broadcast(FTurnActionSnapshot{ Action->ActionTag });
 
     UE_LOG(LogTurnBasedMechanics, Log,
         TEXT("TurnBasedActionsComponent: Pushed '%s' "
@@ -350,6 +394,15 @@ void UTurnBasedActionsComponent::PushAction(UTurnBasedActionBase* Action)
 
 UTurnBasedActionBase* UTurnBasedActionsComponent::SafePopAction()
 {
+    if (bAwaitingRequestConfirmation)
+    {
+        UE_LOG(LogTurnBasedMechanics, Warning,
+            TEXT("TurnBasedActionsComponent: SafePopAction blocked -- "
+                 "awaiting board-change request confirmation on %s"),
+            *GetOwner()->GetName());
+        return nullptr;
+    }
+
     if (ActionStack.Num() <= 1)
     {
         UE_LOG(LogTurnBasedMechanics, Warning,
@@ -367,6 +420,8 @@ UTurnBasedActionBase* UTurnBasedActionsComponent::SafePopAction()
     }
 
     OnActionPopped.Broadcast(Popped);
+    OnActionPoppedSafe.Broadcast(
+        FTurnActionSnapshot{ IsValid(Popped) ? Popped->ActionTag : FGameplayTag() });
 
     // Reactivate new top
     if (ActionStack.Num() > 0 && IsValid(ActionStack.Last()))
@@ -402,6 +457,15 @@ void UTurnBasedActionsComponent::ClearStack()
 
 void UTurnBasedActionsComponent::ClearAndPush(UTurnBasedActionBase* NewRoot)
 {
+    if (bAwaitingRequestConfirmation)
+    {
+        UE_LOG(LogTurnBasedMechanics, Warning,
+            TEXT("TurnBasedActionsComponent: ClearAndPush blocked -- "
+                 "awaiting board-change request confirmation on %s"),
+            *GetOwner()->GetName());
+        return;
+    }
+
     if (!IsValid(NewRoot))
     {
         UE_LOG(LogTurnBasedMechanics, Warning,
@@ -417,6 +481,7 @@ void UTurnBasedActionsComponent::ClearAndPush(UTurnBasedActionBase* NewRoot)
     ActionStack.Add(NewRoot);
     NewRoot->Activate(GetOwningController());
     OnActionPushed.Broadcast(NewRoot);
+    OnActionPushedSafe.Broadcast(FTurnActionSnapshot{ NewRoot->ActionTag });
     
     UE_LOG(LogTurnBasedMechanics, Log,
         TEXT("TurnBasedActionsComponent: Stack cleared and '%s' pushed "
@@ -434,6 +499,15 @@ bool UTurnBasedActionsComponent::TryPushAction(FGameplayTag ActionTag)
 
 bool UTurnBasedActionsComponent::TryPushActionByRef(UTurnBasedAction* Action)
 {
+    if (bAwaitingRequestConfirmation)
+    {
+        UE_LOG(LogTurnBasedMechanics, Warning,
+            TEXT("TurnBasedActionsComponent: TryPushActionByRef blocked -- "
+                 "awaiting board-change request confirmation on %s"),
+            *GetOwner()->GetName());
+        return false;
+    }
+
     if (!IsValid(Action))
     {
         UE_LOG(LogTurnBasedMechanics, Warning,
@@ -545,6 +619,26 @@ bool UTurnBasedActionsComponent::IsRootOnTop() const
     return ActionStack.Last() == RootAction;
 }
 
+FTurnBasedActionsComponentInfo UTurnBasedActionsComponent::GetInfo() const
+{
+    FTurnBasedActionsComponentInfo Info;
+
+    if (UTurnBasedActionBase* Top = GetTopAction())
+    {
+        Info.TopActionTag = Top->ActionTag;
+    }
+
+    if (UTurnBasedActionBase* Root = GetRootAction())
+    {
+        Info.RootActionTag = Root->ActionTag;
+    }
+
+    Info.StackDepth = GetStackDepth();
+    Info.bAwaitingRequestConfirmation = IsAwaitingRequestConfirmation();
+
+    return Info;
+}
+
 TArray<UTurnBasedAction*> UTurnBasedActionsComponent::GetAllRuntimeActions() const
 {
     TArray<UTurnBasedAction*> Out;
@@ -585,7 +679,7 @@ UTurnBasedAction* UTurnBasedActionsComponent::FindActionByTag(FGameplayTag Tag) 
 // --- Designer Hooks ---
 
 void UTurnBasedActionsComponent::OnTurnStarted_Implementation(
-    int32 TurnNumber)
+    const FTurnStartContext& Context)
 {
     if (!IsValid(RootAction))
     {
@@ -601,7 +695,8 @@ void UTurnBasedActionsComponent::OnTurnStarted_Implementation(
     ClearAndPush(RootAction);
 }
 
-void UTurnBasedActionsComponent::OnOpponentTurnStarted_Implementation()
+void UTurnBasedActionsComponent::OnOpponentTurnStarted_Implementation(
+    const FTurnStartContext& Context)
 {
     if (!IsValid(SpectatorViewerAction))
     {
@@ -637,6 +732,8 @@ void UTurnBasedActionsComponent::HandleActionCompleted(UTurnBasedAction* Action)
     LogActionRecord(Action, TEXT("Completed"));
     SafePopAction();
     OnActionCompleted.Broadcast(Action);
+    OnActionCompletedSafe.Broadcast(
+        FTurnActionSnapshot{ IsValid(Action) ? Action->ActionTag : FGameplayTag() });
     CheckAutoEndTurn();
 }
 
@@ -645,13 +742,66 @@ void UTurnBasedActionsComponent::HandleActionCancelled(UTurnBasedAction* Action)
     LogActionRecord(Action, TEXT("Cancelled"));
     SafePopAction();
     OnActionCancelled.Broadcast(Action);
+    OnActionCancelledSafe.Broadcast(
+        FTurnActionSnapshot{ IsValid(Action) ? Action->ActionTag : FGameplayTag() });
 }
 
 void UTurnBasedActionsComponent::HandleBoardChangeRequested(const FTurnActionRequest& Request)
 {
-    // Pure passthrough
+    if (bAwaitingRequestConfirmation)
+    {
+        // Shouldn't be reachable -- pushing AwaitingConfirmationAction
+        // force-deactivates the requesting action, tearing down its
+        // hover/selection bindings, so it can't legitimately fire a second
+        // request while still waiting on the first. Kept as defense-in-depth
+        // for a future action type that might not route through the same
+        // Activate/Deactivate lifecycle.
+        UE_LOG(LogTurnBasedMechanics, Error,
+            TEXT("TurnBasedActionsComponent: HandleBoardChangeRequested -- "
+                 "already awaiting a request on %s, ignoring"),
+            *GetOwner()->GetName());
+        return;
+    }
+
+    bAwaitingRequestConfirmation = true;
+    PendingRequest = Request;
+
+    // Push before flipping the flag -- PushAction refuses to run while
+    // bAwaitingRequestConfirmation is true
+    if (IsValid(AwaitingConfirmationAction))
+    {
+        PushAction(AwaitingConfirmationAction);
+    }    
+
     OnBoardChangeRequested.Broadcast(Request);
     OnBoardChangeRequested_Native.Broadcast(Request);
+}
+
+void UTurnBasedActionsComponent::NotifyBoardChangeOutcome(
+    const FTurnActionRequest& Request, bool bSucceeded)
+{
+    if (!bAwaitingRequestConfirmation || Request != PendingRequest) return;
+
+    bAwaitingRequestConfirmation = false;
+
+    // Only pop if AwaitingConfirmationAction was actually pushed -- if the
+    // slot wasn't configured (see CreateSystemActions' warning), the
+    // requesting action is still the live top of stack, nothing to pop
+    if (IsValid(AwaitingConfirmationAction) && GetTopAction() == AwaitingConfirmationAction)
+    {
+        SafePopAction();
+    }
+
+    if (bSucceeded)
+    {
+        if (UTurnBasedAction* Action = Cast<UTurnBasedAction>(GetTopAction()))
+        {
+            Action->Complete();
+        }
+    }
+    // Failure: reactivation above (or having never been deactivated, in
+    // the degraded no-awaiting-action case) already is "recommence" --
+    // the requesting action is simply live again, ready to retry.
 }
 
 void UTurnBasedActionsComponent::CheckAutoEndTurn()

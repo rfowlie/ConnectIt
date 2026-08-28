@@ -33,7 +33,7 @@ AConnectIt_BoardManager* UConnectIt_GameUtilityLibrary::GetBoardManager(const UO
         return nullptr;
     }
 
-    AConnectIt_BoardManager* Cached = Subsystem->GetCachedBoardManager();
+    AConnectIt_BoardManager* Cached = Subsystem->GetBoardManager();
     if (!IsValid(Cached))
     {
         // Should not happen in normal operation -- AConnectIt_BoardManager::
@@ -56,8 +56,7 @@ UConnectIt_BoardStateComponent* UConnectIt_GameUtilityLibrary::GetBoardStateComp
 {
     const AConnectIt_BoardManager* BoardManager = GetBoardManager(WorldContextObject);
     if (!IsValid(BoardManager)) return nullptr;
-    return Cast<UConnectIt_BoardStateComponent>(
-        IGridBoardManagerInterface::Execute_GetBoardState(BoardManager));
+    return BoardManager->GetBoardStateComponent();
 }
 
 bool UConnectIt_GameUtilityLibrary::GetGridPositionForTile(
@@ -96,7 +95,7 @@ TArray<AGridTileBase*> UConnectIt_GameUtilityLibrary::GetEmptyGridTiles(
         const FGridPosition Position =
             BM->GetTileRegistry()->GetPositionOfTile(Tile);
 
-        if (BoardState->IsTileValidForPlacement(Position))
+        if (BoardState->GetCurrentState().IsTileValidForPlacement(Position))
         {
             EmptyTiles.Add(Tile);
         }

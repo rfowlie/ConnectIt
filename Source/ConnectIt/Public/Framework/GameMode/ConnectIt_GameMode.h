@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "GameplayTagContainer.h"
 #include "Framework/GameMode/TurnBasedGameMode.h"
 #include "ConnectIt_GameMode.generated.h"
 
@@ -72,9 +73,14 @@ protected:
     // Called from HandleMatchHasStarted after tiles have registered
     void InitialiseBoard();
 
-    // Called when the board manager fires OnGameOver
+    // Bound to UGameEventTaskSubsystem's ConnectIt_Event_PlayerWin tag
+    // completing (see InitialiseBoard). Reads the winning faction from
+    // BoardStateComponent's persistent CurrentState rather than the Tag
+    // param -- OnManagerComplete's payload is just the tag's own identity
+    // (needed so callers with multiple bindings can disambiguate), not
+    // event-specific data.
     UFUNCTION()
-    void HandleGameOver(int32 WinningFactionSlot);
+    void HandleGameOver(FGameplayTag Tag);
 
 private:
 
