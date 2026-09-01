@@ -63,7 +63,7 @@ void UGameEventTaskSubsystem::UnbindOnTagComplete(
 TArray<FGameplayTag> UGameEventTaskSubsystem::GetTagsInQueue()
 {
     TArray<FGameplayTag> Out;
-    for (const auto Tag : ActiveManagerTags)
+    for (const auto Tag : ActiveTagContainer)
     {
         Out.Add(Tag);
     }
@@ -90,34 +90,26 @@ UGameEventTaskManager* UGameEventTaskSubsystem::GetOrCreateManager(const FGamepl
 
 void UGameEventTaskSubsystem::TriggerTag(const FGameplayTag Tag)
 {
-    GetOrCreateManager(Tag)->InitiateAllTasks();
+    if (UGameEventTaskManager* TaskManager = GetOrCreateManager(Tag))
+    {
+       TaskManager->InitiateAllTasks();
+    }
+    else
+    {
+        UE_LOG(LogTemp, Error, TEXT(
+            "UGameEventTaskSubsystem::TriggerTag - Manager not found!"));
+    }
 }
 
 void UGameEventTaskSubsystem::TryExecuteNextContainer()
 {
-    if (!ActiveManagerTags.IsEmpty()) return; // something already firing
+    if (!ActiveTagContainer.IsEmpty()) return; // something already firing
     if (ContainerQueue.IsEmpty()) return;
 
     ActiveContainer = ContainerQueue[0];
     ContainerQueue.RemoveAt(0);
-
-    // Populate the full set BEFORE triggering anything -- a tag that
-    // completes synchronously (zero registered tasks) mid-loop removes
-    // itself from a set that still contains every other tag in this
-    // container, so it can't look "empty" prematurely and re-enter while
-    // still iterating the rest of the container. Membership makes this
-    // guarantee for free, no arithmetic bias needed.
-    for (const FGameplayTag& Tag : ActiveContainer)
-    {
-        ActiveManagerTags.Add(Tag);
-    }
-
-    // notify interested parties (e.g. debug widgets) that a new container
-    // just became active -- without this, listeners only ever see tags
-    // disappearing (HandleOnManagerComplete's own broadcast below), never
-    // the moment they actually started.
-    if (OnActiveManagerTagsChanged.IsBound()) { OnActiveManagerTagsChanged.Broadcast(); }
-
+    OnActiveEventTagsChanged();
+    
     for (const FGameplayTag& Tag : ActiveContainer)
     {
         // Bound directly (AddUniqueDynamic/RemoveDynamic, compile-time
@@ -130,6 +122,11 @@ void UGameEventTaskSubsystem::TryExecuteNextContainer()
 
         TriggerTag(Tag);
     }
+}
+
+void UGameEventTaskSubsystem::OnActiveEventTagsChanged() const
+{
+    if (OnActiveManagerTagsChanged.IsBound()) { OnActiveManagerTagsChanged.Broadcast(ActiveTagContainer); }
 }
 
 void UGameEventTaskSubsystem::HandleOnManagerComplete(const FGameplayTag Tag)
@@ -145,7 +142,7 @@ void UGameEventTaskSubsystem::HandleOnManagerComplete(const FGameplayTag Tag)
     GetOrCreateManager(Tag)->OnManagerComplete.RemoveDynamic(
         this, &UGameEventTaskSubsystem::HandleOnManagerComplete);
 
-    if (!ActiveManagerTags.Remove(Tag))
+    if (!ActiveTagContainer.RemoveTag(Tag))
     {
         UE_LOG(LogTemp, Error, TEXT(
             "UGameEventTaskSubsystem::HandleOnManagerComplete -- '%s' completed "
@@ -154,10 +151,10 @@ void UGameEventTaskSubsystem::HandleOnManagerComplete(const FGameplayTag Tag)
     }
 
     // notify interested parties of event list change
-    if (OnActiveManagerTagsChanged.IsBound()) { OnActiveManagerTagsChanged.Broadcast(); }
+    OnActiveEventTagsChanged();
 
     // only try next if all ActiveManagerTags are complete
-    if (ActiveManagerTags.IsEmpty())
+    if (ActiveTagContainer.IsEmpty())
     {
         TryExecuteNextContainer();
     }
