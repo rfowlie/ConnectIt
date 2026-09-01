@@ -52,6 +52,38 @@ void UActorPoolSubsystem::ReleaseObject(AActor* Actor)
 	UE_LOG(LogTemp, Warning, TEXT("UActorPoolSubsystem::ReleaseObject - Actor %s was not sourced from any tracked pool"), *Actor->GetName());
 }
 
+void UActorPoolSubsystem::ActivateObject(AActor* Actor) const
+{
+	if (!IsValid(Actor))
+	{
+		return;
+	}
+
+	if (const TObjectPtr<UActorPool>* Pool = ActorToPool.Find(Actor))
+	{
+		(*Pool)->ActivateObject(Actor);
+		return;
+	}
+
+	UE_LOG(LogTemp, Warning, TEXT("UActorPoolSubsystem::ActivateObject - Actor %s was not sourced from any tracked pool"), *Actor->GetName());
+}
+
+void UActorPoolSubsystem::DeactivateObject(AActor* Actor) const
+{
+	if (!IsValid(Actor))
+	{
+		return;
+	}
+
+	if (const TObjectPtr<UActorPool>* Pool = ActorToPool.Find(Actor))
+	{
+		(*Pool)->DeactivateObject(Actor);
+		return;
+	}
+
+	UE_LOG(LogTemp, Warning, TEXT("UActorPoolSubsystem::DeactivateObject - Actor %s was not sourced from any tracked pool"), *Actor->GetName());
+}
+
 UActorPool* UActorPoolSubsystem::FindPool(TSubclassOf<AActor> ActorClass) const
 {
 	if (const TObjectPtr<UActorPool>* Found = Pools.Find(ActorClass))

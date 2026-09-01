@@ -17,12 +17,16 @@ class UGridPieceSpawnInterpreter;
 // position" (GetPiece), and owns getting one there or taking one away
 // (SpawnPieceAt/DespawnPieceAt) -- pool retrieval/release
 // (UActorPoolSubsystem), grid-subsystem registration/unregistration
-// (UGridWorldSubsystem::RegisterPiece/UnregisterPiece), and the
-// IActorPoolInterface Activate/Deactivate calls all live here. The actual
-// spawn-in/despawn-out *visual* is a sibling component's job
-// (UGridPieceSpawnInterpreter, resolved via the owning actor) -- this
-// class hands it an already-retrieved, already-registered piece and lets
-// it handle positioning and waiting for the visual to finish.
+// (UGridWorldSubsystem::RegisterPiece/UnregisterPiece), and triggering the
+// IActorPoolInterface Activate/Deactivate calls (UActorPoolSubsystem::
+// ActivateObject/DeactivateObject) all live here. The actual spawn-in/
+// despawn-out *visual* is a sibling component's job (UGridPieceSpawnInterpreter,
+// resolved via the owning actor) -- this class hands it an already-retrieved,
+// already-registered piece and lets it handle positioning and waiting for
+// the visual to finish, and deliberately triggers activation/deactivation
+// only after that sibling has bound its completion listener (see
+// SpawnPieceAt/DespawnPieceAt) -- a piece whose activation/deactivation
+// completes synchronously would otherwise have that completion missed.
 UCLASS(ClassGroup=(Custom), meta=(BlueprintSpawnableComponent))
 class UNREALGRIDMECHANICS_API UGridPieceRegistryComponent : public UActorComponent
 {
@@ -34,22 +38,25 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Grid|Registry")
 	AGridPieceBase* GetPiece(FGridPosition Position) const;
 
-	// Retrieves a PieceClass instance from the pool, registers it with
-	// UGridWorldSubsystem, and hands it to UGridPieceSpawnInterpreter to
-	// position at Tile and play its spawn-in visual. Retrieval itself
-	// triggers IActorPoolInterface::ActivatePoolObject as a side effect
-	// (see UActorPool) -- this function does not call it separately.
-	// Returns the piece, or nullptr if retrieval or either sibling
-	// component failed to resolve.
+	// Retrieves a PieceClass instance from the pool (inactive at this
+	// point), registers it with UGridWorldSubsystem, hands it to
+	// UGridPieceSpawnInterpreter to position at Tile and bind its spawn-in
+	// visual-completion listener, and only then triggers
+	// IActorPoolInterface::ActivatePoolObject (via UActorPoolSubsystem::
+	// ActivateObject) -- deliberately after the listener is bound, so a
+	// piece whose activation completes synchronously can't have that
+	// completion missed. Returns the piece, or nullptr if retrieval or
+	// either sibling component failed to resolve.
 	UFUNCTION(BlueprintCallable, Category = "Grid|Registry")
 	AGridPieceBase* SpawnPieceAt(TSubclassOf<AGridPieceBase> PieceClass, AGridTileBase* Tile);
 
 	// Looks up the piece at Position (via GetPiece), unregisters it from
-	// UGridWorldSubsystem, releases it back to the pool (which triggers
-	// IActorPoolInterface::DeactivatePoolObject as a side effect), and
-	// hands it to UGridPieceSpawnInterpreter to play its despawn-out
-	// visual. No-ops (with a warning) if no piece is registered at
-	// Position.
+	// UGridWorldSubsystem, hands it to UGridPieceSpawnInterpreter to bind
+	// its despawn-out visual-completion listener, then triggers
+	// IActorPoolInterface::DeactivatePoolObject and releases it back to
+	// the pool -- same bind-before-trigger ordering as SpawnPieceAt, and
+	// for the same reason. No-ops (with a warning) if no piece is
+	// registered at Position.
 	UFUNCTION(BlueprintCallable, Category = "Grid|Registry")
 	void DespawnPieceAt(FGridPosition Position);
 

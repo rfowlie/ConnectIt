@@ -35,7 +35,7 @@ public:
     // complete. Fires OnPieceSpawned once it does. Does not call
     // Execute_ActivatePoolObject -- that already happened as a side effect
     // of retrieving Piece from the pool, before this is ever called.
-    UFUNCTION(BlueprintCallable, Category = "Grid|Piece")
+    UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "Grid|Piece")
     void SpawnPiece(AGridPieceBase* Piece, AGridTileBase* Tile);
 
     // Waits for Piece's despawn-out visual to report complete. Fires
@@ -43,7 +43,7 @@ public:
     // Execute_DeactivatePoolObject or touch the pool -- that's the caller's
     // job (see UGridPieceRegistryComponent::DespawnPieceAt), this is purely
     // the visual.
-    UFUNCTION(BlueprintCallable, Category = "Grid|Piece")
+    UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "Grid|Piece")
     void DespawnPiece(AGridPieceBase* Piece);
 
     UPROPERTY(BlueprintAssignable, Category = "Grid|Piece")

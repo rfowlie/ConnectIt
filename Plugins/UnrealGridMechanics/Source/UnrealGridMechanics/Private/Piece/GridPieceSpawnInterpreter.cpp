@@ -2,12 +2,11 @@
 
 
 #include "Piece/GridPieceSpawnInterpreter.h"
-
 #include "Piece/GridPieceBase.h"
 #include "Tile/GridTileBase.h"
 
 
-void UGridPieceSpawnInterpreter::SpawnPiece(AGridPieceBase* Piece, AGridTileBase* Tile)
+void UGridPieceSpawnInterpreter::SpawnPiece_Implementation(AGridPieceBase* Piece, AGridTileBase* Tile)
 {
     if (!IsValid(Piece) || !IsValid(Tile))
     {
@@ -22,7 +21,7 @@ void UGridPieceSpawnInterpreter::SpawnPiece(AGridPieceBase* Piece, AGridTileBase
         this, &UGridPieceSpawnInterpreter::HandleActivationVisualComplete);
 }
 
-void UGridPieceSpawnInterpreter::DespawnPiece(AGridPieceBase* Piece)
+void UGridPieceSpawnInterpreter::DespawnPiece_Implementation(AGridPieceBase* Piece)
 {
     if (!IsValid(Piece))
     {

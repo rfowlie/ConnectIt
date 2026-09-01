@@ -38,15 +38,19 @@ class UGameEventTask_Async;
 // UGridPieceSpawnInterpreter::OnPieceSpawned/OnPieceDespawned) -- so
 // anything else waiting on the same tag (e.g. turn-end resolution, via
 // UGameEventTaskSubsystem's own queue ordering) doesn't proceed until
-// visuals are genuinely done, not merely started. Known limitation: if a
-// piece's activation/deactivation visual completes synchronously (see
-// AGridPieceBase::OnActivationVisualComplete's own doc comment on pieces
-// with no real effect), that completion can fire before
-// UGridPieceSpawnInterpreter::SpawnPiece/DespawnPiece has a chance to bind
-// to it -- the piece would then never report done, and the tag's task
-// (and therefore anything gated on it) would never complete for that
-// firing. Present in every version of this class's design, not new here;
-// deliberately not solved by this round -- see the workflow doc.
+// visuals are genuinely done, not merely started.
+//
+// Previously, a piece whose activation/deactivation visual completed
+// synchronously (see AGridPieceBase::OnActivationVisualComplete's own doc
+// comment on pieces with no real effect) could have that completion missed
+// entirely, because UActorPool triggered activation/deactivation as an
+// unavoidable side effect of pool retrieval/release, before this
+// interpreter's own listener bind ever ran. Fixed by moving that trigger to
+// the caller (UGridPieceRegistryComponent::SpawnPieceAt/DespawnPieceAt now
+// call UActorPoolSubsystem::ActivateObject/DeactivateObject explicitly,
+// only after UGridPieceSpawnInterpreter has bound its listener) -- see
+// "Move pooled-actor activation/deactivation to the caller" in the plan
+// history. No longer a limitation to work around here.
 UCLASS(Blueprintable, ClassGroup=(ConnectIt), meta=(BlueprintSpawnableComponent))
 class CONNECTIT_API UConnectIt_PieceSpawnInterpreter : public UActorComponent
 {

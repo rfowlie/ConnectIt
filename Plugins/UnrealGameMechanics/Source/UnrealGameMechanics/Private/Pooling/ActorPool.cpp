@@ -59,7 +59,6 @@ TArray<AActor*> UActorPool::GetObjects(int32 Amount)
             continue;
         }
 
-        ActivateActor(Actor);
         ActivePool.Add(Actor);
         OutActors.Add(Actor);
     }
@@ -73,7 +72,6 @@ TArray<AActor*> UActorPool::GetObjects(int32 Amount)
             break;
         }
 
-        ActivateActor(Actor);
         ActivePool.Add(Actor);
         OutActors.Add(Actor);
     }
@@ -94,7 +92,6 @@ void UActorPool::ReleaseObject(AActor* Actor)
         return;
     }
 
-    DeactivateActor(Actor);
     InactivePool.Add(Actor);
 }
 
@@ -111,14 +108,16 @@ AActor* UActorPool::CreatePooledActor() const
     AActor* Actor = WorldContext->SpawnActor(ActorClass, nullptr, nullptr, SpawnParams);
     if (Actor)
     {
-        DeactivateActor(Actor);
+        DeactivateObject(Actor);
     }
 
     return Actor;
 }
 
-void UActorPool::ActivateActor(AActor* Actor) const
+void UActorPool::ActivateObject(AActor* Actor) const
 {
+    if (!IsValid(Actor)) { return; }
+
     if (Actor->GetClass()->ImplementsInterface(UActorPoolInterface::StaticClass()))
     {
         IActorPoolInterface::Execute_ActivatePoolObject(Actor);
@@ -129,8 +128,10 @@ void UActorPool::ActivateActor(AActor* Actor) const
     }
 }
 
-void UActorPool::DeactivateActor(AActor* Actor) const
+void UActorPool::DeactivateObject(AActor* Actor) const
 {
+    if (!IsValid(Actor)) { return; }
+
     if (Actor->GetClass()->ImplementsInterface(UActorPoolInterface::StaticClass()))
     {
         UE_LOG(LogTemp, Log, TEXT("Actor Pool - Deactivate Object: %s"), *Actor->GetName());

@@ -60,8 +60,10 @@ AGridPieceBase* UGridPieceRegistryComponent::SpawnPieceAt(
 		return nullptr;
 	}
 
-	// Retrieval triggers IActorPoolInterface::ActivatePoolObject internally
-	// (see UActorPool::ActivateActor) -- nothing further to trigger here.
+	// GetObjects no longer activates the piece as a side effect -- it's
+	// triggered explicitly below, after SpawnInterpreter has had a chance
+	// to bind its completion listener, so a piece whose activation
+	// completes synchronously can't have that completion missed.
 	TArray<AActor*> Objects = PoolSubsystem->GetObjects(PieceClass, 1);
 	AGridPieceBase* Piece = Objects.IsEmpty() ? nullptr : Cast<AGridPieceBase>(Objects[0]);
 
@@ -75,6 +77,7 @@ AGridPieceBase* UGridPieceRegistryComponent::SpawnPieceAt(
 
 	GridSubsystem->RegisterPiece(Piece);
 	SpawnInterpreter->SpawnPiece(Piece, Tile);
+	PoolSubsystem->ActivateObject(Piece);
 
 	return Piece;
 }
@@ -102,19 +105,25 @@ void UGridPieceRegistryComponent::DespawnPieceAt(FGridPosition Position)
 
 	GridSubsystem->UnregisterPiece(Piece);
 
-	// Release triggers IActorPoolInterface::DeactivatePoolObject internally
-	// (see UActorPool::DeactivateActor) -- nothing further to trigger here.
+	// SpawnInterpreter binds its completion listener first -- deactivation
+	// is triggered explicitly after, so a piece whose deactivation
+	// completes synchronously can't have that completion missed (same
+	// reasoning as SpawnPieceAt's ActivateObject call). ReleaseObject
+	// (pool bookkeeping -- marks Piece available for reuse) runs last,
+	// after deactivation has actually been triggered, matching this
+	// function's previous relative ordering.
 	if (IsValid(PoolSubsystem))
 	{
+		SpawnInterpreter->DespawnPiece(Piece);
+		PoolSubsystem->DeactivateObject(Piece);
 		PoolSubsystem->ReleaseObject(Piece);
 	}
 	else
 	{
 		UE_LOG(LogTemp, Error,
 			TEXT("GridPieceRegistryComponent: DespawnPieceAt — no UActorPoolSubsystem in world"));
+		SpawnInterpreter->DespawnPiece(Piece);
 	}
-
-	SpawnInterpreter->DespawnPiece(Piece);
 }
 
 void UGridPieceRegistryComponent::BeginPlay()
