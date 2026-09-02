@@ -211,7 +211,7 @@ private:
     void HandleBoardChangeRequested(const FTurnActionRequest& Request);
 
     UFUNCTION()
-    void HandleActiveManagerTagsChanged();
+    void HandleActiveManagerTagsChanged(const FGameplayTagContainer& TagContainer);
 
     // --- Resolved sources -- cached once in BindAll ---
 

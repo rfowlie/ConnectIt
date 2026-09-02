@@ -129,22 +129,38 @@ void UConnectIt_BoardStateComponent::EnqueueBoardEventTags() const
     // change), then conditionally LineScored and/or PlayerWin. Each call
     // enqueues independently; UGameEventTaskSubsystem's own queue serializes
     // them so the next one doesn't start firing until the previous is done.
-    if (ChangeEvent.bShiftApplied)
-    {
-        GameEventSubsystem->QueueTagContainer(FGameplayTagContainer(ConnectIt_Event_Shift));
-    }
+    
+    // concrete changes to board from player actions
     if (ChangeEvent.bPiecePlaced)
     {
         GameEventSubsystem->QueueTagContainer(FGameplayTagContainer(ConnectIt_Event_PiecePlaced));
-    }
-    if (ChangeEvent.bLineScored)
-    {
-        GameEventSubsystem->QueueTagContainer(FGameplayTagContainer(ConnectIt_Event_LineScored));
     }
     if (ChangeEvent.bPieceRemoved)
     {
         GameEventSubsystem->QueueTagContainer(FGameplayTagContainer(ConnectIt_Event_PieceRemoved));
     }
+    if (ChangeEvent.bPiecesSwapped)
+    {
+        GameEventSubsystem->QueueTagContainer(FGameplayTagContainer(ConnectIt_Event_PiecesSwapped));
+    }
+    if (ChangeEvent.bPieceCaptured)
+    {
+        GameEventSubsystem->QueueTagContainer(FGameplayTagContainer(ConnectIt_Event_PieceCaptured));
+    }
+    if (ChangeEvent.bShiftApplied)
+    {
+        GameEventSubsystem->QueueTagContainer(FGameplayTagContainer(ConnectIt_Event_Shift));
+    }
+    if (ChangeEvent.bTileMultiplierDestroyed)
+    {
+        GameEventSubsystem->QueueTagContainer(FGameplayTagContainer(ConnectIt_Event_TileMultiplierDestroyed));
+    }   
+
+    // knock on board changes from rules
+    if (ChangeEvent.bLineScored)
+    {
+        GameEventSubsystem->QueueTagContainer(FGameplayTagContainer(ConnectIt_Event_LineScored));
+    }    
     if (ChangeEvent.bGameWon)
     {
         GameEventSubsystem->QueueTagContainer(FGameplayTagContainer(ConnectIt_Event_PlayerWin));
@@ -153,20 +169,10 @@ void UConnectIt_BoardStateComponent::EnqueueBoardEventTags() const
     // New mutation types (see AConnectIt_BoardManager's Handle*Request
     // methods) -- each is its own disjoint kind of change, same as Shift vs
     // PiecePlaced above, so no ordering relationship between them
-    if (ChangeEvent.bTileMultiplierDestroyed)
-    {
-        GameEventSubsystem->QueueTagContainer(FGameplayTagContainer(ConnectIt_Event_TileMultiplierDestroyed));
-    }    
-    if (ChangeEvent.bPiecesSwapped)
-    {
-        GameEventSubsystem->QueueTagContainer(FGameplayTagContainer(ConnectIt_Event_PiecesSwapped));
-    }
+    
     if (ChangeEvent.bTileActiveToggled)
     {
         GameEventSubsystem->QueueTagContainer(FGameplayTagContainer(ConnectIt_Event_TileActiveToggled));
     }
-    if (ChangeEvent.bPieceCaptured)
-    {
-        GameEventSubsystem->QueueTagContainer(FGameplayTagContainer(ConnectIt_Event_PieceCaptured));
-    }
+    
 }

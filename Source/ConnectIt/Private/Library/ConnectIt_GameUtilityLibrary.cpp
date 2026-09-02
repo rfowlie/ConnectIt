@@ -3,7 +3,7 @@
 
 #include "Library/ConnectIt_GameUtilityLibrary.h"
 #include "TurnBasedMechanicsEnums.h"
-#include "Subsystem/GridWorldSubsystem.h"
+#include "Subsystem/GridHoverSubsystem.h"
 #include "Framework/Subsystem/ConnectIt_BlackboardSubsystem.h"
 #include "Framework/Subsystem/ConnectIt_BoardManagerSubsystem.h"
 #include "Board/ConnectIt_BoardManager.h"
@@ -270,7 +270,7 @@ UConnectIt_BlackboardSubsystem* UConnectIt_GameUtilityLibrary::GetBlackboardSubs
     return Subsystem;
 }
 
-UGridWorldSubsystem* UConnectIt_GameUtilityLibrary::GetGridSubsystem(
+UGridHoverSubsystem* UConnectIt_GameUtilityLibrary::GetGridSubsystem(
     const UObject* WorldContextObject)
 {
     if (!IsValid(WorldContextObject)) return nullptr;
@@ -278,5 +278,5 @@ UGridWorldSubsystem* UConnectIt_GameUtilityLibrary::GetGridSubsystem(
     UWorld* World = WorldContextObject->GetWorld();
     if (!IsValid(World)) return nullptr;
 
-    return World->GetSubsystem<UGridWorldSubsystem>();
+    return World->GetSubsystem<UGridHoverSubsystem>();
 }

@@ -9,6 +9,7 @@
 #include "TurnBasedMechanicsStructs.h"
 #include "ConnectIt_BoardManager.generated.h"
 
+class UTurnBasedGameEvent;
 class UActionLoadoutDataAsset;
 class UConnectIt_ConfigComponent;
 class UConnectIt_TileStateInterpreter;
@@ -103,12 +104,10 @@ protected:
 
     // --- Components ---
 
-    UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly,
-        Category = "ConnectIt|Components")
+    UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, Category = "ConnectIt|Components")
     TObjectPtr<UGridTileRegistryComponent> TileRegistryComponent = nullptr;
 
-    UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly,
-        Category = "ConnectIt|Components")
+    UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, Category = "ConnectIt|Components")
     TObjectPtr<UGridPieceRegistryComponent> PieceRegistryComponent = nullptr;
 
     // Sibling of PieceRegistryComponent, resolved by it via
@@ -117,40 +116,39 @@ protected:
     // as PieceSpawnInterpreter below) because UConnectIt_PieceSpawnInterpreter
     // composes with this rather than subclassing it -- see that class's
     // header comment.
-    UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly,
-        Category = "ConnectIt|Components")
+    UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, Category = "ConnectIt|Components")
     TObjectPtr<UGridPieceSpawnInterpreter> GridPieceSpawnInterpreter = nullptr;
 
-    UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly,
-        Category = "ConnectIt|Components")
+    UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, Category = "ConnectIt|Components")
     TObjectPtr<UConnectIt_ConfigComponent> ConnectItConfigComponent = nullptr;
     
-    UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly,
-        Category = "ConnectIt|Components")
+    UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, Category = "ConnectIt|Components")
     TObjectPtr<UConnectIt_BoardStateComponent> BoardStateComponent = nullptr;
     
-    UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly,
-        Category = "ConnectIt|Components")
+    UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, Category = "ConnectIt|Components")
     TObjectPtr<UConnectIt_BoardShiftComponent> BoardShiftComponent = nullptr;
 
-    UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly,
-        Category = "ConnectIt|Components")
+    UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, Category = "ConnectIt|Components")
     TObjectPtr<UConnectIt_BoardRulesComponent> BoardRulesComponent = nullptr;
 
     // --- Interpreters ---
 
-    UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly,
-        Category = "ConnectIt|Interpreters")
+    UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, Category = "ConnectIt|Interpreters")
     TObjectPtr<UConnectIt_TileStateInterpreter> TileStateInterpreter = nullptr;
 
-    UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly,
-        Category = "ConnectIt|Interpreters")
+    UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, Category = "ConnectIt|Interpreters")
     TObjectPtr<UConnectIt_PieceSpawnInterpreter> PieceSpawnInterpreter = nullptr;
 
-    UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly,
-        Category = "ConnectIt|Interpreters")
+    UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, Category = "ConnectIt|Interpreters")
     TObjectPtr<UConnectIt_ScoreInterpreter> ScoreInterpreter = nullptr;
 
+    // --- Game Events ---
+    UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, Category = "ConnectIt|Game Event")
+    TSubclassOf<UTurnBasedGameEvent> GameEventPlacePiece = nullptr;
+
+    UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, Instanced, Category = "ConnectIt|Game Event")
+    UTurnBasedGameEvent* GameEventInstanceTest = nullptr;
+    
 private:
 
     void BindInterpreters();

@@ -1,0 +1,56 @@
+FIXES
+
+
+[THINKING]
+Board State OnBoardStateChanged is firing to registered interpreters. The idea of interpreters is perhaps too rigid. The BoardStateComponent should strive to function just like GameState or PlayerState. Important replicated information that is immutable to everything except a source of truth (board manager). It is desirable for everything to work through the board manager. I am wondering about moving the OnBoardStateChanged to the board manager. This would allow us to use a more concrete multicast delegate (one that perhaps actually passes the updated board snapshot) rather then requiring users who have bound to the void delegate supplied by the BoardStateComponent base class to search out the updated board state. Ideally I would like to have the 
+
+
+[IN PROGRESS]
+I want to go over a hypothetical situations and check to see if our current Actions system can support it.
+1. UI wants to know what actions a player has so it can display them as buttons in a widget at the side of the screen. Pressing on a button then sets that action active.
+2. We have tutorial level in our game. On turn 2 we want to introduce a new type of board mechanic and force the player to use a specific action. This would also come with some custom tutorial visuals that need to happen.
+3. The player is playing through campaign mode, and has only unlocked 2 of the 5 special skills. How do we procedurally make sure that only these 2 special skills are given to the player at level start (designers have built the level a certain way but the player could have any number of skills unlocked when playing it so the Actions loadout system won't really work).
+
+
+[NOTE]
+OnWorldBeginPlay - is the delegate hook that fires once Begin play is complete for all actors and components
+
+[THINKING]
+For debug widgets, instead of a monolithic one we should create a widget for each object we want to debug so future changes to code are easier to manage. As well, we should look to create a universal debug update delegate that fires at the last possible moment before a new turn begins for all the debug widgets to bind to. And then if we need more granular updates we can accommodate that per widget.
+
+[THINKING]
+How do you feel about taking our ConnectItWorldSubsystem (which currently caches some key objects for ease of use) and turning it into a 'Facade'. We could add pass through multicast delegates for all the most important information for the game. Instead of classes rifling through connections trying to find information we just have it all clearly in one spot. I feel this will simply any blueprint work as well as give us protection against future changes as we would only need to update the subsystem instead of an unknown number of classes.
+
+[THINKING]
+For safety purposes, should the board manager (physical actor in the world) actually just be a config actor. On begin play a world subsystem picks it up (or config actor sends itself to it) and copies all the components and values from it (duplicates) and then stores safely on self?
+
+[THINKING]
+GridPieceRegistry seems obsolete. Check GridTileRegistry to see if we can better understand our original thinking.
+
+SEPT 2, 2026
+
+Grid tiles and pieces no longer register themselves with the grid world subsystem. This responsibility
+should lie with the piece and tile registries we will interface with both the grid subsystem and the actor pool subsystem.
+Grid subsystem should be renamed to GridHoverSubsytem. The responsibility of the subsystem is to simply
+relay when a tile or a piece THAT IS REGISTERED WITH IT, NOT ALL TILES OR PIECES BECAUSE OF THE ACTOR POOL
+are hovered over and to broadcast this. This will help create a generic high level flow for piece creation, pooling and game tracking.
+
+Registries are responsible for tracking real actors to grid positions as well initializing actors
+when needed by using the pool and referencing values from the BoardState. The initialization because it 
+could potentially deal with BP classes should be Blueprint Implementable.
+Registeries should be converted to UObjects instead of ActorComponents to support polymorphism and BP creation.
+Each registry will be different for each project but provide the same useful high level functionality.
+
+BoardManager should be renamed to GameBoard or GameBoardVisualizer to better explain it's purpose 
+which is to read the valid data board state and create the concrete visual board in the world.
+Because of this distinction BoardState should probably live on the GameState (like the turn manager) rather than the BoardManager. 
+It is relatively light weight so replication should not be an issue.
+We can create in interface for concrete implementations to grab required information without having to cast.
+
+Instead of the player controller reaching into the game board to process a request. We should have something
+listening to the player controller broadcasting a ProcessRequest delegate with the same payload.
+We could even have the game mode handle this potentially (unless we want swappable logic for each request for testing...)
+
+How are we communicating to the TurnManager that all visual updates are completed and that the next players turn can start?
+
+

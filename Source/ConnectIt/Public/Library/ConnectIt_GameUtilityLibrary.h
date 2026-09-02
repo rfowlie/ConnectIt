@@ -14,7 +14,7 @@ class UConnectIt_BoardStateComponent;
 class UConnectIt_BoardManagerComponent;
 class UConnectIt_BlackboardSubsystem;
 class UTurnBasedParticipantManagerComponent;
-class UGridWorldSubsystem;
+class UGridHoverSubsystem;
 
 UCLASS()
 class CONNECTIT_API UConnectIt_GameUtilityLibrary
@@ -155,9 +155,9 @@ public:
     static UConnectIt_BlackboardSubsystem* GetBlackboardSubsystem(
         const UObject* WorldContextObject);
 
-    // Returns the grid world subsystem
+    // Returns the grid hover subsystem
     UFUNCTION(BlueprintPure, Category = "ConnectIt|Utility",
         meta = (WorldContext = "WorldContextObject"))
-    static UGridWorldSubsystem* GetGridSubsystem(
+    static UGridHoverSubsystem* GetGridSubsystem(
         const UObject* WorldContextObject);
 };

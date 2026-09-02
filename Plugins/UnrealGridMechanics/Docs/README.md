@@ -29,7 +29,7 @@ Notes: `UnrealTurnBasedMechanics.Build.cs` lists `UnrealGridMechanics` in both `
 - Representing tiles and pieces on a board (`AGridTileBase`, `AGridPieceBase`) independent of any specific game's rules.
 - Needing row/column-push "shift" mechanics with wraparound, either the pure math (`UGridMechanics_GridShiftLibrary`) or the actor-driven version (`UBoardShiftComponent`).
 - Detecting lines, N-in-a-row connections, or shapes on a grid (`UGridMechanics_GridLibrary`, `UGridMechanics_ShapeLibrary`).
-- Tracking or reacting to tile hover/cursor state (`UGridWorldSubsystem`, `AGridCursorManagerBase`).
+- Tracking or reacting to tile/piece hover/cursor state (`UGridHoverSubsystem`, `AGridCursorManagerBase`).
 - Needing a generic, replicated board-state container with pluggable observers (`UBoardStateComponentBase` + `UBoardStateInterpreter`).
 
 See [Systems.md](Systems.md) for a narrative, system-by-system walkthrough of how these fit together and this plugin's own internal conventions — this README stays the exhaustive per-class reference.
@@ -45,7 +45,7 @@ See [Systems.md](Systems.md) for a narrative, system-by-system walkthrough of ho
 ## Notable Design Patterns
 
 - Explicit-injection observer pattern for board state: `UBoardStateInterpreter` subclasses are bound to a `UBoardStateComponentBase` by project wiring code, rather than discovering it automatically. See [Systems.md](Systems.md#board-state) for how the replication + interpreter pattern actually works end to end.
-- Subsystem-based discovery/registration: `UGridWorldSubsystem` (and the largely-overlapping `UGridTrackerSubsystem`) provide per-world grid tile/piece registries and hover tracking. See [Systems.md](Systems.md#known-rough-edges) for how the two relate.
+- Hover relay for registered actors: `UGridHoverSubsystem` relays cursor-over for the tiles/pieces the registry components (`UGridTileRegistryComponent`, `UGridPieceRegistryComponent`) register with it — not all actors of a type, because pieces are pooled. The largely-overlapping `UGridTrackerSubsystem` still does its own tile/unit registration. See [Systems.md](Systems.md#known-rough-edges) for how the two relate.
 - Interface-based deprecation: `IGridTileSelector` supersedes `UGridTileSelectorComponent`, which is marked deprecated via its own `DeprecatedFunction` meta pointing back at the interface. See [Systems.md](Systems.md#tile-selection) for the interface-vs-component pairing.
 - Pure-function libraries (`UBlueprintFunctionLibrary`) separate grid math from actor/state concerns, keeping shift, connection, and shape logic independently testable and Blueprint-accessible. See [Systems.md](Systems.md#board-shifting) for how the shift system's compute/animate split works.
 - UFUNCTION `Category` strings are inconsistent across the plugin (e.g. `"Grid Mechanics | Library | Direction"`, `"Grid|Shift"`, `"Grid|Registry"`, `"Turn Based | Grid"`, `"Grid Mechanics|Cursor"` — mixed spacing/style). See the project-level [naming conventions notes](../../../Source/ConnectIt/Docs/Conventions.md) and [Systems.md](Systems.md#conventions) for this plugin's own fuller convention notes.
@@ -67,7 +67,7 @@ See [Systems.md](Systems.md) for a narrative, system-by-system walkthrough of ho
 
 | Class | Base Class | Purpose | Notes |
 |---|---|---|---|
-| `AGridCursorManagerBase` | `AActor` (Abstract) | Binds to `UGridWorldSubsystem::OnGridTileHoverChanged`; subclasses implement `UpdateCursor` for the visual. Owns enabled/paused state. | |
+| `AGridCursorManagerBase` | `AActor` (Abstract) | Binds to `UGridHoverSubsystem::OnGridTileHoverChanged`; subclasses implement `UpdateCursor` for the visual. Owns enabled/paused state. | |
 | `AGridCursorSimpleBase` | `AGridCursorManagerBase` | Reference implementation — moves a `UStaticMeshComponent` to the hovered tile. | |
 
 ### Base Types (top-level Public/)
@@ -94,15 +94,15 @@ See [Systems.md](Systems.md) for a narrative, system-by-system walkthrough of ho
 | Class | Base Class | Purpose | Notes |
 |---|---|---|---|
 | `AGridPieceBase` | `AActor` | Non-GAS piece actor; holds `FGridPosition GridPosition`. | Base class for the current consuming project's own piece actor subclass. |
-| `UGridPieceRegistryComponent` | `UActorComponent` | `GetPiece(Position)` lookup via cached `UGridWorldSubsystem`/`UGridTileRegistryComponent`. | |
+| `UGridPieceRegistryComponent` | `UActorComponent` | Owns live pieces end-to-end: pool retrieve/release, `UGridHoverSubsystem` register/unregister, `GetPiece(Position)` lookup. | |
 | `AGridUnitBase` | `AGridPieceBase` + `IAbilitySystemInterface` | GAS-enabled piece/unit; owns an `UAbilitySystemComponent`; `GetFactionTag`/`FaceGridDirection` are BlueprintImplementableEvents. | Not currently used by the current consuming project, which uses the simpler `AGridPieceBase` instead. |
 
 ### Subsystem
 
 | Class | Base Class | Purpose | Notes |
 |---|---|---|---|
-| `UGridTrackerSubsystem` | `UWorldSubsystem` | Tracks all grid tiles/units plus the currently-hovered tile; `OnGridTileHoveredStart/Stop` delegates. | Has a fully commented-out "Unit hover" section (dead code). Overlaps significantly with `UGridWorldSubsystem` below — only `GridWorldSubsystem` is actually consumed elsewhere in the codebase. See [Duplication.md](../../../Source/ConnectIt/Docs/Duplication.md). |
-| `UGridWorldSubsystem` | `UWorldSubsystem` | Registers tiles/pieces and exposes `OnGridTileHoverChanged`. | The de facto canonical subsystem — bound to by `AGridCursorManagerBase` and consumed elsewhere in the codebase. |
+| `UGridTrackerSubsystem` | `UWorldSubsystem` | Tracks all grid tiles/units plus the currently-hovered tile; `OnGridTileHoveredStart/Stop` delegates. | Has a fully commented-out "Unit hover" section (dead code). Overlaps with `UGridHoverSubsystem` below. See [Duplication.md](../../../Source/ConnectIt/Docs/Duplication.md). |
+| `UGridHoverSubsystem` | `UWorldSubsystem` | Relays cursor-over (`OnGridTileHoverChanged` / `OnGridPieceHoverChanged`) for tiles/pieces the registry components register with it — registered actors only, since pieces are pooled. | Bound to by `AGridCursorManagerBase` and `UTurnBasedAction`. Does not enumerate or own the tile/piece lists — that is the registry components' job. |
 
 ### Tile
 
@@ -126,7 +126,7 @@ See [Systems.md](Systems.md) for a narrative, system-by-system walkthrough of ho
 
 - `IBoardStateInterface` is unused/orphaned and has an incorrect dead forward declaration. See [Duplication.md](../../../Source/ConnectIt/Docs/Duplication.md).
 - `UBoardStateInterpreter`'s "Chimera Framework" naming residue from a predecessor project. See [Conventions.md](../../../Source/ConnectIt/Docs/Conventions.md#discrepancies).
-- `UGridTrackerSubsystem` vs `UGridWorldSubsystem` overlap — only the latter is actually consumed. See [Duplication.md](../../../Source/ConnectIt/Docs/Duplication.md).
+- `UGridTrackerSubsystem` vs `UGridHoverSubsystem` overlap — both track hovered tiles. See [Duplication.md](../../../Source/ConnectIt/Docs/Duplication.md).
 - `AGridTileBase` vs `UGridTileComponent` cursor-over delegate duplication. See [Duplication.md](../../../Source/ConnectIt/Docs/Duplication.md).
 - `IGridTileSelector` vs `UGridTileSelectorComponent` deprecation pairing. See [Duplication.md](../../../Source/ConnectIt/Docs/Duplication.md).
 - `UGridValidatorBase`'s non-functional `BoardActor` assignment loop (`GridValidatorBase.cpp:26`) — a real bug, not just a stylistic discrepancy.

@@ -340,7 +340,7 @@ void UConnectIt_DebugStateWidget::HandleBoardChangeRequested(const FTurnActionRe
     ForceRefreshAll();
 }
 
-void UConnectIt_DebugStateWidget::HandleActiveManagerTagsChanged()
+void UConnectIt_DebugStateWidget::HandleActiveManagerTagsChanged(const FGameplayTagContainer& TagContainer)
 {
     ForceRefreshAll();
 }

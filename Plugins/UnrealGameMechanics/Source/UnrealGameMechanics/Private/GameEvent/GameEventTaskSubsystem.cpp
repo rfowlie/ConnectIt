@@ -106,11 +106,11 @@ void UGameEventTaskSubsystem::TryExecuteNextContainer()
     if (!ActiveTagContainer.IsEmpty()) return; // something already firing
     if (ContainerQueue.IsEmpty()) return;
 
-    ActiveContainer = ContainerQueue[0];
+    ActiveTagContainer = ContainerQueue[0];
     ContainerQueue.RemoveAt(0);
     OnActiveEventTagsChanged();
     
-    for (const FGameplayTag& Tag : ActiveContainer)
+    for (const FGameplayTag& Tag : ActiveTagContainer)
     {
         // Bound directly (AddUniqueDynamic/RemoveDynamic, compile-time
         // signature-checked) rather than through the reflection-based

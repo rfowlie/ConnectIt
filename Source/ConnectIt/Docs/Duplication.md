@@ -36,13 +36,13 @@ Each entry: **What / Where** → **Evidence** → **Hypothesis** → **Recommend
 
 ---
 
-## #3: `UGridTrackerSubsystem` vs. `UGridWorldSubsystem`
+## #3: `UGridTrackerSubsystem` vs. `UGridHoverSubsystem`
 
-**What / Where**: `Plugins/UnrealGridMechanics/Source/UnrealGridMechanics/Public/Subsystem/GridTrackerSubsystem.h` and `GridWorldSubsystem.h` — both `UWorldSubsystem`s that register grid tiles/pieces and expose hover-state delegates.
+**What / Where**: `Plugins/UnrealGridMechanics/Source/UnrealGridMechanics/Public/Subsystem/GridTrackerSubsystem.h` and `GridHoverSubsystem.h` — both `UWorldSubsystem`s that expose hover-state delegates.
 
-**Evidence**: `UGridTrackerSubsystem` tracks all grid tiles/units plus the currently-hovered tile (`OnGridTileHoveredStart`/`OnGridTileHoveredStop`) and contains a fully commented-out "Unit hover" section (`OnGridUnitHoveredStart`/`OnGridUnitHoveredStop`, `GetGridUnitHovered`) — dead code within a subsystem that itself may be dead. `UGridWorldSubsystem` independently registers tiles/pieces and exposes `OnGridTileHoverChanged`. Only `UGridWorldSubsystem` is actually consumed elsewhere: `AGridCursorManagerBase` (`UnrealGridMechanics`) binds to its `OnGridTileHoverChanged`.
+**Evidence**: `UGridTrackerSubsystem` tracks all grid tiles/units plus the currently-hovered tile (`OnGridTileHoveredStart`/`OnGridTileHoveredStop`) and contains a fully commented-out "Unit hover" section (`OnGridUnitHoveredStart`/`OnGridUnitHoveredStop`, `GetGridUnitHovered`) — dead code within a subsystem that itself may be dead. `UGridHoverSubsystem` relays `OnGridTileHoverChanged` / `OnGridPieceHoverChanged` for the tiles/pieces the registry components register with it, and is consumed by `AGridCursorManagerBase` and `UTurnBasedAction`. Unlike `UGridTrackerSubsystem`, it does not own or enumerate the tile/piece lists — the registry components do.
 
-**Hypothesis**: `UGridTrackerSubsystem` is an earlier or parallel implementation of the same "which tile is hovered" responsibility that was superseded by `UGridWorldSubsystem` without being removed.
+**Hypothesis**: `UGridTrackerSubsystem` is an earlier or parallel implementation of the same "which tile is hovered" responsibility that was superseded by `UGridHoverSubsystem` without being removed.
 
 **Recommendation**: Deprecate/remove `UGridTrackerSubsystem` once confirmed nothing (including level Blueprints) binds to it, or if it's kept, delete its dead "Unit hover" block and document why two subsystems with overlapping registries coexist.
 

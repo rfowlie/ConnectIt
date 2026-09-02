@@ -11,6 +11,7 @@
 class AGridPieceBase;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnPieceVisualComplete, AGridPieceBase*, Piece);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FGridPieceBaseBeginCursorOver, AGridPieceBase*, GridPieceBase);
 
 /*
  * An actor that is considered a piece but does not use GAS
@@ -25,6 +26,14 @@ public:
 
 	UFUNCTION(BlueprintPure, Category = "Grid")
 	FGridPosition GetGridPosition() const { return GridPosition; }
+
+	// Allow piece Blueprints to customize what counts as a cursor-over
+	// (mirror of AGridTileBase::OnGridTileBeginCursorOver). Broadcast from
+	// the piece Blueprint's native "Begin Cursor Over" event.
+	// UGridHoverSubsystem chains this into OnGridPieceHoverChanged for every
+	// registered (i.e. currently active, pool-checked-out) piece.
+	UPROPERTY(BlueprintAssignable, BlueprintCallable, Category = "Grid")
+	FGridPieceBaseBeginCursorOver OnGridPieceBeginCursorOver;
 
 	// Fired once this piece's own activation (spawn-in) visual effect has
 	// genuinely finished, not merely started -- a Blueprint subclass with

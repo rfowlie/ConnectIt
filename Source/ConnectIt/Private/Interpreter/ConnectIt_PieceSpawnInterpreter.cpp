@@ -7,8 +7,11 @@
 #include "ConnectIt_Structs.h"
 #include "Board/ConnectIt_BoardManager.h"
 #include "Board/ConnectIt_BoardStateComponent.h"
+#include "GameEvent/ConnectIt_LineScoreGameEvent.h"
+#include "GameEvent/ConnectIt_PlacePieceGameEvent.h"
 #include "GameEvent/GameEventTaskSubsystem.h"
 #include "GameEvent/GameEventTask_Async.h"
+#include "GameEvent/TurnBasedGameEvent.h"
 #include "Piece/GridPieceBase.h"
 #include "Piece/GridPieceRegistryComponent.h"
 #include "Piece/GridPieceSpawnInterpreter.h"
@@ -102,88 +105,84 @@ void UConnectIt_PieceSpawnInterpreter::BeginPlay()
 
 void UConnectIt_PieceSpawnInterpreter::HandlePiecePlacedExecute()
 {
-    ProcessTagFired(ConnectIt_Event_PiecePlaced, PiecePlacedTask);
-}
-
-void UConnectIt_PieceSpawnInterpreter::HandlePieceRemovedExecute()
-{
-    ProcessTagFired(ConnectIt_Event_PieceRemoved, PieceRemovedTask);
-}
-
-void UConnectIt_PieceSpawnInterpreter::HandlePiecesSwappedExecute()
-{
-    ProcessTagFired(ConnectIt_Event_PiecesSwapped, PiecesSwappedTask);
-}
-
-void UConnectIt_PieceSpawnInterpreter::HandlePieceCapturedExecute()
-{
-    ProcessTagFired(ConnectIt_Event_PieceCaptured, PieceCapturedTask);
-}
-
-void UConnectIt_PieceSpawnInterpreter::HandleLineScoredExecute()
-{
-    ProcessTagFired(ConnectIt_Event_LineScored, LineScoredTask);
-}
-
-void UConnectIt_PieceSpawnInterpreter::ProcessTagFired(FGameplayTag FiredTag, UGameEventTask_Async* Task)
-{
-    ActiveTask = Task;
-    PendingPieces.Reset();
-
-    UConnectIt_BoardStateComponent* BoardStateComponent = GetOwner()
+    const UConnectIt_BoardStateComponent* BoardStateComponent = GetOwner()
         ? GetOwner()->FindComponentByClass<UConnectIt_BoardStateComponent>()
         : nullptr;
 
-    if (!IsValid(BoardStateComponent) || !IsValid(PieceRegistry))
+    AGridTileBase* Tile = BoardStateComponent
+        ? ResolveTile(BoardStateComponent->GetChangeEvent().PlacedPosition)
+        : nullptr;
+
+    const TSubclassOf<AGridPieceBase> PieceClass = BoardStateComponent
+        ? GetPieceClassForFaction(BoardStateComponent->GetChangeEvent().PlacingFactionSlot)
+        : nullptr;
+
+    if (!BoardStateComponent || !IsValid(PieceRegistry) || !IsValid(SpawnInterpreterRef)
+        || !IsValid(Tile) || !PieceClass)
     {
         UE_LOG(LogTemp, Error,
-            TEXT("ConnectIt_PieceSpawnInterpreter: ProcessTagFired — missing "
-                 "BoardStateComponent or PieceRegistry"));
-        if (IsValid(ActiveTask)) { ActiveTask->CallOnComplete(); }
-        ActiveTask = nullptr;
+            TEXT("ConnectIt_PieceSpawnInterpreter: HandlePiecePlacedExecute — "
+                 "missing BoardStateComponent, PieceRegistry, SpawnInterpreterRef, Tile, or PieceClass"));
+        if (IsValid(PiecePlacedTask)) { PiecePlacedTask->CallOnComplete(); }
         return;
     }
 
     const FConnectItBoardChangeEvent& ChangeEvent = BoardStateComponent->GetChangeEvent();
 
-    // Position + faction slot to spawn at -- resolved into an actual
-    // tile/class pair further down, once every request for this firing has
-    // been collected.
-    struct FPendingSpawn
-    {
-        FGridPosition Position;
-        int32 FactionSlot = -1;
-    };
+    ActivePlacePieceEvent = NewObject<UConnectIt_PlacePieceGameEvent>(this);
+    ActivePlacePieceEvent->Initialise(
+        PieceRegistry, SpawnInterpreterRef, PieceClass, Tile,
+        ChangeEvent.PlacingFactionSlot, ChangeEvent.PlacedPosition);
+    ActivePlacePieceEvent->OnComplete.AddDynamic(
+        this, &UConnectIt_PieceSpawnInterpreter::HandlePlacePieceEventComplete);
+    ActivePlacePieceEvent->Execute();
+}
 
-    TArray<FPendingSpawn> Spawns;
-    TArray<FGridPosition> Despawns;
+void UConnectIt_PieceSpawnInterpreter::HandlePlacePieceEventComplete(UTurnBasedGameEvent* Event)
+{
+    ActivePlacePieceEvent = nullptr;
+    if (IsValid(PiecePlacedTask)) { PiecePlacedTask->CallOnComplete(); }
+}
 
-    if (FiredTag == ConnectIt_Event_PiecePlaced)
+void UConnectIt_PieceSpawnInterpreter::HandlePieceRemovedExecute()
+{
+    ActiveTask = PieceRemovedTask;
+    PendingPieces.Reset();
+
+    const UConnectIt_BoardStateComponent* BoardStateComponent = GetOwner()
+        ? GetOwner()->FindComponentByClass<UConnectIt_BoardStateComponent>()
+        : nullptr;
+
+    if (BoardStateComponent)
     {
-        // Also fired by ForcePlacePiece (reuses this same tag -- same
-        // visual outcome, a piece appears on a tile) and produces an
-        // identically-shaped ChangeEvent, so no separate branch needed.
-        Spawns.Add({ ChangeEvent.PlacedPosition, ChangeEvent.PlacingFactionSlot });
-    }
-    else if (FiredTag == ConnectIt_Event_PieceRemoved)
-    {
+        const FConnectItBoardChangeEvent& ChangeEvent = BoardStateComponent->GetChangeEvent();
+        TArray<FGridPosition> Despawns;
         Despawns.Add(ChangeEvent.RemovedPosition);
+        HandleDespawn(Despawns);
     }
-    else if (FiredTag == ConnectIt_Event_PieceCaptured)
+
+    CompleteTaskIfNothingPending();
+}
+
+void UConnectIt_PieceSpawnInterpreter::HandlePiecesSwappedExecute()
+{
+    ActiveTask = PiecesSwappedTask;
+    PendingPieces.Reset();
+
+    const UConnectIt_BoardStateComponent* BoardStateComponent = GetOwner()
+        ? GetOwner()->FindComponentByClass<UConnectIt_BoardStateComponent>()
+        : nullptr;
+
+    if (BoardStateComponent)
     {
-        Despawns.Add(ChangeEvent.CapturedPosition);
-        Spawns.Add({ ChangeEvent.CapturedPosition, ChangeEvent.CapturingFactionSlot });
-    }
-    else if (FiredTag == ConnectIt_Event_PiecesSwapped)
-    {
+        const FConnectItBoardChangeEvent& ChangeEvent = BoardStateComponent->GetChangeEvent();
+
         // ChangeEvent carries no faction data for a swap -- read the
         // already-post-swap state instead (this fires after SetBoardState/
         // OnRep have already committed it, on both server and client).
         const FConnectItBoardState& Current = BoardStateComponent->GetCurrentState();
 
-        Despawns.Add(ChangeEvent.SwapPositionA);
-        Despawns.Add(ChangeEvent.SwapPositionB);
-
+        TArray<FPendingSpawn> Spawns;
         if (const FConnectItTileData* DataA = Current.GetTileData(ChangeEvent.SwapPositionA))
         {
             if (DataA->IsOccupied())
@@ -198,34 +197,90 @@ void UConnectIt_PieceSpawnInterpreter::ProcessTagFired(FGameplayTag FiredTag, UG
                 Spawns.Add({ ChangeEvent.SwapPositionB, DataB->FactionPiece });
             }
         }
-    }
-    else if (FiredTag == ConnectIt_Event_LineScored)
-    {
-        // The completing tile is deliberately kept occupied by
-        // IConnectIt_ScoringRule::ApplyScoring -- despawning it too would
-        // desync the visual board from the real one.
-        const FGridPosition CompletingPosition = ChangeEvent.bPieceCaptured
-            ? ChangeEvent.CapturedPosition
-            : ChangeEvent.PlacedPosition;
+        HandleSpawn(Spawns);
 
-        for (const FGridPosition& Position : ChangeEvent.ScoringLinePositions)
-        {
-            if (!(Position == CompletingPosition))
-            {
-                Despawns.Add(Position);
-            }
-        }
+        TArray<FGridPosition> Despawns;
+        Despawns.Add(ChangeEvent.SwapPositionA);
+        Despawns.Add(ChangeEvent.SwapPositionB);
+        HandleDespawn(Despawns);
     }
-    else
+
+    CompleteTaskIfNothingPending();
+}
+
+void UConnectIt_PieceSpawnInterpreter::HandlePieceCapturedExecute()
+{
+    ActiveTask = PieceCapturedTask;
+    PendingPieces.Reset();
+
+    const UConnectIt_BoardStateComponent* BoardStateComponent = GetOwner()
+        ? GetOwner()->FindComponentByClass<UConnectIt_BoardStateComponent>()
+        : nullptr;
+
+    if (BoardStateComponent)
+    {
+        const FConnectItBoardChangeEvent& ChangeEvent = BoardStateComponent->GetChangeEvent();
+
+        TArray<FPendingSpawn> Spawns;
+        Spawns.Add({ ChangeEvent.CapturedPosition, ChangeEvent.CapturingFactionSlot });
+        HandleSpawn(Spawns);
+
+        TArray<FGridPosition> Despawns;
+        Despawns.Add(ChangeEvent.CapturedPosition);
+        HandleDespawn(Despawns);
+    }
+
+    CompleteTaskIfNothingPending();
+}
+
+void UConnectIt_PieceSpawnInterpreter::HandleLineScoredExecute()
+{
+    const UConnectIt_BoardStateComponent* BoardStateComponent = GetOwner()
+        ? GetOwner()->FindComponentByClass<UConnectIt_BoardStateComponent>()
+        : nullptr;
+
+    if (!BoardStateComponent || !IsValid(PieceRegistry) || !IsValid(SpawnInterpreterRef))
     {
         UE_LOG(LogTemp, Error,
-            TEXT("ConnectIt_PieceSpawnInterpreter: ProcessTagFired — unhandled tag '%s'"),
-            *FiredTag.ToString());
+            TEXT("ConnectIt_PieceSpawnInterpreter: HandleLineScoredExecute — "
+                 "missing BoardStateComponent, PieceRegistry, or SpawnInterpreterRef"));
+        if (IsValid(LineScoredTask)) { LineScoredTask->CallOnComplete(); }
+        return;
     }
 
-    // Track exactly which pieces this firing produced -- see the class
-    // header comment on the known synchronous-completion limitation this
-    // does NOT attempt to work around.
+    const FConnectItBoardChangeEvent& ChangeEvent = BoardStateComponent->GetChangeEvent();
+
+    // The completing tile is deliberately kept occupied by
+    // IConnectIt_ScoringRule::ApplyScoring -- despawning it too would
+    // desync the visual board from the real one.
+    const FGridPosition CompletingPosition = ChangeEvent.bPieceCaptured
+        ? ChangeEvent.CapturedPosition
+        : ChangeEvent.PlacedPosition;
+
+    TArray<FGridPosition> Despawns;
+    for (const FGridPosition& Position : ChangeEvent.ScoringLinePositions)
+    {
+        if (!(Position == CompletingPosition))
+        {
+            Despawns.Add(Position);
+        }
+    }
+
+    ActiveLineScoreEvent = NewObject<UConnectIt_LineScoreGameEvent>(this);
+    ActiveLineScoreEvent->Initialise(PieceRegistry, SpawnInterpreterRef, Despawns);
+    ActiveLineScoreEvent->OnComplete.AddDynamic(
+        this, &UConnectIt_PieceSpawnInterpreter::HandleLineScoreEventComplete);
+    ActiveLineScoreEvent->Execute();
+}
+
+void UConnectIt_PieceSpawnInterpreter::HandleLineScoreEventComplete(UTurnBasedGameEvent* Event)
+{
+    ActiveLineScoreEvent = nullptr;
+    if (IsValid(LineScoredTask)) { LineScoredTask->CallOnComplete(); }
+}
+
+void UConnectIt_PieceSpawnInterpreter::HandleSpawn(TArray<FPendingSpawn> Spawns)
+{
     for (const FPendingSpawn& Spawn : Spawns)
     {
         AGridTileBase* Tile = ResolveTile(Spawn.Position);
@@ -241,6 +296,10 @@ void UConnectIt_PieceSpawnInterpreter::ProcessTagFired(FGameplayTag FiredTag, UG
             PendingPieces.Add(Piece);
         }
     }
+}
+
+void UConnectIt_PieceSpawnInterpreter::HandleDespawn(TArray<FGridPosition> Despawns)
+{
 
     for (const FGridPosition& Position : Despawns)
     {
@@ -250,12 +309,14 @@ void UConnectIt_PieceSpawnInterpreter::ProcessTagFired(FGameplayTag FiredTag, UG
         }
         PieceRegistry->DespawnPieceAt(Position);
     }
+}
 
-    if (PendingPieces.IsEmpty())
-    {
-        if (IsValid(ActiveTask)) { ActiveTask->CallOnComplete(); }
-        ActiveTask = nullptr;
-    }
+void UConnectIt_PieceSpawnInterpreter::CompleteTaskIfNothingPending()
+{
+    if (!PendingPieces.IsEmpty()) return;
+
+    if (IsValid(ActiveTask)) { ActiveTask->CallOnComplete(); }
+    ActiveTask = nullptr;
 }
 
 AGridTileBase* UConnectIt_PieceSpawnInterpreter::ResolveTile(FGridPosition Position) const
@@ -309,12 +370,9 @@ void UConnectIt_PieceSpawnInterpreter::HandlePieceDespawned(AGridPieceBase* Piec
 void UConnectIt_PieceSpawnInterpreter::HandlePieceVisualComplete(AGridPieceBase* Piece)
 {
     // Not something this firing is waiting on -- ignore. Either a stray
-    // signal, or (see the known limitation) a piece whose completion
-    // already fired before it could be added to PendingPieces.
+    // signal, or (for the still-procedural tags only) a piece whose
+    // completion already fired before it could be added to PendingPieces.
     if (PendingPieces.Remove(Piece) == 0) return;
 
-    if (!PendingPieces.IsEmpty()) return;
-
-    if (IsValid(ActiveTask)) { ActiveTask->CallOnComplete(); }
-    ActiveTask = nullptr;
+    CompleteTaskIfNothingPending();
 }

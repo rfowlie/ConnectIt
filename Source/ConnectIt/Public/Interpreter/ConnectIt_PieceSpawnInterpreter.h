@@ -13,18 +13,42 @@ class AGridTileBase;
 class UGridPieceRegistryComponent;
 class UGridPieceSpawnInterpreter;
 class UGameEventTask_Async;
+class UTurnBasedGameEvent;
+class UConnectIt_PlacePieceGameEvent;
+class UConnectIt_LineScoreGameEvent;
+
+USTRUCT(BlueprintType)
+struct FPendingSpawn
+{
+    GENERATED_BODY()
+
+    UPROPERTY(BlueprintReadWrite)
+    FGridPosition Position;
+
+    UPROPERTY(BlueprintReadWrite)
+    int32 FactionSlot = -1;
+};
 
 // ConnectIt-specific piece spawn/despawn orchestrator -- watches exactly
 // the board-event tags that add/remove a piece (PiecePlaced, PieceRemoved,
-// PiecesSwapped, PieceCaptured, LineScored), reads
-// UConnectIt_BoardStateComponent::GetChangeEvent() to translate each
-// firing into spawn/despawn requests, and calls into
-// UGridPieceRegistryComponent (which owns pooling/registration and, via
-// its own sibling UGridPieceSpawnInterpreter, the actual visuals) to carry
-// them out. Composes with those two plugin classes rather than
-// subclassing either -- deciding WHEN and WHY a piece spawns is entirely
-// project-specific, which is exactly what the plugin classes deliberately
-// have no opinion on.
+// PiecesSwapped, PieceCaptured, LineScored) and reads
+// UConnectIt_BoardStateComponent::GetChangeEvent() to figure out what each
+// firing means.
+//
+// PiecePlaced and LineScored are dispatched to UTurnBasedGameEvent
+// subclasses (UConnectIt_PlacePieceGameEvent/UConnectIt_LineScoreGameEvent)
+// -- each owns its own full sequence (retrieve/initialize/position/wait)
+// as its own object, reporting completion back via OnComplete. The other
+// three tags (PieceRemoved, PiecesSwapped, PieceCaptured) still run
+// procedurally through HandleSpawn/HandleDespawn below, calling directly
+// into UGridPieceRegistryComponent/UGridPieceSpawnInterpreter -- not yet
+// converted to the game-event pattern (deliberately incremental scope,
+// see "UTurnBasedGameEvent: encapsulate board-reaction sequences as
+// objects" in the plan history). Notably, the still-procedural despawn
+// path has a known, not-yet-fixed gap: it finalizes a piece's removal
+// (unregisters it) immediately after triggering its despawn visual,
+// rather than waiting for that visual to actually finish -- fixed for
+// LineScored via UConnectIt_LineScoreGameEvent, not yet for the other two.
 //
 // Deliberately does NOT watch ConnectIt_Event_Shift -- a shift moves
 // existing piece actors (already UConnectIt_BoardShiftComponent's job), it
@@ -34,23 +58,10 @@ class UGameEventTask_Async;
 // piece-occupancy consequence.
 //
 // Gates each watched tag's own persistent task on every piece it
-// spawned/despawned this firing actually finishing its visual (tracked via
-// UGridPieceSpawnInterpreter::OnPieceSpawned/OnPieceDespawned) -- so
+// spawned/despawned this firing actually finishing its visual -- so
 // anything else waiting on the same tag (e.g. turn-end resolution, via
 // UGameEventTaskSubsystem's own queue ordering) doesn't proceed until
 // visuals are genuinely done, not merely started.
-//
-// Previously, a piece whose activation/deactivation visual completed
-// synchronously (see AGridPieceBase::OnActivationVisualComplete's own doc
-// comment on pieces with no real effect) could have that completion missed
-// entirely, because UActorPool triggered activation/deactivation as an
-// unavoidable side effect of pool retrieval/release, before this
-// interpreter's own listener bind ever ran. Fixed by moving that trigger to
-// the caller (UGridPieceRegistryComponent::SpawnPieceAt/DespawnPieceAt now
-// call UActorPoolSubsystem::ActivateObject/DeactivateObject explicitly,
-// only after UGridPieceSpawnInterpreter has bound its listener) -- see
-// "Move pooled-actor activation/deactivation to the caller" in the plan
-// history. No longer a limitation to work around here.
 UCLASS(Blueprintable, ClassGroup=(ConnectIt), meta=(BlueprintSpawnableComponent))
 class CONNECTIT_API UConnectIt_PieceSpawnInterpreter : public UActorComponent
 {
@@ -93,11 +104,28 @@ private:
     UFUNCTION() void HandlePieceCapturedExecute();
     UFUNCTION() void HandleLineScoredExecute();
 
-    // Shared translation + orchestration -- reads GetChangeEvent(), builds
-    // spawn/despawn requests for FiredTag, calls into PieceRegistry for
-    // each, and tracks which resulting pieces this firing is waiting on
-    // via PendingPieces.
-    void ProcessTagFired(FGameplayTag FiredTag, UGameEventTask_Async* Task);
+    // In-flight game events for the two converted tags -- kept referenced
+    // here (GC-safety) while running, parallel to how ActiveTask tracks an
+    // in-flight tag task. Two separate slots, not one shared one: distinct
+    // tags fired together in the same QueueTagContainer run in parallel,
+    // so PiecePlaced and LineScored can legitimately both be in flight at
+    // the same time.
+    UPROPERTY() TObjectPtr<UConnectIt_PlacePieceGameEvent> ActivePlacePieceEvent = nullptr;
+    UPROPERTY() TObjectPtr<UConnectIt_LineScoreGameEvent> ActiveLineScoreEvent = nullptr;
+
+    UFUNCTION() void HandlePlacePieceEventComplete(UTurnBasedGameEvent* Event);
+    UFUNCTION() void HandleLineScoreEventComplete(UTurnBasedGameEvent* Event);
+
+    void HandleSpawn(TArray<FPendingSpawn> Spawns);
+    void HandleDespawn(TArray<FGridPosition> Despawns);
+
+    // Called at the end of every HandleXExecute -- if that firing didn't
+    // end up with anything for PendingPieces to wait on (BoardStateComponent
+    // was missing, or HandleSpawn/HandleDespawn skipped every item), completes
+    // ActiveTask immediately instead of leaving it to stall the tag's
+    // UGameEventTaskManager -- and therefore the whole gated queue behind
+    // it -- forever.
+    void CompleteTaskIfNothingPending();
 
     AGridTileBase* ResolveTile(FGridPosition Position) const;
     TSubclassOf<AGridPieceBase> GetPieceClassForFaction(int32 FactionSlot) const;

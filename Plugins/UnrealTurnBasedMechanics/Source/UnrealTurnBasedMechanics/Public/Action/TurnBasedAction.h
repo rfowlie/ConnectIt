@@ -12,7 +12,7 @@
 
 class UTurnBasedAction;
 class AGridTileBase;
-class UGridWorldSubsystem;
+class UGridHoverSubsystem;
 class UEnhancedInputComponent;
 class UEnhancedInputLocalPlayerSubsystem;
 class UInputAction;
@@ -213,7 +213,7 @@ protected:
     UPROPERTY(BlueprintReadOnly)
     TObjectPtr<AGridTileBase> CurrentHoveredTile = nullptr;
 
-    UGridWorldSubsystem* GetGridSubsystem() const;
+    UGridHoverSubsystem* GetGridSubsystem() const;
     
     // Bind/unbind grid-tile hover + optional Enhanced Input selection.
     // Called automatically from Activate_Internal_Implementation when

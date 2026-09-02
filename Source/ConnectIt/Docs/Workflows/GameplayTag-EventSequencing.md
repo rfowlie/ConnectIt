@@ -34,6 +34,7 @@ Subsystem (generic, tag-keyed, serialized FIFO queue)
 | Project-specific tag vocabulary | `ConnectIt.Event.Shift/PiecePlaced/LineScored/PlayerWin/TurnEnd` (`Source/ConnectIt/ConnectIt_GameplayTags.h`) | The tags themselves are ConnectIt-specific; the subsystem that keys off them is not. |
 | The caller that decides enqueue order | `UConnectIt_BoardStateComponent::EnqueueBoardEventTags` | Reads `FConnectItBoardChangeEvent`'s flags and calls `QueueTagContainer` once per event, in order — see [ConnectItModule.md](../ConnectItModule.md). Called from the same component that owns the data being read, not a separate listener. |
 | Data for "what actually happened" | `UConnectIt_BoardStateComponent::GetChangeEvent()` | The tag signal itself carries no parameters — payload data is read separately from the same replicated snapshot driving the queue (see [SingleSourceOfTruth-Replication.md](SingleSourceOfTruth-Replication.md)), available identically on server and client. |
+| A downstream consumer of queue ordering, not a caller | `UTurnBasedParticipantManagerComponent` (`UnrealTurnBasedMechanics`) | Turn-end advancement is gated on this same queue via its own `TurnEndEventTag` — see [Turn-End Is a Consumer of This Queue, Not a Special Case](#turn-end-is-a-consumer-of-this-queue-not-a-special-case) below. |
 
 ## Sequence
 
@@ -43,6 +44,18 @@ Subsystem (generic, tag-keyed, serialized FIFO queue)
 4. For each tag-group, every tag in the group triggers. Anything registered with `BindOnTagBegin` for that tag fires instantly, before any gated task even executes. Anything registered as a `UGameEventTask_Async` against that tag runs, and the group is not considered complete until every registered task in it has called `OnComplete`.
 5. If nothing is registered against a tag yet, its manager completes with zero phases immediately and the queue falls through to the next group synchronously — sequencing is opt-in per listener, not something that has to be wired up before the game functions at all.
 6. Once a group completes, the queue immediately tries the next one, if any is waiting.
+
+## Turn-End Is a Consumer of This Queue, Not a Special Case
+
+This is the answer to a question worth stating explicitly, since it's easy to assume a bespoke mechanism exists for it: **how does the turn system know every visual for a board change has finished before letting the next player's turn start?** It doesn't have its own signal for this at all — it's just another caller of the same FIFO queue described above.
+
+`UTurnBasedParticipantManagerComponent` (`UnrealTurnBasedMechanics`) has a project-configurable `TurnEndEventTag` (set to `ConnectIt_Event_TurnEnd` here). In `BeginPlay` it binds its own `AdvanceToNextParticipant` as that tag's `OnManagerComplete` listener via `BindOnTagComplete`, once. When a turn ends, `EndTurn()` enqueues `TurnEndEventTag` through `QueueTagContainer` — the exact same entry point `UConnectIt_BoardStateComponent::EnqueueBoardEventTags` uses for `PiecePlaced`/`LineScored`/`PlayerWin`/`Shift`.
+
+Because every one of these calls lands on the *same* subsystem's *same* global `ContainerQueue`, and a board change's visual tags are always enqueued (from `SetBoardState`) before that turn's `TurnEndEventTag` is enqueued (from the later `EndTurn()` call), the turn-end container physically cannot start executing until every board-visual container ahead of it in the queue has fully completed. No explicit "wait for visuals" signal, hold counter, or polling loop is needed — it falls out of FIFO ordering on a queue both sides already push into for unrelated reasons.
+
+This replaced an earlier, hand-built mechanism: a `BeginResolutionHold()`/`EndResolutionHold()` counter API on the turn manager, driven by a board-side listener that polled a dedicated sequencer component's `IsIdle()` state before releasing the hold. Once `QueueTagContainer` became a genuine FIFO queue and the board-state component started enqueueing its own tags directly, that entire hold/poll mechanism was redundant — it was manually reconstructing a guarantee the shared queue already provides for free — and was removed outright, not just deprecated. If a turn-based project reusing this pattern is tempted to add its own "wait for visuals" hold API on top of a shared task-sequencing queue, this is the sign it's already solved: make sure the "done" event and the "next thing" enqueue both go through the *same* queue instance, in the right order, and no bridging code is needed at all.
+
+See [RuntimeStateAccess.md's Turn-End & Resolution Sequencing section](../RuntimeStateAccess.md#turn-end--resolution-sequencing) for the full current-state reference (including how to inspect an in-flight sequence for debug UI via `GetTagsInQueue()`/`OnActiveManagerTagsChanged`), and [TurnBasedMechanics's own Systems.md](../../../Plugins/UnrealTurnBasedMechanics/Docs/Systems.md#turn-order--the-participant-state-machine) for the plugin-side mechanics of `TurnEndEventTag`.
 
 ## Why It's Reusable
 
@@ -62,4 +75,4 @@ Everything except the tag vocabulary itself (`ConnectIt.Event.*`) is generic, an
 
 ## Source
 
-Portable rewrite of `Source/ConnectIt/Workflows/GameEventSubsystem_Workflow.txt`, which remains the ConnectIt-specific implementation reference (exact tag list, exact `AConnectIt_BoardManager` call sites, file paths).
+Portable rewrite of `Source/ConnectIt/Workflows/GameEventSubsystem_Workflow.txt`, which remains the ConnectIt-specific implementation reference (exact tag list, exact call sites, file paths) — see that file's "TURN SYSTEM WAITS ON THIS -- FOR FREE, VIA QUEUE ORDERING" section specifically for the turn-end integration described above, including a traced client/server RPC timing argument for why the ordering guarantee holds.

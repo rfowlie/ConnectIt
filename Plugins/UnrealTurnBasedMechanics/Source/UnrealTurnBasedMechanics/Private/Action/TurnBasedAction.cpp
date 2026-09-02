@@ -4,7 +4,7 @@
 #include "UnrealTurnBasedMechanics.h"
 #include "EnhancedInputComponent.h"
 #include "GameFramework/Controller.h"
-#include "Subsystem/GridWorldSubsystem.h"
+#include "Subsystem/GridHoverSubsystem.h"
 #include "InputMappingContext.h"
 #include "Tile/GridTileBase.h"
 
@@ -148,11 +148,11 @@ void UTurnBasedAction::RequestBoardChange(const FTurnActionRequest& Request)
     OnChangeRequested_Native.Broadcast(Request);
 }
 
-UGridWorldSubsystem* UTurnBasedAction::GetGridSubsystem() const
+UGridHoverSubsystem* UTurnBasedAction::GetGridSubsystem() const
 {
     UWorld* World = GetWorld();
     return IsValid(World)
-        ? World->GetSubsystem<UGridWorldSubsystem>()
+        ? World->GetSubsystem<UGridHoverSubsystem>()
         : nullptr;
 }
 
@@ -243,7 +243,7 @@ void UTurnBasedAction::UnbindInput()
 
 void UTurnBasedAction::BindGridSubsystem()
 {
-    if (UGridWorldSubsystem* GridSub = GetGridSubsystem())
+    if (UGridHoverSubsystem* GridSub = GetGridSubsystem())
     {
         GridSub->OnGridTileHoverChanged.AddDynamic(
             this, &UTurnBasedAction::OnGridTileHoverChanged);
@@ -252,7 +252,7 @@ void UTurnBasedAction::BindGridSubsystem()
 
 void UTurnBasedAction::UnbindGridSubsystem()
 {
-    if (UGridWorldSubsystem* GridSub = GetGridSubsystem())
+    if (UGridHoverSubsystem* GridSub = GetGridSubsystem())
     {
         GridSub->OnGridTileHoverChanged.RemoveDynamic(
             this, &UTurnBasedAction::OnGridTileHoverChanged);

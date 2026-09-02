@@ -29,7 +29,7 @@ multiple times per frame -- so the scan cost was being paid repeatedly for a val
 that never changes during a match (one board manager per world).
 
 NOTE ON ARCHITECTURE: this cache intentionally lives in a NEW subsystem in the
-ConnectIt game module, not in the existing UGridWorldSubsystem (UnrealGridMechanics
+ConnectIt game module, not in the existing UGridHoverSubsystem (UnrealGridMechanics
 plugin). AConnectIt_BoardManager is a ConnectIt-module class; ConnectIt already
 depends on UnrealGridMechanics, so caching a strongly-typed AConnectIt_BoardManager*
 inside the plugin would require the plugin to depend back on ConnectIt -- a circular

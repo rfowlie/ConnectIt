@@ -121,7 +121,10 @@ void AConnectIt_PlayerController::ServerRouteBoardChangeRequest_Implementation(
         return;
     }
 
+    // pass to board manager on the server
     const bool bSucceeded = BoardManager->ProcessRequest(Request);
+
+    // return success value to client to halt player input
     ClientNotifyBoardChangeOutcome(Request, bSucceeded);
 
     UE_LOG(LogTemp, Log,

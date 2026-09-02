@@ -3,8 +3,10 @@
 
 #include "Interpreter/ConnectIt_TileStateInterpreter.h"
 #include "Board/ConnectIt_BoardStateComponent.h"
-#include "Subsystem/GridWorldSubsystem.h"
+#include "Board/ConnectIt_BoardManager.h"
+#include "Library/ConnectIt_GameUtilityLibrary.h"
 #include "Tile/GridTileBase.h"
+#include "Tile/GridTileRegistryComponent.h"
 
 
 void UConnectIt_TileStateInterpreter::OnBoardStateChanged_Implementation(
@@ -98,15 +100,13 @@ void UConnectIt_TileStateInterpreter::SendTagToTile(
 AGridTileBase* UConnectIt_TileStateInterpreter::FindTileActor(
     const FGridPosition& Position) const
 {
-    UWorld* World = GetWorld();
-    if (!IsValid(World)) return nullptr;
+    const AConnectIt_BoardManager* BoardManager =
+        UConnectIt_GameUtilityLibrary::GetBoardManager(this);
+    if (!IsValid(BoardManager) || !IsValid(BoardManager->GetTileRegistry()))
+    {
+        return nullptr;
+    }
 
-    UGridWorldSubsystem* GridSub =
-        World->GetSubsystem<UGridWorldSubsystem>();
-    if (!IsValid(GridSub)) return nullptr;
-
-    // TODO: removed the mapping from subsystem and placed on different component
-    // return GridSub->GetTileAtPosition(Position);
-    return nullptr;
+    return BoardManager->GetTileRegistry()->GetTileAtPosition(Position);
 }
 
