@@ -2,7 +2,6 @@
 
 
 #include "Board/BoardStateComponentBase.h"
-#include "Board/Interpreter/BoardStateInterpreter.h"
 
 
 UBoardStateComponentBase::UBoardStateComponentBase()
@@ -11,24 +10,7 @@ UBoardStateComponentBase::UBoardStateComponentBase()
 	SetIsReplicatedByDefault(true);
 }
 
-void UBoardStateComponentBase::RegisterInterpreter(
-	UBoardStateInterpreter* Interpreter)
-{
-	if (!IsValid(Interpreter))
-	{
-		UE_LOG(LogTemp, Warning,
-			TEXT("BoardStateComponentBase: RegisterInterpreter called with null"));
-		return;
-	}
-
-	Interpreters.AddUnique(Interpreter);
-
-	UE_LOG(LogTemp, Log,
-		TEXT("BoardStateComponentBase: Registered interpreter %s"),
-		*Interpreter->GetName());
-}
-
-void UBoardStateComponentBase::BroadcastChange()
+void UBoardStateComponentBase::BroadcastChange() const
 {
 	OnBoardStateChanged.Broadcast();
 }

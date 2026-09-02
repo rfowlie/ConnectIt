@@ -10,7 +10,6 @@
 class AGridPieceBase;
 class AGridTileBase;
 class UGridPieceRegistryComponent;
-class UGridPieceSpawnInterpreter;
 
 // Owns the full ConnectIt_Event_PiecePlaced sequence: retrieve a piece of
 // the right class from the pool, initialize it (faction ownership) before
@@ -30,7 +29,6 @@ public:
     // InitialiseAction's shape.
     void Initialise(
         UGridPieceRegistryComponent* InPieceRegistry,
-        UGridPieceSpawnInterpreter* InSpawnInterpreter,
         TSubclassOf<AGridPieceBase> InPieceClass,
         AGridTileBase* InTile,
         int32 InFactionSlot,
@@ -44,10 +42,7 @@ private:
 
     UPROPERTY()
     TObjectPtr<UGridPieceRegistryComponent> PieceRegistry = nullptr;
-
-    UPROPERTY()
-    TObjectPtr<UGridPieceSpawnInterpreter> SpawnInterpreter = nullptr;
-
+    
     TSubclassOf<AGridPieceBase> PieceClass;
 
     UPROPERTY()

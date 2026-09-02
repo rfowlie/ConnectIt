@@ -7,11 +7,10 @@
 #include "UObject/Object.h"
 #include "GridPieceRegistryBase.generated.h"
 
+class UGridHoverSubsystem;
 class AGridPieceBase;
 class AGridTileBase;
 class UGridTileRegistryBase;
-class UGridPieceSpawnInterpreterBase;
-class UGridHoverSubsystem;
 
 // UObject-based prototype counterpart to UGridPieceRegistryComponent -- same
 // public surface (GetPiece/RetrievePiece/ActivatePieceAt/DeactivatePiece/
@@ -38,9 +37,10 @@ public:
 
     // Called once by whoever owns this instance (e.g. ABoardManagerBase),
     // before any other method here is used.
-    virtual void Initialise(
-        UGridTileRegistryBase* InTileRegistry,
-        UGridPieceSpawnInterpreterBase* InSpawnInterpreter);
+    // Discovers every AGridTileBase in the world, takes ownership of the
+    // list, and registers each with UGridHoverSubsystem for hover relay.
+    // Also starts listening for tiles spawned / streamed in later.
+    virtual void InitialiseRegistry();
 
     // Get-or-create: returns the piece already mapped to Position, or asks
     // InstantiatePiece to create one and caches the result.
@@ -92,15 +92,12 @@ public:
     void DespawnPieceAt(FGridPosition Position);
 
 protected:
-
+    
     UPROPERTY(BlueprintReadOnly)
     TMap<FGridPosition, TObjectPtr<AGridPieceBase>> PieceMap;
 
     UPROPERTY()
     TObjectPtr<UGridTileRegistryBase> TileRegistry = nullptr;
-
-    UPROPERTY()
-    TObjectPtr<UGridPieceSpawnInterpreterBase> SpawnInterpreter = nullptr;
 
 private:
 

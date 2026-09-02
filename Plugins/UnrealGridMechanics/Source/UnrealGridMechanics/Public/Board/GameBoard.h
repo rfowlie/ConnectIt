@@ -109,5 +109,5 @@ public:
     void PieceVisual_BindOnPieceSpawned(const FOnGridPieceVisualEventHandler& Handler);
 
     UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "GameBoard|PieceVisual")
-    void PieceVisual_BindOnPieceDespawned(const FOnGridPieceVisualEventHandler&1121 Handler);
+    void PieceVisual_BindOnPieceDespawned(const FOnGridPieceVisualEventHandler& Handler);
 };

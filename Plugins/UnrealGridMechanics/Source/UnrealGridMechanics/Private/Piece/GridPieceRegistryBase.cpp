@@ -2,21 +2,16 @@
 
 
 #include "Piece/GridPieceRegistryBase.h"
-
 #include "Piece/GridPieceBase.h"
-#include "Piece/GridPieceSpawnInterpreterBase.h"
 #include "Pooling/ActorPoolSubsystem.h"
 #include "Subsystem/GridHoverSubsystem.h"
 #include "Tile/GridTileBase.h"
 #include "Tile/GridTileRegistryBase.h"
 
 
-void UGridPieceRegistryBase::Initialise(
-    UGridTileRegistryBase* InTileRegistry,
-    UGridPieceSpawnInterpreterBase* InSpawnInterpreter)
+void UGridPieceRegistryBase::InitialiseRegistry()
 {
-    TileRegistry = InTileRegistry;
-    SpawnInterpreter = InSpawnInterpreter;
+    // TODO
 }
 
 UGridHoverSubsystem* UGridPieceRegistryBase::ResolveHoverSubsystem() const
@@ -91,14 +86,6 @@ void UGridPieceRegistryBase::ActivatePieceAt(AGridPieceBase* Piece, AGridTileBas
         return;
     }
 
-    if (!IsValid(SpawnInterpreter))
-    {
-        UE_LOG(LogTemp, Error,
-            TEXT("GridPieceRegistryBase: ActivatePieceAt — SpawnInterpreter not set "
-                 "(call Initialise first)"));
-        return;
-    }
-
     UActorPoolSubsystem* PoolSubsystem =
         GetWorld() ? GetWorld()->GetSubsystem<UActorPoolSubsystem>() : nullptr;
 
@@ -108,8 +95,7 @@ void UGridPieceRegistryBase::ActivatePieceAt(AGridPieceBase* Piece, AGridTileBas
             TEXT("GridPieceRegistryBase: ActivatePieceAt — no UActorPoolSubsystem in world"));
         return;
     }
-
-    SpawnInterpreter->SpawnPiece(Piece, Tile);
+    
     PoolSubsystem->ActivateObject(Piece);
 }
 

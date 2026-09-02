@@ -9,7 +9,6 @@
 
 class AGridPieceBase;
 class UGridPieceRegistryComponent;
-class UGridPieceSpawnInterpreter;
 
 // Owns the full ConnectIt_Event_LineScored despawn sequence: for every
 // position it's handed (the scoring line minus the completing tile,
@@ -27,7 +26,6 @@ public:
 
     void Initialise(
         UGridPieceRegistryComponent* InPieceRegistry,
-        UGridPieceSpawnInterpreter* InSpawnInterpreter,
         const TArray<FGridPosition>& InPositionsToDespawn);
 
 protected:
@@ -38,9 +36,6 @@ private:
 
     UPROPERTY()
     TObjectPtr<UGridPieceRegistryComponent> PieceRegistry = nullptr;
-
-    UPROPERTY()
-    TObjectPtr<UGridPieceSpawnInterpreter> SpawnInterpreter = nullptr;
 
     TArray<FGridPosition> PositionsToDespawn;
 

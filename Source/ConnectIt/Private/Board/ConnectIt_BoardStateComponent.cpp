@@ -6,6 +6,7 @@
 #include "GameEvent/GameEventTaskSubsystem.h"
 #include "Library/CodingUtilsComponentLibrary.h"
 #include "Net/UnrealNetwork.h"
+#include "Tile/GridTileRegistryBase.h"
 
 
 UConnectIt_BoardStateComponent::UConnectIt_BoardStateComponent()
@@ -14,11 +15,11 @@ UConnectIt_BoardStateComponent::UConnectIt_BoardStateComponent()
     SetIsReplicatedByDefault(true);
 }
 
-
+// TODO: fix up the conversion, should read from Registries that do initial sweeps in the level
 void UConnectIt_BoardStateComponent::InitialiseBoardState(
-    const TArray<FGridPosition>& TilePositions,
-    int32 NumFactions,
-    float InitialMultiplier)
+    UGridTileRegistryBase* TileRegistry,
+    UGridPieceRegistryBase* PieceRegistry,
+    int32 NumFactions, float InitialMultiplier)
 {
     check(UCodingUtilsComponentLibrary::IsAuthoritative(this));
     check(NumFactions > 0);
@@ -26,13 +27,13 @@ void UConnectIt_BoardStateComponent::InitialiseBoardState(
     FConnectItBoardState InitialState;
 
     // Populate tile map from registered positions
-    for (const FGridPosition& Position : TilePositions)
+    for (const auto Tile : TileRegistry->GetAllTiles())
     {
         FConnectItTileData TileData;
         TileData.FactionPiece = -1;
         TileData.Multiplier   = InitialMultiplier;
         TileData.bIsActive    = true;
-        InitialState.SetTileData(Position, TileData);
+        InitialState.SetTileData(TileRegistry->GetPositionOfTile(Tile), TileData);
     }
 
     // Initialise scoreboard with one entry per faction
@@ -52,11 +53,7 @@ void UConnectIt_BoardStateComponent::InitialiseBoardState(
      */ 
     // Broadcast so interpreters can initialise their visual state
     // BroadcastChange();
-
-    UE_LOG(LogTemp, Log,
-        TEXT("ConnectItBoardStateComponent: Initialised — "
-             "%d tiles, %d factions"),
-        TilePositions.Num(), NumFactions);
+    
 }
 
 void UConnectIt_BoardStateComponent::SetBoardState(

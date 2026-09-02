@@ -7,6 +7,8 @@
 #include "Board/BoardStateComponentBase.h"
 #include "ConnectIt_BoardStateComponent.generated.h"
 
+class UGridPieceRegistryBase;
+class UGridTileRegistryBase;
 // Everything a debug widget needs to know about this component's current
 // values in one call -- used to seed initial state once, right after
 // binding, through the same events used for later reactive updates (see
@@ -42,7 +44,8 @@ public:
     // Initialises the board state from a set of registered tile positions
     // Called once at game start after all tiles register with subsystem
     void InitialiseBoardState(
-        const TArray<FGridPosition>& TilePositions,
+        UGridTileRegistryBase* TileRegistry,
+        UGridPieceRegistryBase* PieceRegistry,
         int32 NumFactions,
         float InitialMultiplier = 1.0f);
 

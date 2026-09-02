@@ -1,42 +1,23 @@
 ﻿// Fill out your copyright notice in the Description page of Project Settings.
 
-
 #include "Board/ConnectIt_BoardManager.h"
-
 #include "ConnectIt_GameplayTags.h"
 #include "GameplayTagContainer.h"
 #include "StructUtils/InstancedStruct.h"
 #include "TurnBasedMechanicsStructs.h"
-#include "Action/ConnectIt_ShiftAction.h"
 #include "Board/ConnectIt_BoardStateComponent.h"
 #include "Board/Rules/ConnectIt_BoardRulesComponent.h"
 #include "Framework/Data/ConnectIt_ConfigComponent.h"
 #include "Framework/Subsystem/ConnectIt_BoardManagerSubsystem.h"
-#include "Interpreter/ConnectIt_PieceSpawnInterpreter.h"
-#include "Interpreter/ConnectIt_ScoreInterpreter.h"
-#include "Interpreter/ConnectIt_TileStateInterpreter.h"
-#include "Board/ConnectIt_BoardShiftComponent.h"
 #include "Library/ConnectIt_GameUtilityLibrary.h"
 #include "Piece/GridPieceRegistryComponent.h"
-#include "Piece/GridPieceSpawnInterpreter.h"
-#include "Tile/GridTileRegistryComponent.h"
 #include "Turn/Participant/TurnBasedParticipantManagerComponent.h"
+#include "GameEvent/ConnectIt_PlacePieceGameEvent.h"
+#include "Tile/GridTileRegistryBase.h"
 
 
 AConnectIt_BoardManager::AConnectIt_BoardManager()
 {
-    TileRegistryComponent =
-        CreateDefaultSubobject<UGridTileRegistryComponent>(
-            TEXT("TileRegistry"));
-
-    PieceRegistryComponent =
-        CreateDefaultSubobject<UGridPieceRegistryComponent>(
-            TEXT("PieceRegistry"));
-
-    GridPieceSpawnInterpreter =
-        CreateDefaultSubobject<UGridPieceSpawnInterpreter>(
-            TEXT("GridPieceSpawnInterpreter"));
-
     BoardStateComponent =
         CreateDefaultSubobject<UConnectIt_BoardStateComponent>(
             TEXT("BoardState"));
@@ -48,18 +29,7 @@ AConnectIt_BoardManager::AConnectIt_BoardManager()
     BoardRulesComponent =
         CreateDefaultSubobject<UConnectIt_BoardRulesComponent>(
             TEXT("BoardRules"));
-
-    TileStateInterpreter =
-        CreateDefaultSubobject<UConnectIt_TileStateInterpreter>(
-            TEXT("TileStateInterpreter"));
-
-    PieceSpawnInterpreter =
-        CreateDefaultSubobject<UConnectIt_PieceSpawnInterpreter>(
-            TEXT("PieceSpawnInterpreter"));
-
-    ScoreInterpreter =
-        CreateDefaultSubobject<UConnectIt_ScoreInterpreter>(
-            TEXT("ScoreInterpreter"));
+    
 
     bReplicates = true;
 }
@@ -69,8 +39,6 @@ AConnectIt_BoardManager::AConnectIt_BoardManager()
 void AConnectIt_BoardManager::BeginPlay()
 {
     Super::BeginPlay();
-
-    BindInterpreters();
 
     // Populate the per-world board manager cache -- runs on both server
     // and client, since most GetBoardManager call sites are client-side
@@ -99,38 +67,35 @@ void AConnectIt_BoardManager::HandleActiveControllerChanged(AController* NewActi
             : TEXT("none"));
 }
 
-void AConnectIt_BoardManager::BindInterpreters()
+void AConnectIt_BoardManager::CreateGameEventsFromBoardUpdate_Implementation()
 {
     if (!IsValid(BoardStateComponent))
     {
         UE_LOG(LogTemp, Error,
-            TEXT("ConnectIt_BoardManager: Cannot bind interpreters "
+            TEXT("ConnectIt_GameBoard: Cannot bind interpreters "
                  "— BoardStateComponent is null"));
         return;
     }
 
-    if (IsValid(TileStateInterpreter))
+    FConnectItBoardChangeEvent ChangeEvent = BoardStateComponent->GetChangeEvent();
+    if (ChangeEvent.bPiecePlaced)
     {
-        TileStateInterpreter->BindToBoardStateComponent(BoardStateComponent);
+        // create place piece game event
+        // or initialize reusable game event and add to queue
+        TurnBasedGameEventQueue.Enqueue(GameEventPlacePiece);
     }
 
-    // PieceSpawnInterpreter no longer binds here -- it composes with
-    // GridPieceRegistryComponent/GridPieceSpawnInterpreter (resolved as
-    // siblings via FindComponentByClass in its own BeginPlay) and
-    // self-registers directly against UGameEventTaskSubsystem tags, same
-    // self-registering idiom UConnectIt_BoardShiftComponent already uses.
+    ExecuteGameEvents();
+}
 
-    if (IsValid(ScoreInterpreter))
-    {
-        ScoreInterpreter->BindToBoardStateComponent(BoardStateComponent);
-    }
-
-    UE_LOG(LogTemp, Log,
-        TEXT("ConnectIt_BoardManager: Interpreters bound"));
+void AConnectIt_BoardManager::ExecuteGameEvents()
+{
+    // TODO queue wait system to run each game event waiting for it's OnComplete To Fire
+    // this is an alternative to the GameEventSubsystem but this will allow us to more clearly
+    // group and sequence the visual effects we want from each game event
 }
 
 // --- Board Lifecycle ---
-
 void AConnectIt_BoardManager::InitialiseBoard(int32 NumFactions)
 {
     if (!HasAuthority()) return;
@@ -143,7 +108,7 @@ void AConnectIt_BoardManager::InitialiseBoard(int32 NumFactions)
         return;
     }
 
-    if (!IsValid(TileRegistryComponent))
+    if (!IsValid(TileRegistry))
     {
         UE_LOG(LogTemp, Error,
             TEXT("ConnectIt_BoardManager: InitialiseBoard — "
@@ -151,25 +116,8 @@ void AConnectIt_BoardManager::InitialiseBoard(int32 NumFactions)
         return;
     }
 
-    const TArray<FGridPosition> TilePositions =
-        TileRegistryComponent->GetAllTilePositions();
-
-    if (TilePositions.IsEmpty())
-    {
-        UE_LOG(LogTemp, Error,
-            TEXT("ConnectIt_BoardManager: InitialiseBoard — "
-                 "No tile positions found in registry. "
-                 "Ensure tiles have registered before calling this."));
-        return;
-    }
-
-    BoardStateComponent->InitialiseBoardState(TilePositions, NumFactions);
-
-    UE_LOG(LogTemp, Log,
-        TEXT("ConnectIt_BoardManager: Board initialised — "
-             "%d tiles, %d factions"),
-        TilePositions.Num(),
-        NumFactions);
+    BoardStateComponent->InitialiseBoardState(TileRegistry, PieceRegistry, NumFactions);
+    
 }
 
 // --- Request Processing ---
@@ -379,44 +327,47 @@ bool AConnectIt_BoardManager::HandlePlacePieceRequest(
 bool AConnectIt_BoardManager::HandleShiftRequest(
     const FConnectItRequestBoardShift& Request, int32 FactionID) const
 {
-    if (!IsValid(BoardShiftComponent))
-    {
-        UE_LOG(LogTemp, Error,
-            TEXT("ConnectIt_BoardManager: HandleShiftRequest — "
-                 "ShiftStateComponent is null"));
-        return false;
-    }
+    // if (!IsValid(BoardShiftComponent))
+    // {
+    //     UE_LOG(LogTemp, Error,
+    //         TEXT("ConnectIt_BoardManager: HandleShiftRequest — "
+    //              "ShiftStateComponent is null"));
+    //     return false;
+    // }
+    //
+    // FConnectItBoardState NewState = BoardStateComponent->GetCurrentState();
+    // FShiftResult ShiftResult;
+    // if (!BoardShiftComponent->ComputeShift(
+    //     NewState, ShiftResult, Request.ShiftOperation))
+    // {
+    //     UE_LOG(LogTemp, Warning,
+    //         TEXT("ConnectIt_BoardManager: Shift rejected — "
+    //              "ComputeShift returned an invalid result"));
+    //     return false;
+    // }
+    //
+    // // Record what happened -- same authoritative-first pattern as
+    // // HandlePlacePieceRequest: commit state via SetBoardState first, then
+    // // ConnectIt_BoardStateComponent (fires identically on server and
+    // // client) enqueues the gated visual sequence from the replicated
+    // // ChangeEvent. Parallel arrays instead of Result's TMap/TSet directly --
+    // // those don't replicate (see FConnectItBoardChangeEvent's Shift fields).
+    // FConnectItBoardChangeEvent ChangeEvent;
+    // ChangeEvent.bShiftApplied = true;
+    // ChangeEvent.ShiftOperation = Request.ShiftOperation;
+    // ShiftResult.PositionRemap.GenerateKeyArray(ChangeEvent.ShiftFromPositions);
+    // for (const FGridPosition& FromPos : ChangeEvent.ShiftFromPositions)
+    // {
+    //     ChangeEvent.ShiftToPositions.Add(ShiftResult.PositionRemap[FromPos]);
+    // }
+    //
+    // ChangeEvent.ShiftWrappingPositions = ShiftResult.WrappingPositions.Array();
+    //
+    // BoardStateComponent->SetBoardState(NewState, ChangeEvent);
+    // return true;
 
-    FConnectItBoardState NewState = BoardStateComponent->GetCurrentState();
-    FShiftResult ShiftResult;
-    if (!BoardShiftComponent->ComputeShift(
-        NewState, ShiftResult, Request.ShiftOperation))
-    {
-        UE_LOG(LogTemp, Warning,
-            TEXT("ConnectIt_BoardManager: Shift rejected — "
-                 "ComputeShift returned an invalid result"));
-        return false;
-    }
-
-    // Record what happened -- same authoritative-first pattern as
-    // HandlePlacePieceRequest: commit state via SetBoardState first, then
-    // ConnectIt_BoardStateComponent (fires identically on server and
-    // client) enqueues the gated visual sequence from the replicated
-    // ChangeEvent. Parallel arrays instead of Result's TMap/TSet directly --
-    // those don't replicate (see FConnectItBoardChangeEvent's Shift fields).
-    FConnectItBoardChangeEvent ChangeEvent;
-    ChangeEvent.bShiftApplied = true;
-    ChangeEvent.ShiftOperation = Request.ShiftOperation;
-    ShiftResult.PositionRemap.GenerateKeyArray(ChangeEvent.ShiftFromPositions);
-    for (const FGridPosition& FromPos : ChangeEvent.ShiftFromPositions)
-    {
-        ChangeEvent.ShiftToPositions.Add(ShiftResult.PositionRemap[FromPos]);
-    }
-    
-    ChangeEvent.ShiftWrappingPositions = ShiftResult.WrappingPositions.Array();
-
-    BoardStateComponent->SetBoardState(NewState, ChangeEvent);
-    return true;
+    // TODO: implement this once basic functionality is good
+    return false;
 }
 
 bool AConnectIt_BoardManager::HandleForcePlacePieceRequest(

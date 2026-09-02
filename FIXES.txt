@@ -54,3 +54,8 @@ We could even have the game mode handle this potentially (unless we want swappab
 How are we communicating to the TurnManager that all visual updates are completed and that the next players turn can start?
 
 
+TODO
+Make Game Board Class and Replace in Level - !there are so many connections to this, this will be a pain in the ass, should just commit to the conversion 
+Move BoardState to GameState? - Check if there will be any replication issues if this happens
+Move Request logic into ConnectItBoardState? - This might be rigid/hard to experiment with various types of board logic such as if a piece is placed it randomly reduces an adjacent multiplier
+

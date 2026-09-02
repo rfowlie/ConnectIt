@@ -11,7 +11,6 @@ class AGridPieceBase;
 class AGridTileBase;
 class UGridTileRegistryComponent;
 class UGridHoverSubsystem;
-class UGridPieceSpawnInterpreter;
 
 // Owns piece existence end-to-end: answers "what piece is at this
 // position" (GetPiece), and owns getting one there or taking one away --

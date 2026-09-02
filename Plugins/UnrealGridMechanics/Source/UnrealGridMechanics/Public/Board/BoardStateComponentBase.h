@@ -7,8 +7,6 @@
 #include "GridMechanicsBaseStructs.h"
 #include "BoardStateComponentBase.generated.h"
 
-class UBoardStateInterpreter;
-
 
 // TODO: move to ConnectIt and rename
 // Extensible tile data — add game specific fields in subclass or directly here
@@ -47,21 +45,12 @@ public:
     UPROPERTY(BlueprintAssignable, Category = "Board State")
     FOnBoardStateChanged OnBoardStateChanged;
 
-    // Bind a board state interpreter to this component
-    // Called from AConnectItBoardActor::BeginPlay or project wiring
-    UFUNCTION(BlueprintCallable, Category = "Board State")
-    void RegisterInterpreter(UBoardStateInterpreter* Interpreter);
 
 protected:
 
     // Subclass calls this after writing new state on the server
     // Fires OnBoardStateChanged immediately on server
     // Replication fires it on clients via OnRep in subclass
-    void BroadcastChange();
-
-private:
-
-    // Registered interpreters -- notified on change
-    UPROPERTY()
-    TArray<TObjectPtr<UBoardStateInterpreter>> Interpreters;
+    void BroadcastChange() const;
+    
 };

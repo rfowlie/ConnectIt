@@ -12,6 +12,7 @@
 #include "Turn/Participant/TurnBasedParticipantComponent.h"
 #include "GameFramework/PlayerController.h"
 #include "Tile/GridTileBase.h"
+#include "Tile/GridTileRegistryBase.h"
 #include "Tile/GridTileRegistryComponent.h"
 
 

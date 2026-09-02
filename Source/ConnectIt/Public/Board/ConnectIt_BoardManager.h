@@ -5,19 +5,16 @@
 #include "CoreMinimal.h"
 #include "ConnectIt_BoardStateComponent.h"
 #include "ConnectIt_Structs.h"
-#include "GridMechanicsBaseStructs.h"
 #include "TurnBasedMechanicsStructs.h"
+#include "Board/BoardManagerBase.h"
 #include "ConnectIt_BoardManager.generated.h"
 
+class UConnectIt_PlacePieceGameEvent;
 class UTurnBasedGameEvent;
 class UActionLoadoutDataAsset;
 class UConnectIt_ConfigComponent;
-class UConnectIt_TileStateInterpreter;
-class UConnectIt_PieceSpawnInterpreter;
-class UConnectIt_ScoreInterpreter;
 class UGridTileRegistryComponent;
 class UGridPieceRegistryComponent;
-class UGridPieceSpawnInterpreter;
 class UConnectIt_BoardRulesComponent;
 class UConnectIt_BoardShiftComponent;
 
@@ -29,7 +26,7 @@ class UConnectIt_BoardShiftComponent;
 // parallel notification API for the same events.
 
 UCLASS(Blueprintable, BlueprintType)
-class CONNECTIT_API AConnectIt_BoardManager : public AActor
+class CONNECTIT_API AConnectIt_BoardManager : public ABoardManagerBase
 {
 
     GENERATED_BODY()
@@ -46,29 +43,17 @@ public:
     // awkward Cast<UConnectIt_BoardStateComponent>(...) at every call site.
     // Plain accessors below return the real derived type directly.
 
-    UFUNCTION(BlueprintPure, Category = "ConnectIt|Board")
-    UGridTileRegistryComponent* GetTileRegistry() const { return TileRegistryComponent; }
-
-    UFUNCTION(BlueprintPure, Category = "ConnectIt|Board")
-    UGridPieceRegistryComponent* GetPieceRegistry() const { return PieceRegistryComponent; }
-
-    // Project-agnostic "position a piece and play its visual" executor --
-    // UGridPieceRegistryComponent resolves this as a sibling to carry out
-    // the actual spawn/despawn visual once it's retrieved/released a piece
-    // from the pool. See UGridPieceSpawnInterpreter's own class comment.
-    UFUNCTION(BlueprintPure, Category = "ConnectIt|Board")
-    UGridPieceSpawnInterpreter* GetGridPieceSpawnInterpreter() const { return GridPieceSpawnInterpreter; }
-
-    UFUNCTION(BlueprintPure, Category = "ConnectIt|Board")
-    UConnectIt_ConfigComponent* GetConfigComponent() const { return ConnectItConfigComponent; }
+    // UFUNCTION(BlueprintPure, Category = "ConnectIt|Board")
+    // UGridTileRegistryComponent* GetTileRegistry() const { return TileRegistryComponent; }
+    //
+    // UFUNCTION(BlueprintPure, Category = "ConnectIt|Board")
+    // UGridPieceRegistryComponent* GetPieceRegistry() const { return PieceRegistryComponent; }
 
     UFUNCTION(BlueprintPure, Category = "ConnectIt|Board")
     UConnectIt_BoardStateComponent* GetBoardStateComponent() const { return BoardStateComponent; }
-
-    // Owns shift end-to-end for ConnectIt -- computing the remap, applying
-    // it to board state, and animating it. See UConnectIt_BoardShiftComponent.
+    
     UFUNCTION(BlueprintPure, Category = "ConnectIt|Board")
-    UConnectIt_BoardShiftComponent* GetShiftStateComponent() const { return BoardShiftComponent; }
+    UConnectIt_ConfigComponent* GetConfigComponent() const { return ConnectItConfigComponent; }
 
     // Owns the pluggable scoring/win-condition strategies -- see
     // UConnectIt_BoardRulesComponent. Replaces the WinScoreThreshold/
@@ -105,53 +90,30 @@ protected:
     // --- Components ---
 
     UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, Category = "ConnectIt|Components")
-    TObjectPtr<UGridTileRegistryComponent> TileRegistryComponent = nullptr;
-
-    UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, Category = "ConnectIt|Components")
-    TObjectPtr<UGridPieceRegistryComponent> PieceRegistryComponent = nullptr;
-
-    // Sibling of PieceRegistryComponent, resolved by it via
-    // FindComponentByClass -- owns positioning a piece and waiting for its
-    // visual completion signal. Separate subobject (not the same component
-    // as PieceSpawnInterpreter below) because UConnectIt_PieceSpawnInterpreter
-    // composes with this rather than subclassing it -- see that class's
-    // header comment.
-    UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, Category = "ConnectIt|Components")
-    TObjectPtr<UGridPieceSpawnInterpreter> GridPieceSpawnInterpreter = nullptr;
-
+    TObjectPtr<UConnectIt_BoardStateComponent> BoardStateComponent = nullptr;
+    
     UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, Category = "ConnectIt|Components")
     TObjectPtr<UConnectIt_ConfigComponent> ConnectItConfigComponent = nullptr;
     
     UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, Category = "ConnectIt|Components")
-    TObjectPtr<UConnectIt_BoardStateComponent> BoardStateComponent = nullptr;
-    
-    UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, Category = "ConnectIt|Components")
-    TObjectPtr<UConnectIt_BoardShiftComponent> BoardShiftComponent = nullptr;
-
-    UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, Category = "ConnectIt|Components")
     TObjectPtr<UConnectIt_BoardRulesComponent> BoardRulesComponent = nullptr;
-
-    // --- Interpreters ---
-
-    UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, Category = "ConnectIt|Interpreters")
-    TObjectPtr<UConnectIt_TileStateInterpreter> TileStateInterpreter = nullptr;
-
-    UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, Category = "ConnectIt|Interpreters")
-    TObjectPtr<UConnectIt_PieceSpawnInterpreter> PieceSpawnInterpreter = nullptr;
-
-    UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, Category = "ConnectIt|Interpreters")
-    TObjectPtr<UConnectIt_ScoreInterpreter> ScoreInterpreter = nullptr;
+    
 
     // --- Game Events ---
-    UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, Category = "ConnectIt|Game Event")
-    TSubclassOf<UTurnBasedGameEvent> GameEventPlacePiece = nullptr;
+    TQueue<UTurnBasedGameEvent*> TurnBasedGameEventQueue;
+    
+    // read the board state and determine what events need to occur and in what order
+    UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "ConnectIt|Game Board")
+    void CreateGameEventsFromBoardUpdate();
+    void ExecuteGameEvents();
+    
+    UPROPERTY(Instanced, EditDefaultsOnly, BlueprintReadOnly, Category = "ConnectIt|Game Board")
+    UTurnBasedGameEvent* GameEventTest = nullptr;
 
-    UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, Instanced, Category = "ConnectIt|Game Event")
-    UTurnBasedGameEvent* GameEventInstanceTest = nullptr;
+    UPROPERTY(Instanced, EditDefaultsOnly, BlueprintReadOnly, Category = "ConnectIt|Game Board")
+    UConnectIt_PlacePieceGameEvent* GameEventPlacePiece = nullptr;
     
 private:
-
-    void BindInterpreters();
 
     // --- Request Handlers ---
     // FactionID is passed separately rather than living on each payload

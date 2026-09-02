@@ -5,7 +5,6 @@
 #include "CoreMinimal.h"
 #include "ConnectIt_BoardStateComponent.h"
 #include "ConnectIt_Structs.h"
-#include "GridMechanicsBaseStructs.h"
 #include "TurnBasedMechanicsStructs.h"
 #include "Board/BoardManagerBase.h"
 #include "ConnectIt_GameBoard.generated.h"
@@ -15,8 +14,6 @@ class UTurnBasedGameEvent;
 class UConnectIt_ConfigComponent;
 class UConnectIt_BoardRulesComponent;
 class UConnectIt_BoardShiftComponent;
-class UConnectIt_TileStateInterpreter;
-class UConnectIt_ScoreInterpreter;
 
 // Prototype: imitates AConnectIt_BoardManager's request-processing surface,
 // but derives ABoardManagerBase, so its TileRegistry/PieceRegistry/
@@ -66,18 +63,12 @@ public:
     UFUNCTION(BlueprintPure, Category = "ConnectIt|Board")
     UConnectIt_BoardStateComponent* GetBoardStateComponent() const { return BoardStateComponent; }
 
-    // Covariant override of ABoardManagerBase's slot -- callers holding an
-    // AConnectIt_GameBoard* get the concrete type via GetBoardStateComponent()
-    // above with zero cast; generic code holding only an ABoardManagerBase*
-    // still gets a valid, correctly-typed pointer through this override.
-    virtual UConnectIt_BoardStateComponent* GetBoardStateComponentBase() const override { return BoardStateComponent; }
-
     UFUNCTION(BlueprintPure, Category = "ConnectIt|Board")
     UConnectIt_BoardShiftComponent* GetShiftStateComponent() const { return BoardShiftComponent; }
-
+    
     UFUNCTION(BlueprintPure, Category = "ConnectIt|Board")
     UConnectIt_BoardRulesComponent* GetBoardRulesComponent() const { return BoardRulesComponent; }
-
+    
     // Called by GameMode after all tiles have registered
     UFUNCTION(BlueprintCallable, Category = "ConnectIt|Board")
     void InitialiseBoard(int32 NumFactions);
@@ -103,13 +94,7 @@ protected:
 
     UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, Category = "ConnectIt|Components")
     TObjectPtr<UConnectIt_BoardRulesComponent> BoardRulesComponent = nullptr;
-
-    UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, Category = "ConnectIt|Interpreters")
-    TObjectPtr<UConnectIt_TileStateInterpreter> TileStateInterpreter = nullptr;
-
-    UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, Category = "ConnectIt|Interpreters")
-    TObjectPtr<UConnectIt_ScoreInterpreter> ScoreInterpreter = nullptr;
-
+    
     // UFUNCTION(BlueprintReadWrite, Category = "ConnectIt|Game Board")
     TQueue<UTurnBasedGameEvent*> TurnBasedGameEventQueue;
     
@@ -125,9 +110,7 @@ protected:
     UConnectIt_PlacePieceGameEvent* GameEventPlacePiece = nullptr;
 
 private:
-
-    void BindInterpreters();
-
+    
     // --- Request Handlers ---
     // Copied verbatim from AConnectIt_BoardManager -- see that class for
     // the per-handler doc comments (unchanged here).

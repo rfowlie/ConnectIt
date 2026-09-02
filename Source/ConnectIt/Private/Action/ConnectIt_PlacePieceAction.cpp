@@ -9,6 +9,7 @@
 #include "Library/ConnectIt_GameUtilityLibrary.h"
 #include "StructUtils/InstancedStruct.h"
 #include "Tile/GridTileBase.h"
+#include "Tile/GridTileRegistryBase.h"
 #include "Tile/GridTileRegistryComponent.h"
 #include "Turn/Participant/TurnBasedParticipantComponent.h"
 

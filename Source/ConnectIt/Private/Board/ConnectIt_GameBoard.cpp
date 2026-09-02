@@ -10,10 +10,7 @@
 #include "Board/ConnectIt_BoardShiftComponent.h"
 #include "Board/Rules/ConnectIt_BoardRulesComponent.h"
 #include "Framework/Data/ConnectIt_ConfigComponent.h"
-#include "Interpreter/ConnectIt_ScoreInterpreter.h"
-#include "Interpreter/ConnectIt_TileStateInterpreter.h"
 #include "Piece/GridPieceRegistryBase.h"
-#include "Piece/GridPieceSpawnInterpreterBase.h"
 #include "Tile/GridTileRegistryBase.h"
 #include "GameEvent/ConnectIt_PlacePieceGameEvent.h"
 
@@ -27,7 +24,7 @@ AConnectIt_GameBoard::AConnectIt_GameBoard()
     // default subobject.
     TileRegistry = CreateDefaultSubobject<UGridTileRegistryBase>(TEXT("TileRegistry"));
     PieceRegistry = CreateDefaultSubobject<UGridPieceRegistryBase>(TEXT("PieceRegistry"));
-    PieceSpawnInterpreter = CreateDefaultSubobject<UGridPieceSpawnInterpreterBase>(TEXT("PieceSpawnInterpreter"));
+    // PieceSpawnInterpreter = CreateDefaultSubobject<UGridPieceSpawnInterpreterBase>(TEXT("PieceSpawnInterpreter"));
 
     // ConnectIt-specific pieces -- unchanged shape from AConnectIt_BoardManager,
     // still plain ActorComponents (no new UObject counterpart exists for
@@ -46,12 +43,6 @@ AConnectIt_GameBoard::AConnectIt_GameBoard()
     BoardShiftComponent =
         CreateDefaultSubobject<UConnectIt_BoardShiftComponent>(TEXT("BoardShift"));
 
-    TileStateInterpreter =
-        CreateDefaultSubobject<UConnectIt_TileStateInterpreter>(TEXT("TileStateInterpreter"));
-
-    ScoreInterpreter =
-        CreateDefaultSubobject<UConnectIt_ScoreInterpreter>(TEXT("ScoreInterpreter"));
-
     bReplicates = true;
 }
 
@@ -61,7 +52,6 @@ void AConnectIt_GameBoard::BeginPlay()
 {
     Super::BeginPlay();
 
-    BindInterpreters();
 }
 
 void AConnectIt_GameBoard::CreateGameEventsFromBoardUpdate_Implementation()
@@ -90,30 +80,6 @@ void AConnectIt_GameBoard::ExecuteGameEvents()
     // TODO queue wait system to run each game event waiting for it's OnComplete To Fire
     // this is an alternative to the GameEventSubsystem but this will allow us to more clearly
     // group and sequence the visual effects we want from each game event
-}
-
-void AConnectIt_GameBoard::BindInterpreters()
-{
-    if (!IsValid(BoardStateComponent))
-    {
-        UE_LOG(LogTemp, Error,
-            TEXT("ConnectIt_GameBoard: Cannot bind interpreters "
-                 "— BoardStateComponent is null"));
-        return;
-    }
-
-    if (IsValid(TileStateInterpreter))
-    {
-        TileStateInterpreter->BindToBoardStateComponent(BoardStateComponent);
-    }
-
-    if (IsValid(ScoreInterpreter))
-    {
-        ScoreInterpreter->BindToBoardStateComponent(BoardStateComponent);
-    }
-
-    UE_LOG(LogTemp, Log,
-        TEXT("ConnectIt_GameBoard: Interpreters bound"));
 }
 
 // --- Board Lifecycle ---
@@ -150,7 +116,7 @@ void AConnectIt_GameBoard::InitialiseBoard(int32 NumFactions)
         return;
     }
 
-    BoardStateComponent->InitialiseBoardState(TilePositions, NumFactions);
+    BoardStateComponent->InitialiseBoardState(TileRegistry, PieceRegistry, NumFactions);
 
     UE_LOG(LogTemp, Log,
         TEXT("ConnectIt_GameBoard: Board initialised — "
