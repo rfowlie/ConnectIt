@@ -59,16 +59,18 @@ ETurnPhase ATurnBasedGameState::GetCurrentTurnPhase() const
 
 int32 ATurnBasedGameState::GetActiveParticipantIndex() const
 {
+    // -1 indicates error
     return IsValid(ParticipantManager)
         ? ParticipantManager->ActiveParticipantIndex
-        : INDEX_NONE;
+        : -1;
 }
 
 int32 ATurnBasedGameState::GetActiveTurnNumber() const
 {
+    // -1 indicates error
     return IsValid(ParticipantManager)
         ? ParticipantManager->TurnNumber
-        : 0;
+        : -1;
 }
 
 const TArray<FTurnParticipantInfo>&

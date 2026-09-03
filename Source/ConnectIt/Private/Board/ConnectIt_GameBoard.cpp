@@ -24,7 +24,6 @@ AConnectIt_GameBoard::AConnectIt_GameBoard()
     // default subobject.
     TileRegistry = CreateDefaultSubobject<UGridTileRegistryBase>(TEXT("TileRegistry"));
     PieceRegistry = CreateDefaultSubobject<UGridPieceRegistryBase>(TEXT("PieceRegistry"));
-    // PieceSpawnInterpreter = CreateDefaultSubobject<UGridPieceSpawnInterpreterBase>(TEXT("PieceSpawnInterpreter"));
 
     // ConnectIt-specific pieces -- unchanged shape from AConnectIt_BoardManager,
     // still plain ActorComponents (no new UObject counterpart exists for
@@ -58,9 +57,8 @@ void AConnectIt_GameBoard::CreateGameEventsFromBoardUpdate_Implementation()
 {
     if (!IsValid(BoardStateComponent))
     {
-        UE_LOG(LogTemp, Error,
-            TEXT("ConnectIt_GameBoard: Cannot bind interpreters "
-                 "— BoardStateComponent is null"));
+        UE_LOG(LogTemp, Error, TEXT(
+            "AConnectIt_GameBoard::CreateGameEventsFromBoardUpdate - BoardStateComponent is null"));
         return;
     }
 

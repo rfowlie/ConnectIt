@@ -10,18 +10,17 @@ class UGridTileRegistryBase;
 class UGridPieceRegistryBase;
 class UBoardStateComponentBase;
 
-// Abstract, project-agnostic board manager base -- assembles the pieces of
-// this session's work that are genuinely generic (tile registry, piece
-// registry, piece-visual interpreter, and a variable-length list of
-// board-state interpreters) behind UObject-based, Instanced properties
-// instead of hardcoded CreateDefaultSubobject component slots. That's a
-// deliberate pivot, not the obvious choice -- see "Prototype
-// ABoardManagerBase..." in the plan history for the full reasoning: none
-// of the four assembled classes ever ticked, so nothing is lost by them
-// not being ActorComponents, and an Instanced UObject property gives
-// genuine BP-only runtime polymorphism (pick a different subclass in the
-// Details panel, its own sub-properties expand inline, zero C++ required)
-// that a named component slot structurally cannot.
+// Abstract, project-agnostic board manager base -- assembles the pieces
+// that are genuinely generic (tile registry, piece registry) behind
+// UObject-based, Instanced properties instead of hardcoded
+// CreateDefaultSubobject component slots. That's a deliberate pivot, not
+// the obvious choice -- see "Prototype ABoardManagerBase..." in the plan
+// history for the full reasoning: neither assembled class ever ticked, so
+// nothing is lost by them not being ActorComponents, and an Instanced
+// UObject property gives genuine BP-only runtime polymorphism (pick a
+// different subclass in the Details panel, its own sub-properties expand
+// inline, zero C++ required) that a named component slot structurally
+// cannot.
 //
 // Deliberately does NOT try to find a generic shape for anything
 // ConnectIt-specific (config/rules/shift/board-state itself) -- no second

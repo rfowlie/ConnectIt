@@ -11,12 +11,19 @@ class AGridPieceBase;
 class AGridTileBase;
 class UGridPieceRegistryComponent;
 
-// Owns the full ConnectIt_Event_PiecePlaced sequence: retrieve a piece of
-// the right class from the pool, initialize it (faction ownership) before
-// its visual plays, position it and trigger the visual, then wait for that
-// visual to actually finish before reporting done. Constructed and driven
-// by UConnectIt_PieceSpawnInterpreter (the dispatcher) -- see its
-// HandlePiecePlacedExecute.
+// Meant to own the full ConnectIt_Event_PiecePlaced sequence: retrieve a
+// piece of the right class from the pool, initialize it (faction
+// ownership) before its visual plays, position it and trigger the visual,
+// then wait for that visual to actually finish before reporting done.
+// Meant to be constructed and driven by AConnectIt_BoardManager's
+// CreateGameEventsFromBoardUpdate/ExecuteGameEvents (the interpreter that
+// used to dispatch this has been removed).
+//
+// NOTE: as of this writing, Execute_Implementation's body is fully
+// commented out and ExecuteGameEvents() never calls Execute() on anything
+// it queues -- this class currently does nothing when run. The sequence
+// described above is the intended behavior once that rewiring lands, not
+// a description of what happens today.
 UCLASS()
 class CONNECTIT_API UConnectIt_PlacePieceGameEvent : public UTurnBasedGameEvent
 {

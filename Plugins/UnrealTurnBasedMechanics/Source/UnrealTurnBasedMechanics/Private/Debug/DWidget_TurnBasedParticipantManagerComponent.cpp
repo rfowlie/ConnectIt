@@ -32,6 +32,8 @@ void UDWidget_TurnBasedParticipantManagerComponent::BindDelegates()
         this, &UDWidget_TurnBasedParticipantManagerComponent::HandleActiveControllerChanged);
     ResolvedSource->OnParticipantForfeited.AddDynamic(
         this, &UDWidget_TurnBasedParticipantManagerComponent::HandleParticipantForfeited);
+    ResolvedSource->OnParticipantIndexChanged.AddDynamic(
+        this, &UDWidget_TurnBasedParticipantManagerComponent::OnActiveParticipantIndexUpdated);
     ResolvedSource->OnAllParticipantsReady.AddDynamic(
         this, &UDWidget_TurnBasedParticipantManagerComponent::HandleAllParticipantsReady);
     ResolvedSource->OnGameOver.AddDynamic(
@@ -55,6 +57,8 @@ void UDWidget_TurnBasedParticipantManagerComponent::UnbindDelegates()
         this, &UDWidget_TurnBasedParticipantManagerComponent::HandleActiveControllerChanged);
     ResolvedSource->OnParticipantForfeited.RemoveDynamic(
         this, &UDWidget_TurnBasedParticipantManagerComponent::HandleParticipantForfeited);
+    ResolvedSource->OnParticipantIndexChanged.RemoveDynamic(
+        this, &UDWidget_TurnBasedParticipantManagerComponent::OnActiveParticipantIndexUpdated);
     ResolvedSource->OnAllParticipantsReady.RemoveDynamic(
         this, &UDWidget_TurnBasedParticipantManagerComponent::HandleAllParticipantsReady);
     ResolvedSource->OnGameOver.RemoveDynamic(

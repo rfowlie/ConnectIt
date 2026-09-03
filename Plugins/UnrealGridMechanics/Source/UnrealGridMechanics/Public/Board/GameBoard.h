@@ -37,9 +37,8 @@ DECLARE_DYNAMIC_DELEGATE(FOnBoardStateChangedHandler);
 // Functions are grouped by a Group_ prefix (Tile_/Piece_/PieceVisual_)
 // plus matching Category metadata -- a single flat interface at this size
 // is fine, but unprefixed names risk collision once a project-specific
-// tier adds its own (e.g. SpawnPiece on the visual interpreter vs.
-// SpawnPieceAt on the registry are already one bad search away from being
-// confused).
+// tier adds its own (e.g. a piece-visual SpawnPiece vs. the registry's
+// own SpawnPieceAt are already one bad search away from being confused).
 //
 // Every accessor returns by value, never by reference -- BlueprintNativeEvent's
 // generated Execute_* wrapper supports the ProcessEvent/FFrame path for a
@@ -103,7 +102,7 @@ public:
     UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "GameBoard|Piece")
     void Piece_DespawnPieceAt(FGridPosition Position);
 
-    // --- Piece visual (UGridPieceSpawnInterpreterBase's two delegates) ---
+    // --- Piece visual (spawn/despawn visual-completion signals) ---
 
     UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "GameBoard|PieceVisual")
     void PieceVisual_BindOnPieceSpawned(const FOnGridPieceVisualEventHandler& Handler);

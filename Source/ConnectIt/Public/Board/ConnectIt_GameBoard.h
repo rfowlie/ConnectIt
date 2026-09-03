@@ -16,33 +16,28 @@ class UConnectIt_BoardRulesComponent;
 class UConnectIt_BoardShiftComponent;
 
 // Prototype: imitates AConnectIt_BoardManager's request-processing surface,
-// but derives ABoardManagerBase, so its TileRegistry/PieceRegistry/
-// PieceSpawnInterpreter come from that base as Instanced UObject properties
-// (UGridTileRegistryBase/UGridPieceRegistryBase/UGridPieceSpawnInterpreterBase)
-// instead of hardcoded ActorComponent slots -- see "Prototype
-// ABoardManagerBase..." in the plan history for the underlying design and
-// why that's a meaningful difference (true BP-only subclass swapping).
+// but derives ABoardManagerBase, so its TileRegistry/PieceRegistry come
+// from that base as Instanced UObject properties (UGridTileRegistryBase/
+// UGridPieceRegistryBase) instead of hardcoded ActorComponent slots -- see
+// "Prototype ABoardManagerBase..." in the plan history for the underlying
+// design and why that's a meaningful difference (true BP-only subclass
+// swapping).
 //
-// Deliberately does NOT include an equivalent of UConnectIt_PieceSpawnInterpreter
-// (the tag-reactive orchestrator that turns board-change tags into actual
-// piece spawn/despawn calls). That class resolves its PieceRegistry/
-// SpawnInterpreter references via GetOwner()->FindComponentByClass<T>(),
-// which can never find a plain UObject -- it isn't attached to the Actor's
-// component list. Porting that orchestrator to explicit injection (matching
-// how UGridPieceRegistryBase::Initialise already works) is real, separate
-// work, not done here. Until then, this board's PieceRegistry/
-// PieceSpawnInterpreter are wired up and directly usable (e.g. from
-// Blueprint or a debug console via GetPieceRegistry()/
-// GetGridPieceSpawnInterpreter()), but nothing reactively drives them from
-// board-state changes yet -- ProcessRequest below only ever commits board
-// *state*, the same as it does on AConnectIt_BoardManager.
+// Nothing here reactively drives PieceRegistry from board-state changes --
+// the tag-reactive orchestrator that used to turn board-change tags into
+// actual piece spawn/despawn calls has been removed project-wide (see git
+// history, "Remove Interpreters"). PieceRegistry is wired up and directly
+// usable (e.g. from Blueprint or a debug console via GetPieceRegistry()),
+// but ProcessRequest below only ever commits board *state*, the same as it
+// does on AConnectIt_BoardManager -- reactive spawning is being reworked
+// via CreateGameEventsFromBoardUpdate/ExecuteGameEvents below instead (see
+// their own comments; that replacement is still in progress).
 //
 // Everything else here -- ProcessRequest and its eight HandleXRequest
 // methods, BoardStateComponent/ConnectItConfigComponent/BoardRulesComponent/
-// BoardShiftComponent/TileStateInterpreter/ScoreInterpreter -- is copied
-// verbatim from AConnectIt_BoardManager: none of that logic ever touches
-// TileRegistry/PieceRegistry directly, so none of it needed adapting for
-// the new UObject types.
+// BoardShiftComponent -- is copied verbatim from AConnectIt_BoardManager:
+// none of that logic ever touches TileRegistry/PieceRegistry directly, so
+// none of it needed adapting for the new UObject types.
 //
 // Also fixes a known, pre-existing gap on the live class while at it:
 // AConnectIt_BoardManager declares a BoardShiftComponent member but never
@@ -97,10 +92,17 @@ protected:
     
     // UFUNCTION(BlueprintReadWrite, Category = "ConnectIt|Game Board")
     TQueue<UTurnBasedGameEvent*> TurnBasedGameEventQueue;
-    
-    // read the board state and determine what events need to occur and in what order
+
+    // Reads the board state and determines what events need to occur and
+    // in what order -- the in-progress replacement for the removed
+    // tag-reactive interpreter pipeline (see class comment). Enqueues
+    // UTurnBasedGameEvent instances (e.g. GameEventPlacePiece) into
+    // TurnBasedGameEventQueue; ExecuteGameEvents() is meant to run them.
     UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "ConnectIt|Game Board")
     void CreateGameEventsFromBoardUpdate();
+
+    // NOTE: currently an empty stub -- does not yet dequeue or Execute()
+    // anything CreateGameEventsFromBoardUpdate enqueues. See its own TODO.
     void ExecuteGameEvents();
     
     UPROPERTY(Instanced, EditDefaultsOnly, BlueprintReadOnly, Category = "ConnectIt|Game Board")

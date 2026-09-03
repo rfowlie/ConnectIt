@@ -39,8 +39,8 @@ public:
 	// genuinely finished, not merely started -- a Blueprint subclass with
 	// no meaningful effect should call NotifyActivationVisualComplete
 	// immediately from its own ActivatePoolObject. Listeners (e.g. a
-	// piece-spawning interpreter gating its own completion on this) bind
-	// here rather than assuming activation is instantaneous.
+	// piece-spawning system gating its own completion on this) bind here
+	// rather than assuming activation is instantaneous.
 	UPROPERTY(BlueprintAssignable, Category = "Grid|Pooling")
 	FOnPieceVisualComplete OnActivationVisualComplete;
 

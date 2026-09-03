@@ -137,11 +137,11 @@ owner binds instead. One instance per watched tag, `AssociatedTag` set to match,
 all routed to the same shared owner-side handler, which switches on the tag it's
 handed. This is a documented technique, not a shipped class -- no concrete
 UGameEventTask_Tagged currently exists in this project. It was built and then
-removed for being unneeded complexity at the time (each of
-UConnectIt_PieceSpawnInterpreter's five watched tags ended up with its own
-distinct bound handler instead, so there was no shared-handler disambiguation
-problem to solve) -- reach for this shape only once you actually have a single
-handler that needs to serve more than one tag.
+removed for being unneeded complexity at the time (a prior tag-reactive
+watcher's five watched tags each ended up with its own distinct bound handler
+instead, so there was no shared-handler disambiguation problem to solve) --
+reach for this shape only once you actually have a single handler that needs
+to serve more than one tag.
 
 
 THE QueueTagContainer PRIMITIVE (the queue -- this is the primary way to fire a tag)

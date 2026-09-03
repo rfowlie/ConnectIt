@@ -28,7 +28,7 @@ Mutate state
 | The snapshot shape | `FConnectItBoardStateSnapshot { PreviousState, CurrentState, ChangeEvent }` | Carrying "before," "after," and "what kind of change" together means any listener can answer "what happened" without diffing two states itself. |
 | Server-side commit | `UConnectIt_BoardStateComponent::SetBoardState(NewState, ChangeEvent)` | `check(IsAuthoritative())`-guarded. Captures the previous state, applies the new one, fires `OnBoardStateChanged` immediately — server doesn't wait for its own replication round-trip to react. |
 | Client-side convergence | `OnRep_BoardSnapshot` | Fires the *same* `OnBoardStateChanged` broadcast on receipt — the one place server and client code paths reunite. |
-| Listeners (both sides, identical code) | `UConnectIt_TileStateInterpreter`, `UConnectIt_ScoreInterpreter` (both bind `OnBoardStateChanged`) | Neither knows or cares whether it's running because of a local `SetBoardState` call or a replication update. `UConnectIt_PieceSpawnInterpreter` no longer belongs on this row -- it's a `UGridPieceSpawnInterpreter` now, registered directly against `UGameEventTaskSubsystem` tags instead (see the next row). |
+| Listeners (both sides, identical code) | `UConnectIt_DefaultViewerAction`, `UDWidget_ConnectIt_BoardStateComponent`, `UPieceControlInfluenceMap`, `UConnectIt_DebugStateWidget` (all bind `OnBoardStateChanged` directly) | None know or care whether they're running because of a local `SetBoardState` call or a replication update. (The tag-reactive interpreter pipeline that used to bind here has been removed project-wide; board-event tag dispatch is a separate mechanism — see the next row.) |
 | Event-tag enqueueing (both sides, same call site) | `UConnectIt_BoardStateComponent::EnqueueBoardEventTags` | Not a separate listener -- called inline, right after `BroadcastChange()`, from both `SetBoardState` and `OnRep_BoardSnapshot` themselves. Reads `ChangeEvent` and calls `UGameEventTaskSubsystem::QueueTagContainer` once per event; see `Workflows/GameEventSubsystem_Workflow.txt`. |
 
 ## Sequence
@@ -37,7 +37,7 @@ Mutate state
 2. The server builds the new state as a value (never mutates the live property directly mid-computation) and a change-description alongside it, then calls the one commit function, which assigns both into the replicated snapshot property and broadcasts locally.
 3. Unreal's replication system pushes the updated property to every relevant client.
 4. Each client's `OnRep_` callback fires on receipt and re-broadcasts the identical signal locally.
-5. Every reactive system in the game — visual interpreters, UI, sequencing — binds that one broadcast once, and never needs to know or branch on which side of the network it's running.
+5. Every reactive system in the game — UI, debug widgets, AI influence maps, sequencing — binds that one broadcast once, and never needs to know or branch on which side of the network it's running.
 
 ## Why It's Reusable
 

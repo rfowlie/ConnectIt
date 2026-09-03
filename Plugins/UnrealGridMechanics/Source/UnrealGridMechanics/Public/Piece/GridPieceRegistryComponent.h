@@ -18,24 +18,25 @@ class UGridHoverSubsystem;
 // registration/unregistration (UGridHoverSubsystem::RegisterPiece/
 // UnregisterPiece), and triggering the IActorPoolInterface Activate/
 // Deactivate calls (UActorPoolSubsystem::ActivateObject/DeactivateObject)
-// all live here. The actual spawn-in/despawn-out *visual* is a sibling
-// component's job (UGridPieceSpawnInterpreter, resolved via the owning
-// actor) -- this class hands it an already-retrieved, already-registered
-// piece and lets it handle positioning and waiting for the visual to
-// finish.
+// all live here.
+//
+// NOTE: positioning a piece at its tile and playing/waiting on its
+// spawn-in/despawn-out visual used to be a sibling component's job
+// (a piece-spawn interpreter, since removed). ActivatePieceAt currently
+// only triggers pool activation -- it validates Tile but no longer uses
+// it to position the piece, and nothing here waits on a visual-completion
+// signal any more. This is a known gap left by that removal, not an
+// intentional simplification; whatever replaces positioning/visual-wait
+// (Blueprint-side, or a new C++ collaborator) still needs wiring up.
 //
 // SpawnPieceAt/DespawnPieceAt are convenience entry points composed from
 // four lower-level primitives (RetrievePiece/ActivatePieceAt,
 // DeactivatePiece/ReleasePiece) -- a caller that needs to inject work
 // between steps (e.g. project-specific initialization between retrieval
-// and the visual, so the visual reflects it when it plays; or gating
-// finalization on visual completion instead of triggering and finalizing
-// in the same breath) calls the primitives directly instead. See
+// and activation) calls the primitives directly instead. See
 // UConnectIt_PlacePieceGameEvent/UConnectIt_LineScoreGameEvent for the
-// reference callers of each. SpawnPieceAt/DespawnPieceAt still trigger
-// activation/deactivation only after UGridPieceSpawnInterpreter has bound
-// its completion listener -- a piece whose activation/deactivation
-// completes synchronously would otherwise have that completion missed.
+// reference callers of each (both currently stubbed pending the same
+// rewiring noted above).
 UCLASS(ClassGroup=(Custom), meta=(BlueprintSpawnableComponent))
 class UNREALGRIDMECHANICS_API UGridPieceRegistryComponent : public UActorComponent
 {
@@ -51,16 +52,14 @@ public:
 	AGridPieceBase* GetPiece(const FGridPosition Position);
 
 	// Retrieves a PieceClass instance from the pool (inactive at this
-	// point), registers it with UGridHoverSubsystem, hands it to
-	// UGridPieceSpawnInterpreter to position at Tile and bind its spawn-in
-	// visual-completion listener, and only then triggers
+	// point), registers it with UGridHoverSubsystem, then triggers
 	// IActorPoolInterface::ActivatePoolObject (via UActorPoolSubsystem::
-	// ActivateObject) -- deliberately after the listener is bound, so a
-	// piece whose activation completes synchronously can't have that
-	// completion missed. Returns the piece, or nullptr if retrieval or
-	// either sibling component failed to resolve. Convenience composition
-	// of RetrievePiece + ActivatePieceAt -- see those for callers that
-	// need to do something in between (e.g. initialization).
+	// ActivateObject) -- see the class header comment for why positioning
+	// and visual-completion waiting don't happen as part of this any more.
+	// Returns the piece, or nullptr if retrieval or a required sibling
+	// failed to resolve. Convenience composition of RetrievePiece +
+	// ActivatePieceAt -- see those for callers that need to do something
+	// in between (e.g. initialization).
 	UFUNCTION(BlueprintCallable, Category = "Grid|Registry")
 	AGridPieceBase* SpawnPieceAt(TSubclassOf<AGridPieceBase> PieceClass, AGridTileBase* Tile);
 
@@ -82,10 +81,10 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Grid|Registry")
 	AGridPieceBase* RetrievePiece(TSubclassOf<AGridPieceBase> PieceClass);
 
-	// Positions Piece at Tile (via UGridPieceSpawnInterpreter::SpawnPiece,
-	// which also binds the visual-completion listener) and triggers
-	// activation -- deliberately after that bind, same reasoning
-	// SpawnPieceAt already documents.
+	// Triggers Piece's pooled-activation side effect (IActorPoolInterface::
+	// ActivatePoolObject, via UActorPoolSubsystem::ActivateObject). Does
+	// NOT position Piece at Tile -- Tile is validated but otherwise unused;
+	// see the class header comment.
 	UFUNCTION(BlueprintCallable, Category = "Grid|Registry")
 	void ActivatePieceAt(AGridPieceBase* Piece, AGridTileBase* Tile);
 
@@ -144,9 +143,6 @@ private:
 	
 	UPROPERTY()
 	TObjectPtr<UGridTileRegistryComponent> GridTileRegistryComponent = nullptr;
-
-	// UPROPERTY()
-	// TObjectPtr<UGridPieceSpawnInterpreter> SpawnInterpreter = nullptr;
 
 	// Resolves and caches the subsystem/component references
 	bool ResolveTileRegistry();

@@ -13,8 +13,8 @@ class UGridTileRegistryBase;
 // values in one call -- used to seed initial state once, right after
 // binding, through the same events used for later reactive updates (see
 // UDWidgetBase's own class comment for the convention this follows).
-// OnBoardStateChanged itself stays zero-param (shared with every board
-// interpreter, not just debug widgets) -- this just wraps the same
+// OnBoardStateChanged itself stays zero-param (shared with every bound
+// listener, not just debug widgets) -- this just wraps the same
 // GetCurrentState()/GetChangeEvent() reads a listener already does after
 // that ping.
 USTRUCT(BlueprintType)
@@ -61,7 +61,7 @@ public:
         const FConnectItBoardChangeEvent& ChangeEvent);
 
     // --- Read API ---
-    // Interpreters and game logic call these
+    // Bound listeners and game logic call these
 
     const FConnectItBoardStateSnapshot* GetBoardSnapshot() const;
 

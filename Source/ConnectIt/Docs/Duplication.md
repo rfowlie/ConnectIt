@@ -12,7 +12,7 @@ Each entry: **What / Where** → **Evidence** → **Hypothesis** → **Recommend
 
 **What / Where**: `Source/ConnectIt/Framework/Game State Machine/*` (`UConnectIt_State_Base` and its four subclasses), `Framework/Data/ConnectIt_GameFacade.h`, `Framework/Data/ConnectIt_GameViewModel.h`, `Framework/Data/ConnectIt_PlayerData.h`, and `Framework/Interface/IConnectIt_FacadeHandlerInterface.h` / `IConnectIt_GameStateHandlerInterface.h` — an entire non-networked state-machine/facade/view-model pipeline for board queries, player data, and turn flow — versus the live pipeline (`AConnectIt_BoardManager`, `UConnectIt_BoardStateComponent`, `UConnectIt_GameUtilityLibrary`, `AConnectIt_GameState`) that now does the same job with correct replication.
 
-**Evidence**: Grepping the entire live pipeline (Board/, Action/, Framework/Controller/, Framework/GameMode/, Framework/GameState/, Interpreter/) for any reference to `UConnectIt_GameFacade`, `UConnectIt_GameViewModel`, `UConnectIt_PlayerData`, or `UConnectIt_State_*` turns up nothing — the legacy set is referenced only by itself. `UConnectIt_GameUtilityLibrary`'s own doc comment states it explicitly *"Replaces UConnectIt_GameFacade for the networked game."* Full historical account of what this pipeline was and how it worked: [LegacyPipeline.md](LegacyPipeline.md).
+**Evidence**: Grepping the entire live pipeline (Board/, Action/, Framework/Controller/, Framework/GameMode/, Framework/GameState/, GameEvent/) for any reference to `UConnectIt_GameFacade`, `UConnectIt_GameViewModel`, `UConnectIt_PlayerData`, or `UConnectIt_State_*` turns up nothing — the legacy set is referenced only by itself. `UConnectIt_GameUtilityLibrary`'s own doc comment states it explicitly *"Replaces UConnectIt_GameFacade for the networked game."* Full historical account of what this pipeline was and how it worked: [LegacyPipeline.md](LegacyPipeline.md).
 
 **Hypothesis**: predates the network-play rewrite. Superseded in place rather than deleted, likely because removal wasn't the priority while the networked pipeline was being built and validated.
 
@@ -82,31 +82,17 @@ Each entry: **What / Where** → **Evidence** → **Hypothesis** → **Recommend
 
 **What / Where**: `Source/ConnectIt/Grid/ConnectIt_GridPiece.h/.cpp` — replicates `FactionID` (`ReplicatedUsing=OnRep_FactionID`) and `OccupiedPosition` (`Replicated`), with `bReplicates = true` set in its constructor.
 
-**Evidence**: `UConnectIt_PieceSpawnInterpreter` (`Source/ConnectIt/Interpreter/`), the only class that spawns `AConnectIt_GridPiece` actors, explicitly guards spawning with `if (GetOwner()->HasAuthority()) return;` — i.e. the server never spawns one. Since the server-side actor that would replicate its state to clients never exists, the class's own replication properties have no server-side counterpart to replicate *from* in practice.
+**Evidence**: the tag-reactive interpreter that used to be the only class spawning `AConnectIt_GridPiece` actors (and explicitly guarded spawning with `if (GetOwner()->HasAuthority()) return;` -- i.e. the server never spawned one) has been removed project-wide, and its replacement (`AConnectIt_BoardManager`'s `CreateGameEventsFromBoardUpdate`/`ExecuteGameEvents`) doesn't spawn pieces yet either -- see [ConnectItModule.md](ConnectItModule.md#grid). This entry's original evidence (server never spawns one) needs re-confirming once that replacement pipeline is functional; until then, treat the client-only-spawning claim as historical rather than currently verified.
 
 **Hypothesis**: not a duplicate class in the traditional sense — this is a network-model mismatch left over from when pieces may have been intended to be server-spawned/replicated actors, before the design moved to "client-local visual reaction to replicated board state" (see [SingleSourceOfTruth-Replication.md](Workflows/SingleSourceOfTruth-Replication.md)).
 
-**Recommendation**: Either remove the now-pointless `Replicated`/`bReplicates` setup from `AConnectIt_GridPiece` to avoid misleading a future reader into assuming pieces are server-authoritative actors, or, if there's a future reason to spawn pieces server-side, document why the replication scaffolding is being kept ahead of that need.
+**Recommendation**: Either remove the now-pointless `Replicated`/`bReplicates` setup from `AConnectIt_GridPiece` to avoid misleading a future reader into assuming pieces are server-authoritative actors, or, if there's a future reason to spawn pieces server-side, document why the replication scaffolding is being kept ahead of that need. Re-confirm which side (if either) spawns this actor once the replacement spawn pipeline is functional, before acting on this entry.
 
-**Confidence**: High (spawn-site guard directly confirms server-side actors are never created).
-
----
-
-## #7: Two near-identical permanent no-ops with the same known fix
-
-**What / Where**: `ConnectIt_TileStateInterpreter::FindTileActor` (`Source/ConnectIt/Interpreter/ConnectIt_TileStateInterpreter.cpp:108`) and (formerly) `ConnectIt_PieceSpawnInterpreter::GetWorldPositionForTile` — both permanently returned a null/empty result via the same commented-out lookup call. **The `GetWorldPositionForTile` half is now fixed** (as part of the `UGridPieceSpawnInterpreter` rework — see `ConnectIt_PieceSpawnInterpreter.cpp`'s `GetWorldPositionForTile_Implementation`); `FindTileActor` is not, and remains broken.
-
-**Evidence**: both functions had a commented-out `GridSub->GetTileAtPosition(Position)` call from an old subsystem-based tile-lookup mapping that was removed, neither originally updated to use its replacement. `FindTileActor` still unconditionally returns `nullptr`, making `SendTagToTile` (and therefore all `ConnectIt.Tile.*` visual feedback through that interpreter) a confirmed no-op — this bug's user-facing consequence is tracked in [Known Issues](README.md#known-issues).
-
-**Hypothesis**: the same migration gap surfacing in two call sites — both were written against an older tile-lookup API that has since been replaced by `UGridTileRegistryComponent::GetTileAtPosition(FGridPosition)` (exposed via `AConnectIt_BoardManager::GetTileRegistry()`, and already the position↔tile lookup every other part of the project uses), but only the removal was carried through, not the replacement. `GetWorldPositionForTile`'s fix confirms this was the correct, sufficient fix for its half.
-
-**Recommendation**: Route `FindTileActor` through the same `UGridTileRegistryComponent::GetTileAtPosition` fix `GetWorldPositionForTile` just received.
-
-**Confidence**: High (`GetWorldPositionForTile`'s fix already confirmed the approach works; `FindTileActor` is the same class of bug, unaddressed).
+**Confidence**: Medium (the original client-only-spawning evidence came from a class that's since been removed; not yet re-verified against its replacement).
 
 ---
 
-## #8: Dead / commented-out code inventory
+## #7: Dead / commented-out code inventory
 
 **What / Where**: several standalone blocks of commented-out code kept "just in case," bundled here as one entry since they share the same recommendation:
 - `MinMaxAlgorithm.h` (`UnrealGameIntelligence`) — ~50 lines, a commented-out `TMinMaxAlgorithm` struct.

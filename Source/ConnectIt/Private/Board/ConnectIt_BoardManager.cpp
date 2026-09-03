@@ -71,9 +71,8 @@ void AConnectIt_BoardManager::CreateGameEventsFromBoardUpdate_Implementation()
 {
     if (!IsValid(BoardStateComponent))
     {
-        UE_LOG(LogTemp, Error,
-            TEXT("ConnectIt_GameBoard: Cannot bind interpreters "
-                 "— BoardStateComponent is null"));
+        UE_LOG(LogTemp, Error, TEXT(
+            "AConnectIt_BoardManager::CreateGameEventsFromBoardUpdate — BoardStateComponent is null"));
         return;
     }
 

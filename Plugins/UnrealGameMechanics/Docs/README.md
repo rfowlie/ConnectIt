@@ -80,7 +80,7 @@ See [Systems.md](Systems.md) for a narrative, system-by-system walkthrough of ho
 
 | Class | Base Class | Purpose | Notes |
 |---|---|---|---|
-| `UActorPool` | `UObject` | Per-class actor pool (active/inactive sets), grows on demand. | `Public/Pooling/ActorPool.h`. Used by the current consuming project's piece-spawn interpreter. |
+| `UActorPool` | `UObject` | Per-class actor pool (active/inactive sets), grows on demand. | `Public/Pooling/ActorPool.h`. Used by the current consuming project's piece-spawning system. |
 | `IActorPoolInterface` | Native Interface | `ActivatePoolObject`/`DeactivatePoolObject` BlueprintImplementableEvents for pooled actors to hook their own show/hide logic. | `Public/Pooling/ActorPoolInterface.h`. |
 | `UActorPoolSubsystem` | `UWorldSubsystem` | World-level registry of `UActorPool`s keyed by actor class, plus reverse actor-to-pool lookup for `ReleaseObject`. | `Public/Pooling/ActorPoolSubsystem.h`. |
 

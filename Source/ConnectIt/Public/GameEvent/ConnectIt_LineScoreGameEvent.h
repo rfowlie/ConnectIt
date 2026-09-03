@@ -10,13 +10,20 @@
 class AGridPieceBase;
 class UGridPieceRegistryComponent;
 
-// Owns the full ConnectIt_Event_LineScored despawn sequence: for every
-// position it's handed (the scoring line minus the completing tile,
-// resolved by the dispatcher), trigger that position's piece's despawn
-// visual and wait for it to actually finish before finalizing its removal
-// from the registry -- fixing the eager-unregister-before-the-visual gap
-// for this event type. Constructed and driven by
-// UConnectIt_PieceSpawnInterpreter -- see its HandleLineScoredExecute.
+// Meant to own the full ConnectIt_Event_LineScored despawn sequence: for
+// every position it's handed (the scoring line minus the completing tile),
+// trigger that position's piece's despawn visual and wait for it to
+// actually finish before finalizing its removal from the registry --
+// fixing the eager-unregister-before-the-visual gap for this event type.
+// Meant to be constructed and driven by AConnectIt_BoardManager's
+// CreateGameEventsFromBoardUpdate/ExecuteGameEvents (the interpreter that
+// used to dispatch this has been removed).
+//
+// NOTE: as of this writing, Execute_Implementation's body and
+// HandlePieceDespawned's body are both fully commented out -- this class
+// currently does nothing when run. The sequence described above is the
+// intended behavior once that rewiring lands, not a description of what
+// happens today.
 UCLASS()
 class CONNECTIT_API UConnectIt_LineScoreGameEvent : public UTurnBasedGameEvent
 {

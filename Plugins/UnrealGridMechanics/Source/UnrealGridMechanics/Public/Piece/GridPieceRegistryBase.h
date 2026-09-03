@@ -18,12 +18,6 @@ class UGridTileRegistryBase;
 // ActorComponent, for the same reasoning as UGridTileRegistryBase (never
 // ticked, purely reactive/query -- see that class's comment).
 //
-// Explicit dependency injection (Initialise) replaces the live component's
-// GetOwner()->FindComponentByClass<T>() sibling lookup -- a plain UObject
-// isn't attached to an Actor's component list, so that call isn't
-// available here regardless; this also matches the pattern this session
-// already settled on for UTurnBasedGameEvent subclasses
-// (Initialise(PieceRegistry, SpawnInterpreter, ...)).
 // Not Abstract -- see UGridTileRegistryBase's class comment for why (same
 // reasoning applies: InstantiatePiece is an optional BlueprintImplementableEvent,
 // not a requirement to subclass, and everything else is already fully
@@ -61,10 +55,11 @@ public:
     UFUNCTION(BlueprintCallable, Category = "Grid|Registry")
     AGridPieceBase* RetrievePiece(TSubclassOf<AGridPieceBase> PieceClass);
 
-    // Positions Piece at Tile (via SpawnInterpreter, which also binds the
-    // visual-completion listener) and triggers activation -- deliberately
-    // after that bind, so a piece whose activation completes synchronously
-    // can't have that completion missed.
+    // Triggers Piece's pooled-activation side effect. Does NOT position
+    // Piece at Tile -- Tile is validated but otherwise unused. Positioning
+    // and visual-completion waiting used to be a sibling collaborator's
+    // job (a piece-spawn interpreter, since removed); nothing here does it
+    // now -- a known gap, not an intentional simplification.
     UFUNCTION(BlueprintCallable, Category = "Grid|Registry")
     void ActivatePieceAt(AGridPieceBase* Piece, AGridTileBase* Tile);
 

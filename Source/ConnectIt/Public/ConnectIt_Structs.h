@@ -273,7 +273,7 @@ struct FConnectItBoardChangeEvent
 
 // Snapshot -- the ONE replicated property on UConnectItBoardStateComponent
 // Previous and current arrive atomically
-// Interpreters read both via GetBoardSnapshot()
+// Listeners read both via GetBoardSnapshot()
 USTRUCT(BlueprintType)
 struct FConnectItBoardStateSnapshot
 {

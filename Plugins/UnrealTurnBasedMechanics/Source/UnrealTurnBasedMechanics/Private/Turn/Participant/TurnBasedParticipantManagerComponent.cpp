@@ -615,6 +615,7 @@ void UTurnBasedParticipantManagerComponent::OnRep_CurrentPhase()
 void UTurnBasedParticipantManagerComponent::OnRep_ActiveParticipantIndex()
 {
     // Clients react here -- e.g. highlight active player in UI
+    OnParticipantIndexChanged.Broadcast(ActiveParticipantIndex);
 }
 
 void UTurnBasedParticipantManagerComponent::OnRep_TurnNumber()

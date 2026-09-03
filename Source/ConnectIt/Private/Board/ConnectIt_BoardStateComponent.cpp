@@ -51,7 +51,7 @@ void UConnectIt_BoardStateComponent::InitialiseBoardState(
      * each level should have a starting position where tiles and pieces are set
      * broadcasting a change is technically wrong
      */ 
-    // Broadcast so interpreters can initialise their visual state
+    // Broadcast so listeners can initialise their visual state
     // BroadcastChange();
     
 }
@@ -97,13 +97,8 @@ void UConnectIt_BoardStateComponent::GetLifetimeReplicatedProps(TArray<FLifetime
 void UConnectIt_BoardStateComponent::OnRep_BoardSnapshot()
 {
     // Previous and current both arrived atomically
-    // Fire void delegate -- all bound interpreters respond
     BroadcastChange();
     EnqueueBoardEventTags();
-
-    UE_LOG(LogTemp, Log,
-        TEXT("ConnectItBoardStateComponent: OnRep fired — "
-             "broadcasting to interpreters"));
 }
 
 void UConnectIt_BoardStateComponent::EnqueueBoardEventTags() const
