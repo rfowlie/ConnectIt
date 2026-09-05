@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "GameplayTagContainer.h"
 #include "InputTriggers.h"
+#include "Styling/SlateBrush.h"
 #include "TurnBasedMechanicsStructs.h"
 #include "Action/TurnBasedActionBase.h"
 #include "Input/InputTagBinder.h"
@@ -77,6 +78,21 @@ public:
     // InputTagBinder.
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Action|Config")
     TArray<FInputTagBinding> InputBindings;
+
+    // --- Presentation ---
+    // Purely for UI -- the action itself never reads these. Without them an
+    // action bar has nothing to label a button with (ActionTag is an
+    // identifier, not a display string).
+
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Action|Presentation")
+    FText DisplayName;
+
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Action|Presentation",
+        meta = (MultiLine = true))
+    FText Description;
+
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Action|Presentation")
+    FSlateBrush Icon;
 
     // --- Runtime State ---
 

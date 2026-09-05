@@ -117,6 +117,20 @@ Two smaller items surfaced while writing the per-plugin docs, noted here for com
 - **`AGridTileBase` vs. `UGridTileComponent`** (`UnrealGridMechanics`) — both independently declare their own `OnGridTileBeginCursorOver`-style delegate for the same "cursor is over this tile" concept, one at the actor level (`AGridTileBase`) and one at the component level (`UGridTileComponent`, whose own header comment states "anything that is a grid tile will be required to have this component"). Not severe enough for its own ranked entry, but worth consolidating onto one of the two rather than both, the next time either is touched. Confidence: Medium (both declarations confirmed; whether both are actually bound-to in practice wasn't traced).
 - **Redundant Public+Private module-dependency listings** — `UnrealTurnBasedMechanics.Build.cs` lists `UnrealGridMechanics` in both `PublicDependencyModuleNames` and `PrivateDependencyModuleNames` (harmless, since Public already implies the dependency is available, but redundant and worth trimming). Confidence: High (directly confirmed in the `.Build.cs`).
 
+## #8: Two parked, unreferenced scaffolds awaiting an owner decision
+
+**What / Where**: `Plugins/UnrealUIMechanics/` (an entire plugin — `UnrealUIMechanics.{h,cpp}`, a bare `IModuleInterface` with no UMG dependency and an empty `Content/`, created by `9c7ef05 Create New UI Plugin` and never populated; not listed in `ConnectIt.uproject`'s `Plugins` array) and `AConnectIt_GameMode_Play` (`Source/ConnectIt/Public/Framework/GameMode/ConnectIt_GameMode_Play.h` — derives `AGameModeBase`, implements the two dead facade interfaces from [#1](#1-legacy-game-flow-pipeline-vs-live-networked-pipeline), and has an empty body).
+
+**Evidence**: `UnrealUIMechanics` has zero classes and zero content despite `CanContainContent: true`; the networked `CI_GameMode_Play` Blueprint's import table reparents to the fully-implemented `AConnectIt_GameMode` (not `AConnectIt_GameMode_Play`), confirming the latter is unreferenced by the live path. Both were surfaced (not created) while writing [UIValueCatalogue.md](UIValueCatalogue.md) — that plan deliberately left `UnrealUIMechanics` alone rather than populating it, since every new accessor it needed had a legitimate home in `ConnectIt` or `UnrealTurnBasedMechanics` instead (module-ownership rule, see [Workflows/DebugWidgets.md](Workflows/DebugWidgets.md)).
+
+**Hypothesis**: both are scaffolding created ahead of work that either hasn't started or ended up landing somewhere else — not accidental duplication, just unfinished setup.
+
+**Recommendation**: owner decision needed for each independently — delete, or keep parked with a stated reason. Neither blocks anything today (confirmed for `AConnectIt_GameMode_Play` above; `UnrealUIMechanics` isn't even enabled in the `.uproject`).
+
+**Confidence**: High (both confirmed unreferenced by direct inspection).
+
+---
+
 ## Not included: the two board-manager-discovery mechanisms
 
 `UConnectIt_GameUtilityLibrary::GetBoardManager()` (logs an error on miss, no fallback) and `UConnectIt_BoardManagerSubsystem::GetBoardManager()` (silent, pairs with an `OnBoardManagerReady` delegate) look at a glance like two ways to do the same thing, but this is a **deliberate two-mode API**, not accidental duplication — confirmed intentional per the design rationale captured in `Source/ConnectIt/Workflows/BoardManagerSubsystem_Workflow.txt`. It's documented in full, including when to use which, in [SubsystemDiscovery-DualAccessPattern.md](Workflows/SubsystemDiscovery-DualAccessPattern.md) rather than treated as a defect here.

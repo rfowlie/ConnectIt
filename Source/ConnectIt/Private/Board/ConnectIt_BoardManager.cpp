@@ -115,8 +115,14 @@ void AConnectIt_BoardManager::InitialiseBoard(int32 NumFactions)
         return;
     }
 
-    BoardStateComponent->InitialiseBoardState(TileRegistry, PieceRegistry, NumFactions);
-    
+    const float InitialTargetScore = IsValid(BoardRulesComponent)
+        ? BoardRulesComponent->GetTargetScore()
+        : 0.f;
+
+    BoardStateComponent->InitialiseBoardState(
+        TileRegistry, PieceRegistry, NumFactions,
+        /*InitialMultiplier=*/1.0f, InitialTargetScore);
+
 }
 
 // --- Request Processing ---

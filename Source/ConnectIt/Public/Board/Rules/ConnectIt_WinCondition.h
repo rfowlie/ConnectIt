@@ -33,4 +33,12 @@ public:
     // their condition is met.
     UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "ConnectIt|WinCondition")
     void CheckWinCondition(UPARAM(ref) FConnectItBoardState& MutableState);
+
+    // Score needed to win under this condition, for UI progress display
+    // (see FConnectItBoardState::TargetScore, which this feeds). Returns 0
+    // for conditions that aren't score-based (e.g. occupying a set of
+    // tiles) -- UI treats 0 as "no meaningful progress bar." Default
+    // implementation returns 0; score-based conditions override it.
+    UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "ConnectIt|WinCondition")
+    float GetTargetScore() const;
 };

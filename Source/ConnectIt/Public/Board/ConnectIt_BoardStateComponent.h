@@ -42,12 +42,16 @@ public:
     // Only the board manager calls these
 
     // Initialises the board state from a set of registered tile positions
-    // Called once at game start after all tiles register with subsystem
+    // Called once at game start after all tiles register with subsystem.
+    // InTargetScore stamps FConnectItBoardState::TargetScore up front (see
+    // its own comment) -- CheckWinCondition only runs after a placement, so
+    // without this the pre-first-move board would read TargetScore == 0.
     void InitialiseBoardState(
         UGridTileRegistryBase* TileRegistry,
         UGridPieceRegistryBase* PieceRegistry,
         int32 NumFactions,
-        float InitialMultiplier = 1.0f);
+        float InitialMultiplier = 1.0f,
+        float InTargetScore = 0.f);
 
     // Captures current as previous, applies new state, and stores what
     // specifically changed (ChangeEvent) so it replicates atomically
@@ -101,22 +105,12 @@ public:
         return { BoardSnapshot.CurrentState, BoardSnapshot.ChangeEvent };
     }
 
-    /*
-     *  TODO: remove, let's try not repeat ourselves
-     *  unless we opt to move all the helper functions out of the struct into here
-     */
-    // // Convenience -- reads from current state
-    // UFUNCTION(BlueprintPure, Category = "Board State")
-    // bool IsTileValidForPlacement(const FGridPosition Position) const
-    // {
-    //     return BoardSnapshot.CurrentState.IsTileValidForPlacement(Position);
-    // }
-    //
-    // UFUNCTION(BlueprintPure, Category = "Board State")
-    // float GetFactionScore(int32 FactionSlot) const
-    // {
-    //     return BoardSnapshot.CurrentState.GetScore(FactionSlot);
-    // }
+    // Resolved: per-tile/per-state helper queries (IsTileOccupied, GetScore,
+    // etc.) live on UConnectIt_BoardStateLibrary, not here -- a
+    // UBlueprintFunctionLibrary taking FConnectItBoardState by const&, so it
+    // also works on GetPreviousState() and detached/hypothetical states
+    // (MinMax), not just this component's own live state. See
+    // Docs/UIValueCatalogue.md Gap 4 for the reasoning.
 
     virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 

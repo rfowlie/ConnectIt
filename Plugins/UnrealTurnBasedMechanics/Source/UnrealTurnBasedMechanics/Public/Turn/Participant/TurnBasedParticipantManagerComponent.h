@@ -46,6 +46,11 @@ struct FTurnBasedParticipantManagerInfo
 
     UPROPERTY(BlueprintReadOnly)
     TArray<FTurnParticipantInfo> Participants;
+
+    // See ReplicatedTurnStartServerTime's own comment -- -1 when no turn
+    // timer is running.
+    UPROPERTY(BlueprintReadOnly)
+    float TurnStartServerTime = -1.f;
 };
 
 UCLASS(ClassGroup=(TurnBased), meta=(BlueprintSpawnableComponent))
@@ -104,6 +109,18 @@ public:
     // Replicated once per turn start -- clients start local timer from this
     UPROPERTY(BlueprintReadOnly, Replicated, Category = "Turn Based|State")
     float ReplicatedTurnDuration = 0.f;
+
+    // Server world time (AGameStateBase's own synced clock) at which the
+    // current turn's timer started. Replicated once per turn start
+    // alongside ReplicatedTurnDuration -- every client derives remaining
+    // time locally from these two (see ATurnBasedGameState::GetTurnTimeRemaining),
+    // so there is no per-tick replication and no Client RPC needed to show
+    // a countdown for ANY participant's turn, not just the active one.
+    // -1 when no turn timer is currently running (between turns, paused,
+    // game over). Display only -- the server's own TurnTimerHandle stays
+    // the only thing that actually ends a turn.
+    UPROPERTY(BlueprintReadOnly, Replicated, Category = "Turn Based|State")
+    float ReplicatedTurnStartServerTime = -1.f;
 
     // --- Setup --- Server only ---
 
@@ -166,12 +183,30 @@ public:
         return IsValid(Controller) && GetControllerAtIndex(ActiveParticipantIndex) == Controller;
     }
 
+    // The participant whose turn it currently is. bOutValid is false (and
+    // the returned struct is default-constructed) when no turn is active or
+    // Participants hasn't replicated yet -- callers branch on that rather
+    // than testing SlotIndex == -1, which is also the legitimate
+    // "unassigned" value. Returned by value, not by const&: Participants
+    // can legitimately be empty and there is no safe reference to hand back
+    // in that case.
+    UFUNCTION(BlueprintPure, Category = "Turn Based")
+    FTurnParticipantInfo GetActiveParticipant(bool& bOutValid) const;
+
+    // Participant whose SlotIndex field == InSlotIndex. Deliberately
+    // searches by field rather than indexing Participants[InSlotIndex] --
+    // slot index and array index coincide today only because slots are
+    // assigned in registration order, and nothing in the type guarantees
+    // that stays true.
+    UFUNCTION(BlueprintPure, Category = "Turn Based")
+    FTurnParticipantInfo GetParticipantBySlot(int32 InSlotIndex, bool& bOutValid) const;
+
     // Everything a debug widget needs, in one call -- see
     // FTurnBasedParticipantManagerInfo's own comment.
     UFUNCTION(BlueprintPure, Category = "Turn Based|Debug")
     FTurnBasedParticipantManagerInfo GetInfo() const
     {
-        return { CurrentPhase, ActiveParticipantIndex, TurnNumber, Participants };
+        return { CurrentPhase, ActiveParticipantIndex, TurnNumber, Participants, ReplicatedTurnStartServerTime };
     }
 
     virtual void GetLifetimeReplicatedProps(

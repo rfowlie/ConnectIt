@@ -3,6 +3,7 @@
 
 #include "TurnBasedMechanicsStructs.h"
 #include "Framework/PlayerState/TurnBasedPlayerState.h"
+#include "TurnBasedMechanicsLibrary.h"
 
 
 bool FTurnParticipantInfo::IsActiveParticipant() const
@@ -17,7 +18,8 @@ bool FTurnParticipantInfo::IsActiveParticipant() const
 
 FString FTurnParticipantInfo::GetDisplayName() const
 {
-	return IsValid(PlayerState)
-			? PlayerState->GetPlayerName()
-			: TEXT("Unknown");
+	// USTRUCT member functions can't be UFUNCTIONs, so the Blueprint-callable
+	// version of this lives on UTurnBasedMechanicsLibrary; delegate to it so
+	// there's exactly one implementation.
+	return UTurnBasedMechanicsLibrary::GetParticipantDisplayName(*this);
 }

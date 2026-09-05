@@ -13,8 +13,6 @@ class UConnectIt_PlacePieceGameEvent;
 class UTurnBasedGameEvent;
 class UActionLoadoutDataAsset;
 class UConnectIt_ConfigComponent;
-class UGridTileRegistryComponent;
-class UGridPieceRegistryComponent;
 class UConnectIt_BoardRulesComponent;
 class UConnectIt_BoardShiftComponent;
 
@@ -42,12 +40,11 @@ public:
     // GetBoardState() return type (UBoardStateComponentBase*) forced an
     // awkward Cast<UConnectIt_BoardStateComponent>(...) at every call site.
     // Plain accessors below return the real derived type directly.
-
-    // UFUNCTION(BlueprintPure, Category = "ConnectIt|Board")
-    // UGridTileRegistryComponent* GetTileRegistry() const { return TileRegistryComponent; }
     //
-    // UFUNCTION(BlueprintPure, Category = "ConnectIt|Board")
-    // UGridPieceRegistryComponent* GetPieceRegistry() const { return PieceRegistryComponent; }
+    // GetTileRegistry()/GetPieceRegistry() aren't redeclared here -- they're
+    // already inherited from ABoardManagerBase (BlueprintPure), returning
+    // UGridTileRegistryBase*/UGridPieceRegistryBase*. See RuntimeStateAccess.md's
+    // Board State table for the null-unless-assigned caveat on those.
 
     UFUNCTION(BlueprintPure, Category = "ConnectIt|Board")
     UConnectIt_BoardStateComponent* GetBoardStateComponent() const { return BoardStateComponent; }

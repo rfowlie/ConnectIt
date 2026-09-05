@@ -63,6 +63,16 @@ struct FConnectItBoardState
     UPROPERTY(BlueprintReadOnly)
     int32 WinningFactionSlot = -1;
 
+    // Score needed to win, published by whichever IConnectIt_WinCondition is
+    // active (see UConnectIt_BoardRulesComponent::GetTargetScore) so UI can
+    // render "57 / 100" without knowing which strategy is in play or
+    // reaching into a server-side strategy object that isn't replicated.
+    // Rides this single replicated snapshot rather than adding a second
+    // replicated property. 0 means "this win condition isn't score-based" --
+    // a progress bar should hide itself rather than divide by zero.
+    UPROPERTY(BlueprintReadOnly)
+    float TargetScore = 0.f;
+
     // --- Accessors ---
 
     // Find tile data by position -- returns nullptr if not found

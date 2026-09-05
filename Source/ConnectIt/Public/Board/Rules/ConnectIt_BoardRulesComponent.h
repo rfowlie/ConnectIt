@@ -48,6 +48,25 @@ public:
     // and no-ops if WinConditionRule is unset (should not happen post-BeginPlay).
     void CheckWinCondition(FConnectItBoardState& MutableState) const;
 
+    // Wraps IConnectIt_WinCondition::Execute_GetTargetScore -- 0 if unset.
+    // Production UI should prefer FConnectItBoardState::TargetScore (this
+    // component's own CheckWinCondition already stamps it there on every
+    // check) -- that value is replicated; this call reaches a server-side
+    // strategy object directly and is not.
+    UFUNCTION(BlueprintPure, Category = "ConnectIt|Rules")
+    float GetTargetScore() const;
+
+    // Which strategies are configured. Config/debug visibility ONLY -- these
+    // read a server-side object whose identity is not networked, so a
+    // client may see a defaulted strategy (BeginPlay's fallback) rather than
+    // whatever was actually authored server-side. Production UI must read
+    // FConnectItBoardState::TargetScore instead, which IS replicated.
+    UFUNCTION(BlueprintPure, Category = "ConnectIt|Rules|Debug")
+    FName GetActiveWinConditionName() const;
+
+    UFUNCTION(BlueprintPure, Category = "ConnectIt|Rules|Debug")
+    FName GetActiveScoringRuleName() const;
+
 protected:
 
     virtual void BeginPlay() override;

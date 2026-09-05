@@ -4,6 +4,7 @@
 #include "TurnBasedMechanicsLibrary.h"
 
 #include "Framework/GameState/TurnBasedGameState.h"
+#include "Framework/PlayerState/TurnBasedPlayerState.h"
 #include "Turn/Participant/TurnBasedParticipantComponent.h"
 
 
@@ -23,10 +24,19 @@ bool UTurnBasedMechanicsLibrary::IsLocalPlayerActiveParticipant(const UObject* W
 	if (!IsValid(ParticipantComp)) return false;
 
 	return ParticipantComp->IsMyTurn();
-	
+
 	// const ATurnBasedGameState* GameState = World->GetGameState<ATurnBasedGameState>();
 	//
-	// if (!IsValid(GameState)) return false;	
+	// if (!IsValid(GameState)) return false;
 	//
 	// return GameState->GetActiveParticipantIndex() == ParticipantComp->GetActiveParticipantSlotIndex();
+}
+
+FString UTurnBasedMechanicsLibrary::GetParticipantDisplayName(
+	const FTurnParticipantInfo& Participant,
+	const FString& FallbackName)
+{
+	return IsValid(Participant.PlayerState)
+			? Participant.PlayerState->GetPlayerName()
+			: FallbackName;
 }

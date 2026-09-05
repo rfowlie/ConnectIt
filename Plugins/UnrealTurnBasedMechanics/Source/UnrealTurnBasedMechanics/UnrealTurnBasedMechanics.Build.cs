@@ -29,26 +29,29 @@ public class UnrealTurnBasedMechanics : ModuleRules
 				"InputCore",
 				"EnhancedInput",
 				"GameplayTags",
-				
+				// SlateCore -- public because Action/TurnBasedAction.h (a
+				// public header) now carries an FSlateBrush property
+				// (display icon, see UIValueCatalogue.md Gap 7).
+				"SlateCore",
+
 				// ... add other public dependencies that you statically link with here ...
 				"UnrealGameMechanics",
 				"UnrealGridMechanics"
-				
+
 			}
 			);
-			
-		
+
+
 		PrivateDependencyModuleNames.AddRange(
 			new string[]
 			{
 				"CoreUObject",
 				"Engine",
 				"Slate",
-				"SlateCore",
 				"UMG",
 				"EnhancedInput",
 				"AIModule",
-				
+
 				// ... add private dependencies that you statically link with here ...
 				"UnrealGameMechanics",
 				"UnrealGridMechanics"

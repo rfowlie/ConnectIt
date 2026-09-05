@@ -76,6 +76,7 @@ void UDWidget_TurnBasedParticipantManagerComponent::HandleActiveControllerChange
 
     OnActiveParticipantIndexUpdated(ResolvedSource->ActiveParticipantIndex);
     OnTurnNumberUpdated(ResolvedSource->TurnNumber);
+    OnTurnStartServerTimeUpdated(ResolvedSource->ReplicatedTurnStartServerTime);
 }
 
 void UDWidget_TurnBasedParticipantManagerComponent::HandleParticipantForfeited(const FTurnParticipantInfo& ParticipantInfo)
@@ -109,4 +110,5 @@ void UDWidget_TurnBasedParticipantManagerComponent::PushCurrentInfo()
     OnActiveParticipantIndexUpdated(Info.ActiveParticipantIndex);
     OnTurnNumberUpdated(Info.TurnNumber);
     OnParticipantsUpdated(Info.Participants);
+    OnTurnStartServerTimeUpdated(Info.TurnStartServerTime);
 }

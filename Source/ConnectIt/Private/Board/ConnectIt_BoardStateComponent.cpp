@@ -19,7 +19,7 @@ UConnectIt_BoardStateComponent::UConnectIt_BoardStateComponent()
 void UConnectIt_BoardStateComponent::InitialiseBoardState(
     UGridTileRegistryBase* TileRegistry,
     UGridPieceRegistryBase* PieceRegistry,
-    int32 NumFactions, float InitialMultiplier)
+    int32 NumFactions, float InitialMultiplier, float InTargetScore)
 {
     check(UCodingUtilsComponentLibrary::IsAuthoritative(this));
     check(NumFactions > 0);
@@ -41,6 +41,7 @@ void UConnectIt_BoardStateComponent::InitialiseBoardState(
     InitialState.LastModifiedTurn = 0;
     InitialState.bGameOver        = false;
     InitialState.WinningFactionSlot = -1;
+    InitialState.TargetScore      = InTargetScore;
 
     // Apply without capturing snapshot -- no previous state yet
     BoardSnapshot.PreviousState = InitialState;

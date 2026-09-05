@@ -1,10 +1,15 @@
 # Runtime State Access Reference
 
-A reference for building UI (in-game or debug/dev) that reads ConnectIt's
-live game state — board, turn/participant, match, and action-stack state.
-For what each class *is*, see [ConnectItModule.md](ConnectItModule.md); this
-doc is about where to read a given piece of *state* from, whether it's safe
-to read from Blueprint, and where the gaps are.
+A reference for reading ConnectIt's live game state — board, turn/participant,
+match, and action-stack state — organized **by system**, for any state
+reader (debug widget or production UI alike). For what each class *is*, see
+[ConnectItModule.md](ConnectItModule.md); this doc is about where to read a
+given piece of *state* from, whether it's safe to read from Blueprint, and
+where the gaps are. For **production in-game UI** specifically (scoreboard,
+turn indicator, results screen, board overlay, action bar), see
+[UIValueCatalogue.md](UIValueCatalogue.md) instead — organized by UI value,
+it links back here for the underlying access facts rather than restating
+them.
 
 Current as of the `TurnEndEventTag`/`QueueTagContainer` refactor that retired
 `UConnectIt_BoardSequencerComponent` and the old resolution-hold mechanism
@@ -39,14 +44,24 @@ Source of truth: `UConnectIt_BoardStateComponent` (one per `AConnectIt_BoardMana
 | Per-tile queries (occupied/active/valid-for-placement, score) | `FConnectItBoardState::IsTileOccupied/IsTileActive/IsTileValidForPlacement/GetScore` | inline on the struct (`ConnectIt_Structs.h`) | — (C++ only, no loose BP nodes) |
 | High-level board queries (all tiles, empty tiles, tiles by faction, random empty tile, board full, has-faction-won) | `UConnectIt_GameUtilityLibrary::Get*GridTiles* / IsTileEmpty / GetTileAtPosition / GetRandomEmptyGridTile / IsGameBoardFull / HasFactionWon` (static, `WorldContextObject`) | `Library/ConnectIt_GameUtilityLibrary.h` | Pure |
 | Board manager / board state component lookup | `UConnectIt_GameUtilityLibrary::GetBoardManager` / `GetBoardStateComponent` | same | Pure |
-| Grid position ↔ world position, rows/columns, board dimensions | `UGridTileRegistryComponent::GridPositionToWorld/WorldToGridPosition/GetRow/GetColumn/GetMinRow.../GetRowCount/GetColumnCount` | `AConnectIt_BoardManager::GetTileRegistry()` | Pure |
-| Piece actor at a grid position | `UGridPieceRegistryComponent::GetPiece(Position)` | `AConnectIt_BoardManager::GetPieceRegistry()` | Pure |
+| Grid position ↔ world position, rows/columns, board dimensions | `UGridTileRegistryBase::GridPositionToWorld/WorldToGridPosition/GetRow/GetColumn/GetMinRow.../GetRowCount/GetColumnCount` | `AConnectIt_BoardManager::GetTileRegistry()` (inherited from `ABoardManagerBase`) | Pure — **but `GetTileRegistry()` can return null**: `TileRegistry`/`PieceRegistry` are `EditAnywhere, Instanced` `UObject`s (not components, despite the pre-refactor name) with no constructor default on `AConnectIt_BoardManager`, so they're only valid if assigned per-Blueprint. Check validity before use. |
+| Piece actor at a grid position | `UGridPieceRegistryBase::GetPiece(Position)` | `AConnectIt_BoardManager::GetPieceRegistry()` | Pure — same null-unless-assigned caveat as above |
 | Config (loadouts, piece class, pool size) | `AConnectIt_BoardManager::GetConfigComponent()` → `UConnectIt_ConfigComponent` properties | same | Getter: Pure. Properties: ReadOnly (`EditAnywhere, BlueprintReadOnly`) |
-| Scoring/win-condition strategy in use | `AConnectIt_BoardManager::GetBoardRulesComponent()` → `UConnectIt_BoardRulesComponent` | same | Getter: Pure. No BP query for "which strategy" — see [Gaps](#gaps--recommendations) |
+| Scoring/win-condition strategy in use | `AConnectIt_BoardManager::GetBoardRulesComponent()` → `UConnectIt_BoardRulesComponent` | same | Getter: Pure. `GetActiveWinConditionName()`/`GetActiveScoringRuleName()` for debug (client-unreliable, see [Gaps](#gaps--recommendations) #3) |
+| Win score target, for a progress bar | `FConnectItBoardState::TargetScore` / `AConnectIt_GameState::GetTargetScore()`, `GetFactionScoreProgress(int32)` | replicated, authored by whichever `IConnectIt_WinCondition` is active | Pure |
 
 `GetBoardStateComponent()` on the board manager (`BlueprintPure`) is the
 one-hop way to reach all of the above from anywhere that already has (or can
 resolve) the board manager.
+
+| What | Accessor | Where | BP Access |
+|---|---|---|---|
+| Board manager lookup without a `TActorIterator` scan, and a late-binding signal for widgets that construct before it exists | `GetBoardManager()`/`GetBoardState()`, `OnBoardManagerReady` | `UConnectIt_BoardManagerSubsystem` (`UWorldSubsystem`) | Getters: Pure. Delegate: Assignable |
+
+Prefer the subsystem over `UConnectIt_GameUtilityLibrary::GetBoardManager`
+when a widget needs to resolve *once* and then react to the manager
+appearing later (e.g. constructed before level streaming finishes) — see
+[SubsystemDiscovery-DualAccessPattern.md](Workflows/SubsystemDiscovery-DualAccessPattern.md).
 
 ## Turn / Participant / Match State
 
@@ -63,8 +78,11 @@ Source of truth: `UTurnBasedParticipantManagerComponent` (lives on GameState).
 | Per-player forfeits/turns-missed/ready state | `ATurnBasedPlayerState::GetTurnsMissed/IsForfeited/IsReady/GetSlotIndex/GetParticipantType` | on each participant's PlayerState (`FTurnParticipantInfo::PlayerState`) | Pure |
 | "Is it my turn" (local player) | `UConnectIt_GameUtilityLibrary::IsLocalPlayerTurn` / `GetLocalPlayerSlotIndex` | static utility | Pure |
 | Match result (winner, final scores, end reason) | `AConnectIt_GameState::MatchResult` (property) | ConnectIt-specific | ReadOnly (`ReplicatedUsing`) |
-| Board-derived UI convenience (score, tile occupied, active participant name) | `AConnectIt_GameState::GetFactionScore/GetAllScores/IsTileOccupied/IsTileValidForPlacement/GetActiveParticipantName/IsLocalPlayerTurn` | ConnectIt-specific | Pure |
-| Raw controller at a slot index | `UTurnBasedParticipantManagerComponent::GetControllerAtIndex(int32)` | — | — (C++ only, no `UFUNCTION`) — also returns null on clients per its own doc comment, so not useful to a client-side debug widget anyway |
+| Board-derived UI convenience (score, tile occupied, active participant name) | `AConnectIt_GameState::GetFactionScore/GetAllScores/IsTileOccupied/IsTileValidForPlacement/GetActiveParticipantName/IsLocalPlayerTurn` | ConnectIt-specific | Pure — **`IsLocalPlayerTurn()` used to return `false` on every remote client** (it read `GetControllerAtIndex`, server-only data); now a passthrough to `UConnectIt_GameUtilityLibrary::IsLocalPlayerTurn`, the correct implementation. `GetFactionScore`/`GetAllScores` used to `check()`-crash on a null board-state component; both now degrade to a safe default like their sibling accessors. |
+| Raw controller at a slot index | `UTurnBasedParticipantManagerComponent::GetControllerAtIndex(int32)` | — | — (C++ only, no `UFUNCTION`) — also returns null on clients per its own doc comment (`ServerControllers` is server-only, never replicated), so not useful to a client-side debug widget anyway. This is exactly what made the old `IsLocalPlayerTurn()` bug above possible. |
+| Turn timer — configured duration | `UTurnBasedParticipantManagerComponent::TurnDuration` (config) / `ReplicatedTurnDuration` (replicated per-turn) | same | ReadOnly |
+| Turn timer — seconds remaining, for **any** participant's turn, on **any** client | `ATurnBasedGameState::GetTurnTimeRemaining(bool&)` / `GetTurnTimeRemainingFraction()` | derived locally from `ParticipantManager::ReplicatedTurnStartServerTime` + `ReplicatedTurnDuration` and `GetServerWorldTimeSeconds()` — no per-tick replication | Pure — supersedes `FTurnNotification.TurnDuration`, which only ever reached the **active** participant via `ClientReceiveTurnNotification`; the server-private `TurnTimerHandle` itself still isn't (and doesn't need to be) exposed, since it's not what UI renders |
+| Client-side "is it my turn", read from the participant's own component rather than the manager | `UTurnBasedParticipantComponent::IsMyTurn()`, `GetActiveParticipantSlotIndex()` | reachable via `ATurnBasedPlayerControllerBase`'s components | Pure — **`IsMyTurn()` is client-side-only and always `false` on the server** (set by `ClientReceiveTurnNotification`, never on the authority) — do not use this to gate server-side logic. |
 
 Prefer the `ATurnBasedGameState`/`UConnectIt_GameUtilityLibrary` wrappers over
 reaching directly into `UTurnBasedParticipantManagerComponent`'s replicated
@@ -171,14 +189,18 @@ they'll fire) — `GetTagsInQueue()` only covers what's active right now.
    active one). Worth a `GetQueuedContainerCount()` if the debug UI ever
    needs to show "N more things about to happen" rather than just "this is
    happening right now."
-2. **No single-call "active participant's full info."** BP has to pull
-   `GetParticipants()` + `GetActiveParticipantIndex()` and index in itself.
-   Minor convenience gap — a `GetActiveParticipant()` wrapper on
-   `ATurnBasedGameState` (mirroring its existing passthrough accessors)
-   would close it cheaply.
-3. **No BP-facing query for which scoring/win-condition strategy is active**
-   on `UConnectIt_BoardRulesComponent` — low priority, mostly a config-time
-   concern rather than a runtime-debug one.
+2. ~~**No single-call "active participant's full info."**~~ **Resolved** —
+   `GetActiveParticipant(bool&)` / `GetParticipantBySlot(int32, bool&)` on
+   both `UTurnBasedParticipantManagerComponent` and, as passthroughs,
+   `ATurnBasedGameState`.
+3. ~~**No BP-facing query for which scoring/win-condition strategy is active**~~
+   **Resolved for debug** — `GetActiveWinConditionName()`/`GetActiveScoringRuleName()`
+   on `UConnectIt_BoardRulesComponent` (client-unreliable by nature, since
+   strategy objects aren't networked — see their own doc comments).
+   **Resolved for production** — the win-score target itself (what UI
+   actually needs, rather than the strategy's identity) is now replicated
+   as `FConnectItBoardState::TargetScore`, surfaced via
+   `AConnectIt_GameState::GetTargetScore()`/`GetFactionScoreProgress(int32)`.
 
 ## Safety — reading this state from Blueprint
 
@@ -196,8 +218,9 @@ Confirmed safe by construction for the vast majority of the surface above:
 pointers* — `GetTopAction()`/`GetRootAction()` (actions), `GetBoardManager()`,
 component getters (`GetTileRegistry()`, `GetConfigComponent()`, etc.),
 `GetPiece()`. None of the checked components expose unintended
-`BlueprintCallable` mutators alongside their query surface (`UGridTileRegistryComponent`/
-`UGridPieceRegistryComponent` are pure-query; `UConnectIt_ConfigComponent`/
+`BlueprintCallable` mutators alongside their query surface (`UGridTileRegistryBase`/
+`UGridPieceRegistryBase` — the current `Instanced` UObject registries, not
+the pre-refactor `*RegistryComponent` types — are pure-query; `UConnectIt_ConfigComponent`/
 `UConnectIt_BoardRulesComponent` have no BP-callable mutators at all) — but
 `UTurnBasedAction::Complete()`/`Cancel()` genuinely are `BlueprintCallable` on
 the exact object `GetTopAction()` hands back. A debug widget built around

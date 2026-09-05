@@ -124,6 +124,17 @@ public:
     UFUNCTION(BlueprintPure, Category = "ConnectIt|Board")
     FConnectItBoardStateSnapshot GetBoardSnapshot() const;
 
+    // Score needed to win, published by whichever win condition is active.
+    // 0 means the active win condition isn't score-based. See
+    // FConnectItBoardState::TargetScore.
+    UFUNCTION(BlueprintPure, Category = "ConnectIt|Board")
+    float GetTargetScore() const;
+
+    // FactionSlot's score over the target, 0..1. Returns 0 when the target
+    // is 0 (non-score-based win condition) rather than dividing.
+    UFUNCTION(BlueprintPure, Category = "ConnectIt|Board")
+    float GetFactionScoreProgress(int32 FactionSlot) const;
+
     // --- Turn Accessors ---
     // Convenience wrappers on top of ATurnBasedGameState
 

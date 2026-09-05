@@ -66,3 +66,24 @@ void UConnectIt_BoardRulesComponent::CheckWinCondition(
     IConnectIt_WinCondition::Execute_CheckWinCondition(
         WinConditionRule.GetObject(), MutableState);
 }
+
+float UConnectIt_BoardRulesComponent::GetTargetScore() const
+{
+    if (!WinConditionRule.GetInterface()) return 0.f;
+
+    return IConnectIt_WinCondition::Execute_GetTargetScore(WinConditionRule.GetObject());
+}
+
+FName UConnectIt_BoardRulesComponent::GetActiveWinConditionName() const
+{
+    return WinConditionRule.GetObject()
+        ? WinConditionRule.GetObject()->GetClass()->GetFName()
+        : NAME_None;
+}
+
+FName UConnectIt_BoardRulesComponent::GetActiveScoringRuleName() const
+{
+    return ScoringRule.GetObject()
+        ? ScoringRule.GetObject()->GetClass()->GetFName()
+        : NAME_None;
+}

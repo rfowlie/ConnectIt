@@ -59,6 +59,7 @@ void UTurnBasedParticipantManagerComponent::GetLifetimeReplicatedProps(
     DOREPLIFETIME(UTurnBasedParticipantManagerComponent, TurnNumber);
     DOREPLIFETIME(UTurnBasedParticipantManagerComponent, Participants);
     DOREPLIFETIME(UTurnBasedParticipantManagerComponent, ReplicatedTurnDuration);
+    DOREPLIFETIME(UTurnBasedParticipantManagerComponent, ReplicatedTurnStartServerTime);
 }
 
 // --- Setup ---
@@ -211,6 +212,7 @@ void UTurnBasedParticipantManagerComponent::NotifyParticipantDisconnected(
         && CurrentPhase == ETurnPhase::TurnActive)
     {
         GetWorld()->GetTimerManager().ClearTimer(TurnTimerHandle);
+        ReplicatedTurnStartServerTime = -1.f;
         DisconnectedParticipantIndex = DisconnectedIndex;
 
         SetPhase(ETurnPhase::TurnPaused);
@@ -262,6 +264,15 @@ void UTurnBasedParticipantManagerComponent::NotifyParticipantReconnected(
                 BuildNotification(ReconnectedIndex, ETurnPhase::TurnActive));
         }
 
+        // Restarts with the full TurnDuration, not the remaining time at
+        // disconnect -- pre-existing behaviour, not changed here. Re-stamp
+        // the start time to match so the client-derived countdown mirrors
+        // exactly what actually happens rather than showing a stale value.
+        if (const ATurnBasedGameState* GS = GetOwningGameState())
+        {
+            ReplicatedTurnStartServerTime = GS->GetServerWorldTimeSeconds();
+        }
+
         GetWorld()->GetTimerManager().SetTimer(
             TurnTimerHandle,
             this,
@@ -298,6 +309,10 @@ void UTurnBasedParticipantManagerComponent::StartTurn(int32 ParticipantIndex)
 
     ActiveParticipantIndex = ParticipantIndex;
     ReplicatedTurnDuration = TurnDuration;
+    if (const ATurnBasedGameState* GS = GetOwningGameState())
+    {
+        ReplicatedTurnStartServerTime = GS->GetServerWorldTimeSeconds();
+    }
     ++TurnNumber;
     Participants[ParticipantIndex].TurnsTaken++;
 
@@ -329,6 +344,7 @@ void UTurnBasedParticipantManagerComponent::EndTurn(ETurnEndReason Reason)
     check(!IsRunningClientOnly());
 
     GetWorld()->GetTimerManager().ClearTimer(TurnTimerHandle);
+    ReplicatedTurnStartServerTime = -1.f;
 
     SetPhase(ETurnPhase::TurnEnd);
     NotifyActiveParticipant(ETurnPhase::TurnEnd, Reason);
@@ -514,6 +530,38 @@ void UTurnBasedParticipantManagerComponent::BroadcastTurnStart(const int32 Activ
 void UTurnBasedParticipantManagerComponent::BroadcastControllerChanged(int32 ActiveIndex)
 {
     // TODO: where and why do we need this?
+}
+
+// --- Queries ---
+
+FTurnParticipantInfo UTurnBasedParticipantManagerComponent::GetActiveParticipant(
+    bool& bOutValid) const
+{
+    if (Participants.IsValidIndex(ActiveParticipantIndex))
+    {
+        bOutValid = true;
+        return Participants[ActiveParticipantIndex];
+    }
+
+    bOutValid = false;
+    return FTurnParticipantInfo();
+}
+
+FTurnParticipantInfo UTurnBasedParticipantManagerComponent::GetParticipantBySlot(
+    int32 InSlotIndex, bool& bOutValid) const
+{
+    if (const FTurnParticipantInfo* Found = Participants.FindByPredicate(
+        [InSlotIndex](const FTurnParticipantInfo& Info)
+        {
+            return Info.SlotIndex == InSlotIndex;
+        }))
+    {
+        bOutValid = true;
+        return *Found;
+    }
+
+    bOutValid = false;
+    return FTurnParticipantInfo();
 }
 
 // --- Helpers ---
