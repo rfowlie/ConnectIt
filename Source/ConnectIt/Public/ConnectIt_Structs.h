@@ -49,7 +49,8 @@ struct FConnectItBoardState
 
     UPROPERTY(BlueprintReadOnly)
     int32 FactionTurn = -1;
-    
+
+    // array position equals faction slot...
     UPROPERTY(BlueprintReadOnly)
     TArray<float> ScoreBoard;
 

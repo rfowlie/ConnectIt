@@ -57,10 +57,10 @@ protected:
     // directly, or via NewObject in its own constructor for a baked-in
     // default. Exactly how a real project's board manager would default
     // this is left to that future migration, not this prototype.
-    UPROPERTY(EditAnywhere, Instanced, Category = "Board")
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Instanced, Category = "Board")
     TObjectPtr<UGridTileRegistryBase> TileRegistry;
 
-    UPROPERTY(EditAnywhere, Instanced, Category = "Board")
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Instanced, Category = "Board")
     TObjectPtr<UGridPieceRegistryBase> PieceRegistry;
 
     virtual void BeginPlay() override;

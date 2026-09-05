@@ -80,6 +80,7 @@ void UGridTileRegistryBase::DiscoverTiles()
         }
     }
 
+    // TODO: assign current tiles to their location which is calculated using this registry?
     Algo::Sort(Tiles, [](const TObjectPtr<AGridTileBase>& A, const TObjectPtr<AGridTileBase>& B)
     {
         return GetNameSafe(A.Get()) < GetNameSafe(B.Get());
@@ -132,6 +133,7 @@ AGridTileBase* UGridTileRegistryBase::GetTileAtPosition(FGridPosition Position) 
             return Tile;
         }
     }
+    
     return nullptr;
 }
 

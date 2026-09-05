@@ -298,7 +298,7 @@ void UTurnBasedParticipantManagerComponent::StartTurn(int32 ParticipantIndex)
 
     ActiveParticipantIndex = ParticipantIndex;
     ReplicatedTurnDuration = TurnDuration;
-    TurnNumber++;
+    ++TurnNumber;
     Participants[ParticipantIndex].TurnsTaken++;
 
     // Match is now actively running a turn
@@ -626,4 +626,5 @@ void UTurnBasedParticipantManagerComponent::OnRep_TurnNumber()
     // the notification. See TurnNumber's own doc comment for why this needs
     // its own ReplicatedUsing instead of piggybacking on OnRep_CurrentPhase.
     OnTurnPhaseChanged.Broadcast(CurrentPhase);
+    OnTurnChanged.Broadcast(TurnNumber);
 }

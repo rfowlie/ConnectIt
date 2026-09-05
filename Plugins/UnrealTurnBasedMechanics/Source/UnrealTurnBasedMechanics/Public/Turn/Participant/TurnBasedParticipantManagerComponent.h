@@ -15,6 +15,7 @@ class UTurnBasedParticipantComponent;
 
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnTurnPhaseChanged, ETurnPhase, NewPhase);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnTurnChanged, const int32, Turn);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnParticipantForfeited, const FTurnParticipantInfo&, ParticipantInfo);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnActiveControllerChanged, AController*, NewActiveController);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnParticipantIndexChanged, const int32, ParticipantIndex);
@@ -129,7 +130,10 @@ public:
 
     UPROPERTY(BlueprintAssignable, Category = "Turn Based")
     FOnTurnPhaseChanged OnTurnPhaseChanged;
-
+    
+    UPROPERTY(BlueprintAssignable, Category = "Turn Based")
+    FOnTurnChanged OnTurnChanged;
+    
     UPROPERTY(BlueprintAssignable, Category = "Turn Based")
     FOnActiveControllerChanged OnActiveControllerChanged;
     
