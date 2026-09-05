@@ -1,5 +1,22 @@
 # Pattern: Dual-Mode Subsystem Discovery
 
+**Status: retired from ConnectIt.** This pattern's entire ConnectIt-specific
+implementation — `AConnectIt_BoardManager` (the per-world singleton actor
+being discovered) and `UConnectIt_BoardManagerSubsystem` (the cache) — has
+been removed as part of the board architecture overhaul (see
+[ConnectItModule.md](../ConnectItModule.md#board-architecture-overhaul)).
+Board state is now reached directly via `AConnectIt_GameState::GetBoardStateComponent()`
+(a default-subobject, guaranteed to exist — no spawn-order race to guard
+against), and the tile/piece registries live per-machine on
+`AConnectIt_PlayerController` rather than on a discoverable world actor.
+There is no longer a "per-world singleton that might not have spawned yet"
+in this codebase, so this pattern has no live consumer. The write-up below
+is kept as a portable reference — the underlying problem (a singleton actor
+with unpredictable spawn timing relative to its callers) can recur in a
+future feature — but nothing in `Source/ConnectIt` currently implements it,
+and its ConnectIt-specific source note (`BoardManagerSubsystem_Workflow.txt`)
+has been deleted along with the class it documented.
+
 ## Problem
 
 Code all over a project needs a reference to "the one important object in this world" (a board manager, a match director, a level's central coordinator) — but that object is an `AActor`, so it doesn't necessarily exist yet at the moment every caller wants it, and a full `TActorIterator` world scan on every lookup is wasteful when the answer never changes once the object has spawned. Compounding this: different callers have genuinely different needs — some want to fail loudly and immediately if the object isn't there yet (a real bug, this should always exist by now), while others are asking opportunistically and just want to know "do we have it yet, and if not, tell me when we do" (e.g. a UI widget that might construct before the world is fully set up).
@@ -24,6 +41,8 @@ Caller type A: "should exist by now"     Caller type B: "might be early"
 ```
 
 ## Participants / Classes Involved
+
+*(Historical — these classes no longer exist in ConnectIt; kept as the concrete example the generic pattern above was extracted from.)*
 
 | Role | ConnectIt class | Note |
 |---|---|---|
@@ -51,7 +70,7 @@ This is a generic answer to "how do callers reliably get a reference to a single
 
 ## Gotchas
 
-- **This is easy to mistake for accidental duplication** — two ways to get "the board manager" can look, at a glance, like someone built the same thing twice. It isn't: the two modes serve genuinely different caller needs, and collapsing them back into one API would just reintroduce the problem this pattern solves. See [Duplication.md](../Duplication.md#not-included-the-two-board-manager-discovery-mechanisms) for why this specific pair is explicitly *not* listed as a duplication candidate. When applying this pattern elsewhere, document the two-mode split clearly (as this file does) so a future reader doesn't "simplify" it back into one function.
+- **This was easy to mistake for accidental duplication** — two ways to get "the board manager" looked, at a glance, like someone built the same thing twice. It wasn't: the two modes served genuinely different caller needs, and collapsing them back into one API would just have reintroduced the problem this pattern solves. See [Duplication.md](../Duplication.md#resolved-the-two-board-manager-discovery-mechanisms-entry-retired) for the (now-retired) record of why this specific pair was never a duplication candidate. When applying this pattern elsewhere, document the two-mode split clearly (as this file does) so a future reader doesn't "simplify" it back into one function.
 - **Placement of the cache matters for dependency direction.** In ConnectIt, the cached object (`AConnectIt_BoardManager`) is a game-module class, but the generic grid plugin already has its own per-world subsystem (`UGridHoverSubsystem`). Caching the game-module type *there* would require the plugin to depend back on the game module — a circular dependency most build systems (including Unreal's) reject outright. Keeping the cache in a new subsystem inside the consuming module instead avoids this entirely. When reusing this pattern, put the cache in the layer that's allowed to know the concrete type, not the lowest layer just because it "feels" more central.
 - **A silent accessor is only safe for callers who genuinely handle the null case** — don't let "returns null quietly" become "callers stopped checking for null, and it turns into a hard-to-diagnose silent failure. Route callers who should be treating a miss as a bug through the loud-fail mode instead, deliberately.
 - Registration being idempotent ("last caller wins") is what makes this safe under editor re-entry (PIE) or any scenario where the object might be recreated within the same world lifetime — don't assume registration only ever happens once.
@@ -59,4 +78,4 @@ This is a generic answer to "how do callers reliably get a reference to a single
 
 ## Source
 
-Portable rewrite of `Source/ConnectIt/Workflows/BoardManagerSubsystem_Workflow.txt`, which remains the ConnectIt-specific implementation reference (exact function names, exact file paths, and the two-mode quick-reference table for this specific project).
+Originally a portable rewrite of `Source/ConnectIt/Workflows/BoardManagerSubsystem_Workflow.txt` — that file documented `AConnectIt_BoardManager`/`UConnectIt_BoardManagerSubsystem`'s exact function names and two-mode quick-reference table for this project. Both the classes and the `.txt` have since been removed (see the retirement note at the top of this file); this page now stands alone as the generic pattern reference with no ConnectIt-specific source to point back to.

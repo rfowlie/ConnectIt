@@ -3,7 +3,6 @@
 #include "Framework/GameState/ConnectIt_GameState.h"
 #include "Net/UnrealNetwork.h"
 #include "TurnBasedMechanicsStructs.h"
-#include "Board/ConnectIt_BoardManager.h"
 #include "Board/ConnectIt_BoardStateComponent.h"
 #include "Library/ConnectIt_GameUtilityLibrary.h"
 #include "Turn/Participant/TurnBasedParticipantManagerComponent.h"
@@ -12,6 +11,10 @@
 AConnectIt_GameState::AConnectIt_GameState()
 {
     bReplicates = true;
+
+    BoardStateComponent =
+        CreateDefaultSubobject<UConnectIt_BoardStateComponent>(
+            TEXT("BoardState"));
 }
 
 void AConnectIt_GameState::GetLifetimeReplicatedProps(
@@ -179,16 +182,4 @@ void AConnectIt_GameState::OnRep_MatchResult()
         TEXT("ConnectIt_GameState: Match result replicated — "
              "faction %d wins"),
         MatchResult.WinningFactionSlot);
-}
-
-// --- Helpers ---
-
-UConnectIt_BoardStateComponent* AConnectIt_GameState::GetBoardStateComponent() const
-{
-    if (!IsValid(CachedBoardStateComponent))
-    {
-        CachedBoardStateComponent = UConnectIt_GameUtilityLibrary::GetBoardStateComponent(this);
-    }
-
-    return CachedBoardStateComponent;
 }

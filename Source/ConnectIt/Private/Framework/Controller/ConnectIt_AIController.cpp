@@ -3,10 +3,9 @@
 #include "Framework/Controller/ConnectIt_AIController.h"
 #include "Library/ConnectIt_GameUtilityLibrary.h"
 #include "Framework/GameMode/TurnBasedGameMode.h"
-#include "Board/ConnectIt_BoardManager.h"
 #include "Action/ActionLoadoutDataAsset.h"
 #include "Action/TurnBasedActionsComponent.h"
-#include "Framework/Data/ConnectIt_ConfigComponent.h"
+#include "Framework/Data/ConnectIt_LevelConfigDataAsset.h"
 
 
 AConnectIt_AIController::AConnectIt_AIController()
@@ -21,21 +20,23 @@ void AConnectIt_AIController::BeginPlay()
 
     if (!HasAuthority()) return;
 
-    InitialiseFromBoardManager();
+    InitialiseFromLevelConfig();
 }
 
-void AConnectIt_AIController::InitialiseFromBoardManager()
+void AConnectIt_AIController::InitialiseFromLevelConfig()
 {
-    BoardManager = UConnectIt_GameUtilityLibrary::GetBoardManager(this);
+    const UConnectIt_LevelConfigDataAsset* LevelConfig =
+        UConnectIt_GameUtilityLibrary::GetLevelConfig(this);
 
-    if (!IsValid(BoardManager))
+    if (!IsValid(LevelConfig))
     {
         UE_LOG(LogTemp, Error,
-            TEXT("ConnectIt_AIController: No board manager found"));
+            TEXT("ConnectIt_AIController: No ConnectIt_LevelConfigDataAsset "
+                 "found for the current level"));
         return;
     }
 
-    if (UActionLoadoutDataAsset* LoadOut = BoardManager->GetConfigComponent()->EnemyLoadout)
+    if (UActionLoadoutDataAsset* LoadOut = LevelConfig->EnemyLoadout)
     {
         ActionsComponent->InitialiseFromLoadout(LoadOut);
     }

@@ -2,9 +2,9 @@
 
 
 #include "Action/ConnectIt_PlacePieceAction.h"
-#include "Board/ConnectIt_BoardManager.h"
 #include "Board/ConnectIt_BoardStateComponent.h"
 #include "ConnectIt_Structs.h"
+#include "Framework/Controller/ConnectIt_PlayerController.h"
 #include "Interface/GridFactionInterface.h"
 #include "Library/ConnectIt_GameUtilityLibrary.h"
 #include "StructUtils/InstancedStruct.h"
@@ -38,13 +38,19 @@ void UConnectIt_PlacePieceAction::PostInitialiseAction_Implementation()
         return;
     }
     
-    BoardManager = UConnectIt_GameUtilityLibrary::GetBoardManager(OwningController);
+    // TileRegistry now lives on the owning controller, not the board
+    // manager (per-machine local lookup) -- see AConnectIt_PlayerController.
+    if (const AConnectIt_PlayerController* PC =
+        Cast<AConnectIt_PlayerController>(OwningController))
+    {
+        TileRegistry = PC->GetTileRegistry();
+    }
 
-    if (!IsValid(BoardManager))
+    if (!IsValid(TileRegistry))
     {
         UE_LOG(LogTemp, Error,
             TEXT("PlacePieceAction: PostInitialiseAction -- "
-                 "no AConnectIt_BoardManager found"));
+                 "OwningController has no valid TileRegistry"));
     }
 }
 
@@ -72,15 +78,16 @@ void UConnectIt_PlacePieceAction::OnCompleted_Implementation()
 
 bool UConnectIt_PlacePieceAction::IsValidHoverTile_Implementation(AGridTileBase* Tile) const
 {
-    if (!IsValid(BoardManager)) return false;
-    if (!IsValid(Tile)) return false;    
-   
-    const UConnectIt_BoardStateComponent* BoardState = BoardManager->GetBoardStateComponent();
+    if (!IsValid(TileRegistry)) return false;
+    if (!IsValid(Tile)) return false;
+
+    const UConnectIt_BoardStateComponent* BoardState =
+        UConnectIt_GameUtilityLibrary::GetBoardStateComponent(this);
     if (!IsValid(BoardState)) return false;
 
     // Position is not stored on the tile itself -- resolved via the
-    // board manager's tile registry
-    FGridPosition Position = BoardManager->GetTileRegistry()->GetPositionOfTile(Tile);
+    // owning controller's tile registry
+    FGridPosition Position = TileRegistry->GetPositionOfTile(Tile);
 
     // Tile must be valid for placement in current board state
     // IsTileValidForPlacement checks both bIsActive and !IsOccupied
@@ -114,10 +121,10 @@ void UConnectIt_PlacePieceAction::HandleHoverCleared_Implementation(
 
 void UConnectIt_PlacePieceAction::HandleValidSelection_Implementation(AGridTileBase* Tile)
 {
-    if (!IsValid(BoardManager)) return;
-    if (!IsValid(Tile)) return;    
+    if (!IsValid(TileRegistry)) return;
+    if (!IsValid(Tile)) return;
 
-    FGridPosition Position = BoardManager->GetTileRegistry()->GetPositionOfTile(Tile);
+    FGridPosition Position = TileRegistry->GetPositionOfTile(Tile);
 
     // Build the request -- board manager handles all mutation
     // Action has no knowledge of pools, piece actors, or state changes

@@ -4,10 +4,12 @@
 #include "Library/ConnectIt_GameUtilityLibrary.h"
 #include "TurnBasedMechanicsEnums.h"
 #include "Subsystem/GridHoverSubsystem.h"
+#include "Framework/Controller/ConnectIt_PlayerController.h"
+#include "Framework/Data/ConnectIt_LevelConfigDataAsset.h"
+#include "Framework/Data/ConnectIt_LevelConfigSettings.h"
 #include "Framework/Subsystem/ConnectIt_BlackboardSubsystem.h"
-#include "Framework/Subsystem/ConnectIt_BoardManagerSubsystem.h"
-#include "Board/ConnectIt_BoardManager.h"
 #include "Framework/GameState/ConnectIt_GameState.h"
+#include "Kismet/GameplayStatics.h"
 #include "Turn/Participant/TurnBasedParticipantManagerComponent.h"
 #include "Turn/Participant/TurnBasedParticipantComponent.h"
 #include "GameFramework/PlayerController.h"
@@ -16,48 +18,54 @@
 #include "Tile/GridTileRegistryComponent.h"
 
 
-AConnectIt_BoardManager* UConnectIt_GameUtilityLibrary::GetBoardManager(const UObject* WorldContextObject)
+UConnectIt_BoardStateComponent* UConnectIt_GameUtilityLibrary::GetBoardStateComponent(
+    const UObject* WorldContextObject)
+{
+    // Board state lives on AConnectIt_GameState now -- single source of
+    // truth, replicated, reachable via the engine's own GetGameState<>()
+    // on both server and every client with no need for the board-manager
+    // subsystem cache at all.
+    const AConnectIt_GameState* GameState = GetConnectItGameState(WorldContextObject);
+    return IsValid(GameState) ? GameState->GetBoardStateComponent() : nullptr;
+}
+
+UGridTileRegistryBase* UConnectIt_GameUtilityLibrary::GetTileRegistry(
+    const UObject* WorldContextObject)
 {
     if (!IsValid(WorldContextObject)) return nullptr;
 
     UWorld* World = WorldContextObject->GetWorld();
     if (!IsValid(World)) return nullptr;
 
-    UConnectIt_BoardManagerSubsystem* Subsystem =
-        World->GetSubsystem<UConnectIt_BoardManagerSubsystem>();
-
-    if (!IsValid(Subsystem))
+    // Fast path -- the common client-side case, exactly one meaningful
+    // controller.
+    if (const AConnectIt_PlayerController* LocalPC =
+        Cast<AConnectIt_PlayerController>(World->GetFirstPlayerController()))
     {
-        UE_LOG(LogTemp, Error,
-            TEXT("ConnectIt_GameUtilityLibrary: "
-                 "UConnectIt_BoardManagerSubsystem not found in world"));
-        return nullptr;
+        if (IsValid(LocalPC->GetTileRegistry()))
+        {
+            return LocalPC->GetTileRegistry();
+        }
     }
 
-    AConnectIt_BoardManager* Cached = Subsystem->GetBoardManager();
-    if (!IsValid(Cached))
+    // Fall back to scanning every connected controller -- needed
+    // server-side (e.g. AI move generation), where "the first/local
+    // player controller" isn't the right concept (may not exist at all on
+    // a dedicated server). Every connected controller's TileRegistry
+    // necessarily agrees -- tile layout is level-authored and
+    // deterministic -- so which one answers doesn't matter.
+    for (FConstPlayerControllerIterator It = World->GetPlayerControllerIterator(); It; ++It)
     {
-        // Should not happen in normal operation -- AConnectIt_BoardManager::
-        // BeginPlay registers itself with the subsystem on both server and
-        // client. A miss here means that registration never ran (or ran on
-        // a different world) and is treated as a hard failure, not a race
-        // to silently paper over with a world scan.
-        UE_LOG(LogTemp, Error,
-            TEXT("ConnectIt_GameUtilityLibrary: "
-                 "No AConnectIt_BoardManager registered with "
-                 "UConnectIt_BoardManagerSubsystem"));
-        return nullptr;
+        if (const AConnectIt_PlayerController* PC = Cast<AConnectIt_PlayerController>(It->Get()))
+        {
+            if (IsValid(PC->GetTileRegistry()))
+            {
+                return PC->GetTileRegistry();
+            }
+        }
     }
 
-    return Cached;
-}
-
-UConnectIt_BoardStateComponent* UConnectIt_GameUtilityLibrary::GetBoardStateComponent(
-    const UObject* WorldContextObject)
-{
-    const AConnectIt_BoardManager* BoardManager = GetBoardManager(WorldContextObject);
-    if (!IsValid(BoardManager)) return nullptr;
-    return BoardManager->GetBoardStateComponent();
+    return nullptr;
 }
 
 bool UConnectIt_GameUtilityLibrary::GetGridPositionForTile(
@@ -65,36 +73,35 @@ bool UConnectIt_GameUtilityLibrary::GetGridPositionForTile(
     const AGridTileBase* Tile,
     FGridPosition& OutPosition)
 {
-    AConnectIt_BoardManager* BM = GetBoardManager(WorldContextObject);
-    if (!IsValid(BM)) return false;
-    OutPosition = BM->GetTileRegistry()->GetPositionOfTile(Tile);
+    UGridTileRegistryBase* TileRegistry = GetTileRegistry(WorldContextObject);
+    if (!IsValid(TileRegistry)) return false;
+    OutPosition = TileRegistry->GetPositionOfTile(Tile);
     return true;
 }
 
 TArray<AGridTileBase*> UConnectIt_GameUtilityLibrary::GetAllGridTiles(
     const UObject* WorldContextObject)
 {
-    const AConnectIt_BoardManager* BM = GetBoardManager(WorldContextObject);
-    if (!IsValid(BM) || !IsValid(BM->GetTileRegistry())) return {};
+    UGridTileRegistryBase* TileRegistry = GetTileRegistry(WorldContextObject);
+    if (!IsValid(TileRegistry)) return {};
 
-    return BM->GetTileRegistry()->GetAllTiles();
+    return TileRegistry->GetAllTiles();
 }
 
 TArray<AGridTileBase*> UConnectIt_GameUtilityLibrary::GetEmptyGridTiles(
     const UObject* WorldContextObject)
 {
-    const AConnectIt_BoardManager* BM = GetBoardManager(WorldContextObject);
+    UGridTileRegistryBase* TileRegistry = GetTileRegistry(WorldContextObject);
     const UConnectIt_BoardStateComponent* BoardState =
         GetBoardStateComponent(WorldContextObject);
 
-    if (!IsValid(BM) || !IsValid(BM->GetTileRegistry()) || !IsValid(BoardState))
+    if (!IsValid(TileRegistry) || !IsValid(BoardState))
         return {};
 
     TArray<AGridTileBase*> EmptyTiles;
-    for (AGridTileBase* Tile : BM->GetTileRegistry()->GetAllTiles())
+    for (AGridTileBase* Tile : TileRegistry->GetAllTiles())
     {
-        const FGridPosition Position =
-            BM->GetTileRegistry()->GetPositionOfTile(Tile);
+        const FGridPosition Position = TileRegistry->GetPositionOfTile(Tile);
 
         if (BoardState->GetCurrentState().IsTileValidForPlacement(Position))
         {
@@ -109,14 +116,14 @@ bool UConnectIt_GameUtilityLibrary::IsTileEmpty(
     const UObject* WorldContextObject,
     const AGridTileBase* Tile)
 {
-    const AConnectIt_BoardManager* BM = GetBoardManager(WorldContextObject);
+    UGridTileRegistryBase* TileRegistry = GetTileRegistry(WorldContextObject);
     const UConnectIt_BoardStateComponent* BoardState =
         GetBoardStateComponent(WorldContextObject);
 
-    if (!IsValid(BM) || !IsValid(BM->GetTileRegistry()) || !IsValid(BoardState) || !IsValid(Tile))
+    if (!IsValid(TileRegistry) || !IsValid(BoardState) || !IsValid(Tile))
         return false;
 
-    const FGridPosition Position = BM->GetTileRegistry()->GetPositionOfTile(Tile);
+    const FGridPosition Position = TileRegistry->GetPositionOfTile(Tile);
     return !BoardState->GetCurrentState().IsTileOccupied(Position);
 }
 
@@ -124,18 +131,17 @@ TArray<AGridTileBase*> UConnectIt_GameUtilityLibrary::GetGridTilesWithFactionPie
     const UObject* WorldContextObject,
     int32 FactionSlot)
 {
-    const AConnectIt_BoardManager* BM = GetBoardManager(WorldContextObject);
+    UGridTileRegistryBase* TileRegistry = GetTileRegistry(WorldContextObject);
     const UConnectIt_BoardStateComponent* BoardState =
         GetBoardStateComponent(WorldContextObject);
 
-    if (!IsValid(BM) || !IsValid(BM->GetTileRegistry()) || !IsValid(BoardState))
+    if (!IsValid(TileRegistry) || !IsValid(BoardState))
         return {};
 
     TArray<AGridTileBase*> FactionTiles;
-    for (AGridTileBase* Tile : BM->GetTileRegistry()->GetAllTiles())
+    for (AGridTileBase* Tile : TileRegistry->GetAllTiles())
     {
-        const FGridPosition Position =
-            BM->GetTileRegistry()->GetPositionOfTile(Tile);
+        const FGridPosition Position = TileRegistry->GetPositionOfTile(Tile);
 
         const FConnectItTileData* TileData =
             BoardState->GetCurrentState().GetTileData(Position);
@@ -153,10 +159,10 @@ AGridTileBase* UConnectIt_GameUtilityLibrary::GetTileAtPosition(
     const UObject* WorldContextObject,
     FGridPosition Position)
 {
-    const AConnectIt_BoardManager* BM = GetBoardManager(WorldContextObject);
-    if (!IsValid(BM) || !IsValid(BM->GetTileRegistry())) return nullptr;
+    UGridTileRegistryBase* TileRegistry = GetTileRegistry(WorldContextObject);
+    if (!IsValid(TileRegistry)) return nullptr;
 
-    return BM->GetTileRegistry()->GetTileAtPosition(Position);
+    return TileRegistry->GetTileAtPosition(Position);
 }
 
 AGridTileBase* UConnectIt_GameUtilityLibrary::GetRandomEmptyGridTile(
@@ -185,6 +191,29 @@ bool UConnectIt_GameUtilityLibrary::HasFactionWon(
 
     const FConnectItBoardState& CurrentState = BoardState->GetCurrentState();
     return CurrentState.bGameOver && CurrentState.WinningFactionSlot == FactionSlot;
+}
+
+UConnectIt_LevelConfigDataAsset* UConnectIt_GameUtilityLibrary::GetLevelConfig(
+    const UObject* WorldContextObject)
+{
+    if (!IsValid(WorldContextObject)) return nullptr;
+
+    const UConnectIt_LevelConfigSettings* Settings = GetDefault<UConnectIt_LevelConfigSettings>();
+    if (!IsValid(Settings)) return nullptr;
+
+    const FName LevelName(*UGameplayStatics::GetCurrentLevelName(WorldContextObject, /*bRemovePrefixString=*/true));
+
+    const TSoftObjectPtr<UConnectIt_LevelConfigDataAsset>* Entry = Settings->LevelConfigs.Find(LevelName);
+    if (!Entry)
+    {
+        UE_LOG(LogTemp, Error,
+            TEXT("ConnectIt_GameUtilityLibrary: No ConnectIt_LevelConfigDataAsset "
+                 "registered for level '%s' in ConnectIt_LevelConfigSettings"),
+            *LevelName.ToString());
+        return nullptr;
+    }
+
+    return Entry->LoadSynchronous();
 }
 
 AConnectIt_GameState* UConnectIt_GameUtilityLibrary::GetConnectItGameState(

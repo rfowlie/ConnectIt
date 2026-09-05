@@ -8,13 +8,14 @@
 
 struct FGridPosition;
 class AGridTileBase;
-class AConnectIt_BoardManager;
 class AConnectIt_GameState;
 class UConnectIt_BoardStateComponent;
 class UConnectIt_BoardManagerComponent;
 class UConnectIt_BlackboardSubsystem;
 class UTurnBasedParticipantManagerComponent;
 class UGridHoverSubsystem;
+class UGridTileRegistryBase;
+class UConnectIt_LevelConfigDataAsset;
 
 UCLASS()
 class CONNECTIT_API UConnectIt_GameUtilityLibrary
@@ -24,21 +25,28 @@ class CONNECTIT_API UConnectIt_GameUtilityLibrary
 
 public:
 
-    // --- Board Manager ---
+    // --- Board State ---
 
-    // Finds the ConnectIt board manager actor in the world
-    UFUNCTION(BlueprintPure, Category = "ConnectIt|Utility",
-        meta = (WorldContext = "WorldContextObject"))
-    static AConnectIt_BoardManager* GetBoardManager(
-        const UObject* WorldContextObject);
-
-    // Returns the board state component from the board manager
+    // Returns the board state component (lives on AConnectIt_GameState)
     UFUNCTION(BlueprintPure, Category = "ConnectIt|Utility",
         meta = (WorldContext = "WorldContextObject"))
     static UConnectIt_BoardStateComponent* GetBoardStateComponent(
         const UObject* WorldContextObject);
 
-    
+    // Returns any connected AConnectIt_PlayerController's TileRegistry --
+    // TileRegistry is a per-machine local lookup (see
+    // AConnectIt_PlayerController), not shared/authoritative state, so any
+    // connected one answers identically (tile layout is level-authored and
+    // deterministic). Tries the local player's own controller first (the
+    // common case), falls back to scanning every connected controller
+    // (needed server-side, e.g. for AI, where "the local player" may not
+    // be the right -- or even a valid -- concept).
+    UFUNCTION(BlueprintPure, Category = "ConnectIt|Utility",
+        meta = (WorldContext = "WorldContextObject"))
+    static UGridTileRegistryBase* GetTileRegistry(
+        const UObject* WorldContextObject);
+
+
     // --- Game Board ---
     // Read-only queries over the replicated board state
     // Replaces UConnectIt_GameFacade for the networked game -- one
@@ -105,6 +113,17 @@ public:
         const UObject* WorldContextObject,
         int32 FactionSlot);
 
+
+    // Resolves the current level's ConnectIt_LevelConfigDataAsset via
+    // ConnectIt_LevelConfigSettings' level-name -> asset map. Intentionally
+    // symmetric and un-networked -- server and client both call this
+    // independently and get the same static asset, since it's authored
+    // per-level content every machine already has, not runtime server
+    // state. Returns null (logged) if the current level has no entry.
+    UFUNCTION(BlueprintPure, Category = "ConnectIt|Utility",
+        meta = (WorldContext = "WorldContextObject"))
+    static UConnectIt_LevelConfigDataAsset* GetLevelConfig(
+        const UObject* WorldContextObject);
 
     // --- Game State ---
 

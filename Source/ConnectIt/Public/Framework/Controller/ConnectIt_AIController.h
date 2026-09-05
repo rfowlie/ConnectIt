@@ -8,8 +8,6 @@
 #include "TurnBasedMechanicsStructs.h"
 #include "ConnectIt_AIController.generated.h"
 
-class AConnectIt_BoardManager;
-
 
 UCLASS(Blueprintable, BlueprintType)
 class CONNECTIT_API AConnectIt_AIController : public ATurnBasedAIController
@@ -31,10 +29,7 @@ protected:
 	
 private:
 
-	UPROPERTY()
-	TObjectPtr<AConnectIt_BoardManager> BoardManager = nullptr;
-
-	void InitialiseFromBoardManager();
+	void InitialiseFromLevelConfig();
 
 	// Checks blackboard for forced move -- returns true if applied
 	bool CheckAndApplyForcedMove();

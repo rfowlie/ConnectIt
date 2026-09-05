@@ -1,17 +1,21 @@
-﻿// Fill out your copyright notice in the Description page of Project Settings.
+// Fill out your copyright notice in the Description page of Project Settings.
 
 
 #include "Framework/GameMode/ConnectIt_GameMode.h"
 #include "EngineUtils.h"
-#include "Board/ConnectIt_BoardManager.h"
+#include "Board/ConnectIt_BoardRequestMediator.h"
 #include "Board/ConnectIt_BoardStateComponent.h"
+#include "Board/Rules/ConnectIt_BoardRules.h"
 #include "ConnectIt_GameplayTags.h"
 #include "Framework/Controller/ConnectIt_AIController.h"
+#include "Framework/Controller/ConnectIt_PlayerController.h"
+#include "Framework/Data/ConnectIt_LevelConfigDataAsset.h"
 #include "Framework/GameState/ConnectIt_GameState.h"
 #include "Framework/GameState/TurnBasedGameState.h"
 #include "Framework/PlayerState/TurnBasedPlayerState.h"
 #include "GameEvent/GameEventTaskSubsystem.h"
 #include "Library/ConnectIt_GameUtilityLibrary.h"
+#include "Tile/GridTileRegistryBase.h"
 #include "Turn/Participant/TurnBasedParticipantManagerComponent.h"
 
 
@@ -62,6 +66,25 @@ void AConnectIt_GameMode::HandleMatchHasStarted()
             this, &AConnectIt_GameMode::HandleInvalidNumberOfPlayers);
     }
 
+    // Construct the server-only board objects -- NewObject here (not the
+    // constructor) so Blueprint-child property overrides on this GameMode
+    // are already applied by the time these read anything from it.
+    BoardRules = NewObject<UConnectIt_BoardRules>(this);
+
+    // Level-authored rule selection, if any -- both server and client
+    // resolve the same static asset independently (see GetLevelConfig);
+    // BoardRules->Initialise() below still defaults anything left unset.
+    if (const UConnectIt_LevelConfigDataAsset* LevelConfig =
+        UConnectIt_GameUtilityLibrary::GetLevelConfig(this))
+    {
+        BoardRules->ScoringRule = LevelConfig->ScoringRule;
+        BoardRules->WinConditionRule = LevelConfig->WinConditionRule;
+    }
+    BoardRules->Initialise();
+
+    BoardRequestMediator = NewObject<UConnectIt_BoardRequestMediator>(this);
+    BoardRequestMediator->Initialise(BoardRules);
+
     // Adventure mode -- spawn and register AI
     // Tiles have registered with subsystem by this point
     // so board initialisation is safe
@@ -83,22 +106,64 @@ void AConnectIt_GameMode::HandleMatchHasEnded()
         TEXT("ConnectIt_GameMode: Match ended"));
 }
 
+bool AConnectIt_GameMode::ProcessBoardRequest(const FTurnActionRequest& Request)
+{
+    if (!IsValid(BoardRequestMediator))
+    {
+        UE_LOG(LogTemp, Error,
+            TEXT("ConnectIt_GameMode: ProcessBoardRequest — "
+                 "BoardRequestMediator is null"));
+        return false;
+    }
+
+    return BoardRequestMediator->ProcessRequest(Request);
+}
+
 // --- Board Setup ---
 
 void AConnectIt_GameMode::InitialiseBoard()
 {
-    AConnectIt_BoardManager* Board = GetBoardActor();
-    if (!IsValid(Board))
+    AConnectIt_GameState* GS = GetGameState<AConnectIt_GameState>();
+    UConnectIt_BoardStateComponent* BoardState = IsValid(GS) ? GS->GetBoardStateComponent() : nullptr;
+
+    if (!IsValid(BoardState))
     {
         UE_LOG(LogTemp, Error,
-            TEXT("ConnectIt_GameMode: No AConnectItBoardActor found "
-                 "in level — board cannot be initialised"));
+            TEXT("ConnectIt_GameMode: InitialiseBoard — "
+                 "BoardStateComponent is null"));
+        return;
+    }
+
+    // TileRegistry lives per-machine on AConnectIt_PlayerController now --
+    // grab any connected one's for this one-time tile enumeration. Tile
+    // layout is level-authored and deterministic, so every connected
+    // controller's registry necessarily agrees; called after all tiles
+    // have registered (this function's own comment), by which point every
+    // connected controller has already had BeginPlay run.
+    UGridTileRegistryBase* TileRegistry = nullptr;
+    for (FConstPlayerControllerIterator It = GetWorld()->GetPlayerControllerIterator(); It; ++It)
+    {
+        if (const AConnectIt_PlayerController* PC = Cast<AConnectIt_PlayerController>(It->Get()))
+        {
+            if (IsValid(PC->GetTileRegistry()))
+            {
+                TileRegistry = PC->GetTileRegistry();
+                break;
+            }
+        }
+    }
+
+    if (!IsValid(TileRegistry))
+    {
+        UE_LOG(LogTemp, Error,
+            TEXT("ConnectIt_GameMode: InitialiseBoard — no connected "
+                 "AConnectIt_PlayerController has a valid TileRegistry"));
         return;
     }
 
     // Bind game over handler to the tag subsystem rather than the board
-    // manager directly -- the binding then doesn't depend on Board having
-    // already been resolved above
+    // manager directly -- the binding then doesn't depend on anything
+    // above having resolved successfully
     if (UGameEventTaskSubsystem* GameEventSubsystem =
         GetWorld()->GetSubsystem<UGameEventTaskSubsystem>())
     {
@@ -107,8 +172,16 @@ void AConnectIt_GameMode::InitialiseBoard()
             GET_FUNCTION_NAME_CHECKED(AConnectIt_GameMode, HandleGameOver));
     }
 
-    // Initialise board state from registered tile positions
-    Board->InitialiseBoard(NumFactions);
+    const float InitialTargetScore = IsValid(BoardRules)
+        ? BoardRules->GetTargetScore()
+        : 0.f;
+
+    // PieceRegistry param is unused inside InitialiseBoardState (confirmed)
+    // and now lives per-client on the player controller anyway -- nothing
+    // meaningful to pass here.
+    BoardState->InitialiseBoardState(
+        TileRegistry, nullptr, NumFactions,
+        /*InitialMultiplier=*/1.0f, InitialTargetScore);
 
     UE_LOG(LogTemp, Log,
         TEXT("ConnectIt_GameMode: Board initialised — %d factions"),
@@ -227,16 +300,4 @@ void AConnectIt_GameMode::HandleInvalidNumberOfPlayers()
         SurvivingFactionSlot, *UEnum::GetValueAsString(Reason));
 
     EndMatch();
-}
-
-// --- Helpers ---
-
-AConnectIt_BoardManager* AConnectIt_GameMode::GetBoardActor() const
-{
-    if (!IsValid(CachedBoardActor))
-    {
-        CachedBoardActor = UConnectIt_GameUtilityLibrary::GetBoardManager(this);
-    }
-    
-    return CachedBoardActor;
 }

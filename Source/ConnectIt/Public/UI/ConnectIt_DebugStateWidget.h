@@ -10,14 +10,12 @@
 #include "Framework/GameState/ConnectIt_GameState.h"
 #include "ConnectIt_DebugStateWidget.generated.h"
 
-class AConnectIt_BoardManager;
 class UConnectIt_BoardStateComponent;
 class UTurnBasedParticipantManagerComponent;
 class UTurnBasedActionsComponent;
 class UTurnBasedActionBase;
 class UTurnBasedAction;
 class UGameEventTaskSubsystem;
-class UConnectIt_BoardManagerSubsystem;
 
 // See Docs/RuntimeStateAccess.md -- this widget is the "cache everything,
 // react to every delegate" companion to that reference. Everything below is
@@ -158,22 +156,12 @@ private:
     void BindAll();
     void UnbindAll();
 
-    // Split out so BindAll can call this again once OnBoardManagerReady
-    // fires, for the case where the board manager hasn't registered with
-    // UConnectIt_BoardManagerSubsystem yet at widget-construct time (see
-    // Workflows/BoardManagerSubsystem_Workflow.txt's documented pattern --
-    // this widget follows it rather than polling GetBoardManager from Tick).
-    void BindBoardManager(AConnectIt_BoardManager* InBoardManager);
-
     void RefreshBoardState();
     void RefreshTurnState();
     void RefreshActionState();
     void RefreshEventQueueState();
 
     // --- Delegate handlers -- each refreshes its own category only ---
-
-    UFUNCTION()
-    void HandleBoardManagerReady(AConnectIt_BoardManager* InBoardManager);
 
     UFUNCTION()
     void HandleBoardStateChanged();
@@ -216,9 +204,6 @@ private:
     // --- Resolved sources -- cached once in BindAll ---
 
     UPROPERTY()
-    TObjectPtr<AConnectIt_BoardManager> ResolvedBoardManager = nullptr;
-
-    UPROPERTY()
     TObjectPtr<UConnectIt_BoardStateComponent> ResolvedBoardStateComponent = nullptr;
 
     UPROPERTY()
@@ -232,9 +217,6 @@ private:
 
     UPROPERTY()
     TObjectPtr<UGameEventTaskSubsystem> ResolvedGameEventSubsystem = nullptr;
-
-    UPROPERTY()
-    TObjectPtr<UConnectIt_BoardManagerSubsystem> ResolvedBoardManagerSubsystem = nullptr;
 
     bool bBound = false;
 };

@@ -116,11 +116,11 @@ void UConnectIt_BoardStateComponent::EnqueueBoardEventTags() const
 
     const FConnectItBoardChangeEvent& ChangeEvent = BoardSnapshot.ChangeEvent;
 
-    // Fixed order -- Shift and PiecePlaced never co-occur on the same
-    // ChangeEvent (each SetBoardState call represents exactly one kind of
-    // change), then conditionally LineScored and/or PlayerWin. Each call
-    // enqueues independently; UGameEventTaskSubsystem's own queue serializes
-    // them so the next one doesn't start firing until the previous is done.
+    // Fixed order -- each SetBoardState call represents exactly one kind of
+    // concrete change, then conditionally LineScored and/or PlayerWin. Each
+    // call enqueues independently; UGameEventTaskSubsystem's own queue
+    // serializes them so the next one doesn't start firing until the
+    // previous is done.
     
     // concrete changes to board from player actions
     if (ChangeEvent.bPiecePlaced)
@@ -139,10 +139,6 @@ void UConnectIt_BoardStateComponent::EnqueueBoardEventTags() const
     {
         GameEventSubsystem->QueueTagContainer(FGameplayTagContainer(ConnectIt_Event_PieceCaptured));
     }
-    if (ChangeEvent.bShiftApplied)
-    {
-        GameEventSubsystem->QueueTagContainer(FGameplayTagContainer(ConnectIt_Event_Shift));
-    }
     if (ChangeEvent.bTileMultiplierDestroyed)
     {
         GameEventSubsystem->QueueTagContainer(FGameplayTagContainer(ConnectIt_Event_TileMultiplierDestroyed));
@@ -159,8 +155,8 @@ void UConnectIt_BoardStateComponent::EnqueueBoardEventTags() const
     }
 
     // New mutation types (see AConnectIt_BoardManager's Handle*Request
-    // methods) -- each is its own disjoint kind of change, same as Shift vs
-    // PiecePlaced above, so no ordering relationship between them
+    // methods) -- each is its own disjoint kind of change, so no ordering
+    // relationship between them
     
     if (ChangeEvent.bTileActiveToggled)
     {

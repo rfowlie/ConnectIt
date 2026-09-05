@@ -57,9 +57,9 @@ public:
     // specifically changed (ChangeEvent) so it replicates atomically
     // alongside the state it describes.
     // Fires OnBoardStateChanged on server immediately
-    // Clients receive via OnRep -- AConnectIt_BoardManager reads ChangeEvent
+    // Clients receive via OnRep -- EnqueueBoardEventTags reads ChangeEvent
     // from that same signal on both machines to drive gated visual
-    // sequencing (see HandleBoardStateChanged)
+    // sequencing
     void SetBoardState(
         const FConnectItBoardState& NewState,
         const FConnectItBoardChangeEvent& ChangeEvent);

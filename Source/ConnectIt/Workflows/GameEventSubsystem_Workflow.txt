@@ -27,52 +27,41 @@ finished (not just been kicked off). This subsystem adds two things on top:
 
 WHY IT EXISTS
 -------------
-ConnectIt's board events (shift, piece placed, line scored, player win) used to
+ConnectIt's board events (piece placed, line scored, player win) used to
 fire as plain delegate broadcasts directly from server-only code in
 AConnectIt_BoardManager -- which meant real remote clients never saw them (dynamic
 delegate broadcasts are local function calls, not RPCs). That got fixed by moving
 event firing onto the already-correctly-replicated BoardStateComponent signal.
-Shift had a second, related problem on top of that: it also *animated before*
-committing state at all (tick a fixed-duration animation, then mutate state once
-it finished) -- now state commits immediately and the animation is a reaction to
-it, same as every other event here.
 
-Fixing *that* still left everything firing simultaneously with no way to sequence
-visual responses -- shift animation, piece-drop animation, score VFX, and win
-banner all firing at once looks wrong. This subsystem is the mechanism for gating
-that: register your visual/audio/UI response against the relevant tag, and it
-only runs (and the next thing in the queue only starts) once your response says
-it's actually done.
+That still left everything firing simultaneously with no way to sequence
+visual responses -- piece-drop animation, score VFX, and win banner all firing
+at once looks wrong. This subsystem is the mechanism for gating that: register
+your visual/audio/UI response against the relevant tag, and it only runs (and
+the next thing in the queue only starts) once your response says it's actually
+done.
 
 A further round folded a second, redundant queue out of the picture entirely --
 see "HOW ConnectIt_BoardStateComponent USES THIS" below for what changed and why.
 
 
-THE FOUR BOARD EVENT TAGS
+THE BOARD EVENT TAGS
 ----------------------------
 Declared in ConnectIt_GameplayTags.h/.cpp:
 
-  ConnectIt_Event_Shift         "ConnectIt.Event.Shift"        (a shift request only)
   ConnectIt_Event_PiecePlaced   "ConnectIt.Event.PiecePlaced"  (a placement request only)
   ConnectIt_Event_LineScored    "ConnectIt.Event.LineScored"   (skipped if nothing scored)
   ConnectIt_Event_PlayerWin     "ConnectIt.Event.PlayerWin"    (skipped if nobody won)
 
-UConnectIt_BoardStateComponent::EnqueueBoardEventTags builds an ordered sequence of
-QueueTagContainer calls from FConnectItBoardChangeEvent's flags. A shift ChangeEvent
-and a placement ChangeEvent are always disjoint (each SetBoardState call represents
-exactly one kind of change): Shift never co-occurs with PiecePlaced/LineScored/
-PlayerWin; a placement ChangeEvent always leads with PiecePlaced, then conditionally
-appends LineScored and/or PlayerWin. One QueueTagContainer call fires per event, in
-that fixed order -- see "HOW ConnectIt_BoardStateComponent USES THIS" below for the
-exact call site.
+(Several more mutation-type tags exist alongside these -- PieceRemoved,
+PiecesSwapped, TileActiveToggled, PieceCaptured, TileMultiplierDestroyed --
+each disjoint from the others, same shape.)
 
-ConnectIt_Event_Shift is also where the shift *animation itself* is registered
-as a gated task -- UConnectIt_BoardShiftComponent self-registers a persistent
-UGameEventTask_Async against it in its own BeginPlay (bound to
-HandleShiftAnimationExecute, which reads the ChangeEvent's shift payload and plays
-the animation), the same idiom any other listener would use. This is what replaced
-the old animate-then-commit-state flow: state commits immediately, and the
-animation plays as a reaction, gated the same way every other visual step already is.
+UConnectIt_BoardStateComponent::EnqueueBoardEventTags builds an ordered sequence of
+QueueTagContainer calls from FConnectItBoardChangeEvent's flags. Each SetBoardState
+call represents exactly one kind of concrete change; a placement ChangeEvent always
+leads with PiecePlaced, then conditionally appends LineScored and/or PlayerWin. One
+QueueTagContainer call fires per event, in that fixed order -- see "HOW
+ConnectIt_BoardStateComponent USES THIS" below for the exact call site.
 
 If nothing is registered against a tag yet, that tag's manager completes with zero
 phases immediately, and the queue falls through to the next tag synchronously --
@@ -240,7 +229,7 @@ of them were removed; this subsystem is now the only channel for these four even
   "I need to run something and have the NEXT step wait until I'm done"
       -> Register a UGameEventTask_Async against the matching tag (see above).
 
-  "I need the actual data (position / faction / points / winner / shift op)"
+  "I need the actual data (position / faction / points / winner)"
       -> The tag signal itself carries no parameters. Call
          UConnectIt_BoardStateComponent::GetChangeEvent() (BlueprintPure) to read
          what happened -- it's the same replicated data driving the queue,

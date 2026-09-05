@@ -32,7 +32,7 @@ catalogue's own Gap 5 fix does) never ripples into production UI.
 | **BP Accessor** | Exact node, `none`, or `GAP #N` (see [Gaps](#gaps-closed-by-this-catalogue) below — `[fixed]` marks ones already closed while writing this doc). |
 | **Net Availability** | `All` (every client) · `Active client only` · `Server only` · `Local only` (per-machine, not networked at all) · `Config` (identical everywhere, authored not replicated). |
 | **Change Signal** | The delegate/tag that fires on change, or `poll only`. |
-| **Recommended Read-Only Home** | Where a widget should route the read. Closed vocabulary: `GameState` · `ParticipantManager` · `BoardStateComponent` · `BoardManager` · `ActionsComponent` · `ParticipantComponent` · `PlayerState` · `UtilityLibrary` · `BoardStateLibrary` · `FactionVisualsSubsystem` · `BoardManagerSubsystem` · `GameEventTaskSubsystem`. |
+| **Recommended Read-Only Home** | Where a widget should route the read. Closed vocabulary: `GameState` · `ParticipantManager` · `BoardStateComponent` · `PlayerController registry` · `ActionsComponent` · `ParticipantComponent` · `PlayerState` · `UtilityLibrary` · `BoardStateLibrary` · `FactionVisualsSubsystem` · `GameEventTaskSubsystem`. |
 
 ---
 
@@ -87,22 +87,21 @@ catalogue's own Gap 5 fix does) never ripples into production UI.
 
 ## §D — Board overlay *(drawn over the grid)*
 
-*Prerequisite for this whole section:* `AConnectIt_BoardManager::GetTileRegistry()`/`GetPieceRegistry()` (inherited from `ABoardManagerBase`, `BlueprintPure`) return `UGridTileRegistryBase*`/`UGridPieceRegistryBase*` — **`Instanced` properties with no constructor default**, so they are null unless assigned per-Blueprint. Check validity before use.
+*Prerequisite for this whole section:* `AConnectIt_PlayerController::GetTileRegistry()`/`GetPieceRegistry()` (`BlueprintPure`, relocated from the retired `AConnectIt_BoardManager`/`ABoardManagerBase` — see [ConnectItModule.md](ConnectItModule.md#board-architecture-overhaul)) return `UGridTileRegistryBase*`/`UGridPieceRegistryBase*` — **`Instanced` properties with no constructor default**, so they are null unless assigned per-Blueprint. Check validity before use. `UConnectIt_GameUtilityLibrary::GetTileRegistry()` is the preferred entry point — it resolves the local controller first, falling back to scanning every connected controller server-side.
 
 | UI Value | Owning Class | C++ Accessor | BP Accessor | Net Availability | Change Signal | Home |
 |---|---|---|---|---|---|---|
-| Board dimensions (row/column counts, min/max) | `UGridTileRegistryBase` | `GetRowCount/GetColumnCount/GetMinRow/GetMaxRow/GetMinColumn/GetMaxColumn` | `BlueprintPure` | All (static per level) | none needed | BoardManager → registry |
+| Board dimensions (row/column counts, min/max) | `UGridTileRegistryBase` | `GetRowCount/GetColumnCount/GetMinRow/GetMaxRow/GetMinColumn/GetMaxColumn` | `BlueprintPure` | All (static per level) | none needed | PlayerController registry |
 | All tile positions | `UGridTileRegistryBase` / `UConnectIt_GameUtilityLibrary` | `GetAllTilePositions()` / `GetAllGridTiles(WorldContextObject)` | `BlueprintPure` | All | none needed | UtilityLibrary |
-| Grid ↔ world conversion | `UGridTileRegistryBase` | `GridPositionToWorld/WorldToGridPosition` | `BlueprintPure` | All | n/a | BoardManager → registry |
+| Grid ↔ world conversion | `UGridTileRegistryBase` | `GridPositionToWorld/WorldToGridPosition` | `BlueprintPure` | All | n/a | PlayerController registry |
 | Tile actor at position | `UGridTileRegistryBase` / `UConnectIt_GameUtilityLibrary` | `GetTileAtPosition(Position)` | `BlueprintPure` | All | n/a | UtilityLibrary |
-| Piece actor at position | `UGridPieceRegistryBase` | `GetPiece(Position)` | `BlueprintPure` | All | n/a | BoardManager → registry |
+| Piece actor at position | `UGridPieceRegistryBase` | `GetPiece(Position)` | `BlueprintPure` | All | n/a | PlayerController registry |
 | **Per-tile occupying faction** | `FConnectItBoardState` | `GetTileData(Position)->FactionPiece` (inline, not BP-callable) | none | All | `OnBoardStateChanged` | `GAP 4` |
 | **Per-tile multiplier** | `FConnectItBoardState` | same struct, not BP-callable | none | All | `OnBoardStateChanged` | `GAP 4` |
 | **Per-tile is-active** | `FConnectItBoardState` | same struct, not BP-callable | none | All | `OnBoardStateChanged` | `GAP 4` |
 | Per-tile valid-for-placement | `AConnectIt_GameState` | `IsTileValidForPlacement(Position)` | `BlueprintPure` | All | `OnBoardStateChanged` | GameState |
 | Scoring line positions (last score) | `FConnectItBoardChangeEvent` | `.ScoringLinePositions` (only when `.bLineScored`) | `BlueprintReadOnly` | All | rides `OnBoardStateChanged` | BoardStateComponent (`GetChangeEvent()`) |
 | Last placed position + faction | `FConnectItBoardChangeEvent` | `.PlacedPosition` / `.PlacingFactionSlot` (when `.bPiecePlaced`) | `BlueprintReadOnly` | All | rides `OnBoardStateChanged` | BoardStateComponent |
-| Shift from/to/wrapping arrays | `FConnectItBoardChangeEvent` | `.ShiftFromPositions/.ShiftToPositions/.ShiftWrappingPositions` (when `.bShiftApplied`) | `BlueprintReadOnly` | All | rides `OnBoardStateChanged` | BoardStateComponent |
 | Removed / swapped / captured / toggled positions | `FConnectItBoardChangeEvent` | `.RemovedPosition` / `.SwapPositionA`+`B` / `.CapturedPosition` / `.ToggledPosition` (each gated by its own `bool`) | `BlueprintReadOnly` | All | rides `OnBoardStateChanged` | BoardStateComponent |
 | The whole "what just happened" payload | `UConnectIt_BoardStateComponent` | `GetChangeEvent()` | `BlueprintPure` | All | `OnBoardStateChanged` | BoardStateComponent |
 
@@ -199,14 +198,16 @@ otherwise still open at time of writing.
    `IsGameOver(ScoreBoard)`). Closed for the UI-facing half by replicating
    `FConnectItBoardState::TargetScore`, authored by whichever
    `IConnectIt_WinCondition` is active via a new `GetTargetScore()` on the
-   interface, surfaced through `UConnectIt_BoardRulesComponent::GetTargetScore()`
+   interface, surfaced through `UConnectIt_BoardRules::GetTargetScore()`
+   (renamed/converted from `UConnectIt_BoardRulesComponent` since this was
+   written — see [ConnectItModule.md](ConnectItModule.md#board-architecture-overhaul))
    and `AConnectIt_GameState::GetTargetScore()`/`GetFactionScoreProgress(int32)`.
    **Deliberately did not** collapse `ConnectIt_Score_Max` into this — on
    inspection it isn't a duplicate UI accessor at all, it's an internal
    normalisation bound used throughout the MinMax AI heuristic
    (`ConnectIt_MinMaxManager`/`ConnectIt_MinMaxTreeBuilder`), including
    against detached hypothetical board states that were never on a live
-   `UConnectIt_BoardRulesComponent`. Coupling it to a runtime, potentially
+   `UConnectIt_BoardRules`. Coupling it to a runtime, potentially
    BP-mutated `TargetScore` would be an AI-behaviour change, not a UI-bridge
    one — left in place with a comment explaining the two are allowed to
    diverge, rather than silently refactored under this plan.

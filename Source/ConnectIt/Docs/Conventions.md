@@ -10,13 +10,13 @@ Standard Unreal Engine type prefixes are followed correctly and consistently acr
 
 | Prefix | Meaning | Example |
 |---|---|---|
-| `A` | Actor | `AConnectIt_BoardManager`, `AGridTileBase` |
+| `A` | Actor | `AConnectIt_PlayerController`, `AGridTileBase` |
 | `U` | UObject / Component / interface *implementation* | `UConnectIt_BoardStateComponent`, `UTurnBasedAction` |
 | `I` | Interface (always paired with a `U`-prefixed `UINTERFACE`) | `IConnectIt_ScoringRule`, `ITurnOrderInterface` |
 | `F` | Struct | `FGridPosition`, `FConnectItBoardState` |
-| `E` | Enum | `EMatchPhase`, `EShiftDirection` |
+| `E` | Enum | `EMatchPhase`, `EMatchEndReason` |
 
-On top of the engine convention, ConnectIt's own module prefixes nearly every class with `ConnectIt_` (e.g. `AConnectIt_BoardManager`, `UConnectIt_BoardStateComponent`, `IConnectIt_ScoringRule`), and each first-party plugin prefixes its classes with an abbreviation of its own name (`Grid*`/`AGridTileBase`, `TurnBased*`, `GameEvent*`/`GameTurn*`, `AI_Utility*`, `GI_*`).
+On top of the engine convention, ConnectIt's own module prefixes nearly every class with `ConnectIt_` (e.g. `AConnectIt_PlayerController`, `UConnectIt_BoardStateComponent`, `IConnectIt_ScoringRule`), and each first-party plugin prefixes its classes with an abbreviation of its own name (`Grid*`/`AGridTileBase`, `TurnBased*`, `GameEvent*`/`GameTurn*`, `AI_Utility*`, `GI_*`).
 
 **Documented exceptions** (see [Discrepancies](#discrepancies) #1 for one of these being more than a naming quirk):
 - `UPieceControlInfluenceMap` / `UPieceControlMapVisualizer` (`Source/ConnectIt/GameIntelligence/InfluenceMap/`) — carry only the standard `U` type prefix, no `ConnectIt_` project prefix. The only two live ConnectIt classes without it.
@@ -44,7 +44,7 @@ Gameplay tags are dot-hierarchical strings (`ConnectIt.Game.PlacePiece`, `Connec
 | `ConnectIt.Tile.ValidHover` | `ConnectIt_Tile_ValidHover` |
 | `ConnectIt.Event.LineScored` | `ConnectIt_Event_LineScored` |
 
-Three tag families are in use: `ConnectIt.Game.*` (match/turn phases and request-type routing — e.g. what `AConnectIt_BoardManager::ProcessRequest` dispatches on), `ConnectIt.Tile.*` (tile visual-feedback state), and `ConnectIt.Event.*` (board event triggers consumed by `UGameEventTaskSubsystem` — see [GameplayTag-EventSequencing.md](Workflows/GameplayTag-EventSequencing.md)).
+Three tag families are in use: `ConnectIt.Game.*` (match/turn phases and request-type routing — e.g. what `UConnectIt_BoardRequestMediator::ProcessRequest` dispatches on), `ConnectIt.Tile.*` (tile visual-feedback state), and `ConnectIt.Event.*` (board event triggers consumed by `UGameEventTaskSubsystem` — see [GameplayTag-EventSequencing.md](Workflows/GameplayTag-EventSequencing.md)).
 
 ## Delegate Declaration Conventions
 

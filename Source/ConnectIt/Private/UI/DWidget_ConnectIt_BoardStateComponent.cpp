@@ -2,49 +2,16 @@
 
 #include "UI/DWidget_ConnectIt_BoardStateComponent.h"
 
-#include "Board/ConnectIt_BoardManager.h"
 #include "Board/ConnectIt_BoardStateComponent.h"
-#include "Framework/Subsystem/ConnectIt_BoardManagerSubsystem.h"
+#include "Library/ConnectIt_GameUtilityLibrary.h"
 
 void UDWidget_ConnectIt_BoardStateComponent::BindDelegates()
 {
-    ResolvedBoardManagerSubsystem = GetWorld()
-        ? GetWorld()->GetSubsystem<UConnectIt_BoardManagerSubsystem>()
-        : nullptr;
-
-    if (!IsValid(ResolvedBoardManagerSubsystem)) return;
-
-    if (AConnectIt_BoardManager* BoardManager = ResolvedBoardManagerSubsystem->GetBoardManager())
-    {
-        BindBoardManager(BoardManager);
-    }
-    else
-    {
-        ResolvedBoardManagerSubsystem->OnBoardManagerReady.AddDynamic(
-            this, &UDWidget_ConnectIt_BoardStateComponent::HandleBoardManagerReady);
-    }
-}
-
-void UDWidget_ConnectIt_BoardStateComponent::UnbindDelegates()
-{
-    if (IsValid(ResolvedBoardManagerSubsystem))
-    {
-        ResolvedBoardManagerSubsystem->OnBoardManagerReady.RemoveDynamic(
-            this, &UDWidget_ConnectIt_BoardStateComponent::HandleBoardManagerReady);
-    }
-
-    if (IsValid(ResolvedSource))
-    {
-        ResolvedSource->OnBoardStateChanged.RemoveDynamic(
-            this, &UDWidget_ConnectIt_BoardStateComponent::HandleBoardStateChanged);
-    }
-}
-
-void UDWidget_ConnectIt_BoardStateComponent::BindBoardManager(AConnectIt_BoardManager* InBoardManager)
-{
-    if (!IsValid(InBoardManager)) return;
-
-    ResolvedSource = InBoardManager->GetBoardStateComponent();
+    // Board state lives on AConnectIt_GameState now, which is reachable
+    // directly (no "wait for a level-placed actor to register" dance
+    // needed any more -- GameState is engine-spawned well before any
+    // widget could plausibly bind).
+    ResolvedSource = UConnectIt_GameUtilityLibrary::GetBoardStateComponent(this);
     bSourceValid = IsValid(ResolvedSource);
 
     if (!bSourceValid) return;
@@ -58,9 +25,13 @@ void UDWidget_ConnectIt_BoardStateComponent::BindBoardManager(AConnectIt_BoardMa
     OnLastChangeEventUpdated(Info.LastChangeEvent);
 }
 
-void UDWidget_ConnectIt_BoardStateComponent::HandleBoardManagerReady(AConnectIt_BoardManager* InBoardManager)
+void UDWidget_ConnectIt_BoardStateComponent::UnbindDelegates()
 {
-    BindBoardManager(InBoardManager);
+    if (IsValid(ResolvedSource))
+    {
+        ResolvedSource->OnBoardStateChanged.RemoveDynamic(
+            this, &UDWidget_ConnectIt_BoardStateComponent::HandleBoardStateChanged);
+    }
 }
 
 void UDWidget_ConnectIt_BoardStateComponent::HandleBoardStateChanged()

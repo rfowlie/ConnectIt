@@ -2,7 +2,6 @@
 
 
 #include "Action/ConnectIt_DefaultViewerAction.h"
-#include "Board/ConnectIt_BoardManager.h"
 #include "Board/ConnectIt_BoardStateComponent.h"
 #include "Library/ConnectIt_GameUtilityLibrary.h"
 

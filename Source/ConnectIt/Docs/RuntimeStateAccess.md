@@ -33,7 +33,10 @@ anyway — noted per row). `ReadOnly` = plain `UPROPERTY(BlueprintReadOnly)`
 
 ## Board State
 
-Source of truth: `UConnectIt_BoardStateComponent` (one per `AConnectIt_BoardManager`, the single replicated property `BoardSnapshot`).
+Source of truth: `UConnectIt_BoardStateComponent`, now a default-subobject on
+`AConnectIt_GameState` (relocated off the retired `AConnectIt_BoardManager` —
+see [ConnectItModule.md](ConnectItModule.md#board-architecture-overhaul)), the
+single replicated property `BoardSnapshot`.
 
 | What | Accessor | Where | BP Access |
 |---|---|---|---|
@@ -43,25 +46,12 @@ Source of truth: `UConnectIt_BoardStateComponent` (one per `AConnectIt_BoardMana
 | Both states + change event together | `GetBoardSnapshot()` → `const FConnectItBoardStateSnapshot*` | same | — (C++ only, returns a raw pointer) |
 | Per-tile queries (occupied/active/valid-for-placement, score) | `FConnectItBoardState::IsTileOccupied/IsTileActive/IsTileValidForPlacement/GetScore` | inline on the struct (`ConnectIt_Structs.h`) | — (C++ only, no loose BP nodes) |
 | High-level board queries (all tiles, empty tiles, tiles by faction, random empty tile, board full, has-faction-won) | `UConnectIt_GameUtilityLibrary::Get*GridTiles* / IsTileEmpty / GetTileAtPosition / GetRandomEmptyGridTile / IsGameBoardFull / HasFactionWon` (static, `WorldContextObject`) | `Library/ConnectIt_GameUtilityLibrary.h` | Pure |
-| Board manager / board state component lookup | `UConnectIt_GameUtilityLibrary::GetBoardManager` / `GetBoardStateComponent` | same | Pure |
-| Grid position ↔ world position, rows/columns, board dimensions | `UGridTileRegistryBase::GridPositionToWorld/WorldToGridPosition/GetRow/GetColumn/GetMinRow.../GetRowCount/GetColumnCount` | `AConnectIt_BoardManager::GetTileRegistry()` (inherited from `ABoardManagerBase`) | Pure — **but `GetTileRegistry()` can return null**: `TileRegistry`/`PieceRegistry` are `EditAnywhere, Instanced` `UObject`s (not components, despite the pre-refactor name) with no constructor default on `AConnectIt_BoardManager`, so they're only valid if assigned per-Blueprint. Check validity before use. |
-| Piece actor at a grid position | `UGridPieceRegistryBase::GetPiece(Position)` | `AConnectIt_BoardManager::GetPieceRegistry()` | Pure — same null-unless-assigned caveat as above |
-| Config (loadouts, piece class, pool size) | `AConnectIt_BoardManager::GetConfigComponent()` → `UConnectIt_ConfigComponent` properties | same | Getter: Pure. Properties: ReadOnly (`EditAnywhere, BlueprintReadOnly`) |
-| Scoring/win-condition strategy in use | `AConnectIt_BoardManager::GetBoardRulesComponent()` → `UConnectIt_BoardRulesComponent` | same | Getter: Pure. `GetActiveWinConditionName()`/`GetActiveScoringRuleName()` for debug (client-unreliable, see [Gaps](#gaps--recommendations) #3) |
+| Board state component lookup | `UConnectIt_GameUtilityLibrary::GetBoardStateComponent` | same | Pure — resolves via `GetGameState<AConnectIt_GameState>()->GetBoardStateComponent()`, no world scan or subsystem cache needed since GameState is a default-subobject-guaranteed singleton |
+| Grid position ↔ world position, rows/columns, board dimensions | `UGridTileRegistryBase::GridPositionToWorld/WorldToGridPosition/GetRow/GetColumn/GetMinRow.../GetRowCount/GetColumnCount` | `UConnectIt_GameUtilityLibrary::GetTileRegistry()` → the local `AConnectIt_PlayerController::GetTileRegistry()` (falls back to scanning every connected controller, needed server-side) | Pure — **can still return null**: `TileRegistry`/`PieceRegistry` are `EditAnywhere, Instanced` `UObject`s (relocated onto `AConnectIt_PlayerController`, no longer on a board actor) with no constructor default, so they're only valid if assigned per-Blueprint. Check validity before use. |
+| Piece actor at a grid position | `UGridPieceRegistryBase::GetPiece(Position)` | `AConnectIt_PlayerController::GetPieceRegistry()` | Pure — same null-unless-assigned caveat as above; per-machine local bookkeeping, not authoritative/replicated state |
+| Config (loadouts, piece class, pool size) | `UConnectIt_GameUtilityLibrary::GetLevelConfig()` → `UConnectIt_LevelConfigDataAsset` properties | `Framework/Data/ConnectIt_LevelConfigDataAsset.h` | Getter: Pure. Properties: ReadOnly (`EditAnywhere, BlueprintReadOnly`) — resolved symmetrically on server and client from the level → asset map, `UConnectIt_ConfigComponent` no longer exists |
+| Scoring/win-condition strategy in use | `AConnectIt_GameMode::BoardRules` → `UConnectIt_BoardRules` (server-only `UObject`, not reachable from a client) | `Board/Rules/ConnectIt_BoardRules.h` | `GetActiveWinConditionName()`/`GetActiveScoringRuleName()` for server-side debug only now (renamed/converted from `UConnectIt_BoardRulesComponent`, see [Gaps](#gaps--recommendations) #3) |
 | Win score target, for a progress bar | `FConnectItBoardState::TargetScore` / `AConnectIt_GameState::GetTargetScore()`, `GetFactionScoreProgress(int32)` | replicated, authored by whichever `IConnectIt_WinCondition` is active | Pure |
-
-`GetBoardStateComponent()` on the board manager (`BlueprintPure`) is the
-one-hop way to reach all of the above from anywhere that already has (or can
-resolve) the board manager.
-
-| What | Accessor | Where | BP Access |
-|---|---|---|---|
-| Board manager lookup without a `TActorIterator` scan, and a late-binding signal for widgets that construct before it exists | `GetBoardManager()`/`GetBoardState()`, `OnBoardManagerReady` | `UConnectIt_BoardManagerSubsystem` (`UWorldSubsystem`) | Getters: Pure. Delegate: Assignable |
-
-Prefer the subsystem over `UConnectIt_GameUtilityLibrary::GetBoardManager`
-when a widget needs to resolve *once* and then react to the manager
-appearing later (e.g. constructed before level streaming finishes) — see
-[SubsystemDiscovery-DualAccessPattern.md](Workflows/SubsystemDiscovery-DualAccessPattern.md).
 
 ## Turn / Participant / Match State
 
@@ -126,8 +116,11 @@ anywhere in the codebase.
 **What replaced it:**
 - `UConnectIt_BoardStateComponent::EnqueueBoardEventTags()` (private) reads
   the just-recorded `ChangeEvent` and calls `UGameEventTaskSubsystem::
-  QueueTagContainer()` once per relevant tag (Shift, or PiecePlaced → then
-  conditionally LineScored/PlayerWin), called symmetrically from both
+  QueueTagContainer()` once per relevant tag (PiecePlaced → then
+  conditionally LineScored/PlayerWin; the shift-event branch this used to
+  include was removed along with the rest of the shift pipeline — see
+  [ConnectItModule.md](ConnectItModule.md#board-architecture-overhaul)),
+  called symmetrically from both
   `SetBoardState` (server) and `OnRep_BoardSnapshot` (client) — right after
   `BroadcastChange()`.
 - `UTurnBasedParticipantManagerComponent::EndTurn` enqueues its own
@@ -195,8 +188,11 @@ they'll fire) — `GetTagsInQueue()` only covers what's active right now.
    `ATurnBasedGameState`.
 3. ~~**No BP-facing query for which scoring/win-condition strategy is active**~~
    **Resolved for debug** — `GetActiveWinConditionName()`/`GetActiveScoringRuleName()`
-   on `UConnectIt_BoardRulesComponent` (client-unreliable by nature, since
-   strategy objects aren't networked — see their own doc comments).
+   on `UConnectIt_BoardRules` (now a server-only `UObject` on `AConnectIt_GameMode`,
+   renamed/converted from `UConnectIt_BoardRulesComponent` — see
+   [ConnectItModule.md](ConnectItModule.md#board-architecture-overhaul);
+   unreachable from a client at all now, not just unreliable, since strategy
+   objects aren't networked — see their own doc comments).
    **Resolved for production** — the win-score target itself (what UI
    actually needs, rather than the strategy's identity) is now replicated
    as `FConnectItBoardState::TargetScore`, surfaced via
@@ -215,15 +211,17 @@ Confirmed safe by construction for the vast majority of the surface above:
   properties copy the value out the same way.
 
 **One real caveat:** several accessors return *live, mutable UObject
-pointers* — `GetTopAction()`/`GetRootAction()` (actions), `GetBoardManager()`,
-component getters (`GetTileRegistry()`, `GetConfigComponent()`, etc.),
-`GetPiece()`. None of the checked components expose unintended
-`BlueprintCallable` mutators alongside their query surface (`UGridTileRegistryBase`/
-`UGridPieceRegistryBase` — the current `Instanced` UObject registries, not
-the pre-refactor `*RegistryComponent` types — are pure-query; `UConnectIt_ConfigComponent`/
-`UConnectIt_BoardRulesComponent` have no BP-callable mutators at all) — but
-`UTurnBasedAction::Complete()`/`Cancel()` genuinely are `BlueprintCallable` on
-the exact object `GetTopAction()` hands back. A debug widget built around
+pointers* — `GetTopAction()`/`GetRootAction()` (actions), the registry
+getters (`GetTileRegistry()`/`GetPieceRegistry()`, now on `AConnectIt_PlayerController`),
+`GetLevelConfig()`, `GetPiece()`. None of the checked components expose
+unintended `BlueprintCallable` mutators alongside their query surface
+(`UGridTileRegistryBase`/`UGridPieceRegistryBase` — the current `Instanced`
+UObject registries, not the pre-refactor `*RegistryComponent` types — are
+pure-query; `UConnectIt_LevelConfigDataAsset`/`UConnectIt_BoardRules` have
+no BP-callable mutators at all, and `UConnectIt_BoardRules` in particular
+is server-only and structurally unreachable from a client to begin with) —
+but `UTurnBasedAction::Complete()`/`Cancel()` genuinely are `BlueprintCallable`
+on the exact object `GetTopAction()` hands back. A debug widget built around
 that pointer should be deliberate about which nodes it wires off it — the
 framework itself isn't unsafe, the risk is purely "this read-only-looking
 pointer also has mutating functions on it, don't wire those in by accident

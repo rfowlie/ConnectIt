@@ -15,7 +15,7 @@ class UGridPieceRegistryComponent;
 // piece of the right class from the pool, initialize it (faction
 // ownership) before its visual plays, position it and trigger the visual,
 // then wait for that visual to actually finish before reporting done.
-// Meant to be constructed and driven by AConnectIt_BoardManager's
+// Meant to be constructed and driven by UConnectIt_BoardRequestMediator's
 // CreateGameEventsFromBoardUpdate/ExecuteGameEvents (the interpreter that
 // used to dispatch this has been removed).
 //

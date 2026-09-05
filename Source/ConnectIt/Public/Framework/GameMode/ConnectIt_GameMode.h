@@ -4,12 +4,14 @@
 
 #include "CoreMinimal.h"
 #include "GameplayTagContainer.h"
+#include "TurnBasedMechanicsStructs.h"
 #include "Framework/GameMode/TurnBasedGameMode.h"
 #include "ConnectIt_GameMode.generated.h"
 
-class AConnectIt_BoardManager;
 class AConnectIt_AIController;
 class UTurnBasedParticipantManagerComponent;
+class UConnectIt_BoardRequestMediator;
+class UConnectIt_BoardRules;
 
 
 // Defines the match type -- affects how participants are registered
@@ -60,11 +62,15 @@ public:
     virtual void HandleMatchHasStarted() override;
     virtual void HandleMatchHasEnded() override;
 
-protected:
+    // Single entry point for all board change requests -- forwards to
+    // BoardRequestMediator so callers (AConnectIt_PlayerController's server
+    // RPC) depend on GameMode's public surface, not on the mediator's
+    // existence directly. Structurally server-only: this whole object
+    // (and therefore BoardRequestMediator) doesn't exist on any client.
+    UFUNCTION(BlueprintCallable, Category = "ConnectIt|Board")
+    bool ProcessBoardRequest(const FTurnActionRequest& Request);
 
-    // Finds the board actor in the level
-    // Cached after first find
-    AConnectIt_BoardManager* GetBoardActor() const;
+protected:
 
     // Spawns and registers the AI controller (Adventure mode only)
     void SpawnAndRegisterAI();
@@ -93,9 +99,18 @@ protected:
 
 private:
 
-    // Cached board actor -- found once in HandleMatchHasStarted
+    // Board request handling + rules -- server-only UObjects, constructed
+    // in HandleMatchHasStarted (not the constructor -- NewObject there
+    // would run before Blueprint-child property overrides are applied,
+    // the same CDO/archetype-timing pitfall this project has hit before).
+    // Replaces the now-retired AConnectIt_BoardManager actor and its
+    // UConnectIt_BoardRulesComponent -- see "Board architecture overhaul"
+    // plan.
     UPROPERTY()
-    mutable TObjectPtr<AConnectIt_BoardManager> CachedBoardActor = nullptr;
+    TObjectPtr<UConnectIt_BoardRequestMediator> BoardRequestMediator = nullptr;
+
+    UPROPERTY()
+    TObjectPtr<UConnectIt_BoardRules> BoardRules = nullptr;
 
     // Tracks how many human players have connected
     // Used in Online mode to know when to start ready check

@@ -22,17 +22,17 @@ request struct                      .ServerRouteRequest()        boundary       
 | Role | ConnectIt class | Note |
 |---|---|---|
 | Request struct | `FTurnActionRequest` (`UnrealTurnBasedMechanics`) | `RequestType` (`FGameplayTag`) + `FactionID` + `FInstancedStruct Payload` — the payload is a generic extension point, not hardcoded per request type. |
-| Concrete payloads | `FConnectItRequestPlacePiece`, `FConnectItRequestBoardShift` (see [ConnectItModule.md](../ConnectItModule.md)) | Unwrapped from `Payload` by tag at the dispatch point. |
-| Intent-side classes | `UConnectIt_PlacePieceAction`, `UConnectIt_ShiftAction` (`UTurnBasedAction` subclasses) | Build the request, fire `OnChangeRequested` — have no knowledge of networking or server-side state mutation. |
-| Routing layer | `AConnectIt_PlayerController::ServerRouteBoardChangeRequest` (`UFUNCTION(Server, Reliable)`) | The **one** RPC. Validates turn ownership (`ParticipantComponent->IsMyTurn()`) before forwarding. |
-| Dispatch point | `AConnectIt_BoardManager::ProcessRequest` | Routes by `RequestType` tag to private, `HasAuthority()`-gated handlers (`HandlePlacePieceRequest`, `HandleShiftRequest`). |
+| Concrete payloads | `FConnectItRequestPlacePiece` (see [ConnectItModule.md](../ConnectItModule.md)) | Unwrapped from `Payload` by tag at the dispatch point. |
+| Intent-side classes | `UConnectIt_PlacePieceAction` (`UTurnBasedAction` subclass) | Builds the request, fires `OnChangeRequested` — has no knowledge of networking or server-side state mutation. |
+| Routing layer | `AConnectIt_PlayerController::ServerRouteBoardChangeRequest` (`UFUNCTION(Server, Reliable)`) | The **one** RPC. Validates turn ownership (`ParticipantComponent->IsMyTurn()`) before forwarding to `GetAuthGameMode<AConnectIt_GameMode>()->ProcessBoardRequest(Request)`. |
+| Dispatch point | `UConnectIt_BoardRequestMediator::ProcessRequest`, reached via `AConnectIt_GameMode::ProcessBoardRequest` | Routes by `RequestType` tag to private handlers (`HandlePlacePieceRequest`, etc). The mediator is a plain `UObject` constructed on, and only ever reachable through, the GameMode — see [ConnectItModule.md](../ConnectItModule.md#board-architecture-overhaul). |
 
 ## Sequence
 
 1. Player interacts with a `UTurnBasedAction` (e.g. hovers and selects a tile). The action validates the interaction locally (is this a legal hover/selection?) and builds an `FTurnActionRequest`, then fires `OnChangeRequested`.
 2. The player controller catches this locally and calls its one `Server`, `Reliable` RPC, handing the whole request struct across the network boundary unexamined.
 3. The server-side RPC implementation performs the one check every request needs regardless of type — is it actually this participant's turn? — and (in ConnectIt's case) stamps the server-authoritative `FactionID` before forwarding.
-4. The RPC hands the validated request to the dispatch point, which reads `RequestType` and routes to the matching private handler. Handlers are gated by `HasAuthority()` as a second layer of defense even though the RPC itself only runs server-side.
+4. The RPC hands the validated request to `AConnectIt_GameMode::ProcessBoardRequest`, a thin wrapper over the dispatch point, which reads `RequestType` and routes to the matching private handler. No `HasAuthority()` guard is needed at the dispatch point itself anymore — a `UObject` living on `AGameMode` is structurally unreachable from any client (`GetAuthGameMode()` returns null there by engine design), so there's no path to defend against, not just one that's checked.
 5. The handler mutates state and commits it through whatever the project's single-source-of-truth mechanism is (see [SingleSourceOfTruth-Replication.md](SingleSourceOfTruth-Replication.md)) — this pattern doesn't care how the mutation is applied, only that client code never applies it directly.
 
 ## Why It's Reusable
@@ -47,9 +47,9 @@ The `FGameplayTag` + `FInstancedStruct` combination is engine-specific to Unreal
 ## Gotchas
 
 - **The validation the RPC performs is easy to get subtly wrong** — see the [Known Issues](../README.md#known-issues) entry for `ServerRouteBoardChangeRequest_Implementation`: it currently checks *whose turn it is* but not that the request's `FactionID` actually belongs to that participant, because it only stamps `FactionID` when the client sent a negative/unset value. When reusing this pattern, stamp the authoritative identity field **unconditionally** from server-side participant state, never trust-if-present from the client payload — "only fill in if missing" is a gap a modified client can walk through.
-- The dispatch point's per-type handlers still need their own `HasAuthority()` guard even though only the server ever calls them through this path — defense in depth against any future code path that calls the dispatch point directly (e.g. from a debug console command) without going through the RPC.
+- In ConnectIt's current implementation the dispatch point's `HasAuthority()` guard was dropped rather than kept as defense-in-depth, because the mediator moved onto a GameMode-owned `UObject` — structurally unreachable from a client, not just conventionally server-only. **If this pattern is reused with the dispatch point living on something a client *can* reach a reference to** (an `AActor`, a replicated component, anything not gated the way a GameMode-only `UObject` is), keep a `HasAuthority()` guard on the handlers — the unreachability argument only holds for the specific ownership shape ConnectIt uses now.
 - A generic payload (`FInstancedStruct` or equivalent) trades compile-time type safety for extensibility — the dispatch point is the one place that must correctly match `RequestType` to the right payload type; a mismatch here fails at runtime, not compile time.
 
 ## Source
 
-This pattern is synthesized from the live request-flow implementation across `AConnectIt_PlayerController`, `AConnectIt_BoardManager::ProcessRequest`, and the `UConnectIt_PlacePieceAction`/`UConnectIt_ShiftAction` classes — see [ConnectItModule.md](../ConnectItModule.md) for the full class catalogue. There is no standalone `.txt` design note for this one (unlike the other four workflows); the closest primary source is the `AConnectIt_PlayerController.cpp:92` TODO discussed in [Known Issues](../README.md#known-issues).
+This pattern is synthesized from the live request-flow implementation across `AConnectIt_PlayerController`, `UConnectIt_BoardRequestMediator::ProcessRequest`, and `UConnectIt_PlacePieceAction` — see [ConnectItModule.md](../ConnectItModule.md) for the full class catalogue. There is no standalone `.txt` design note for this one (unlike the other four workflows); the closest primary source is the `AConnectIt_PlayerController.cpp:92` TODO discussed in [Known Issues](../README.md#known-issues).

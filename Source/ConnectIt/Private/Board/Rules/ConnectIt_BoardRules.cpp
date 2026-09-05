@@ -1,16 +1,14 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 
-#include "Board/Rules/ConnectIt_BoardRulesComponent.h"
+#include "Board/Rules/ConnectIt_BoardRules.h"
 
 #include "Board/Rules/ConnectIt_LineScoringRule.h"
 #include "Board/Rules/ConnectIt_ScoreThresholdWinCondition.h"
 
 
-void UConnectIt_BoardRulesComponent::BeginPlay()
+void UConnectIt_BoardRules::Initialise()
 {
-    Super::BeginPlay();
-
     // Set default rules
     if (!ScoringRule.GetObject())
     {
@@ -18,10 +16,8 @@ void UConnectIt_BoardRulesComponent::BeginPlay()
             this, UConnectIt_LineScoringRule::StaticClass());
 
         UE_LOG(LogTemp, Log,
-            TEXT("ConnectIt_BoardRulesComponent: No scoring rule set "
+            TEXT("ConnectIt_BoardRules: No scoring rule set "
                  "— defaulting to LineScoringRule"));
-
-        ensureMsgf(ScoringRule.GetObject(), TEXT("Scoring Rule Not Valid"));
     }
 
     if (!WinConditionRule.GetObject())
@@ -30,14 +26,12 @@ void UConnectIt_BoardRulesComponent::BeginPlay()
             this, UConnectIt_ScoreThresholdWinCondition::StaticClass());
 
         UE_LOG(LogTemp, Log,
-            TEXT("ConnectIt_BoardRulesComponent: No win condition set "
+            TEXT("ConnectIt_BoardRules: No win condition set "
                  "— defaulting to ScoreThresholdWinCondition"));
-
-        ensureMsgf(ScoringRule.GetObject(), TEXT("Win Condition Rule Not Valid"));
     }
 }
 
-float UConnectIt_BoardRulesComponent::ApplyScoring(
+float UConnectIt_BoardRules::ApplyScoring(
     FConnectItBoardState& MutableState,
     FGridPosition Position,
     int32 FactionSlot,
@@ -46,7 +40,7 @@ float UConnectIt_BoardRulesComponent::ApplyScoring(
     if (!ScoringRule.GetInterface())
     {
         UE_LOG(LogTemp, Error,
-            TEXT("ConnectIt_BoardRulesComponent: ApplyScoring — "
+            TEXT("ConnectIt_BoardRules: ApplyScoring — "
                  "no ScoringRule set"));
         return 0.f;
     }
@@ -56,13 +50,13 @@ float UConnectIt_BoardRulesComponent::ApplyScoring(
         OutScoringPositions);
 }
 
-void UConnectIt_BoardRulesComponent::CheckWinCondition(
+void UConnectIt_BoardRules::CheckWinCondition(
     FConnectItBoardState& MutableState) const
 {
     if (!WinConditionRule.GetInterface())
     {
         UE_LOG(LogTemp, Error,
-            TEXT("ConnectIt_BoardRulesComponent: CheckWinCondition — "
+            TEXT("ConnectIt_BoardRules: CheckWinCondition — "
                  "no WinConditionRule set"));
         return;
     }
@@ -71,21 +65,21 @@ void UConnectIt_BoardRulesComponent::CheckWinCondition(
         WinConditionRule.GetObject(), MutableState);
 }
 
-float UConnectIt_BoardRulesComponent::GetTargetScore() const
+float UConnectIt_BoardRules::GetTargetScore() const
 {
     if (!WinConditionRule.GetInterface()) return 0.f;
 
     return IConnectIt_WinCondition::Execute_GetTargetScore(WinConditionRule.GetObject());
 }
 
-FName UConnectIt_BoardRulesComponent::GetActiveWinConditionName() const
+FName UConnectIt_BoardRules::GetActiveWinConditionName() const
 {
     return WinConditionRule.GetObject()
         ? WinConditionRule.GetObject()->GetClass()->GetFName()
         : NAME_None;
 }
 
-FName UConnectIt_BoardRulesComponent::GetActiveScoringRuleName() const
+FName UConnectIt_BoardRules::GetActiveScoringRuleName() const
 {
     return ScoringRule.GetObject()
         ? ScoringRule.GetObject()->GetClass()->GetFName()

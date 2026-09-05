@@ -15,7 +15,7 @@ class UGridPieceRegistryComponent;
 // trigger that position's piece's despawn visual and wait for it to
 // actually finish before finalizing its removal from the registry --
 // fixing the eager-unregister-before-the-visual gap for this event type.
-// Meant to be constructed and driven by AConnectIt_BoardManager's
+// Meant to be constructed and driven by UConnectIt_BoardRequestMediator's
 // CreateGameEventsFromBoardUpdate/ExecuteGameEvents (the interpreter that
 // used to dispatch this has been removed).
 //

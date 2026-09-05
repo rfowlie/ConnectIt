@@ -7,9 +7,7 @@
 #include "ConnectIt_Structs.h"
 #include "DWidget_ConnectIt_BoardStateComponent.generated.h"
 
-class AConnectIt_BoardManager;
 class UConnectIt_BoardStateComponent;
-class UConnectIt_BoardManagerSubsystem;
 
 // Tracks UConnectIt_BoardStateComponent specifically -- current board state
 // and the most recent change event, pushed straight through to BP as each
@@ -43,24 +41,8 @@ protected:
 
 private:
 
-    // Board manager may not have registered with the subsystem yet at
-    // widget-construct time (level-placed actor, BeginPlay-ordering
-    // dependent) -- same documented ready-signal pattern
-    // UConnectIt_DebugStateWidget uses, see
-    // Workflows/BoardManagerSubsystem_Workflow.txt. Also the single point
-    // this widget's source actually resolves, so it's where initial
-    // values get seeded, whether that happens immediately (BindDelegates)
-    // or later (HandleBoardManagerReady).
-    void BindBoardManager(AConnectIt_BoardManager* InBoardManager);
-
-    UFUNCTION()
-    void HandleBoardManagerReady(AConnectIt_BoardManager* InBoardManager);
-
     UFUNCTION()
     void HandleBoardStateChanged();
-
-    UPROPERTY()
-    TObjectPtr<UConnectIt_BoardManagerSubsystem> ResolvedBoardManagerSubsystem = nullptr;
 
     UPROPERTY()
     TObjectPtr<UConnectIt_BoardStateComponent> ResolvedSource = nullptr;
