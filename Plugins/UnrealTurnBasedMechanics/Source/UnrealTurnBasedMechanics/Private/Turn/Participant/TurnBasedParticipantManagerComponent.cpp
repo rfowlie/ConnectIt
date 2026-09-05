@@ -6,6 +6,7 @@
 #include "GameEvent/GameEventTaskSubsystem.h"
 #include "Net/UnrealNetwork.h"
 #include "Framework/PlayerState/TurnBasedPlayerState.h"
+#include "GameFramework/GameMode.h"
 #include "Turn/Order/SequentialTurnOrderStrategy.h"
 #include "Turn/Participant/TurnBasedParticipantComponent.h"
 
@@ -19,6 +20,10 @@ UTurnBasedParticipantManagerComponent::UTurnBasedParticipantManagerComponent()
 void UTurnBasedParticipantManagerComponent::BeginPlay()
 {
     Super::BeginPlay();
+
+    // bind to game state match over
+    FGameModeEvents::GameModeMatchStateSetEvent.AddUObject(
+        this, &ThisClass::OnGameModeWaitingPostMatch);
 
     if (!TurnOrderStrategy.GetObject())
     {
@@ -48,6 +53,26 @@ void UTurnBasedParticipantManagerComponent::BeginPlay()
             *GetOwner()->GetName());
     }
 }
+
+void UTurnBasedParticipantManagerComponent::OnGameModeWaitingPostMatch(FName Name)
+{
+    if (Name != MatchState::WaitingPostMatch) return;
+
+    // Stop any in-flight turn timer -- otherwise a still-running timer
+    // could later fire HandleTurnTimeout -> EndTurn and re-enter the
+    // turn-advance machinery after the match has already ended.
+    GetWorld()->GetTimerManager().ClearTimer(TurnTimerHandle);
+    ReplicatedTurnStartServerTime = -1.f;
+
+    SetPhase(ETurnPhase::GameOver);
+    SetMatchPhase(EMatchPhase::GameOver);
+    OnGameOver.Broadcast();
+
+    UE_LOG(LogTurnBasedMechanics, Log,
+        TEXT("TurnBasedParticipantManager: MatchState -> WaitingPostMatch -- "
+             "entering GameOver, no further turn/board updates will fire"));
+}
+
 
 void UTurnBasedParticipantManagerComponent::GetLifetimeReplicatedProps(
     TArray<FLifetimeProperty>& OutLifetimeProps) const
@@ -383,8 +408,8 @@ void UTurnBasedParticipantManagerComponent::AdvanceToNextParticipant(FGameplayTa
     check(!IsRunningClientOnly());
     check(TurnOrderStrategy.GetInterface() != nullptr);
 
-    // Check game over before selecting next participant
-    if (CheckGameOver()) return;
+    // Check enough active participants remain before selecting next one
+    if (CheckValidNumberOfPlayers()) return;
 
     const int32 NextIndex =
         ITurnOrderInterface::Execute_GetNextParticipantIndex(
@@ -395,8 +420,10 @@ void UTurnBasedParticipantManagerComponent::AdvanceToNextParticipant(FGameplayTa
 
     if (NextIndex == INDEX_NONE)
     {
-        SetMatchPhase(EMatchPhase::GameOver);
-        OnGameOver.Broadcast();
+        // Same category of "plugin cannot validly continue" as
+        // CheckValidNumberOfPlayers -- defer to the project rather than
+        // unilaterally declaring the match over.
+        NotifyInvalidNumberOfPlayers();
         return;
     }
 
@@ -476,7 +503,7 @@ void UTurnBasedParticipantManagerComponent::CheckReadyStatus()
     StartTurn(FirstIndex);
 }
 
-bool UTurnBasedParticipantManagerComponent::CheckGameOver() const
+bool UTurnBasedParticipantManagerComponent::CheckValidNumberOfPlayers() const
 {
     const int32 ActiveCount = Participants.FilterByPredicate(
         [](const FTurnParticipantInfo& Info)
@@ -486,15 +513,24 @@ bool UTurnBasedParticipantManagerComponent::CheckGameOver() const
 
     if (ActiveCount > 1) return false;
 
-    SetMatchPhase(EMatchPhase::GameOver);
-    OnGameOver.Broadcast();
-
     UE_LOG(LogTurnBasedMechanics, Log,
-        TEXT("TurnBasedParticipantManager: Game over — "
-             "%d active participants remaining"),
+        TEXT("TurnBasedParticipantManager: Invalid number of active "
+             "participants remaining (%d)"),
         ActiveCount);
 
+    NotifyInvalidNumberOfPlayers();
     return true;
+}
+
+void UTurnBasedParticipantManagerComponent::NotifyInvalidNumberOfPlayers() const
+{
+    SetMatchPhase(EMatchPhase::InvalidNumberOfPlayers);
+    OnInvalidNumberOfPlayers.Broadcast();
+
+    UE_LOG(LogTurnBasedMechanics, Log,
+        TEXT("TurnBasedParticipantManager: Invalid number of active "
+             "participants -- notifying project to resolve (fix it, or "
+             "call EndMatch())"));
 }
 
 void UTurnBasedParticipantManagerComponent::BroadcastTurnStart(const int32 ActiveIndex)

@@ -6,6 +6,7 @@
 #include "GameFramework/Actor.h"
 #include "BoardManagerBase.generated.h"
 
+class UGridTileRegistryComponent;
 class UGridTileRegistryBase;
 class UGridPieceRegistryBase;
 class UBoardStateComponentBase;
@@ -62,6 +63,10 @@ protected:
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Instanced, Category = "Board")
     TObjectPtr<UGridPieceRegistryBase> PieceRegistry;
+
+    // test
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Instanced, Category = "Board")
+    TObjectPtr<UGridTileRegistryComponent> TileRegistryComponent;
 
     virtual void BeginPlay() override;
     virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;

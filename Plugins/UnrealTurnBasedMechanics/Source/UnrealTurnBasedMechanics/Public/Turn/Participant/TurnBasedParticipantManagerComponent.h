@@ -22,6 +22,14 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnParticipantIndexChanged, const in
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnAllParticipantsReady);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnGameOver);
 
+// Broadcast when the plugin detects it can no longer validly continue (too
+// few active participants remain, or the turn-order strategy could not
+// produce a next participant) -- deliberately does NOT declare the match
+// over itself. The owning project binds this and decides: try to fix it
+// (e.g. wait for reconnect), or call EndMatch() itself. See
+// NotifyInvalidNumberOfPlayers/CheckValidNumberOfPlayers.
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnInvalidNumberOfPlayers);
+
 // Everything a debug widget needs to know about this component's current
 // values in one call -- used to seed initial state once, right after
 // binding, through the same events used for later reactive updates (see
@@ -166,6 +174,9 @@ public:
     UPROPERTY(BlueprintAssignable, Category = "Turn Based")
     FOnGameOver OnGameOver;
 
+    UPROPERTY(BlueprintAssignable, Category = "Turn Based")
+    FOnInvalidNumberOfPlayers OnInvalidNumberOfPlayers;
+
     // --- Helpers ---
 
     // returns null on clients
@@ -181,6 +192,18 @@ public:
     bool IsActiveParticipant(AController* Controller) const
     {
         return IsValid(Controller) && GetControllerAtIndex(ActiveParticipantIndex) == Controller;
+    }
+
+    // True once the match has genuinely, unconditionally ended -- set only
+    // from OnGameModeWaitingPostMatch (i.e. only once the owning GameMode's
+    // EndMatch() has actually run), regardless of why. Server-authoritative
+    // callers that need to reject further updates once the match is over
+    // (e.g. a board manager's request-processing entry point) should check
+    // this rather than reaching into CurrentPhase directly.
+    UFUNCTION(BlueprintPure, Category = "Turn Based")
+    bool IsMatchOver() const
+    {
+        return CurrentPhase == ETurnPhase::GameOver;
     }
 
     // The participant whose turn it currently is. bOutValid is false (and
@@ -213,9 +236,10 @@ public:
         TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
 protected:
-
     virtual void BeginPlay() override;
 
+    void OnGameModeWaitingPostMatch(FName Name);
+    
     // Tag triggered on UGameEventTaskSubsystem when a turn ends -- external
     // systems register gated async tasks against this tag (same pattern as
     // any other gated sequence step) instead of a bespoke hold API. Must be
@@ -257,7 +281,17 @@ private:
     void HandleTurnTimeout();
     void HandleReconnectTimeout();
     void CheckReadyStatus();
-    bool CheckGameOver() const;
+
+    // Renamed from CheckGameOver -- it doesn't conclusively end anything,
+    // it only checks whether enough active participants remain to keep
+    // going. Returns true (and calls NotifyInvalidNumberOfPlayers) if not.
+    bool CheckValidNumberOfPlayers() const;
+
+    // Shared by CheckValidNumberOfPlayers and AdvanceToNextParticipant's own
+    // "turn order strategy found no next participant" branch -- both are
+    // "the plugin cannot validly continue," and neither gets to decide the
+    // match is over on its own; the owning project does, via this delegate.
+    void NotifyInvalidNumberOfPlayers() const;
 
     // Broadcasts to all participant components each turn start
     // Each component ticks its own cooldowns

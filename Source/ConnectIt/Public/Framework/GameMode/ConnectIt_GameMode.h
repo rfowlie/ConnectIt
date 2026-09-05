@@ -82,6 +82,15 @@ protected:
     UFUNCTION()
     void HandleGameOver(FGameplayTag Tag);
 
+    // Bound to UTurnBasedParticipantManagerComponent::OnInvalidNumberOfPlayers
+    // (see HandleMatchHasStarted) -- fires when too few active participants
+    // remain to continue (forfeit-by-missed-turns or disconnect-past-
+    // reconnect-timeout). Resolves the winner-by-default and ends the match
+    // via EndMatch(), which re-enters the same GameOver lockout path as a
+    // real score win (see OnGameModeWaitingPostMatch in the plugin).
+    UFUNCTION()
+    void HandleInvalidNumberOfPlayers();
+
 private:
 
     // Cached board actor -- found once in HandleMatchHasStarted

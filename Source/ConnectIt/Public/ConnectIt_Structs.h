@@ -28,7 +28,16 @@ struct FConnectItTileData
     UPROPERTY(BlueprintReadOnly)
     bool bIsActive = true;
 
-    bool IsOccupied() const { return FactionPiece != -1; }
+    // mark tiles that are active but not placeable by players
+    // (non player piece occupying)
+    UPROPERTY(BlueprintReadOnly)
+    bool bIsOccupied = true;
+    
+    void SetFactionPiece(const int32 InFactionPiece)
+    {
+        FactionPiece = InFactionPiece;
+        bIsOccupied = FactionPiece != -1;
+    }
 };
 
 // Full board state -- the single source of truth
@@ -116,7 +125,7 @@ struct FConnectItBoardState
     bool IsTileOccupied(const FGridPosition& Position) const
     {
         const FConnectItTileData* Data = GetTileData(Position);
-        return Data && Data->IsOccupied();
+        return Data && Data->bIsOccupied;
     }
 
     bool IsTileActive(const FGridPosition& Position) const

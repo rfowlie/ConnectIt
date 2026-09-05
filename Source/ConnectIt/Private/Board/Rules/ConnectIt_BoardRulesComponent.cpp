@@ -20,6 +20,8 @@ void UConnectIt_BoardRulesComponent::BeginPlay()
         UE_LOG(LogTemp, Log,
             TEXT("ConnectIt_BoardRulesComponent: No scoring rule set "
                  "— defaulting to LineScoringRule"));
+
+        ensureMsgf(ScoringRule.GetObject(), TEXT("Scoring Rule Not Valid"));
     }
 
     if (!WinConditionRule.GetObject())
@@ -30,6 +32,8 @@ void UConnectIt_BoardRulesComponent::BeginPlay()
         UE_LOG(LogTemp, Log,
             TEXT("ConnectIt_BoardRulesComponent: No win condition set "
                  "— defaulting to ScoreThresholdWinCondition"));
+
+        ensureMsgf(ScoringRule.GetObject(), TEXT("Win Condition Rule Not Valid"));
     }
 }
 

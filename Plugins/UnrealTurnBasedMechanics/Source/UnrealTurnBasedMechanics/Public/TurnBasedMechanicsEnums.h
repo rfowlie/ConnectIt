@@ -15,6 +15,7 @@ enum class EMatchPhase : uint8
 	InProgress              UMETA(DisplayName = "In Progress"),
 	Updating                UMETA(DisplayName = "Updating"),
 	Paused                  UMETA(DisplayName = "Paused"),
+	InvalidNumberOfPlayers  UMETA(DisplayName = "Invalid Number Of Players"),
 	GameOver                UMETA(DisplayName = "Game Over")
 };
 

@@ -19,6 +19,11 @@ class CONNECTIT_API UConnectIt_BoardRulesComponent : public UActorComponent
 {
     GENERATED_BODY()
 
+    // All Board Rules Brainstorm
+    // can a piece be placed on a certain tile
+    // does place a piece on a certain tile create a scoring line (give line)
+    // 
+
 public:
 
     // Swappable scoring strategy -- defaults to UConnectIt_LineScoringRule
@@ -28,11 +33,25 @@ public:
         meta = (MustImplement = "/Script/ConnectIt.ConnectIt_ScoringRule"))
     TScriptInterface<IConnectIt_ScoringRule> ScoringRule;
 
+    // TODO: does this now work because of the MustImplement being wrong?
     // Swappable win-condition strategy -- defaults to
     // UConnectIt_ScoreThresholdWinCondition in BeginPlay if left unset.
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "ConnectIt|Rules",
-        meta = (MustImplement = "/Script/ConnectIt.ConnectIt_WinCondition"))
+        meta = (MustImplement = "ConnectIt_WinCondition"))
     TScriptInterface<IConnectIt_WinCondition> WinConditionRule;
+
+    // TODO: this is the one that works!!!
+    // Swappable win-condition strategy -- defaults to
+    // UConnectIt_ScoreThresholdWinCondition in BeginPlay if left unset.
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "ConnectIt|Rules",
+        meta = (MustImplement = "ConnectIt_WinCondition"))
+    TSubclassOf<UObject> WinConditionTestImplementNameChange;
+    
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "ConnectIt|Rules")
+    TScriptInterface<IConnectIt_WinCondition> WinConditionTestNoImplement;
+
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "ConnectIt|Rules")
+    TScriptInterface<UConnectIt_WinCondition> WinConditionTestNoImplement2;
 
     // Wraps IConnectIt_ScoringRule::Execute_ApplyScoring -- Error-logs and
     // returns 0 if ScoringRule is unset (should not happen post-BeginPlay).

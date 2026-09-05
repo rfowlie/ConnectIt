@@ -1,10 +1,9 @@
 ﻿// Fill out your copyright notice in the Description page of Project Settings.
 
 #include "Board/ConnectIt_BoardStateComponent.h"
-
 #include "ConnectIt_GameplayTags.h"
 #include "GameEvent/GameEventTaskSubsystem.h"
-#include "Library/CodingUtilsComponentLibrary.h"
+#include "Library/CodingUtilsLibrary.h"
 #include "Net/UnrealNetwork.h"
 #include "Tile/GridTileRegistryBase.h"
 
@@ -21,7 +20,7 @@ void UConnectIt_BoardStateComponent::InitialiseBoardState(
     UGridPieceRegistryBase* PieceRegistry,
     int32 NumFactions, float InitialMultiplier, float InTargetScore)
 {
-    check(UCodingUtilsComponentLibrary::IsAuthoritative(this));
+    check(UCodingUtilsLibrary::IsAuthoritativeComponent(this));
     check(NumFactions > 0);
 
     FConnectItBoardState InitialState;
@@ -30,7 +29,7 @@ void UConnectIt_BoardStateComponent::InitialiseBoardState(
     for (const auto Tile : TileRegistry->GetAllTiles())
     {
         FConnectItTileData TileData;
-        TileData.FactionPiece = -1;
+        TileData.SetFactionPiece(-1);
         TileData.Multiplier   = InitialMultiplier;
         TileData.bIsActive    = true;
         InitialState.SetTileData(TileRegistry->GetPositionOfTile(Tile), TileData);
@@ -58,15 +57,15 @@ void UConnectIt_BoardStateComponent::InitialiseBoardState(
 }
 
 void UConnectIt_BoardStateComponent::SetBoardState(
-    const FConnectItBoardState& NewState,
-    const FConnectItBoardChangeEvent& ChangeEvent)
+    const FConnectItBoardState& NewState, const FConnectItBoardChangeEvent& ChangeEvent)
 {
-    check(UCodingUtilsComponentLibrary::IsAuthoritative(this));
+    check(UCodingUtilsLibrary::IsAuthoritativeComponent(this));
 
     // Capture current as previous before overwriting
     // this calls the replication function which broadcasts change for clients
     BoardSnapshot = FConnectItBoardStateSnapshot(
-        BoardSnapshot.CurrentState, NewState, ChangeEvent);
+        BoardSnapshot.CurrentState,
+        NewState, ChangeEvent);
 
     // Fire on server immediately
     // Clients receive via OnRep_BoardSnapshot replication

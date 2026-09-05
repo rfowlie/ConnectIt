@@ -12,6 +12,7 @@
 #include "Framework/PlayerState/TurnBasedPlayerState.h"
 #include "GameEvent/GameEventTaskSubsystem.h"
 #include "Library/ConnectIt_GameUtilityLibrary.h"
+#include "Turn/Participant/TurnBasedParticipantManagerComponent.h"
 
 
 AConnectIt_GameMode::AConnectIt_GameMode()
@@ -54,6 +55,12 @@ void AConnectIt_GameMode::HandleMatchHasStarted()
 {
     // Base class applies turn config to participant manager
     Super::HandleMatchHasStarted();
+
+    if (UTurnBasedParticipantManagerComponent* Manager = GetParticipantManager())
+    {
+        Manager->OnInvalidNumberOfPlayers.AddDynamic(
+            this, &AConnectIt_GameMode::HandleInvalidNumberOfPlayers);
+    }
 
     // Adventure mode -- spawn and register AI
     // Tiles have registered with subsystem by this point
@@ -175,6 +182,49 @@ void AConnectIt_GameMode::HandleGameOver(FGameplayTag Tag)
             GetGameState<ATurnBasedGameState>()->GetActiveTurnNumber()
         );
     }
+
+    EndMatch();
+}
+
+void AConnectIt_GameMode::HandleInvalidNumberOfPlayers()
+{
+    UTurnBasedParticipantManagerComponent* Manager = GetParticipantManager();
+    if (!IsValid(Manager)) return;
+
+    // Find the one still-active participant (if any) -- they win by
+    // default. Also reads the other participant's connection/forfeit state
+    // to pick the correct existing EMatchEndReason. No "try to fix it
+    // first" path yet (e.g. waiting out a grace period before conceding) --
+    // this always ends the match immediately.
+    int32 SurvivingFactionSlot = -1;
+    EMatchEndReason Reason = EMatchEndReason::Unknown;
+
+    for (const FTurnParticipantInfo& Info : Manager->Participants)
+    {
+        if (Info.IsActiveParticipant())
+        {
+            SurvivingFactionSlot = Info.SlotIndex;
+            continue;
+        }
+
+        Reason = Info.bConnected
+            ? EMatchEndReason::OpponentForfeited
+            : EMatchEndReason::OpponentDisconnected;
+    }
+
+    if (AConnectIt_GameState* GS = GetGameState<AConnectIt_GameState>())
+    {
+        GS->SetMatchResult(
+            SurvivingFactionSlot,
+            Reason,
+            GetGameState<ATurnBasedGameState>()->GetActiveTurnNumber()
+        );
+    }
+
+    UE_LOG(LogTemp, Log,
+        TEXT("ConnectIt_GameMode: Invalid number of players — ending "
+             "match, faction %d wins by default (%s)"),
+        SurvivingFactionSlot, *UEnum::GetValueAsString(Reason));
 
     EndMatch();
 }

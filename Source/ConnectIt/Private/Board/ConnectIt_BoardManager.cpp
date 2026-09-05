@@ -132,6 +132,17 @@ bool AConnectIt_BoardManager::ProcessRequest(const FTurnActionRequest& Request)
 {
     if (!HasAuthority()) return false;
 
+    // Universal choke point regardless of caller (player-controller RPC or
+    // AI controller's direct server-side call) -- once the game is over,
+    // no further board mutation is possible, full stop.
+    if (BoardStateComponent->GetCurrentState().bGameOver)
+    {
+        UE_LOG(LogTemp, Warning,
+            TEXT("ConnectIt_BoardManager: ProcessRequest rejected — "
+                 "game already over"));
+        return false;
+    }
+
     if (!Request.IsValid())
     {
         UE_LOG(LogTemp, Warning,
@@ -286,7 +297,7 @@ bool AConnectIt_BoardManager::HandlePlacePieceRequest(
     if (FConnectItTileData* TileData =
         NewState.GetTileDataMutable(TargetPosition))
     {
-        TileData->FactionPiece = FactionID;
+        TileData->SetFactionPiece(FactionID);
     }
 
     TArray<FGridPosition> ScoringPositions;
@@ -397,7 +408,7 @@ bool AConnectIt_BoardManager::HandleForcePlacePieceRequest(
 
     if (FConnectItTileData* TileData = NewState.GetTileDataMutable(Request.Position))
     {
-        TileData->FactionPiece = FactionID;
+        TileData->SetFactionPiece(FactionID);
     }
 
     TArray<FGridPosition> ScoringPositions;
@@ -476,7 +487,7 @@ bool AConnectIt_BoardManager::HandleRemovePieceRequest(
     const FConnectItBoardState& Current = BoardStateComponent->GetCurrentState();
     const FConnectItTileData* Existing = Current.GetTileData(Request.Position);
 
-    if (!Existing || !Existing->IsOccupied())
+    if (!Existing || !Existing->bIsOccupied)
     {
         UE_LOG(LogTemp, Warning,
             TEXT("ConnectIt_BoardManager: RemovePiece rejected -- "
@@ -491,7 +502,7 @@ bool AConnectIt_BoardManager::HandleRemovePieceRequest(
 
     if (FConnectItTileData* TileData = NewState.GetTileDataMutable(Request.Position))
     {
-        TileData->FactionPiece = -1;
+        TileData->SetFactionPiece(-1);
     }
 
     FConnectItBoardChangeEvent ChangeEvent;
@@ -510,7 +521,7 @@ bool AConnectIt_BoardManager::HandleSwapPiecesRequest(
     const FConnectItTileData* DataA = Current.GetTileData(Request.PositionA);
     const FConnectItTileData* DataB = Current.GetTileData(Request.PositionB);
 
-    if (!DataA || !DataB || !DataA->IsOccupied() || !DataB->IsOccupied())
+    if (!DataA || !DataB || !DataA->bIsOccupied || !DataB->bIsOccupied)
     {
         UE_LOG(LogTemp, Warning,
             TEXT("ConnectIt_BoardManager: SwapPieces rejected -- "
@@ -524,8 +535,11 @@ bool AConnectIt_BoardManager::HandleSwapPiecesRequest(
 
     FConnectItTileData* MutableA = NewState.GetTileDataMutable(Request.PositionA);
     FConnectItTileData* MutableB = NewState.GetTileDataMutable(Request.PositionB);
-    Swap(MutableA->FactionPiece, MutableB->FactionPiece);
-
+    int32 A = MutableA->FactionPiece;
+    int32 B = MutableB->FactionPiece;
+    MutableA->SetFactionPiece(B);
+    MutableB->SetFactionPiece(A);
+    
     // No scoring/win-condition re-check -- see class header comment
     FConnectItBoardChangeEvent ChangeEvent;
     ChangeEvent.bPiecesSwapped = true;
@@ -575,7 +589,7 @@ bool AConnectIt_BoardManager::HandleCapturePieceRequest(
     const FConnectItBoardState& Current = BoardStateComponent->GetCurrentState();
     const FConnectItTileData* Existing = Current.GetTileData(Request.Position);
 
-    if (!Existing || !Existing->IsOccupied())
+    if (!Existing || !Existing->bIsOccupied)
     {
         UE_LOG(LogTemp, Warning,
             TEXT("ConnectIt_BoardManager: CapturePiece rejected -- "
@@ -599,7 +613,7 @@ bool AConnectIt_BoardManager::HandleCapturePieceRequest(
 
     if (FConnectItTileData* TileData = NewState.GetTileDataMutable(Request.Position))
     {
-        TileData->FactionPiece = FactionID;
+        TileData->SetFactionPiece(FactionID);
     }
 
     // Exactly one position changed ownership -- same well-defined case

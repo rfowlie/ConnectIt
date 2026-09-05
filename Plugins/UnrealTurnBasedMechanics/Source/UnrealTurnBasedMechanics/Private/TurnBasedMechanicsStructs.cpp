@@ -19,7 +19,7 @@ bool FTurnParticipantInfo::IsActiveParticipant() const
 FString FTurnParticipantInfo::GetDisplayName() const
 {
 	// USTRUCT member functions can't be UFUNCTIONs, so the Blueprint-callable
-	// version of this lives on UTurnBasedMechanicsLibrary; delegate to it so
+	// version of these lives on UTurnBasedMechanicsLibrary; delegate to it so
 	// there's exactly one implementation.
 	return UTurnBasedMechanicsLibrary::GetParticipantDisplayName(*this);
 }

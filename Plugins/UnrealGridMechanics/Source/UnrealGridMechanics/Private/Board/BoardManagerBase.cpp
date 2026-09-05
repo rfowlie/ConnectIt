@@ -4,6 +4,7 @@
 #include "Board/BoardManagerBase.h"
 #include "Piece/GridPieceRegistryBase.h"
 #include "Tile/GridTileRegistryBase.h"
+#include "Tile/GridTileRegistryComponent.h"
 
 
 ABoardManagerBase::ABoardManagerBase()
@@ -31,6 +32,9 @@ void ABoardManagerBase::BeginPlay()
     {
         PieceRegistry->InitialiseRegistry();
     }
+
+    // test
+    TileRegistryComponent = CreateDefaultSubobject<UGridTileRegistryComponent>(TEXT("TextComponent"));
 }
 
 void ABoardManagerBase::EndPlay(const EEndPlayReason::Type EndPlayReason)

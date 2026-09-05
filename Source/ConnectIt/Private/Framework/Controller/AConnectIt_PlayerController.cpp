@@ -91,11 +91,13 @@ void AConnectIt_PlayerController::ServerRouteBoardChangeRequest_Implementation(
     UTurnBasedParticipantManagerComponent* ParticipantManager =
         ParticipantComponent->GetParticipantManager();
 
-    if (!IsValid(ParticipantManager) || !ParticipantManager->IsActiveParticipant(this))
+    if (!IsValid(ParticipantManager) || !ParticipantManager->IsActiveParticipant(this)
+        || ParticipantManager->IsMatchOver())
     {
         UE_LOG(LogTemp, Warning,
             TEXT("ConnectIt_PlayerController: Board change request "
-                 "rejected — not this participant's turn"));
+                 "rejected — not this participant's turn, or match "
+                 "already over"));
         ClientNotifyBoardChangeOutcome(Request, false);
         return;
     }

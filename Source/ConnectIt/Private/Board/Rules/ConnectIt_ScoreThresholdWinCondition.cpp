@@ -16,7 +16,7 @@ void UConnectIt_ScoreThresholdWinCondition::CheckWinCondition_Implementation(
     {
         if (MutableState.ScoreBoard[i] >= WinScoreThreshold)
         {
-            MutableState.bGameOver         = true;
+            MutableState.bGameOver = true;
             MutableState.WinningFactionSlot = i;
 
             UE_LOG(LogTemp, Log,
