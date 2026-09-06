@@ -50,9 +50,12 @@ in another vault). Rules are referenced, never restated here.
 
 ```
 <Name>/
-  _section.md      # marker: type: code-unit, lead: high-level.md, schemas: [updates]
+  _section.md      # marker: type: code-unit, lead: high-level.md, schemas: [updates, …]
   high-level.md    # what / why / status / API surface / deps / consumers / rough edges
   updates/         # dated change record for this code unit — see _schema/updates.md
+  code/            # opt-in: per-type help pages          — see _schema/code.md
+  systems/         # opt-in: per-flow narratives + diagrams — see _schema/systems.md
+  recipes/         # opt-in: step-by-step task procedures  — see _schema/recipes.md
 ```
 
 - **`_section.md`** — the section marker. See [`_schema/section.md`](_schema/section.md).
@@ -63,6 +66,11 @@ in another vault). Rules are referenced, never restated here.
   `wiki/` (synthesis). Governed by [`_schema/updates.md`](_schema/updates.md), which
   carries the rules and the `raw/` + `wiki/` templates. Created on first use — the folder
   is not pre-scaffolded.
+- **`code/` · `systems/` · `recipes/`** — the code-ingestion family, **opt-in per
+  plugin**: present only once that plugin's source has been ingested, and listed in its
+  `_section.md` `schemas:` when so. They share one git-anchored provenance model (no
+  `raw/` copy of the source). `UnrealTurnBasedMechanics` is the first section to adopt
+  them; the others stay `schemas: [updates]` until ingested.
 
 `architecture/` and `devlog/` are sections too (`schemas: []`) — a lead doc and local
 convention, no schema-governed subfolders.

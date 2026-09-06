@@ -55,8 +55,18 @@ The `ConnectIt` game module (its GameMode / GameState / controllers derive from 
 
 ## In-repo reference
 
-- [`../../Plugins/UnrealTurnBasedMechanics/Docs/README.md`](../../Plugins/UnrealTurnBasedMechanics/Docs/README.md)
-- [`../../Plugins/UnrealTurnBasedMechanics/Docs/Systems.md`](../../Plugins/UnrealTurnBasedMechanics/Docs/Systems.md)
+- [`../../Plugins/UnrealTurnBasedMechanics/Docs/README.md`](../../Plugins/UnrealTurnBasedMechanics/Docs/README.md) — authoritative per-class reference
+- [`../../Plugins/UnrealTurnBasedMechanics/Docs/Systems.md`](../../Plugins/UnrealTurnBasedMechanics/Docs/Systems.md) — authoritative systems narrative + conventions
+
+## Vault code docs
+
+This section has adopted the code-ingestion schemas — an overlay on the in-repo docs
+above adding per-type entry-point/gotcha pages, flow diagrams, and task recipes, each
+git-anchored for freshness. Ingest is partial (see each index for status).
+
+- [[UnrealTurnBasedMechanics/code/index|code/index.md]] — per-type help pages ([[_schema/code|schema]])
+- [[UnrealTurnBasedMechanics/systems/index|systems/index.md]] — per-flow narratives with diagrams ([[_schema/systems|schema]])
+- [[UnrealTurnBasedMechanics/recipes/index|recipes/index.md]] — step-by-step task procedures ([[_schema/recipes|schema]])
 
 ## Known rough edges
 

@@ -45,6 +45,10 @@ schemas: [<kind>, ...]   # _schema/<kind>.md rulebooks that govern this section'
    `_schema/<kind>.md` — do not pre-scaffold it.
 4. Add a row for the section to the vault `CLAUDE.md` folder map.
 
+A section can adopt more schemas over time. A code-unit section starts as
+`schemas: [updates]` and adds `code`, `systems`, `recipes` once its source has been
+ingested (see [`code.md`](code.md)).
+
 ## Deviations
 
 If one section needs a governed subfolder to behave differently from its rulebook, add a

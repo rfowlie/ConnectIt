@@ -44,6 +44,9 @@ placeholder, so step 1 is a plain copy.
 |---|---|---|
 | [`section.md`](section.md) | the `_section.md` marker — how a folder declares itself a section | yes — all sections |
 | [`updates.md`](updates.md) | `updates/` — dated change record for one code unit, `raw/` + `wiki/` split | yes — every code-unit section |
+| [`code.md`](code.md) | `code/` — per-type help-wiki pages for a section's source; no `raw/`, git-anchored provenance | yes — UnrealTurnBasedMechanics |
+| [`systems.md`](systems.md) | `systems/` — per-flow narrative pages with a mermaid diagram | yes — UnrealTurnBasedMechanics |
+| [`recipes.md`](recipes.md) | `recipes/` — step-by-step task procedures | yes — UnrealTurnBasedMechanics |
 | [`knowledge.md`](knowledge.md) | `knowledge/` — stable reference material, `raw/` (verbatim) + `wiki/` (synthesis) | available, unused |
 | [`decisions.md`](decisions.md) | `decisions/` — one dated note per settled non-obvious decision | available, unused |
 | [`logs.md`](logs.md) | `logs/` — append-only record of automated maintenance passes | available, unused |
@@ -52,6 +55,12 @@ placeholder, so step 1 is a plain copy.
 
 [`skill-template.md`](skill-template.md) is the starting point for a new skill under
 `skills.md`.
+
+**`code` / `systems` / `recipes`** are the code-ingestion family: they share one
+provenance model (defined in [`code.md`](code.md)) — no `raw/` copy of the source, each
+page anchored to the commit it was last reconciled against, refreshed by re-reading the
+source rather than diffing a stored copy. They are opt-in per section: a code-unit
+section lists whichever it has ingested in its `_section.md` `schemas:`.
 
 ## How a section deviates from a rulebook
 

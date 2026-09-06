@@ -13,12 +13,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "UnrealGridMechanics/high-level.md",
+                "file": "_schema/updates.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "high-level"
+              "title": "updates"
             }
           }
         ]
@@ -204,6 +204,30 @@
   },
   "active": "ce45b71033382ff5",
   "lastOpenFiles": [
+    "UnrealTurnBasedMechanics/recipes/add-a-turn-action.md",
+    "UnrealTurnBasedMechanics/recipes/index.md",
+    "UnrealTurnBasedMechanics/recipes",
+    "UnrealTurnBasedMechanics/systems/action-stack-lifecycle.md",
+    "UnrealTurnBasedMechanics/systems/turn-end-tag-gate.md",
+    "UnrealTurnBasedMechanics/systems/index.md",
+    "UnrealTurnBasedMechanics/systems",
+    "UnrealTurnBasedMechanics/code/ITurnOrderInterface.md",
+    "UnrealTurnBasedMechanics/code/UTurnBasedParticipantComponent.md",
+    "UnrealTurnBasedMechanics/code/UTurnBasedParticipantManagerComponent.md",
+    "UnrealTurnBasedMechanics/code/UActionLoadoutDataAsset.md",
+    "UnrealTurnBasedMechanics/code/UTurnBasedAction.md",
+    "UnrealTurnBasedMechanics/code/UTurnBasedActionBase.md",
+    "UnrealTurnBasedMechanics/code/UTurnBasedActionsComponent.md",
+    "UnrealTurnBasedMechanics/code/index.md",
+    "UnrealTurnBasedMechanics/code",
+    "_schema/recipes.md",
+    "_schema/systems.md",
+    "_schema/code.md",
+    "_schema/skills.md",
+    "_schema/skill-template.md",
+    "_schema/section.md",
+    "_schema/knowledge.md",
+    "UnrealGridMechanics/high-level.md",
     "UnrealAIMechanics/high-level.md",
     "architecture/overview.md",
     "Welcome.md"
