@@ -71,4 +71,4 @@ envelope**, never duplicated into a payload.
 
 ## See also
 
-- In-repo: `Docs/UIValueCatalogue.md`; `Docs/Workflows/SingleSourceOfTruth-Replication.md`.
+- In-repo: `old/Source/ConnectIt/Docs/UIValueCatalogue.md`; `old/Source/ConnectIt/Docs/Workflows/SingleSourceOfTruth-Replication.md`.

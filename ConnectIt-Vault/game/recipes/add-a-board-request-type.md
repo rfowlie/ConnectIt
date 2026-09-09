@@ -88,5 +88,5 @@ chain as place-piece.
 - [[game/code/UConnectIt_BoardRequestMediator|UConnectIt_BoardRequestMediator]] ·
   [[game/code/UConnectIt_BoardStateComponent|UConnectIt_BoardStateComponent]] ·
   [[game/code/ConnectItStructs|ConnectItStructs]]
-- In-repo: `Docs/Workflows/ServerAuthoritative-ActionRequest.md`;
-  `Docs/Workflows/GameplayTag-EventSequencing.md`.
+- In-repo: `old/Source/ConnectIt/Docs/Workflows/ServerAuthoritative-ActionRequest.md`;
+  `old/Source/ConnectIt/Docs/Workflows/GameplayTag-EventSequencing.md`.

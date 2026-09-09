@@ -7,8 +7,8 @@ commit: d0cba36
 # UnrealAIMechanics — code index
 
 Per-type help pages. Governed by [[_schema/code|_schema/code.md]]. Overlay on
-[`Docs/README.md`](../../../Plugins/UnrealAIMechanics/Docs/README.md) /
-[`Docs/Systems.md`](../../../Plugins/UnrealAIMechanics/Docs/Systems.md).
+[`old/Plugins/UnrealAIMechanics/Docs/README.md`](../../../old/Plugins/UnrealAIMechanics/Docs/README.md) /
+[`old/Plugins/UnrealAIMechanics/Docs/Systems.md`](../../../old/Plugins/UnrealAIMechanics/Docs/Systems.md).
 
 Source root: `Plugins/UnrealAIMechanics/Source/UnrealAIMechanics/`.
 **The plugin is dormant** — not enabled in `ConnectIt.uproject`, and

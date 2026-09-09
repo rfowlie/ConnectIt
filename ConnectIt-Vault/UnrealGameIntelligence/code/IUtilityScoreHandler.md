@@ -43,4 +43,4 @@ Self-contained.
 
 ## See also
 
-- In-repo: `Docs/README.md` → *Utility*.
+- In-repo: `old/Plugins/UnrealGameIntelligence/Docs/README.md` → *Utility*.

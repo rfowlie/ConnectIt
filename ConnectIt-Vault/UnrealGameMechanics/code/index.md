@@ -8,8 +8,8 @@ commit: ec992a2
 
 Per-type help pages for the plugin's public API. Governed by [[_schema/code|_schema/code.md]].
 An **overlay** on the authoritative in-repo reference
-([`Docs/README.md`](../../../Plugins/UnrealGameMechanics/Docs/README.md),
-[`Docs/Systems.md`](../../../Plugins/UnrealGameMechanics/Docs/Systems.md)) — entry points,
+([`old/Plugins/UnrealGameMechanics/Docs/README.md`](../../../old/Plugins/UnrealGameMechanics/Docs/README.md),
+[`old/Plugins/UnrealGameMechanics/Docs/Systems.md`](../../../old/Plugins/UnrealGameMechanics/Docs/Systems.md)) — entry points,
 collaborators, gotchas, cross-impact, freshness. It does not restate them.
 
 Source root: `Plugins/UnrealGameMechanics/Source/UnrealGameMechanics/`

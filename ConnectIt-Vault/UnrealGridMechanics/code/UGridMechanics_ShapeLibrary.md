@@ -55,5 +55,5 @@ name→score mapping, not this library.
 
 ## See also
 
-- In-repo: `Docs/README.md` → *Library*.
+- In-repo: `old/Plugins/UnrealGridMechanics/Docs/README.md` → *Library*.
 - [[UnrealGridMechanics/code/UGridMechanics_GridLibrary|UGridMechanics_GridLibrary]]

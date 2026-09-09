@@ -28,8 +28,8 @@ Any plugin or the game module that needs a component-level authority check.
 
 ## In-repo reference
 
-- [`../../Plugins/UnrealCodingUtils/Docs/README.md`](../../Plugins/UnrealCodingUtils/Docs/README.md)
-- [`../../Plugins/UnrealCodingUtils/Docs/Systems.md`](../../Plugins/UnrealCodingUtils/Docs/Systems.md)
+- [`../../old/Plugins/UnrealCodingUtils/Docs/README.md`](../../old/Plugins/UnrealCodingUtils/Docs/README.md)
+- [`../../old/Plugins/UnrealCodingUtils/Docs/Systems.md`](../../old/Plugins/UnrealCodingUtils/Docs/Systems.md)
 
 ## Vault code docs
 
@@ -41,4 +41,4 @@ Any plugin or the game module that needs a component-level authority check.
 - Both functions are tagged `Category = "Chimera|Utils"` — leftover naming from an
   unrelated predecessor codebase; should be renamed to a ConnectIt-appropriate category.
 
-_Verify against the in-repo `Docs/` before acting on this list — it reflects a past snapshot._
+_Verify against the in-repo `old/Plugins/UnrealCodingUtils/Docs/` before acting on this list — it reflects a past snapshot._

@@ -67,5 +67,5 @@ three plus `GridMechanics_GridShiftLibrary`.
 
 ## See also
 
-- In-repo: `Docs/README.md` → *Board/Shift*; `Docs/Systems.md` → shift system.
+- In-repo: `old/Plugins/UnrealGridMechanics/Docs/README.md` → *Board/Shift*; `old/Plugins/UnrealGridMechanics/Docs/Systems.md` → shift system.
 - [[UnrealGridMechanics/systems/board-shift|systems/board-shift]]

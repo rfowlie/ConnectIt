@@ -55,8 +55,8 @@ The `ConnectIt` game module (its GameMode / GameState / controllers derive from 
 
 ## In-repo reference
 
-- [`../../Plugins/UnrealTurnBasedMechanics/Docs/README.md`](../../Plugins/UnrealTurnBasedMechanics/Docs/README.md) — authoritative per-class reference
-- [`../../Plugins/UnrealTurnBasedMechanics/Docs/Systems.md`](../../Plugins/UnrealTurnBasedMechanics/Docs/Systems.md) — authoritative systems narrative + conventions
+- [`../../old/Plugins/UnrealTurnBasedMechanics/Docs/README.md`](../../old/Plugins/UnrealTurnBasedMechanics/Docs/README.md) — authoritative per-class reference
+- [`../../old/Plugins/UnrealTurnBasedMechanics/Docs/Systems.md`](../../old/Plugins/UnrealTurnBasedMechanics/Docs/Systems.md) — authoritative systems narrative + conventions
 
 ## Vault code docs
 
@@ -76,4 +76,4 @@ git-anchored for freshness. Ingest is partial (see each index for status).
   `UDWidget_TurnBasedParticipantManagerComponent::BindDelegates`.
 - Retired `BeginResolutionHold` / `EndResolutionHold` API still referenced in places.
 
-_Verify against the in-repo `Docs/` before acting on this list — it reflects a past snapshot._
+_Verify against the in-repo `old/Plugins/UnrealTurnBasedMechanics/Docs/` before acting on this list — it reflects a past snapshot._

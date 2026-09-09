@@ -7,7 +7,7 @@ commit: 668872e
 # game (ConnectIt module) — systems index
 
 Per-flow narratives with diagrams. Governed by [[_schema/systems|_schema/systems.md]].
-An overlay on the module's own `Docs/Workflows/` (which these link to).
+An overlay on the module's own `old/Source/ConnectIt/Docs/Workflows/` (which these link to).
 
 | Flow | What it does | Status |
 |---|---|---|

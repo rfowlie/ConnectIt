@@ -54,4 +54,4 @@ shape are the extension surface.
 
 ## See also
 
-- In-repo: `Docs/README.md`, `Docs/Systems.md`.
+- In-repo: `old/Plugins/UnrealAIMechanics/Docs/README.md`, `old/Plugins/UnrealAIMechanics/Docs/Systems.md`.

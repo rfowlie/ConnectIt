@@ -79,5 +79,5 @@ Change the phase set / lifecycle and also update: `ETurnPhase` / `EMatchPhase` /
 
 ## See also
 
-- In-repo: `Docs/README.md` → *Turn/Participant*; `Docs/Systems.md` →
+- In-repo: `old/Plugins/UnrealTurnBasedMechanics/Docs/README.md` → *Turn/Participant*; `old/Plugins/UnrealTurnBasedMechanics/Docs/Systems.md` →
   *Turn/Participant — the Match State Machine* and *Known Rough Edges*.

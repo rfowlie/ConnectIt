@@ -92,7 +92,7 @@ sequenceDiagram
 
 ## See also
 
-- In-repo: `Docs/Systems.md` → *Turn/Participant — the Match State Machine* (the
+- In-repo: `old/Plugins/UnrealTurnBasedMechanics/Docs/Systems.md` → *Turn/Participant — the Match State Machine* (the
   "turn-end is gated by a gameplay tag" paragraph) and *Known Rough Edges*.
 - UnrealGameMechanics `UGameEventTaskSubsystem` (`QueueTagContainer`, `RegisterAsyncTask`,
   `BindOnTagComplete`).

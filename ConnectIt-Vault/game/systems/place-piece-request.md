@@ -113,5 +113,5 @@ step is [[UnrealGameMechanics/systems/gated-event-tag-queue|gated-event-tag-queu
 
 ## See also
 
-- In-repo: `Docs/Workflows/ServerAuthoritative-ActionRequest.md`;
-  `Docs/Workflows/GameplayTag-EventSequencing.md`.
+- In-repo: `old/Source/ConnectIt/Docs/Workflows/ServerAuthoritative-ActionRequest.md`;
+  `old/Source/ConnectIt/Docs/Workflows/GameplayTag-EventSequencing.md`.

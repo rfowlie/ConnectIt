@@ -72,5 +72,5 @@ and widget are untouched.
 
 ## See also
 
-- In-repo: `InfluenceMap_README.md` (design guide), `Docs/README.md` → *InfluenceMap*.
+- In-repo: `old/Plugins/UnrealGameIntelligence/Source/UnrealGameIntelligence/README/InfluenceMap_README.md` (design guide), `old/Plugins/UnrealGameIntelligence/Docs/README.md` → *InfluenceMap*.
 - [[UnrealGameIntelligence/recipes/add-an-influence-map-visualiser|recipes/add-an-influence-map-visualiser]]

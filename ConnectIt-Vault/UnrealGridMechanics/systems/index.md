@@ -7,7 +7,7 @@ commit: 3086271
 # UnrealGridMechanics — systems index
 
 Per-flow narratives with diagrams. Governed by [[_schema/systems|_schema/systems.md]].
-An overlay on `Docs/Systems.md`.
+An overlay on `old/Plugins/UnrealGridMechanics/Docs/Systems.md`.
 
 | Flow | What it does | Status |
 |---|---|---|

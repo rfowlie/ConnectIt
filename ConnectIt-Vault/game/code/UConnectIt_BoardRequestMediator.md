@@ -66,6 +66,6 @@ and a `UTurnBasedAction` subclass that sends it.
 
 ## See also
 
-- In-repo: `Docs/Workflows/ServerAuthoritative-ActionRequest.md`; `Docs/LegacyPipeline.md`.
+- In-repo: `old/Source/ConnectIt/Docs/Workflows/ServerAuthoritative-ActionRequest.md`; `old/Source/ConnectIt/Docs/LegacyPipeline.md`.
 - [[game/systems/place-piece-request|systems/place-piece-request]] ·
   [[game/recipes/add-a-board-request-type|recipes/add-a-board-request-type]]

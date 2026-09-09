@@ -8,13 +8,13 @@ commit: 668872e
 
 Per-type help pages for the `ConnectIt` game module (`Source/ConnectIt/`). Governed by
 [[_schema/code|_schema/code.md]]. An **overlay** on the module's own (extensive) in-repo
-docs: [`Docs/README.md`](../../../Source/ConnectIt/Docs/README.md),
-[`Docs/Conventions.md`](../../../Source/ConnectIt/Docs/Conventions.md),
-[`Docs/RuntimeStateAccess.md`](../../../Source/ConnectIt/Docs/RuntimeStateAccess.md),
-[`Docs/UIValueCatalogue.md`](../../../Source/ConnectIt/Docs/UIValueCatalogue.md),
-[`Docs/Duplication.md`](../../../Source/ConnectIt/Docs/Duplication.md),
-[`Docs/LegacyPipeline.md`](../../../Source/ConnectIt/Docs/LegacyPipeline.md), and
-[`Docs/Workflows/`](../../../Source/ConnectIt/Docs/Workflows/) (six workflow docs).
+docs: [`old/Source/ConnectIt/Docs/README.md`](../../../old/Source/ConnectIt/Docs/README.md),
+[`old/Source/ConnectIt/Docs/Conventions.md`](../../../old/Source/ConnectIt/Docs/Conventions.md),
+[`old/Source/ConnectIt/Docs/RuntimeStateAccess.md`](../../../old/Source/ConnectIt/Docs/RuntimeStateAccess.md),
+[`old/Source/ConnectIt/Docs/UIValueCatalogue.md`](../../../old/Source/ConnectIt/Docs/UIValueCatalogue.md),
+[`old/Source/ConnectIt/Docs/Duplication.md`](../../../old/Source/ConnectIt/Docs/Duplication.md),
+[`old/Source/ConnectIt/Docs/LegacyPipeline.md`](../../../old/Source/ConnectIt/Docs/LegacyPipeline.md), and
+[`old/Source/ConnectIt/Docs/Workflows/`](../../../old/Source/ConnectIt/Docs/Workflows/) (six workflow docs).
 
 Source root: `Source/ConnectIt/`. Anchor commit `668872e` = *Board Manager Refactor*, the
 last commit to touch this module — the game is mid–"board architecture overhaul": the

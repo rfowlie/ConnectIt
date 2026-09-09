@@ -8,9 +8,9 @@ commit: 32e3e7c
 
 Per-type help pages. Governed by [[_schema/code|_schema/code.md]]. An **overlay** on the
 authoritative in-repo reference
-([`Docs/README.md`](../../../Plugins/UnrealGameIntelligence/Docs/README.md),
-[`Docs/Systems.md`](../../../Plugins/UnrealGameIntelligence/Docs/Systems.md), and
-[`Source/UnrealGameIntelligence/README/InfluenceMap_README.md`](../../../Plugins/UnrealGameIntelligence/Source/UnrealGameIntelligence/README/InfluenceMap_README.md)).
+([`old/Plugins/UnrealGameIntelligence/Docs/README.md`](../../../old/Plugins/UnrealGameIntelligence/Docs/README.md),
+[`old/Plugins/UnrealGameIntelligence/Docs/Systems.md`](../../../old/Plugins/UnrealGameIntelligence/Docs/Systems.md), and
+[`old/Plugins/UnrealGameIntelligence/Source/…/README/InfluenceMap_README.md`](../../../old/Plugins/UnrealGameIntelligence/Source/UnrealGameIntelligence/README/InfluenceMap_README.md)).
 
 Source root: `Plugins/UnrealGameIntelligence/Source/UnrealGameIntelligence/`
 This plugin is two loosely-related systems (influence-map debug visualisation + a
@@ -26,7 +26,7 @@ header-only MinMax toolkit) plus a small utility-score interface.
 | FUnrealGameIntelligenceModule | class (IModuleInterface) | Top-level | internal | `UnrealGameIntelligence.h` | stub |
 
 Phantom type: `IGI_InfluenceMap` / `UGI_InfluenceMap` is referenced in
-`GI_FloatGridDataProviderInterface.h`'s example and in `InfluenceMap_README.md` but is
+`GI_FloatGridDataProviderInterface.h`'s example and in `old/Plugins/UnrealGameIntelligence/Source/UnrealGameIntelligence/README/InfluenceMap_README.md` but is
 **implemented nowhere** — ignore it when following those examples.
 
 ## Related

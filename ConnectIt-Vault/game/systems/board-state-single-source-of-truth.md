@@ -82,6 +82,6 @@ Every UI reader (`AConnectIt_GameState` wrappers, `UConnectIt_BoardStateLibrary`
 
 ## See also
 
-- In-repo: `Docs/Workflows/SingleSourceOfTruth-Replication.md`;
-  `Docs/Workflows/GameplayTag-EventSequencing.md`; `Docs/RuntimeStateAccess.md`.
+- In-repo: `old/Source/ConnectIt/Docs/Workflows/SingleSourceOfTruth-Replication.md`;
+  `old/Source/ConnectIt/Docs/Workflows/GameplayTag-EventSequencing.md`; `old/Source/ConnectIt/Docs/RuntimeStateAccess.md`.
 - [[game/systems/place-piece-request|systems/place-piece-request]]

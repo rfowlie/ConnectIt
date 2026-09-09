@@ -11,7 +11,7 @@ Intended to hold default UI functionality and reusable widgets for games (per it
 `FUnrealUIMechanicsModule` (`StartupModule` / `ShutdownModule` are empty) and an
 unmodified Epic-boilerplate `.Build.cs` (deps: `Core`, `CoreUObject`, `Engine`, `Slate`,
 `SlateCore`). No widget classes, headers, or gameplay code. Not enabled in
-`ConnectIt.uproject`. No `Docs/` folder.
+`ConnectIt.uproject`. No `old/Plugins/UnrealUIMechanics/Docs/` folder.
 
 ## Key modules
 
@@ -28,7 +28,7 @@ None.
 
 ## In-repo reference
 
-- `../../Plugins/UnrealUIMechanics/` — source only; no `Docs/` yet.
+- `../../Plugins/UnrealUIMechanics/` — source only; no `old/Plugins/UnrealUIMechanics/Docs/` yet.
 
 ## Vault code docs
 
@@ -40,5 +40,5 @@ stays `schemas: [updates]`; add `code` / `systems` / `recipes` once it has real 
 - Decide the first widgets/systems it should own (candidates: HUD base, menu framework,
   the debug-widget story currently split between `UnrealGameMechanics` `UDWidgetBase` and
   the per-plugin `UDWidget_*` classes).
-- Add a `Docs/README.md` + `Docs/Systems.md` to match the other plugins.
+- Add a `old/Plugins/UnrealUIMechanics/Docs/README.md` + `old/Plugins/UnrealUIMechanics/Docs/Systems.md` to match the other plugins.
 - Enable in `ConnectIt.uproject` once it has content.

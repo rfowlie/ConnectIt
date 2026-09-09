@@ -78,4 +78,4 @@ component.
 
 - [[game/code/UConnectIt_BoardRules|UConnectIt_BoardRules]] ·
   [[game/code/ConnectItStructs|ConnectItStructs]]
-- In-repo: `Docs/README.md` → rules; `Docs/Duplication.md`.
+- In-repo: `old/Source/ConnectIt/Docs/README.md` → rules; `old/Source/ConnectIt/Docs/Duplication.md`.

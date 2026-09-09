@@ -62,5 +62,5 @@ switch (`UTurnBasedAction::OnBoundInputTriggered`) and any designer data assets 
 
 ## See also
 
-- In-repo: `Docs/README.md` → *Input*; `Docs/Systems.md` → input section.
+- In-repo: `old/Plugins/UnrealGameMechanics/Docs/README.md` → *Input*; `old/Plugins/UnrealGameMechanics/Docs/Systems.md` → input section.
 - Consumer: [[UnrealTurnBasedMechanics/code/UTurnBasedAction|UTurnBasedAction]]

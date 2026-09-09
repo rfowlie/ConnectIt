@@ -59,5 +59,5 @@ Self-contained pattern. If you change the transition-delegate set, update every
 
 ## See also
 
-- In-repo: `Docs/README.md` → *State*; `Docs/Systems.md` → the two state-machine patterns
+- In-repo: `old/Plugins/UnrealGameMechanics/Docs/README.md` → *State*; `old/Plugins/UnrealGameMechanics/Docs/Systems.md` → the two state-machine patterns
   (single-state `UGameMechanicsStateBase` vs. this stack-based one).

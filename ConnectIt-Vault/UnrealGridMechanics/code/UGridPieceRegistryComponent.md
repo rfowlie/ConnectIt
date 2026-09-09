@@ -64,5 +64,5 @@ that composes them.
 
 ## See also
 
-- In-repo: `Docs/README.md` → *Piece*; `Docs/Systems.md` → piece registry + the removal note.
+- In-repo: `old/Plugins/UnrealGridMechanics/Docs/README.md` → *Piece*; `old/Plugins/UnrealGridMechanics/Docs/Systems.md` → piece registry + the removal note.
 - [[UnrealGridMechanics/recipes/place-and-remove-a-piece|recipes/place-and-remove-a-piece]]

@@ -41,8 +41,8 @@ None yet.
 
 ## In-repo reference
 
-- [`../../Plugins/UnrealAIMechanics/Docs/README.md`](../../Plugins/UnrealAIMechanics/Docs/README.md)
-- [`../../Plugins/UnrealAIMechanics/Docs/Systems.md`](../../Plugins/UnrealAIMechanics/Docs/Systems.md)
+- [`../../old/Plugins/UnrealAIMechanics/Docs/README.md`](../../old/Plugins/UnrealAIMechanics/Docs/README.md)
+- [`../../old/Plugins/UnrealAIMechanics/Docs/Systems.md`](../../old/Plugins/UnrealAIMechanics/Docs/Systems.md)
 
 ## Vault code docs
 
@@ -54,4 +54,4 @@ None yet.
 - `SelectEvaluatedAction()` is a stub — the plugin does not function end to end.
 - Not enabled in the `.uproject`.
 
-_Verify against the in-repo `Docs/` before acting on this list — it reflects a past snapshot._
+_Verify against the in-repo `old/Plugins/UnrealAIMechanics/Docs/` before acting on this list — it reflects a past snapshot._

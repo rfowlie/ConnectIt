@@ -86,5 +86,5 @@ Changing queue/phase semantics touches all three GameEvent types plus every cons
 
 ## See also
 
-- In-repo: `Docs/Systems.md` → gated sequencing.
+- In-repo: `old/Plugins/UnrealGameMechanics/Docs/Systems.md` → gated sequencing.
 - [[UnrealGameMechanics/recipes/gate-a-response-on-a-tag|recipes/gate-a-response-on-a-tag]]

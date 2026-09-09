@@ -75,5 +75,5 @@ transition event on `UConnectIt_State_Game` + a phase tag. Anything bound to
 
 ## See also
 
-- In-repo: `Docs/README.md` → game state machine.
-- `UnrealGameMechanics` `Docs/Systems.md` → single-state vs stacked state patterns.
+- In-repo: `old/Source/ConnectIt/Docs/README.md` → game state machine.
+- `UnrealGameMechanics` `old/Plugins/UnrealGameMechanics/Docs/Systems.md` → single-state vs stacked state patterns.

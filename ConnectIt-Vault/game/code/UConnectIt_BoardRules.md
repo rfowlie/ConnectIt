@@ -80,5 +80,5 @@ A new strategy is self-contained: implement the interface, assign it on `UConnec
 
 ## See also
 
-- In-repo: `Docs/README.md` → rules; `Docs/Duplication.md`.
+- In-repo: `old/Source/ConnectIt/Docs/README.md` → rules; `old/Source/ConnectIt/Docs/Duplication.md`.
 - [[game/recipes/add-a-scoring-rule|recipes/add-a-scoring-rule]]

@@ -67,5 +67,5 @@ get/activate contract or `IActorPoolInterface` affects all of them.
 
 ## See also
 
-- In-repo: `Docs/Systems.md` → pooling section.
+- In-repo: `old/Plugins/UnrealGameMechanics/Docs/Systems.md` → pooling section.
 - [[UnrealGameMechanics/code/UActorPoolSubsystem|UActorPoolSubsystem]]

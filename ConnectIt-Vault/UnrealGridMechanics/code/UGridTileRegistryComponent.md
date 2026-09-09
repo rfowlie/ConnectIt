@@ -56,5 +56,5 @@ board manager, and `UGridValidatorBase` (editor).
 
 ## See also
 
-- In-repo: `Docs/README.md` → *Tile*; `Docs/Systems.md` → registries.
+- In-repo: `old/Plugins/UnrealGridMechanics/Docs/README.md` → *Tile*; `old/Plugins/UnrealGridMechanics/Docs/Systems.md` → registries.
 - [[UnrealGridMechanics/systems/hover-relay|systems/hover-relay]]

@@ -48,7 +48,7 @@ for UI.
 ## Gotchas
 
 - Board state lives **here**, not on any board actor — see
-  `Docs/Workflows/SingleSourceOfTruth-Replication.md`. Same reasoning as
+  `old/Source/ConnectIt/Docs/Workflows/SingleSourceOfTruth-Replication.md`. Same reasoning as
   `UTurnBasedParticipantManagerComponent` living on the GameState.
 - Per-tile / per-state helpers (`IsTileOccupied`, `GetScore`, …) are also on
   `UConnectIt_BoardStateLibrary` (takes `FConnectItBoardState` by const&) so they work on
@@ -64,5 +64,5 @@ game-over handlers. Board read wrappers mirror `UConnectIt_BoardStateComponent` 
 
 ## See also
 
-- In-repo: `Docs/Workflows/SingleSourceOfTruth-Replication.md`; `Docs/RuntimeStateAccess.md`.
+- In-repo: `old/Source/ConnectIt/Docs/Workflows/SingleSourceOfTruth-Replication.md`; `old/Source/ConnectIt/Docs/RuntimeStateAccess.md`.
 - [[game/systems/board-state-single-source-of-truth|systems/board-state-single-source-of-truth]]

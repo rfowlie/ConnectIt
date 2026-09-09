@@ -59,4 +59,4 @@ change to `FGridPosition`'s layout or hash ripples into every `TMap<FGridPositio
 
 ## See also
 
-- In-repo: `Docs/README.md` → *Top-level (Structs/Enums)*.
+- In-repo: `old/Plugins/UnrealGridMechanics/Docs/README.md` → *Top-level (Structs/Enums)*.

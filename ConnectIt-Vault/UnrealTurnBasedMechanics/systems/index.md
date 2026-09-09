@@ -7,7 +7,7 @@ commit: 3086271
 # UnrealTurnBasedMechanics — systems index
 
 Per-flow narratives with diagrams. Governed by [[_schema/systems|_schema/systems.md]].
-An overlay on `Docs/Systems.md` (authoritative narrative) that adds the figure, the
+An overlay on `old/Plugins/UnrealTurnBasedMechanics/Docs/Systems.md` (authoritative narrative) that adds the figure, the
 named-hop walkthrough, and the cross-impact list.
 
 | Flow | What it does | Status |

@@ -86,5 +86,5 @@ for it.
 
 ## See also
 
-- In-repo: `Docs/Systems.md` → shift system.
+- In-repo: `old/Plugins/UnrealGridMechanics/Docs/Systems.md` → shift system.
 - [[UnrealGridMechanics/code/UBoardShiftComponent|UBoardShiftComponent]]

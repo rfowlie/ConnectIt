@@ -74,10 +74,10 @@ each index.
 
 The module ships extensive docs — treat these as authoritative:
 
-- [`../../Source/ConnectIt/Docs/README.md`](../../Source/ConnectIt/Docs/README.md) and
+- [`../../old/Source/ConnectIt/Docs/README.md`](../../old/Source/ConnectIt/Docs/README.md) and
   `Conventions.md`, `RuntimeStateAccess.md`, `UIValueCatalogue.md`, `Duplication.md`,
   `LegacyPipeline.md`
-- [`../../Source/ConnectIt/Docs/Workflows/`](../../Source/ConnectIt/Docs/Workflows/) — six
+- [`../../old/Source/ConnectIt/Docs/Workflows/`](../../old/Source/ConnectIt/Docs/Workflows/) — six
   workflow docs (ServerAuthoritative-ActionRequest, GameplayTag-EventSequencing,
   SingleSourceOfTruth-Replication, SubsystemDiscovery-DualAccessPattern, DebugWidgets)
 - [`../../README.md`](../../README.md) — game pitch · [`../../FIXES.txt`](../../FIXES.txt) — running fix notes

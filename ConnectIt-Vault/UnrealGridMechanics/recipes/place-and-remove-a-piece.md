@@ -79,4 +79,4 @@ be cleanly removed back to the pool.
 - [[UnrealGridMechanics/code/UGridPieceRegistryComponent|UGridPieceRegistryComponent]] ·
   [[UnrealGameMechanics/code/UActorPoolSubsystem|UActorPoolSubsystem]]
 - [[UnrealGridMechanics/systems/hover-relay|systems/hover-relay]]
-- In-repo: `Docs/Systems.md` → piece registry.
+- In-repo: `old/Plugins/UnrealGridMechanics/Docs/Systems.md` → piece registry.

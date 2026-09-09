@@ -8,8 +8,8 @@ commit: 3086271
 
 Per-type help pages for the plugin's public API. Governed by [[_schema/code|_schema/code.md]].
 These are an **overlay** on the authoritative in-repo reference
-([`Docs/README.md`](../../../Plugins/UnrealTurnBasedMechanics/Docs/README.md),
-[`Docs/Systems.md`](../../../Plugins/UnrealTurnBasedMechanics/Docs/Systems.md)) — entry
+([`old/Plugins/UnrealTurnBasedMechanics/Docs/README.md`](../../../old/Plugins/UnrealTurnBasedMechanics/Docs/README.md),
+[`old/Plugins/UnrealTurnBasedMechanics/Docs/Systems.md`](../../../old/Plugins/UnrealTurnBasedMechanics/Docs/Systems.md)) — entry
 points, collaborators, gotchas, cross-impact, freshness. They do not restate it.
 
 Source root: `Plugins/UnrealTurnBasedMechanics/Source/UnrealTurnBasedMechanics/`

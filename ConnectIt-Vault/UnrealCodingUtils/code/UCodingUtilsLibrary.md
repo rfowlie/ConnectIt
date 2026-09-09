@@ -46,4 +46,4 @@ the plugins and game module.
 
 ## See also
 
-- In-repo: `Docs/README.md`, `Docs/Systems.md`.
+- In-repo: `old/Plugins/UnrealCodingUtils/Docs/README.md`, `old/Plugins/UnrealCodingUtils/Docs/Systems.md`.

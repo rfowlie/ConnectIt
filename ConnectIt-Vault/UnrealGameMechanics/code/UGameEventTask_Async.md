@@ -56,6 +56,6 @@ Change the completion signature and also update `UGameEventTaskManager`
 
 ## See also
 
-- In-repo: `Docs/README.md` → *GameEvent*.
+- In-repo: `old/Plugins/UnrealGameMechanics/Docs/README.md` → *GameEvent*.
 - [[UnrealGameMechanics/systems/gated-event-tag-queue|systems/gated-event-tag-queue]] ·
   [[UnrealGameMechanics/recipes/gate-a-response-on-a-tag|recipes/gate-a-response-on-a-tag]]

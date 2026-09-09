@@ -58,4 +58,4 @@ in `UTurnBasedParticipantManagerComponent`).
 
 ## See also
 
-- In-repo: `Docs/README.md` → *Turn/Order*; `Docs/Systems.md` → *Turn Order*.
+- In-repo: `old/Plugins/UnrealTurnBasedMechanics/Docs/README.md` → *Turn/Order*; `old/Plugins/UnrealTurnBasedMechanics/Docs/Systems.md` → *Turn Order*.

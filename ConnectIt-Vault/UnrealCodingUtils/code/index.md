@@ -7,8 +7,8 @@ commit: 3086271
 # UnrealCodingUtils — code index
 
 Per-type help pages. Governed by [[_schema/code|_schema/code.md]]. Overlay on
-[`Docs/README.md`](../../../Plugins/UnrealCodingUtils/Docs/README.md) /
-[`Docs/Systems.md`](../../../Plugins/UnrealCodingUtils/Docs/Systems.md).
+[`old/Plugins/UnrealCodingUtils/Docs/README.md`](../../../old/Plugins/UnrealCodingUtils/Docs/README.md) /
+[`old/Plugins/UnrealCodingUtils/Docs/Systems.md`](../../../old/Plugins/UnrealCodingUtils/Docs/Systems.md).
 
 Source root: `Plugins/UnrealCodingUtils/Source/UnrealCodingUtils/`. The plugin is
 deliberately tiny — one library today.

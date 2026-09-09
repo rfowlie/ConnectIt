@@ -74,7 +74,7 @@ the fields. UI reading the snapshot (`AConnectIt_GameState` wrappers, debug widg
 
 ## See also
 
-- In-repo: `Docs/Workflows/SingleSourceOfTruth-Replication.md`;
-  `Docs/Workflows/GameplayTag-EventSequencing.md`; `Docs/UIValueCatalogue.md`.
+- In-repo: `old/Source/ConnectIt/Docs/Workflows/SingleSourceOfTruth-Replication.md`;
+  `old/Source/ConnectIt/Docs/Workflows/GameplayTag-EventSequencing.md`; `old/Source/ConnectIt/Docs/UIValueCatalogue.md`.
 - [[game/systems/board-state-single-source-of-truth|systems/board-state-single-source-of-truth]] ·
   [[game/code/ConnectItStructs|ConnectItStructs]]

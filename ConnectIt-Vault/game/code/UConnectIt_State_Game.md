@@ -65,5 +65,5 @@ a transition BlueprintNativeEvent on `UConnectIt_State_Game`, and a phase gamepl
 
 ## See also
 
-- In-repo: `Docs/README.md` → game state machine; `UnrealGameMechanics` `Docs/Systems.md`
+- In-repo: `old/Source/ConnectIt/Docs/README.md` → game state machine; `UnrealGameMechanics` `old/Plugins/UnrealGameMechanics/Docs/Systems.md`
   → single-state pattern.

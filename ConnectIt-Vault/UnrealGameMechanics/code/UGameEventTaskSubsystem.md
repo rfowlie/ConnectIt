@@ -68,6 +68,6 @@ contract), `UDWidget_GameEventTaskSubsystem`, and every consumer that calls
 
 ## See also
 
-- In-repo: `Docs/README.md` → *GameEvent*; `Docs/Systems.md` → the gated-sequencing section.
+- In-repo: `old/Plugins/UnrealGameMechanics/Docs/README.md` → *GameEvent*; `old/Plugins/UnrealGameMechanics/Docs/Systems.md` → the gated-sequencing section.
 - [[UnrealGameMechanics/systems/gated-event-tag-queue|systems/gated-event-tag-queue]]
 - [[UnrealGameMechanics/recipes/gate-a-response-on-a-tag|recipes/gate-a-response-on-a-tag]]

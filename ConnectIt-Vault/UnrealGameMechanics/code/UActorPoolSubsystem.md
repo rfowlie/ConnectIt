@@ -62,5 +62,5 @@ split timing (grid piece registry especially), and `IActorPoolInterface` impleme
 
 ## See also
 
-- In-repo: `Docs/README.md` → *Pooling*; `Docs/Systems.md` → pooling section.
+- In-repo: `old/Plugins/UnrealGameMechanics/Docs/README.md` → *Pooling*; `old/Plugins/UnrealGameMechanics/Docs/Systems.md` → pooling section.
 - [[UnrealGameMechanics/systems/actor-pooling-lifecycle|systems/actor-pooling-lifecycle]]

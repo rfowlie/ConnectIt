@@ -60,5 +60,5 @@ Change phase/completion logic and also update:
 
 ## See also
 
-- In-repo: `Docs/README.md` → *GameEvent*; `Docs/Systems.md` → gated sequencing.
+- In-repo: `old/Plugins/UnrealGameMechanics/Docs/README.md` → *GameEvent*; `old/Plugins/UnrealGameMechanics/Docs/Systems.md` → gated sequencing.
 - [[UnrealGameMechanics/systems/gated-event-tag-queue|systems/gated-event-tag-queue]]

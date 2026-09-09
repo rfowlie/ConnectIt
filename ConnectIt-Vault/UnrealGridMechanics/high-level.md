@@ -50,8 +50,8 @@ Active — enabled in `ConnectIt.uproject`. Depends on
 
 ## In-repo reference
 
-- [`../../Plugins/UnrealGridMechanics/Docs/README.md`](../../Plugins/UnrealGridMechanics/Docs/README.md)
-- [`../../Plugins/UnrealGridMechanics/Docs/Systems.md`](../../Plugins/UnrealGridMechanics/Docs/Systems.md)
+- [`../../old/Plugins/UnrealGridMechanics/Docs/README.md`](../../old/Plugins/UnrealGridMechanics/Docs/README.md)
+- [`../../old/Plugins/UnrealGridMechanics/Docs/Systems.md`](../../old/Plugins/UnrealGridMechanics/Docs/Systems.md)
 
 ## Vault code docs
 
@@ -70,4 +70,4 @@ recipes, git-anchored for freshness. Partial (see each index for status).
 - Non-functional `BoardActor` loop in `GridValidatorBase.cpp` (~line 26).
 - No `operator+=` on `EGridDirection`.
 
-_Verify against the in-repo `Docs/` before acting on this list — it reflects a past snapshot._
+_Verify against the in-repo `old/Plugins/UnrealGridMechanics/Docs/` before acting on this list — it reflects a past snapshot._

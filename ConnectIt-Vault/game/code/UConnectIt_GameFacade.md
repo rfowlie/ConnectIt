@@ -64,5 +64,5 @@ one ripples into every widget and `UConnectIt_State_*` that uses it.
 
 ## See also
 
-- In-repo: `Docs/RuntimeStateAccess.md`; `Docs/UIValueCatalogue.md`;
-  `Docs/Workflows/SubsystemDiscovery-DualAccessPattern.md`.
+- In-repo: `old/Source/ConnectIt/Docs/RuntimeStateAccess.md`; `old/Source/ConnectIt/Docs/UIValueCatalogue.md`;
+  `old/Source/ConnectIt/Docs/Workflows/SubsystemDiscovery-DualAccessPattern.md`.

@@ -61,5 +61,5 @@ Self-contained (pure functions). Changing the neighbour order or the
 
 ## See also
 
-- In-repo: `Docs/README.md` → *Library*; `Docs/Systems.md` → grid math.
+- In-repo: `old/Plugins/UnrealGridMechanics/Docs/README.md` → *Library*; `old/Plugins/UnrealGridMechanics/Docs/Systems.md` → grid math.
 - [[UnrealGridMechanics/code/UGridMechanics_ShapeLibrary|UGridMechanics_ShapeLibrary]] (line/shape detection)

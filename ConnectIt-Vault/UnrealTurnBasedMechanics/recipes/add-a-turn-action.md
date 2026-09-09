@@ -87,4 +87,4 @@ A new [[UnrealTurnBasedMechanics/code/UTurnBasedAction|UTurnBasedAction]] subcla
 - [[UnrealTurnBasedMechanics/code/UTurnBasedAction|UTurnBasedAction]] ·
   [[UnrealTurnBasedMechanics/code/UActionLoadoutDataAsset|UActionLoadoutDataAsset]] ·
   [[UnrealTurnBasedMechanics/code/UTurnBasedActionsComponent|UTurnBasedActionsComponent]]
-- In-repo: `Docs/Systems.md` → *The Action Stack*; `Docs/README.md` → *Action*.
+- In-repo: `old/Plugins/UnrealTurnBasedMechanics/Docs/Systems.md` → *The Action Stack*; `old/Plugins/UnrealTurnBasedMechanics/Docs/README.md` → *Action*.

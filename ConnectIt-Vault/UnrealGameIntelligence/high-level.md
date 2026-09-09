@@ -49,9 +49,9 @@ module).
 
 ## In-repo reference
 
-- [`../../Plugins/UnrealGameIntelligence/Docs/README.md`](../../Plugins/UnrealGameIntelligence/Docs/README.md)
-- [`../../Plugins/UnrealGameIntelligence/Docs/Systems.md`](../../Plugins/UnrealGameIntelligence/Docs/Systems.md)
-- [`../../Plugins/UnrealGameIntelligence/Source/UnrealGameIntelligence/README/InfluenceMap_README.md`](../../Plugins/UnrealGameIntelligence/Source/UnrealGameIntelligence/README/InfluenceMap_README.md) — composite-influence-map design guide
+- [`../../old/Plugins/UnrealGameIntelligence/Docs/README.md`](../../old/Plugins/UnrealGameIntelligence/Docs/README.md)
+- [`../../old/Plugins/UnrealGameIntelligence/Docs/Systems.md`](../../old/Plugins/UnrealGameIntelligence/Docs/Systems.md)
+- [`../../old/Plugins/UnrealGameIntelligence/Source/UnrealGameIntelligence/README/InfluenceMap_README.md`](../../old/Plugins/UnrealGameIntelligence/Source/UnrealGameIntelligence/README/InfluenceMap_README.md) — composite-influence-map design guide
 
 ## Vault code docs
 
@@ -67,8 +67,8 @@ recipe, git-anchored for freshness. Partial (see each index for status).
 - MinMax templates duplicated by the game module rather than reused — decide whether to
   converge on the plugin or delete the plugin copy.
 - Phantom `IGI_InfluenceMap` / `UGI_InfluenceMap` interface referenced in
-  `GI_FloatGridDataProviderInterface.h`'s example and in `InfluenceMap_README.md` but
+  `GI_FloatGridDataProviderInterface.h`'s example and in `old/Plugins/UnrealGameIntelligence/Source/UnrealGameIntelligence/README/InfluenceMap_README.md` but
   implemented nowhere.
 - ~185 lines of commented-out dead code across `MinMaxAlgorithm.h` and `MinMaxUtility.h`.
 
-_Verify against the in-repo `Docs/` before acting on this list — it reflects a past snapshot._
+_Verify against the in-repo `old/Plugins/UnrealGameIntelligence/Docs/` before acting on this list — it reflects a past snapshot._

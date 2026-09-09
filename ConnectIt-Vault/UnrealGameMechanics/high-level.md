@@ -51,8 +51,8 @@ The turn-end sequence in `UnrealTurnBasedMechanics` routes through
 
 ## In-repo reference
 
-- [`../../Plugins/UnrealGameMechanics/Docs/README.md`](../../Plugins/UnrealGameMechanics/Docs/README.md) — exhaustive per-class reference
-- [`../../Plugins/UnrealGameMechanics/Docs/Systems.md`](../../Plugins/UnrealGameMechanics/Docs/Systems.md) — narrative walkthrough + conventions + rough edges
+- [`../../old/Plugins/UnrealGameMechanics/Docs/README.md`](../../old/Plugins/UnrealGameMechanics/Docs/README.md) — exhaustive per-class reference
+- [`../../old/Plugins/UnrealGameMechanics/Docs/Systems.md`](../../old/Plugins/UnrealGameMechanics/Docs/Systems.md) — narrative walkthrough + conventions + rough edges
 
 ## Vault code docs
 
@@ -71,4 +71,4 @@ recipes, git-anchored for freshness. Partial (see each index for status).
 - `SwapState()` is an unimplemented stub.
 - Inconsistent `Category` strings across UFUNCTIONs/UPROPERTYs.
 
-_Verify against the in-repo `Docs/` before acting on this list — it reflects a past snapshot._
+_Verify against the in-repo `old/Plugins/UnrealGameMechanics/Docs/` before acting on this list — it reflects a past snapshot._

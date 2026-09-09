@@ -9,9 +9,11 @@ repo at `ConnectIt-Vault/` and is an Obsidian vault.
 - **It is** the high-altitude, *evolving* layer: short "what is this / why does it exist
   / what changed and why it matters" notes an AI co-developer can load quickly, plus a
   running log of updates over time.
-- **It is not** the exhaustive API reference. Every real plugin already ships a detailed
-  `Docs/README.md` + `Docs/Systems.md` **in the code repo** under
-  `../Plugins/<PluginName>/Docs/`. The vault links to those; it does not duplicate them.
+- **It is not** the exhaustive API reference. Each plugin's / the module's detailed
+  `README.md` + `Systems.md` (+ the game module's `Docs/Workflows/`) were **moved to
+  `../old/`** pending review — under `../old/Plugins/<PluginName>/Docs/` and
+  `../old/Source/ConnectIt/Docs/`. The vault's `code/` pages link to those; they don't
+  duplicate them.
 - Vault notes *describe* the code — they are not the code. When a note and the code
   disagree, the code (`../Plugins/`, `../Source/`) is right; fix the note.
 

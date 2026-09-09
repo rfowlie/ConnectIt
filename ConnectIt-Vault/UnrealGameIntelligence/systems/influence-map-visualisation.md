@@ -81,5 +81,5 @@ the widget subclass.
 
 ## See also
 
-- In-repo: `InfluenceMap_README.md`; `Docs/README.md` → *InfluenceMap*.
+- In-repo: `old/Plugins/UnrealGameIntelligence/Source/UnrealGameIntelligence/README/InfluenceMap_README.md`; `old/Plugins/UnrealGameIntelligence/Docs/README.md` → *InfluenceMap*.
 - [[UnrealGameIntelligence/recipes/add-an-influence-map-visualiser|recipes/add-an-influence-map-visualiser]]

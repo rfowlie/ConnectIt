@@ -81,5 +81,5 @@ Change the slot set or lifecycle and also update:
 
 ## See also
 
-- In-repo: `Docs/README.md` → *Action*; `Docs/Systems.md` → *The Action Stack*.
+- In-repo: `old/Plugins/UnrealTurnBasedMechanics/Docs/README.md` → *Action*; `old/Plugins/UnrealTurnBasedMechanics/Docs/Systems.md` → *The Action Stack*.
 - [[UnrealTurnBasedMechanics/recipes/add-a-turn-action|recipes/add-a-turn-action]]

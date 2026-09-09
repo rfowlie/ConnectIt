@@ -92,6 +92,6 @@ Changing the primitives or `Notify*` set touches:
 
 ## See also
 
-- In-repo: `Docs/Systems.md` → *The Action Stack*.
+- In-repo: `old/Plugins/UnrealTurnBasedMechanics/Docs/Systems.md` → *The Action Stack*.
 - [[UnrealTurnBasedMechanics/systems/turn-end-tag-gate|turn-end-tag-gate]] (what "Resolving" waits on)
 - [[UnrealTurnBasedMechanics/recipes/add-a-turn-action|recipes/add-a-turn-action]]

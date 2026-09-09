@@ -63,7 +63,7 @@ widget subclass. The `OnVisualiserSelected` signature is bound by project UI.
 
 ## See also
 
-- In-repo: `Docs/README.md` → *InfluenceMap*; `InfluenceMap_README.md` (composite-map
+- In-repo: `old/Plugins/UnrealGameIntelligence/Docs/README.md` → *InfluenceMap*; `old/Plugins/UnrealGameIntelligence/Source/UnrealGameIntelligence/README/InfluenceMap_README.md` (composite-map
   design guide — note its `IGI_InfluenceMap` references are phantom).
 - [[UnrealGameIntelligence/systems/influence-map-visualisation|systems/influence-map-visualisation]] ·
   [[UnrealGameIntelligence/recipes/add-an-influence-map-visualiser|recipes/add-an-influence-map-visualiser]]

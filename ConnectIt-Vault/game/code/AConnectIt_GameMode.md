@@ -66,5 +66,5 @@ payload struct, and `FConnectItBoardChangeEvent` fields — see
 
 ## See also
 
-- In-repo: `Docs/README.md`; `Docs/Workflows/ServerAuthoritative-ActionRequest.md`.
+- In-repo: `old/Source/ConnectIt/Docs/README.md`; `old/Source/ConnectIt/Docs/Workflows/ServerAuthoritative-ActionRequest.md`.
 - [[game/systems/place-piece-request|systems/place-piece-request]]

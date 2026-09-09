@@ -62,5 +62,5 @@ Isolated. Converging the game module onto these means providing a `TNode` that s
 
 ## See also
 
-- In-repo: `Docs/README.md` → *MinMax*; `Docs/Systems.md` → MinMax templates + the
+- In-repo: `old/Plugins/UnrealGameIntelligence/Docs/README.md` → *MinMax*; `old/Plugins/UnrealGameIntelligence/Docs/Systems.md` → MinMax templates + the
   "not used by the consuming project" note.

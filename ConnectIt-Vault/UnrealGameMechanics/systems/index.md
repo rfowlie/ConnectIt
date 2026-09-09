@@ -7,7 +7,7 @@ commit: ec992a2
 # UnrealGameMechanics — systems index
 
 Per-flow narratives with diagrams. Governed by [[_schema/systems|_schema/systems.md]].
-An overlay on `Docs/Systems.md`.
+An overlay on `old/Plugins/UnrealGameMechanics/Docs/Systems.md`.
 
 | Flow | What it does | Status |
 |---|---|---|

@@ -71,4 +71,4 @@ influence-map debug widget and toggled on/off through it.
 - [[UnrealGameIntelligence/code/IGI_InfluenceMapVisualiser|IGI_InfluenceMapVisualiser]] ·
   [[UnrealGameIntelligence/code/UGI_InfluenceMapSubsystem|UGI_InfluenceMapSubsystem]]
 - [[UnrealGameIntelligence/systems/influence-map-visualisation|systems/influence-map-visualisation]]
-- In-repo: `InfluenceMap_README.md`.
+- In-repo: `old/Plugins/UnrealGameIntelligence/Source/UnrealGameIntelligence/README/InfluenceMap_README.md`.

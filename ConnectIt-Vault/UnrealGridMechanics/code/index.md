@@ -8,8 +8,8 @@ commit: 3086271
 
 Per-type help pages for the plugin's public API (runtime module + `UnrealGridMechanicsEditor`).
 Governed by [[_schema/code|_schema/code.md]]. An **overlay** on the authoritative in-repo
-reference ([`Docs/README.md`](../../../Plugins/UnrealGridMechanics/Docs/README.md),
-[`Docs/Systems.md`](../../../Plugins/UnrealGridMechanics/Docs/Systems.md)).
+reference ([`old/Plugins/UnrealGridMechanics/Docs/README.md`](../../../old/Plugins/UnrealGridMechanics/Docs/README.md),
+[`old/Plugins/UnrealGridMechanics/Docs/Systems.md`](../../../old/Plugins/UnrealGridMechanics/Docs/Systems.md)).
 
 Source root: `Plugins/UnrealGridMechanics/Source/UnrealGridMechanics/` (runtime),
 `.../UnrealGridMechanicsEditor/` (editor).
