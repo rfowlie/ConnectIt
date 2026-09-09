@@ -6,7 +6,7 @@ source:
   - Plugins/UnrealTurnBasedMechanics/Source/UnrealTurnBasedMechanics/Public/Turn/Participant/TurnBasedParticipantManagerComponent.h
   - Plugins/UnrealTurnBasedMechanics/Source/UnrealTurnBasedMechanics/Private/Turn/Participant/TurnBasedParticipantManagerComponent.cpp
 reconciled: 2026-09-06
-commit: 452688c
+commit: 3086271
 ---
 
 # UTurnBasedParticipantManagerComponent

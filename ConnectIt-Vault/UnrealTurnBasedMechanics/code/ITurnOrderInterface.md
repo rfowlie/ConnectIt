@@ -6,7 +6,7 @@ source:
   - Plugins/UnrealTurnBasedMechanics/Source/UnrealTurnBasedMechanics/Public/Turn/Order/TurnOrderInterface.h
   - Plugins/UnrealTurnBasedMechanics/Source/UnrealTurnBasedMechanics/Private/Turn/Order/TurnOrderInterface.cpp
 reconciled: 2026-09-06
-commit: 452688c
+commit: d605013
 ---
 
 # ITurnOrderInterface

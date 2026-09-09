@@ -9,17 +9,14 @@ touches:
   - project USTRUCT for FTurnActionRequest::Payload (only if the action changes the board)
   - UDWidget_TurnBasedActionsComponent (only if an action bar surfaces the new action)
 reconciled: 2026-09-06
-commit: 452688c
+commit: acbfa6f
 ---
 
 # Recipe: add a turn action
 
 ## Goal
 
-A new [[UnrealTurnBasedMechanics/code/UTurnBasedAction|UTurnBasedAction]] subclass that a
-player can activate on their turn — with optional grid-tile selection and an optional
-board-change request — showing up through the existing action stack with no engine-side
-changes.
+A new [[UnrealTurnBasedMechanics/code/UTurnBasedAction|UTurnBasedAction]] subclass that a player can activate on their turn — with optional grid-tile selection and an optional board-change request — showing up through the existing action stack with no engine-side changes.
 
 ## Prerequisites
 

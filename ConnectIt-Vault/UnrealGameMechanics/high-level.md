@@ -54,6 +54,15 @@ The turn-end sequence in `UnrealTurnBasedMechanics` routes through
 - [`../../Plugins/UnrealGameMechanics/Docs/README.md`](../../Plugins/UnrealGameMechanics/Docs/README.md) — exhaustive per-class reference
 - [`../../Plugins/UnrealGameMechanics/Docs/Systems.md`](../../Plugins/UnrealGameMechanics/Docs/Systems.md) — narrative walkthrough + conventions + rough edges
 
+## Vault code docs
+
+Overlay on the in-repo docs: per-type entry-point/gotcha pages, flow diagrams, task
+recipes, git-anchored for freshness. Partial (see each index for status).
+
+- [[UnrealGameMechanics/code/index|code/index.md]] ([[_schema/code|schema]])
+- [[UnrealGameMechanics/systems/index|systems/index.md]] ([[_schema/systems|schema]])
+- [[UnrealGameMechanics/recipes/index|recipes/index.md]] ([[_schema/recipes|schema]])
+
 ## Known rough edges
 
 - `BlueprintreadWrite` casing typo in `GameTurnHandler.h`.

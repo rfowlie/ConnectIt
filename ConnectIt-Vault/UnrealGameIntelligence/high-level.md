@@ -53,6 +53,15 @@ module).
 - [`../../Plugins/UnrealGameIntelligence/Docs/Systems.md`](../../Plugins/UnrealGameIntelligence/Docs/Systems.md)
 - [`../../Plugins/UnrealGameIntelligence/Source/UnrealGameIntelligence/README/InfluenceMap_README.md`](../../Plugins/UnrealGameIntelligence/Source/UnrealGameIntelligence/README/InfluenceMap_README.md) — composite-influence-map design guide
 
+## Vault code docs
+
+Overlay on the in-repo docs: per-type entry-point/gotcha pages, a flow diagram, and a
+recipe, git-anchored for freshness. Partial (see each index for status).
+
+- [[UnrealGameIntelligence/code/index|code/index.md]] ([[_schema/code|schema]])
+- [[UnrealGameIntelligence/systems/index|systems/index.md]] ([[_schema/systems|schema]])
+- [[UnrealGameIntelligence/recipes/index|recipes/index.md]] ([[_schema/recipes|schema]])
+
 ## Known rough edges
 
 - MinMax templates duplicated by the game module rather than reused — decide whether to

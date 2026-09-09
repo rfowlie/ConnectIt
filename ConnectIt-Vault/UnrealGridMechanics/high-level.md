@@ -53,6 +53,15 @@ Active — enabled in `ConnectIt.uproject`. Depends on
 - [`../../Plugins/UnrealGridMechanics/Docs/README.md`](../../Plugins/UnrealGridMechanics/Docs/README.md)
 - [`../../Plugins/UnrealGridMechanics/Docs/Systems.md`](../../Plugins/UnrealGridMechanics/Docs/Systems.md)
 
+## Vault code docs
+
+Overlay on the in-repo docs: per-type entry-point/gotcha pages, flow diagrams, task
+recipes, git-anchored for freshness. Partial (see each index for status).
+
+- [[UnrealGridMechanics/code/index|code/index.md]] ([[_schema/code|schema]])
+- [[UnrealGridMechanics/systems/index|systems/index.md]] ([[_schema/systems|schema]])
+- [[UnrealGridMechanics/recipes/index|recipes/index.md]] ([[_schema/recipes|schema]])
+
 ## Known rough edges
 
 - Orphaned `IBoardStateInterface`.

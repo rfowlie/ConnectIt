@@ -4,40 +4,39 @@
     "type": "split",
     "children": [
       {
-        "id": "481a66bb4ec2358c",
+        "id": "0efe22d5e5a27cf3",
         "type": "tabs",
         "children": [
           {
-            "id": "ce45b71033382ff5",
+            "id": "da3d5675e64093a1",
             "type": "leaf",
             "state": {
               "type": "markdown",
               "state": {
-                "file": "_schema/updates.md",
+                "file": "devlog/_section.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "updates"
+              "title": "_section"
             }
-          }
-        ]
-      },
-      {
-        "id": "69ab940d0bcb56c7",
-        "type": "tabs",
-        "children": [
+          },
           {
-            "id": "3f07c3124baf401e",
+            "id": "5abd9af8f22ca455",
             "type": "leaf",
             "state": {
-              "type": "graph",
-              "state": {},
-              "icon": "lucide-git-fork",
-              "title": "Graph view"
+              "type": "markdown",
+              "state": {
+                "file": "ideas.md",
+                "mode": "source",
+                "source": false
+              },
+              "icon": "lucide-file",
+              "title": "ideas"
             }
           }
-        ]
+        ],
+        "currentTab": 1
       }
     ],
     "direction": "vertical"
@@ -57,7 +56,7 @@
               "type": "file-explorer",
               "state": {
                 "sortOrder": "alphabetical",
-                "autoReveal": false,
+                "autoReveal": true,
                 "showSearch": false,
                 "searchQuery": ""
               },
@@ -202,34 +201,44 @@
       "bases:Create new base": false
     }
   },
-  "active": "ce45b71033382ff5",
+  "active": "97e0ab6e321a7903",
   "lastOpenFiles": [
-    "UnrealTurnBasedMechanics/recipes/add-a-turn-action.md",
-    "UnrealTurnBasedMechanics/recipes/index.md",
-    "UnrealTurnBasedMechanics/recipes",
+    "extras/templates",
+    "extras",
+    "old",
+    "devlog/_section.md",
+    "ideas.md",
+    "ideas",
+    "devlog/README.md",
+    "game/systems/index.md",
+    "game/systems/board-state-single-source-of-truth.md",
+    "game/code/UConnectIt_BoardRules.md",
     "UnrealTurnBasedMechanics/systems/action-stack-lifecycle.md",
-    "UnrealTurnBasedMechanics/systems/turn-end-tag-gate.md",
-    "UnrealTurnBasedMechanics/systems/index.md",
-    "UnrealTurnBasedMechanics/systems",
-    "UnrealTurnBasedMechanics/code/ITurnOrderInterface.md",
-    "UnrealTurnBasedMechanics/code/UTurnBasedParticipantComponent.md",
-    "UnrealTurnBasedMechanics/code/UTurnBasedParticipantManagerComponent.md",
-    "UnrealTurnBasedMechanics/code/UActionLoadoutDataAsset.md",
-    "UnrealTurnBasedMechanics/code/UTurnBasedAction.md",
-    "UnrealTurnBasedMechanics/code/UTurnBasedActionBase.md",
-    "UnrealTurnBasedMechanics/code/UTurnBasedActionsComponent.md",
+    "UnrealTurnBasedMechanics/recipes/index.md",
     "UnrealTurnBasedMechanics/code/index.md",
-    "UnrealTurnBasedMechanics/code",
     "_schema/recipes.md",
-    "_schema/systems.md",
+    "_schema/README.md",
+    "UnrealTurnBasedMechanics/recipes/add-a-turn-action.md",
+    "UnrealCodingUtils/code/index.md",
+    "Untitled.canvas",
     "_schema/code.md",
-    "_schema/skills.md",
-    "_schema/skill-template.md",
-    "_schema/section.md",
-    "_schema/knowledge.md",
-    "UnrealGridMechanics/high-level.md",
-    "UnrealAIMechanics/high-level.md",
-    "architecture/overview.md",
-    "Welcome.md"
+    "UnrealCodingUtils/high-level.md",
+    "game/high-level.md",
+    "game/_section.md",
+    "UnrealGameMechanics/code/UStackedStateMachine.md",
+    "Clippings/How a Solo Dev Made a Blueprint Online Multiplayer Game with UE in 7 Days  Inside Unreal.md",
+    "Clippings",
+    "UnrealGameMechanics/code/index.md",
+    "UnrealAIMechanics/code/index.md",
+    "UnrealAIMechanics/code/UAI_UtilityGameActionEvaluator.md",
+    "UnrealAIMechanics/code/UAI_UtilityGameActionController.md",
+    "UnrealAIMechanics/code",
+    "UnrealCodingUtils/high-level.md.tmp.19208.ea23d5bdee8a",
+    "UnrealCodingUtils/high-level.md.tmp.19208.8aa7b45af134",
+    "UnrealCodingUtils/code/UCodingUtilsLibrary.md",
+    "UnrealCodingUtils/code",
+    "UnrealGameIntelligence/recipes/add-an-influence-map-visualiser.md",
+    "UnrealGameIntelligence/recipes",
+    "UnrealGameIntelligence/systems"
   ]
 }

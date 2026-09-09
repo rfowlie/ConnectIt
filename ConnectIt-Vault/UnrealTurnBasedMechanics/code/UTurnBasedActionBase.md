@@ -6,7 +6,7 @@ source:
   - Plugins/UnrealTurnBasedMechanics/Source/UnrealTurnBasedMechanics/Public/Action/TurnBasedActionBase.h
   - Plugins/UnrealTurnBasedMechanics/Source/UnrealTurnBasedMechanics/Private/Action/TurnBasedActionBase.cpp
 reconciled: 2026-09-06
-commit: 452688c
+commit: e28339c
 ---
 
 # UTurnBasedActionBase

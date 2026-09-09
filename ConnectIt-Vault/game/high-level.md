@@ -1,8 +1,8 @@
 # game/ — the ConnectIt game module — high level
 
-> Seed note. Filled from the repo README, `ConnectIt.uproject`, and the plugin
-> exploration; **expand it from `../../Source/ConnectIt/`** as the game-specific systems
-> get documented.
+> The `code/` / `systems/` / `recipes/` folders now hold a partial ingest of
+> `../../Source/ConnectIt/` — start there for anything specific. This page stays the
+> one-screen orientation.
 
 ## Purpose
 
@@ -41,15 +41,43 @@ score board, game-over flow, and a rules "interpreter".
 - Config: `../../Config/` — notably `DefaultGameplayTags.ini` (the tag vocabulary the
   phase-barrier and turn systems key off), `DefaultInput.ini`, `DefaultEngine.ini`.
 
-## To document next
+## Board architecture (post-refactor)
 
-- The board-manager / score-board / game-over flow (recent refactors).
-- The rules "interpreter" and how a turn resolves end to end.
-- The game's own MinMax AI and whether it should converge with the plugin templates.
-- Networked vs local play differences (`_ConnectItNetworked/`).
+The `AConnectIt_BoardManager` **actor is retired**. Board authority is now server-only
+UObjects on [[game/code/AConnectIt_GameMode|AConnectIt_GameMode]]:
+[[game/code/UConnectIt_BoardRequestMediator|UConnectIt_BoardRequestMediator]] (dispatches
+`FTurnActionRequest`s to `HandleXRequest` handlers) and
+[[game/code/UConnectIt_BoardRules|UConnectIt_BoardRules]] (pluggable scoring / win
+strategies). The board itself is one replicated snapshot on
+[[game/code/UConnectIt_BoardStateComponent|UConnectIt_BoardStateComponent]] (on the
+GameState) — see [[game/systems/board-state-single-source-of-truth|single-source-of-truth]].
+The tag-reactive interpreter that turned board changes into piece spawn/despawn was
+removed; its replacement (a game-event queue on the mediator) is **unfinished** — several
+`UConnectIt_*GameEvent` bodies are commented out.
+
+## Vault code docs
+
+Partial ingest of `../../Source/ConnectIt/`, anchored to `668872e`. Per-type status in
+each index.
+
+- [[game/code/index|code/index.md]] ([[_schema/code|schema]]) — 8 pages
+- [[game/systems/index|systems/index.md]] ([[_schema/systems|schema]]) — `place-piece-request`, `board-state-single-source-of-truth`, `game-state-machine`
+- [[game/recipes/index|recipes/index.md]] ([[_schema/recipes|schema]]) — `add-a-scoring-rule`, `add-a-board-request-type`
+
+## Still to ingest
+
+- The AI turn (blackboard modifier → the game's own MinMax → a board request).
+- Match start / board initialisation, game-over lockout.
+- The `Library/` helpers, `UI/` debug widgets, influence map, level config.
 
 ## In-repo reference
 
-- [`../../README.md`](../../README.md) — game pitch (currently truncated)
-- [`../../Source/ConnectIt/`](../../Source/ConnectIt/) — the code
-- [`../../FIXES.txt`](../../FIXES.txt) — running fix notes
+The module ships extensive docs — treat these as authoritative:
+
+- [`../../Source/ConnectIt/Docs/README.md`](../../Source/ConnectIt/Docs/README.md) and
+  `Conventions.md`, `RuntimeStateAccess.md`, `UIValueCatalogue.md`, `Duplication.md`,
+  `LegacyPipeline.md`
+- [`../../Source/ConnectIt/Docs/Workflows/`](../../Source/ConnectIt/Docs/Workflows/) — six
+  workflow docs (ServerAuthoritative-ActionRequest, GameplayTag-EventSequencing,
+  SingleSourceOfTruth-Replication, SubsystemDiscovery-DualAccessPattern, DebugWidgets)
+- [`../../README.md`](../../README.md) — game pitch · [`../../FIXES.txt`](../../FIXES.txt) — running fix notes

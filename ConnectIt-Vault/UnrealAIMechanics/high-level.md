@@ -44,6 +44,11 @@ None yet.
 - [`../../Plugins/UnrealAIMechanics/Docs/README.md`](../../Plugins/UnrealAIMechanics/Docs/README.md)
 - [`../../Plugins/UnrealAIMechanics/Docs/Systems.md`](../../Plugins/UnrealAIMechanics/Docs/Systems.md)
 
+## Vault code docs
+
+- [[UnrealAIMechanics/code/index|code/index.md]] ([[_schema/code|schema]]) — 2 pages
+  (controller, evaluator). No `systems/` / `recipes/` while dormant.
+
 ## Known rough edges
 
 - `SelectEvaluatedAction()` is a stub — the plugin does not function end to end.

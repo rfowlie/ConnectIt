@@ -7,9 +7,19 @@ layer under the section's `high-level.md`.
 Unlike [`knowledge.md`](knowledge.md), a `code/` folder has **no `raw/`**. The source
 file is already under version control and changes often; a frozen copy would just go
 stale. Instead every page is *derived* and carries a **provenance anchor** — the source
-paths it covers and the commit it was last reconciled against — so drift is detected
-against git, not against a stored copy. `systems.md` and `recipes.md` follow this same
-provenance model.
+paths it covers and a `commit:` — so drift is detected against git, not against a stored
+copy. `systems.md` and `recipes.md` follow this same provenance model.
+
+**`commit:` is the last commit that touched the page's `source:` paths**, not HEAD:
+
+```
+git log -1 --format=%h -- <source path> [<source path> ...]
+```
+
+This makes the anchor point at the *source's actual state*. A page is fresh as long as
+that command still returns the recorded `commit:` — i.e. as long as
+`git log <source paths> <commit>..HEAD` is empty. `reconciled:` is the date a human last
+read the page against the code; the two are independent.
 
 ## Division of labour
 
@@ -29,7 +39,7 @@ For code with no in-repo docs, `code/` pages may be fuller.
 
 ```
 code/
-  index.md              inventory: type | kind | role | source | reconciled@commit | status
+  index.md              inventory: type | kind | role | source | status  (current / stub / stale)
   <TypeName>.md          one page per primary public type (e.g. UTurnBasedAction.md)
   <FileStem>.md          one page for a file's cluster of small types (e.g. Enums.md, Structs.md)
 ```
@@ -47,10 +57,15 @@ role: primary | internal
 source:
   - <repo-relative path to .h>
   - <repo-relative path to .cpp>          # omit if header-only
-reconciled: <YYYY-MM-DD>
-commit: <short SHA the page was checked against>
+reconciled: <YYYY-MM-DD>                  # date a human last checked the page vs the code
+commit: <short SHA — last commit to touch the source: paths (git log -1 --format=%h -- …)>
 ---
 ```
+
+`index.md` uses the same two fields; its `source:` is the section's whole source root, so
+its `commit:` is the last commit to touch the section at all. Per-row `status` in the
+index is just `current` / `stub` / `stale` — each page's own frontmatter is the single
+place the anchor lives.
 
 ## Page body (fixed order, terse)
 
@@ -69,11 +84,12 @@ Keep a page to about one screen. If it grows past that, the overflow belongs in
 
 ## Rules
 
-- **No `raw/`.** Every page names its `source:` files and the `commit:` it was reconciled
-  against. That is the provenance anchor.
-- **Refresh, don't diff.** To update: `git log <source paths> <commit>..HEAD`. If anything
-  changed, re-read the source, rewrite the affected sections, bump `commit:` and
-  `reconciled:`.
+- **No `raw/`.** Every page names its `source:` files and a `commit:` = the last commit
+  that touched them (`git log -1 --format=%h -- <paths>`). That is the provenance anchor.
+- **Refresh, don't diff.** To check freshness: `git log <source paths> <commit>..HEAD` —
+  empty means current. If anything changed, re-read the source, rewrite the affected
+  sections, and reset `commit:` to the new `git log -1 --format=%h -- <paths>` and
+  `reconciled:` to today.
 - **One page per primary type.** Grouped small types (all enums in a header, small PODs)
   get one page named for the file stem.
 - **Don't restate the in-repo reference.** See *Division of labour*.

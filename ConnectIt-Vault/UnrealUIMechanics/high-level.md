@@ -30,6 +30,11 @@ None.
 
 - `../../Plugins/UnrealUIMechanics/` — source only; no `Docs/` yet.
 
+## Vault code docs
+
+Not ingested — the plugin has no public types (empty module skeleton). `_section.md`
+stays `schemas: [updates]`; add `code` / `systems` / `recipes` once it has real code.
+
 ## Next steps before this is real
 
 - Decide the first widgets/systems it should own (candidates: HUD base, menu framework,

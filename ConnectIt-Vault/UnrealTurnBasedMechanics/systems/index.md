@@ -1,7 +1,7 @@
 ---
 schema: systems
 reconciled: 2026-09-06
-commit: 452688c
+commit: 3086271
 ---
 
 # UnrealTurnBasedMechanics — systems index
@@ -12,8 +12,8 @@ named-hop walkthrough, and the cross-impact list.
 
 | Flow | What it does | Status |
 |---|---|---|
-| [[UnrealTurnBasedMechanics/systems/turn-end-tag-gate\|turn-end-tag-gate]] | How a turn ends without advancing until every gated async task finishes | current @ 452688c |
-| [[UnrealTurnBasedMechanics/systems/action-stack-lifecycle\|action-stack-lifecycle]] | How the action stack is reshaped across turn lifecycle + the board-change confirmation freeze | current @ 452688c |
+| [[UnrealTurnBasedMechanics/systems/turn-end-tag-gate\|turn-end-tag-gate]] | How a turn ends without advancing until every gated async task finishes | current |
+| [[UnrealTurnBasedMechanics/systems/action-stack-lifecycle\|action-stack-lifecycle]] | How the action stack is reshaped across turn lifecycle + the board-change confirmation freeze | current |
 
 Candidate flows not yet written (`stub`): ready-check & match start, participant
 disconnect → reconnect / forfeit, board-change request routing end-to-end (action →
