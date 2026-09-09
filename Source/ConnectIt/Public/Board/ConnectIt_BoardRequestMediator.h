@@ -69,7 +69,7 @@ private:
 
     // Board state lives on AConnectIt_GameState -- resolved through here
     // rather than repeating GetWorld()->GetGameState<>() at each call site.
-    UConnectIt_BoardStateComponent* GetBoardState() const;
+    // UConnectIt_BoardStateComponent* GetBoardState() const;
 
     UPROPERTY()
     TObjectPtr<UConnectIt_BoardRules> BoardRules = nullptr;

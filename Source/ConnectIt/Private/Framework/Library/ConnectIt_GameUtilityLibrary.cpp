@@ -3,20 +3,21 @@
 
 #include "Framework/Library/ConnectIt_GameUtilityLibrary.h"
 #include "TurnBasedMechanicsEnums.h"
-#include "Board/ConnectIt_BoardStateComponent.h"
 #include "Subsystem/GridHoverSubsystem.h"
-#include "Framework/Data/ConnectIt_LevelConfigDataAsset.h"
 #include "Framework/Data/ConnectIt_LevelConfigSettings.h"
+#include "Framework/Data/ConnectIt_LevelConfigDataAsset.h"
 #include "Framework/Subsystem/ConnectIt_BlackboardSubsystem.h"
 #include "Framework/Subsystem/ConnectIt_BoardRegistrySubsystem.h"
 #include "Framework/GameState/ConnectIt_GameState.h"
-#include "Kismet/GameplayStatics.h"
+#include "Board/ConnectIt_BoardStateComponent.h"
+#include "Board/ConnectIt_PieceRegistry.h"
+#include "Board/ConnectIt_TileRegistry.h"
 #include "Turn/Participant/TurnBasedParticipantManagerComponent.h"
 #include "Turn/Participant/TurnBasedParticipantComponent.h"
-#include "GameFramework/PlayerController.h"
 #include "Tile/GridTileBase.h"
 #include "Tile/GridTileRegistryBase.h"
-#include "Tile/GridTileRegistryComponent.h"
+#include "GameFramework/PlayerController.h"
+#include "Kismet/GameplayStatics.h"
 
 
 UConnectIt_BoardStateComponent* UConnectIt_GameUtilityLibrary::GetBoardStateComponent(

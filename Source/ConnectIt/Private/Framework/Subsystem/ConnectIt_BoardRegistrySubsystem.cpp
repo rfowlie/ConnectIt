@@ -2,6 +2,9 @@
 
 
 #include "Framework/Subsystem/ConnectIt_BoardRegistrySubsystem.h"
+
+#include "Board/ConnectIt_PieceRegistry.h"
+#include "Board/ConnectIt_TileRegistry.h"
 #include "Framework/Data/ConnectIt_LevelConfigDataAsset.h"
 #include "Framework/Library/ConnectIt_GameUtilityLibrary.h"
 #include "Piece/GridPieceRegistryBase.h"
@@ -33,7 +36,7 @@ void UConnectIt_BoardRegistrySubsystem::OnWorldBeginPlay(UWorld& InWorld)
     // multiple simultaneous worlds (editor + PIE, or several PIE clients).
     if (IsValid(LevelConfig->TileRegistry))
     {
-        TileRegistry = DuplicateObject<UGridTileRegistryBase>(LevelConfig->TileRegistry, this);
+        TileRegistry = DuplicateObject<UConnectIt_TileRegistry>(LevelConfig->TileRegistry, this);
         TileRegistry->InitialiseRegistry();
     }
     else
@@ -44,7 +47,7 @@ void UConnectIt_BoardRegistrySubsystem::OnWorldBeginPlay(UWorld& InWorld)
 
     if (IsValid(LevelConfig->PieceRegistry))
     {
-        PieceRegistry = DuplicateObject<UGridPieceRegistryBase>(LevelConfig->PieceRegistry, this);
+        PieceRegistry = DuplicateObject<UConnectIt_PieceRegistry>(LevelConfig->PieceRegistry, this);
         PieceRegistry->InitialiseRegistry();
     }
     // No error log if unset -- InitialiseRegistry() is still a no-op stub

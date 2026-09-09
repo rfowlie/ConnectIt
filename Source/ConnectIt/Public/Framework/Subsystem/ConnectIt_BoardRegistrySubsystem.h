@@ -6,8 +6,8 @@
 #include "Subsystems/WorldSubsystem.h"
 #include "ConnectIt_BoardRegistrySubsystem.generated.h"
 
-class UGridTileRegistryBase;
-class UGridPieceRegistryBase;
+class UConnectIt_TileRegistry;
+class UConnectIt_PieceRegistry;
 
 // The single per-world owner of the board's tile/piece registries.
 // TileRegistry/PieceRegistry are level-authored, deterministic, world-scoped
@@ -40,18 +40,18 @@ public:
     virtual void Deinitialize() override;
 
     UFUNCTION(BlueprintPure, Category = "ConnectIt|Board")
-    UGridTileRegistryBase* GetTileRegistry() const { return TileRegistry; }
+    UConnectIt_TileRegistry* GetTileRegistry() const { return TileRegistry; }
 
     UFUNCTION(BlueprintPure, Category = "ConnectIt|Board")
-    UGridPieceRegistryBase* GetPieceRegistry() const { return PieceRegistry; }
+    UConnectIt_PieceRegistry* GetPieceRegistry() const { return PieceRegistry; }
 
 private:
 
     // Runtime-only duplicates of the level config's registry templates --
     // never author-edited directly, hence no Instanced/EditAnywhere here.
     UPROPERTY()
-    TObjectPtr<UGridTileRegistryBase> TileRegistry;
+    TObjectPtr<UConnectIt_TileRegistry> TileRegistry;
 
     UPROPERTY()
-    TObjectPtr<UGridPieceRegistryBase> PieceRegistry;
+    TObjectPtr<UConnectIt_PieceRegistry> PieceRegistry;
 };

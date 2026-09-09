@@ -17,15 +17,16 @@ void UConnectIt_BoardRequestMediator::Initialise(UConnectIt_BoardRules* InBoardR
     BoardRules = InBoardRules;
 }
 
-UConnectIt_BoardStateComponent* UConnectIt_BoardRequestMediator::GetBoardState() const
-{
-    const AConnectIt_GameState* GS = GetWorld() ? GetWorld()->GetGameState<AConnectIt_GameState>() : nullptr;
-    return IsValid(GS) ? GS->GetBoardStateComponent() : nullptr;
-}
+// UConnectIt_BoardStateComponent* UConnectIt_BoardRequestMediator::GetBoardState() const
+// {
+//     const AConnectIt_GameState* GS = GetWorld() ? GetWorld()->GetGameState<AConnectIt_GameState>() : nullptr;
+//     return IsValid(GS) ? GS->GetBoardStateComponent() : nullptr;
+// }
 
 void UConnectIt_BoardRequestMediator::CreateGameEventsFromBoardUpdate_Implementation()
 {
-    UConnectIt_BoardStateComponent* BoardState = GetBoardState();
+    // UConnectIt_BoardStateComponent* BoardState = GetBoardState();
+    const UConnectIt_BoardStateComponent* BoardState = UConnectIt_GameUtilityLibrary::GetBoardStateComponent(this);
     if (!IsValid(BoardState))
     {
         UE_LOG(LogTemp, Error, TEXT(
@@ -55,7 +56,8 @@ void UConnectIt_BoardRequestMediator::ExecuteGameEvents()
 
 bool UConnectIt_BoardRequestMediator::ProcessRequest(const FTurnActionRequest& Request)
 {
-    UConnectIt_BoardStateComponent* BoardState = GetBoardState();
+    // UConnectIt_BoardStateComponent* BoardState = GetBoardState();
+    const UConnectIt_BoardStateComponent* BoardState = UConnectIt_GameUtilityLibrary::GetBoardStateComponent(this);
     if (!IsValid(BoardState))
     {
         UE_LOG(LogTemp, Error,
@@ -262,7 +264,8 @@ bool UConnectIt_BoardRequestMediator::HandlePlacePieceRequest(
 bool UConnectIt_BoardRequestMediator::HandleForcePlacePieceRequest(
     const FConnectItRequestForcePlacePiece& Request, int32 FactionID) const
 {
-    UConnectIt_BoardStateComponent* BoardState = GetBoardState();
+    // UConnectIt_BoardStateComponent* BoardState = GetBoardState();
+    UConnectIt_BoardStateComponent* BoardState = UConnectIt_GameUtilityLibrary::GetBoardStateComponent(this);
     const FConnectItBoardState& Current = BoardState->GetCurrentState();
 
     // Only requires the position to exist -- deliberately skips
@@ -309,7 +312,8 @@ bool UConnectIt_BoardRequestMediator::HandleForcePlacePieceRequest(
 bool UConnectIt_BoardRequestMediator::HandleDestroyTileMultiplierRequest(
     const FConnectItRequestDestroyTileMultiplier& Request) const
 {
-    UConnectIt_BoardStateComponent* BoardState = GetBoardState();
+    // UConnectIt_BoardStateComponent* BoardState = GetBoardState();
+    UConnectIt_BoardStateComponent* BoardState = UConnectIt_GameUtilityLibrary::GetBoardStateComponent(this);
     const FConnectItBoardState& Current = BoardState->GetCurrentState();
     const FConnectItTileData* Existing = Current.GetTileData(Request.Position);
 
@@ -359,7 +363,8 @@ bool UConnectIt_BoardRequestMediator::HandleRemovePieceRequest(
         return false;
     }
 
-    UConnectIt_BoardStateComponent* BoardState = GetBoardState();
+    // UConnectIt_BoardStateComponent* BoardState = GetBoardState();
+    UConnectIt_BoardStateComponent* BoardState = UConnectIt_GameUtilityLibrary::GetBoardStateComponent(this);
     const FConnectItBoardState& Current = BoardState->GetCurrentState();
     const FConnectItTileData* Existing = Current.GetTileData(Request.Position);
 
@@ -393,7 +398,8 @@ bool UConnectIt_BoardRequestMediator::HandleRemovePieceRequest(
 bool UConnectIt_BoardRequestMediator::HandleSwapPiecesRequest(
     const FConnectItRequestSwapPieces& Request) const
 {
-    UConnectIt_BoardStateComponent* BoardState = GetBoardState();
+    // UConnectIt_BoardStateComponent* BoardState = GetBoardState();
+    UConnectIt_BoardStateComponent* BoardState = UConnectIt_GameUtilityLibrary::GetBoardStateComponent(this);
     const FConnectItBoardState& Current = BoardState->GetCurrentState();
     const FConnectItTileData* DataA = Current.GetTileData(Request.PositionA);
     const FConnectItTileData* DataB = Current.GetTileData(Request.PositionB);
@@ -430,7 +436,8 @@ bool UConnectIt_BoardRequestMediator::HandleSwapPiecesRequest(
 bool UConnectIt_BoardRequestMediator::HandleToggleTileActiveRequest(
     const FConnectItRequestToggleTileActive& Request) const
 {
-    UConnectIt_BoardStateComponent* BoardState = GetBoardState();
+    // UConnectIt_BoardStateComponent* BoardState = GetBoardState();
+    UConnectIt_BoardStateComponent* BoardState = UConnectIt_GameUtilityLibrary::GetBoardStateComponent(this);
     const FConnectItBoardState& Current = BoardState->GetCurrentState();
     const FConnectItTileData* Existing = Current.GetTileData(Request.Position);
 
@@ -464,7 +471,8 @@ bool UConnectIt_BoardRequestMediator::HandleToggleTileActiveRequest(
 bool UConnectIt_BoardRequestMediator::HandleCapturePieceRequest(
     const FConnectItRequestCapturePiece& Request, int32 FactionID) const
 {
-    UConnectIt_BoardStateComponent* BoardState = GetBoardState();
+    // UConnectIt_BoardStateComponent* BoardState = GetBoardState();
+    UConnectIt_BoardStateComponent* BoardState = UConnectIt_GameUtilityLibrary::GetBoardStateComponent(this);
     const FConnectItBoardState& Current = BoardState->GetCurrentState();
     const FConnectItTileData* Existing = Current.GetTileData(Request.Position);
 
