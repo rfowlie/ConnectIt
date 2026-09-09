@@ -1,35 +1,73 @@
 # _schema/logs.md
 
-A `logs/` folder is an **append-only record of automated maintenance passes** over its
-section or the vault. Split two ways:
+A `logs/` folder is an **append-only record of automated maintenance passes** over a
+domain — or, at `_core/_logs/`, over the whole vault. One note per run, flat in the
+folder. This is machine-written history; the human's own day-to-day notes go in
+`_daily`, not here.
 
-- **`logs/raw/`** — the full, immutable entry for every run. The real history.
-- **`logs/wiki/`** — a short summary of each run, plus a rolling index, for quick context
-  at the start of a session.
+## Where it mounts
 
-## Layout
+- `_core/_logs/` — the vault-wide log: passes that touch the whole vault or cross
+  domains.
+- `<domain>/logs/` — a single domain's log: passes scoped to that domain.
 
-```
-logs/
-  raw/<source>/<YYYY-MM-DD-HHMM>.md    full entry, one per run, never edited after writing
-  wiki/<source>/<YYYY-MM-DD-HHMM>.md   summary of that same run (same filename)
-  wiki/<source>/README.md              rolling index for that source, newest first
-```
+A vault with no `_core/` layer (this one) keeps its vault-wide log at plain root
+`_logs/` instead — the same role, just without the extra nesting.
 
-`<source>` is the tool or skill that produced the run. One subfolder per source.
+## Filename
+
+`logs/<YYYY-MM-DD-HHMM>.md` — local, 24-hour. Date-only (`<YYYY-MM-DD>.md`) is fine when
+the time isn't known; add `-2`, `-3` for same-timestamp collisions.
+
+## What a note holds
+
+Frontmatter:
+- `source:` — the skill or process that produced the run.
+- `run:` — the `YYYY-MM-DD-HHMM` timestamp (or date-only, matching the filename).
+- `scope:` — `vault`, or the domain name.
+- `tags:` — at least `log`.
+
+Body: **Request** (one line — what was asked for) · **Overview** (what was actually
+done, and why) · **Created** (`[[wikilinks]]` to new notes/files) · **Changed**
+(`[[wikilinks]]` to changed notes, each with a short what-changed) · **Flags &
+Follow-ups** (assumptions, gaps, offered-but-not-done, decisions, anything to revisit).
 
 ## Rules
 
-- **`logs/raw/` is immutable.** Never edit or delete an entry after it's written —
-  corrections go in the next entry.
-- Every `logs/raw/<source>/X.md` has a matching `logs/wiki/<source>/X.md`.
-- `logs/wiki/<source>/README.md` has one line for every run.
-- `<timestamp>` = `YYYY-MM-DD-HHMM` (local, 24h). Date-only is fine if the time is
-  unknown; add `-2`, `-3` for same-minute collisions.
-- Created on first use — the producing tool makes the folders if they're absent. Don't
+- **Immutable once written.** Never edit or delete an entry after the run —
+  corrections go in the next note.
+- One note per run. No `raw/`/`wiki/` split, no per-source subfolders — just dated
+  notes in the folder.
+- Created on first use — the writing process makes the folder if it's absent. Don't
   pre-scaffold.
+- Optional: a `logs/README.md` may carry a newest-first one-line index for quick
+  start-of-session context.
+
+## Template
+
+```markdown
+## Request
+
+<!-- one line: what the user asked for -->
+
+## Overview
+
+<!-- a few sentences / bullets: what was actually done and why -->
+
+## Created
+
+<!-- [[wikilinks]] to notes and files created; group by kind if long -->
+
+## Changed
+
+<!-- [[wikilinks]] to notes changed, each with a short note on what changed -->
+
+## Flags & Follow-ups
+
+<!-- assumptions made, gaps, things offered but not done, decisions, anything to revisit -->
+```
 
 ## Deviations
 
-Add `logs/README.md` starting `Extends _schema/logs.md. Differences:` if a section logs a
-second source or needs a different retention rule.
+Add `logs/README.md` starting `Extends _schema/logs.md. Differences:` if a section
+needs a different retention rule.

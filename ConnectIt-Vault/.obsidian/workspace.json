@@ -206,6 +206,13 @@
   },
   "active": "97e0ab6e321a7903",
   "lastOpenFiles": [
+    "_logs/README.md",
+    "_logs/2026-09-09-5.md",
+    "_logs/2026-09-09-4.md",
+    "_logs/2026-09-09-3.md",
+    "_logs/2026-09-09-2.md",
+    "_logs/2026-09-09.md",
+    "_logs/2026-09-05.md",
     "_logs",
     "UnrealGridMechanics/_section.md",
     "CLAUDE.md",
@@ -229,19 +236,12 @@
     "old/Plugins/UnrealAIMechanics/Docs/Systems.md",
     "old/Plugins/UnrealAIMechanics/Docs/README.md",
     "extras/templates/TSchemaCode.md",
-    "_schema/section.md",
-    "UnrealAIMechanics/_section.md",
-    "UnrealGridMechanics/code/UGridMechanics_ShapeLibrary.md",
-    "UnrealGridMechanics/code/UGridMechanics_GridLibrary.md",
-    "UnrealGridMechanics/code/GridTypes.md",
-    "UnrealGameIntelligence/code/index.md",
     "old/Plugins/UnrealGameIntelligence/Source/UnrealGameIntelligence/README",
     "old/Source/ConnectIt/Docs/Workflows",
     "old/Plugins/UnrealGameIntelligence/Source/UnrealGameIntelligence",
     "old/Source/ConnectIt/Docs",
     "old/Plugins/UnrealTurnBasedMechanics/Docs",
     "old/Plugins/UnrealGridMechanics/Docs",
-    "old/Plugins/UnrealGameMechanics/Docs",
     "Untitled.canvas"
   ]
 }

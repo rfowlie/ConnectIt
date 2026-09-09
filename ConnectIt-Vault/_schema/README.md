@@ -49,7 +49,7 @@ placeholder, so step 1 is a plain copy.
 | [`recipes.md`](recipes.md) | `recipes/` — step-by-step task procedures | yes — UnrealTurnBasedMechanics |
 | [`knowledge.md`](knowledge.md) | `knowledge/` — stable reference material, `raw/` (verbatim) + `wiki/` (synthesis) | available, unused |
 | [`decisions.md`](decisions.md) | `decisions/` — one dated note per settled non-obvious decision | available, unused |
-| [`logs.md`](logs.md) | `logs/` — append-only record of automated maintenance passes | available, unused |
+| [`logs.md`](logs.md) | `logs/` — append-only record of automated maintenance passes | yes — vault-wide, at root `_logs/` (no `_core/` layer in this vault) |
 | [`inbox.md`](inbox.md) | `inbox/` — unprocessed drop zone, emptied as items are routed | available, unused |
 | [`skills.md`](skills.md) | `skills/` — authored copies of a section's runnable procedures | available, unused |
 

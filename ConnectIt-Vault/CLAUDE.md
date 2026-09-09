@@ -83,6 +83,11 @@ convention, no schema-governed subfolders.
   files; anything else must be pointed at by hand).
 - A `_` prefix marks a folder or file as *structural*: `_schema/` is the rulebook set,
   `_section.md` marks a section. Everything without the prefix is content.
+- `_logs/` (vault root) is the vault-wide, machine-written record of every
+  request/change made in a session — one flat note per run, governed by
+  [`_schema/logs.md`](_schema/logs.md). Distinct from `devlog/`: `devlog/` is a curated,
+  human-facing narrative of *notable* decisions and direction; `_logs/` is comprehensive
+  and mechanical, not curated.
 - Section rules live in `_schema/<kind>.md`, never in this file. A section that deviates
   adds `<kind>/README.md` starting `Extends _schema/<kind>.md. Differences:`, or notes it
   in its `_section.md` body.
