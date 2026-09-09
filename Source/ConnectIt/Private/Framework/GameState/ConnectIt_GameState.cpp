@@ -4,7 +4,7 @@
 #include "Net/UnrealNetwork.h"
 #include "TurnBasedMechanicsStructs.h"
 #include "Board/ConnectIt_BoardStateComponent.h"
-#include "Library/ConnectIt_GameUtilityLibrary.h"
+#include "Framework/Library/ConnectIt_GameUtilityLibrary.h"
 #include "Turn/Participant/TurnBasedParticipantManagerComponent.h"
 
 

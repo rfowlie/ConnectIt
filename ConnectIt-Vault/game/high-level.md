@@ -55,6 +55,17 @@ The tag-reactive interpreter that turned board changes into piece spawn/despawn 
 removed; its replacement (a game-event queue on the mediator) is **unfinished** — several
 `UConnectIt_*GameEvent` bodies are commented out.
 
+`TileRegistry`/`PieceRegistry` (level-authored, deterministic, world-scoped tile/piece
+lookups) went through a second relocation: briefly on `AConnectIt_PlayerController`
+(per-machine), now on `UConnectIt_BoardRegistrySubsystem` (`UWorldSubsystem`, one canonical
+instance per world). The concrete registry subclass + tuned values a designer picks per
+level now live as `Instanced` template properties on
+[[game/code/index#UConnectIt_LevelConfigDataAsset|UConnectIt_LevelConfigDataAsset]]; the
+subsystem `DuplicateObject()`s its own runtime copy from each at `OnWorldBeginPlay` rather
+than ever using the template live (a `UDataAsset`'s subobjects are shared/loaded-once,
+unsafe to use directly as per-world state). See
+[`old/Source/ConnectIt/Docs/ConnectItModule.md#board-registry-subsystem-second-pass`](../old/Source/ConnectIt/Docs/ConnectItModule.md#board-registry-subsystem-second-pass).
+
 ## Vault code docs
 
 Partial ingest of `../../Source/ConnectIt/`, anchored to `668872e`. Per-type status in

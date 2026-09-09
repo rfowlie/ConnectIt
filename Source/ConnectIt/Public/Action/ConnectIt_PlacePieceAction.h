@@ -49,10 +49,10 @@ protected:
     // base internal
     virtual void Activate_Internal_Implementation() override;
 
-    // Resolves and caches TileRegistry via OwningController -- called once
-    // by UTurnBasedAction::InitialiseAction, well before Activate. Eager,
-    // fail-loud dependency resolution instead
-    // of repeated on-demand lookups at point of use.
+    // Resolves and caches TileRegistry via UConnectIt_GameUtilityLibrary --
+    // called once by UTurnBasedAction::InitialiseAction, well before
+    // Activate. Eager, fail-loud dependency resolution instead of repeated
+    // on-demand lookups at point of use.
     virtual void PostInitialiseAction_Implementation() override;
 
     // turn internal
@@ -66,8 +66,8 @@ protected:
     virtual void ClearSelectionState_Implementation() override;
 
 private:
-    // TileRegistry lives on the owning controller now (per-machine local
-    // lookup, not on a shared world actor) -- resolved once in
+    // TileRegistry lives on UConnectIt_BoardRegistrySubsystem now (one
+    // canonical per-world instance) -- resolved once in
     // PostInitialiseAction_Implementation.
     UPROPERTY()
     TObjectPtr<UGridTileRegistryBase> TileRegistry = nullptr;

@@ -1,7 +1,7 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 #include "UI/DWidget_ConnectIt_GameState.h"
-#include "Library/ConnectIt_GameUtilityLibrary.h"
+#include "Framework/Library/ConnectIt_GameUtilityLibrary.h"
 
 
 void UDWidget_ConnectIt_GameState::BindDelegates()

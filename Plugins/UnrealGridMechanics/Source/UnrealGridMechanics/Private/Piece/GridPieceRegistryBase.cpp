@@ -14,6 +14,21 @@ void UGridPieceRegistryBase::InitialiseRegistry()
     // TODO
 }
 
+void UGridPieceRegistryBase::ShutdownRegistry()
+{
+    if (UGridHoverSubsystem* HoverSubsystem = ResolveHoverSubsystem())
+    {
+        for (const TPair<FGridPosition, TObjectPtr<AGridPieceBase>>& Pair : PieceMap)
+        {
+            if (IsValid(Pair.Value))
+            {
+                HoverSubsystem->UnregisterPiece(Pair.Value);
+            }
+        }
+    }
+    PieceMap.Reset();
+}
+
 UGridHoverSubsystem* UGridPieceRegistryBase::ResolveHoverSubsystem() const
 {
     return GetWorld() ? GetWorld()->GetSubsystem<UGridHoverSubsystem>() : nullptr;

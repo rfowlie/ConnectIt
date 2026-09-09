@@ -10,6 +10,8 @@
 
 class UActionLoadoutDataAsset;
 class AConnectIt_GridPiece;
+class UConnectIt_TileRegistry;
+class UConnectIt_PieceRegistry;
 
 // Per-level board configuration -- replaces UConnectIt_ConfigComponent
 // (used to sit on the level-placed AConnectIt_BoardManager actor, one
@@ -65,6 +67,26 @@ public:
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "ConnectIt|Rules",
         meta = (MustImplement = "/Script/ConnectIt.ConnectIt_WinCondition"))
     TScriptInterface<IConnectIt_WinCondition> WinConditionRule;
+
+    // --- Board Registries ---
+    // Instanced (concrete-class UObject polymorphism), not TScriptInterface
+    // like the rules above -- a designer picks a whole UConnectIt_TileRegistry/
+    // UConnectIt_PieceRegistry subclass with its own inline-editable
+    // sub-properties (e.g. GridSize), the same pattern ABoardManagerBase
+    // used to expose these with. Typed to the ConnectIt-specific subclasses
+    // (not the plugin's own UGridTileRegistryBase/UGridPieceRegistryBase)
+    // so the Details-panel class picker only offers registries that can
+    // actually resolve UConnectIt_BoardStateComponent -- see those classes'
+    // header comments. Treated purely as a template by
+    // UConnectIt_BoardRegistrySubsystem, which duplicates its own per-world
+    // runtime instance from these rather than ever using them live -- see
+    // that class's header comment.
+
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Instanced, Category = "ConnectIt|Board")
+    TObjectPtr<UConnectIt_TileRegistry> TileRegistry;
+
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Instanced, Category = "ConnectIt|Board")
+    TObjectPtr<UConnectIt_PieceRegistry> PieceRegistry;
 
 #if WITH_EDITOR
     virtual EDataValidationResult IsDataValid(

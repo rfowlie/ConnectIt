@@ -1,7 +1,7 @@
 ﻿// Fill out your copyright notice in the Description page of Project Settings.
 
 #include "Framework/Controller/ConnectIt_AIController.h"
-#include "Library/ConnectIt_GameUtilityLibrary.h"
+#include "Framework/Library/ConnectIt_GameUtilityLibrary.h"
 #include "Framework/GameMode/TurnBasedGameMode.h"
 #include "Action/ActionLoadoutDataAsset.h"
 #include "Action/TurnBasedActionsComponent.h"

@@ -45,7 +45,10 @@ void ABoardManagerBase::EndPlay(const EEndPlayReason::Type EndPlayReason)
         TileRegistry->ShutdownRegistry();
     }
 
-    // TODO: shutdown piece registry
-    
+    if (IsValid(PieceRegistry))
+    {
+        PieceRegistry->ShutdownRegistry();
+    }
+
     Super::EndPlay(EndPlayReason);
 }

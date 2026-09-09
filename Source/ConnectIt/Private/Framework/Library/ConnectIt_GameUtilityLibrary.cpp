@@ -1,13 +1,14 @@
 ﻿// Fill out your copyright notice in the Description page of Project Settings.
 
 
-#include "Library/ConnectIt_GameUtilityLibrary.h"
+#include "Framework/Library/ConnectIt_GameUtilityLibrary.h"
 #include "TurnBasedMechanicsEnums.h"
+#include "Board/ConnectIt_BoardStateComponent.h"
 #include "Subsystem/GridHoverSubsystem.h"
-#include "Framework/Controller/ConnectIt_PlayerController.h"
 #include "Framework/Data/ConnectIt_LevelConfigDataAsset.h"
 #include "Framework/Data/ConnectIt_LevelConfigSettings.h"
 #include "Framework/Subsystem/ConnectIt_BlackboardSubsystem.h"
+#include "Framework/Subsystem/ConnectIt_BoardRegistrySubsystem.h"
 #include "Framework/GameState/ConnectIt_GameState.h"
 #include "Kismet/GameplayStatics.h"
 #include "Turn/Participant/TurnBasedParticipantManagerComponent.h"
@@ -37,35 +38,25 @@ UGridTileRegistryBase* UConnectIt_GameUtilityLibrary::GetTileRegistry(
     UWorld* World = WorldContextObject->GetWorld();
     if (!IsValid(World)) return nullptr;
 
-    // Fast path -- the common client-side case, exactly one meaningful
-    // controller.
-    if (const AConnectIt_PlayerController* LocalPC =
-        Cast<AConnectIt_PlayerController>(World->GetFirstPlayerController()))
-    {
-        if (IsValid(LocalPC->GetTileRegistry()))
-        {
-            return LocalPC->GetTileRegistry();
-        }
-    }
+    // TileRegistry lives on UConnectIt_BoardRegistrySubsystem now -- one
+    // canonical instance per world, resolved identically on server and
+    // every client, no controller-existence dependency.
+    const UConnectIt_BoardRegistrySubsystem* Subsystem =
+        World->GetSubsystem<UConnectIt_BoardRegistrySubsystem>();
+    return IsValid(Subsystem) ? Subsystem->GetTileRegistry() : nullptr;
+}
 
-    // Fall back to scanning every connected controller -- needed
-    // server-side (e.g. AI move generation), where "the first/local
-    // player controller" isn't the right concept (may not exist at all on
-    // a dedicated server). Every connected controller's TileRegistry
-    // necessarily agrees -- tile layout is level-authored and
-    // deterministic -- so which one answers doesn't matter.
-    for (FConstPlayerControllerIterator It = World->GetPlayerControllerIterator(); It; ++It)
-    {
-        if (const AConnectIt_PlayerController* PC = Cast<AConnectIt_PlayerController>(It->Get()))
-        {
-            if (IsValid(PC->GetTileRegistry()))
-            {
-                return PC->GetTileRegistry();
-            }
-        }
-    }
+UGridPieceRegistryBase* UConnectIt_GameUtilityLibrary::GetPieceRegistry(
+    const UObject* WorldContextObject)
+{
+    if (!IsValid(WorldContextObject)) return nullptr;
 
-    return nullptr;
+    UWorld* World = WorldContextObject->GetWorld();
+    if (!IsValid(World)) return nullptr;
+
+    const UConnectIt_BoardRegistrySubsystem* Subsystem =
+        World->GetSubsystem<UConnectIt_BoardRegistrySubsystem>();
+    return IsValid(Subsystem) ? Subsystem->GetPieceRegistry() : nullptr;
 }
 
 bool UConnectIt_GameUtilityLibrary::GetGridPositionForTile(

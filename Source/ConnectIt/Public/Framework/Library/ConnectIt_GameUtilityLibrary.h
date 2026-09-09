@@ -15,6 +15,7 @@ class UConnectIt_BlackboardSubsystem;
 class UTurnBasedParticipantManagerComponent;
 class UGridHoverSubsystem;
 class UGridTileRegistryBase;
+class UGridPieceRegistryBase;
 class UConnectIt_LevelConfigDataAsset;
 
 UCLASS()
@@ -33,17 +34,19 @@ public:
     static UConnectIt_BoardStateComponent* GetBoardStateComponent(
         const UObject* WorldContextObject);
 
-    // Returns any connected AConnectIt_PlayerController's TileRegistry --
-    // TileRegistry is a per-machine local lookup (see
-    // AConnectIt_PlayerController), not shared/authoritative state, so any
-    // connected one answers identically (tile layout is level-authored and
-    // deterministic). Tries the local player's own controller first (the
-    // common case), falls back to scanning every connected controller
-    // (needed server-side, e.g. for AI, where "the local player" may not
-    // be the right -- or even a valid -- concept).
+    // Returns the current world's TileRegistry, via
+    // UConnectIt_BoardRegistrySubsystem -- one canonical instance per world,
+    // resolved identically on server and every client.
     UFUNCTION(BlueprintPure, Category = "ConnectIt|Utility",
         meta = (WorldContext = "WorldContextObject"))
     static UGridTileRegistryBase* GetTileRegistry(
+        const UObject* WorldContextObject);
+
+    // Returns the current world's PieceRegistry, via
+    // UConnectIt_BoardRegistrySubsystem. See GetTileRegistry.
+    UFUNCTION(BlueprintPure, Category = "ConnectIt|Utility",
+        meta = (WorldContext = "WorldContextObject"))
+    static UGridPieceRegistryBase* GetPieceRegistry(
         const UObject* WorldContextObject);
 
 

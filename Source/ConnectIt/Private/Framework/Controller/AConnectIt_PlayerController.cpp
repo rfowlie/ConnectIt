@@ -3,14 +3,12 @@
 
 #include "Framework/Controller/ConnectIt_PlayerController.h"
 #include "Framework/GameMode/ConnectIt_GameMode.h"
-#include "Library/ConnectIt_GameUtilityLibrary.h"
+#include "Framework/Library/ConnectIt_GameUtilityLibrary.h"
 #include "Turn/Participant/TurnBasedParticipantComponent.h"
 #include "Turn/Participant/TurnBasedParticipantManagerComponent.h"
 #include "Action/ActionLoadoutDataAsset.h"
 #include "Action/TurnBasedActionsComponent.h"
 #include "Framework/Data/ConnectIt_LevelConfigDataAsset.h"
-#include "Piece/GridPieceRegistryBase.h"
-#include "Tile/GridTileRegistryBase.h"
 
 
 
@@ -20,21 +18,6 @@ void AConnectIt_PlayerController::BeginPlay()
     // together (and to game state match phase changes) via
     // CoordinatorComponent, and notifies ready
     Super::BeginPlay();
-
-    // Local tile/piece discovery -- runs unconditionally on every instance
-    // of this controller (the owning client's local one AND the server's
-    // own proxy for it), same as ABoardManagerBase used to do for these
-    // registries before they moved here. AConnectIt_BoardManager::
-    // InitialiseBoard relies on at least one connected controller having
-    // already discovered tiles by the time it runs.
-    if (IsValid(TileRegistry))
-    {
-        TileRegistry->InitialiseRegistry();
-    }
-    if (IsValid(PieceRegistry))
-    {
-        PieceRegistry->InitialiseRegistry();
-    }
 
     // Only owning client needs actions and input wiring
     if (!IsLocalController()) return;
@@ -51,11 +34,6 @@ void AConnectIt_PlayerController::BeginPlay()
 
 void AConnectIt_PlayerController::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
-    if (IsValid(TileRegistry))
-    {
-        TileRegistry->ShutdownRegistry();
-    }
-
     Super::EndPlay(EndPlayReason);
 }
 

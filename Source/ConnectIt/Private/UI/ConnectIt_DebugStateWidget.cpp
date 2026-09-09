@@ -8,7 +8,7 @@
 #include "Action/TurnBasedAction.h"
 #include "Turn/Participant/TurnBasedParticipantManagerComponent.h"
 #include "GameEvent/GameEventTaskSubsystem.h"
-#include "Library/ConnectIt_GameUtilityLibrary.h"
+#include "Framework/Library/ConnectIt_GameUtilityLibrary.h"
 
 
 void UConnectIt_DebugStateWidget::NativeConstruct()

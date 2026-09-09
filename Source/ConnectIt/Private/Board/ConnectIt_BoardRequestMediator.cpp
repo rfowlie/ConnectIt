@@ -8,6 +8,7 @@
 #include "Board/ConnectIt_BoardStateComponent.h"
 #include "Board/Rules/ConnectIt_BoardRules.h"
 #include "Framework/GameState/ConnectIt_GameState.h"
+#include "Framework/Library/ConnectIt_GameUtilityLibrary.h"
 #include "GameEvent/ConnectIt_PlacePieceGameEvent.h"
 
 
@@ -197,7 +198,8 @@ bool UConnectIt_BoardRequestMediator::HandlePlacePieceRequest(
         return false;
     }
 
-    UConnectIt_BoardStateComponent* BoardState = GetBoardState();
+    // UConnectIt_BoardStateComponent* BoardState = GetBoardState();
+    UConnectIt_BoardStateComponent* BoardState = UConnectIt_GameUtilityLibrary::GetBoardStateComponent(this);
     const FGridPosition TargetPosition = Request.Positions[0];
     const FConnectItBoardState& Current = BoardState->GetCurrentState();
 

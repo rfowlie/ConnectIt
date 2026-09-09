@@ -3,7 +3,7 @@
 #include "UI/DWidget_ConnectIt_BoardStateComponent.h"
 
 #include "Board/ConnectIt_BoardStateComponent.h"
-#include "Library/ConnectIt_GameUtilityLibrary.h"
+#include "Framework/Library/ConnectIt_GameUtilityLibrary.h"
 
 void UDWidget_ConnectIt_BoardStateComponent::BindDelegates()
 {

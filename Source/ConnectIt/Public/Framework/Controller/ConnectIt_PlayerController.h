@@ -7,42 +7,20 @@
 #include "TurnBasedMechanicsStructs.h"
 #include "ConnectIt_PlayerController.generated.h"
 
-class UGridTileRegistryBase;
-class UGridPieceRegistryBase;
-
 // ConnectIt player controller
 // Generic turn/action/match-phase wiring (ParticipantComponent,
 // ActionsComponent, delegate routing) is provided by the base class via
 // UTurnBasedControllerCoordinatorComponent -- this class only adds the
-// ConnectIt-specific plumbing: local tile/piece registries, loading the
-// player's action loadout from the level config, and routing board change
-// requests to the server for validation
+// ConnectIt-specific plumbing: loading the player's action loadout from the
+// level config, and routing board change requests to the server for
+// validation. Tile/piece registries used to live here (per-machine, one
+// controller per machine) but have moved to UConnectIt_BoardRegistrySubsystem
+// -- they're level-authored, deterministic, world-scoped singletons, not
+// per-machine or per-player state. See that class's header comment.
 UCLASS(Blueprintable, BlueprintType)
 class CONNECTIT_API AConnectIt_PlayerController : public ATurnBasedPlayerControllerBase
 {
     GENERATED_BODY()
-
-public:
-
-    // Local, per-machine tile/piece lookups (hover detection, tile-click
-    // validation, etc.) -- deliberately live here rather than on a shared
-    // world actor: every machine already has exactly one local
-    // AConnectIt_PlayerController (the owning client's, and the server's
-    // own proxy for it), so this is the natural, tamper-resistant home for
-    // per-machine bookkeeping that was never meant to be shared/replicated
-    // state in the first place. Same Instanced pattern ABoardManagerBase
-    // used to expose these with.
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Instanced, Category = "ConnectIt|Board")
-    TObjectPtr<UGridTileRegistryBase> TileRegistry;
-
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Instanced, Category = "ConnectIt|Board")
-    TObjectPtr<UGridPieceRegistryBase> PieceRegistry;
-
-    UFUNCTION(BlueprintPure, Category = "ConnectIt|Board")
-    UGridTileRegistryBase* GetTileRegistry() const { return TileRegistry; }
-
-    UFUNCTION(BlueprintPure, Category = "ConnectIt|Board")
-    UGridPieceRegistryBase* GetPieceRegistry() const { return PieceRegistry; }
 
 protected:
 

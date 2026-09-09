@@ -32,7 +32,7 @@ catalogue's own Gap 5 fix does) never ripples into production UI.
 | **BP Accessor** | Exact node, `none`, or `GAP #N` (see [Gaps](#gaps-closed-by-this-catalogue) below — `[fixed]` marks ones already closed while writing this doc). |
 | **Net Availability** | `All` (every client) · `Active client only` · `Server only` · `Local only` (per-machine, not networked at all) · `Config` (identical everywhere, authored not replicated). |
 | **Change Signal** | The delegate/tag that fires on change, or `poll only`. |
-| **Recommended Read-Only Home** | Where a widget should route the read. Closed vocabulary: `GameState` · `ParticipantManager` · `BoardStateComponent` · `PlayerController registry` · `ActionsComponent` · `ParticipantComponent` · `PlayerState` · `UtilityLibrary` · `BoardStateLibrary` · `FactionVisualsSubsystem` · `GameEventTaskSubsystem`. |
+| **Recommended Read-Only Home** | Where a widget should route the read. Closed vocabulary: `GameState` · `ParticipantManager` · `BoardStateComponent` · `BoardRegistrySubsystem` · `ActionsComponent` · `ParticipantComponent` · `PlayerState` · `UtilityLibrary` · `BoardStateLibrary` · `FactionVisualsSubsystem` · `GameEventTaskSubsystem`. |
 
 ---
 
@@ -87,15 +87,15 @@ catalogue's own Gap 5 fix does) never ripples into production UI.
 
 ## §D — Board overlay *(drawn over the grid)*
 
-*Prerequisite for this whole section:* `AConnectIt_PlayerController::GetTileRegistry()`/`GetPieceRegistry()` (`BlueprintPure`, relocated from the retired `AConnectIt_BoardManager`/`ABoardManagerBase` — see [ConnectItModule.md](ConnectItModule.md#board-architecture-overhaul)) return `UGridTileRegistryBase*`/`UGridPieceRegistryBase*` — **`Instanced` properties with no constructor default**, so they are null unless assigned per-Blueprint. Check validity before use. `UConnectIt_GameUtilityLibrary::GetTileRegistry()` is the preferred entry point — it resolves the local controller first, falling back to scanning every connected controller server-side.
+*Prerequisite for this whole section:* `UConnectIt_BoardRegistrySubsystem::GetTileRegistry()`/`GetPieceRegistry()` (`BlueprintPure`, one canonical per-world instance — relocated here from a brief stop on `AConnectIt_PlayerController`, itself relocated from the retired `AConnectIt_BoardManager`/`ABoardManagerBase` — see [ConnectItModule.md](ConnectItModule.md#board-registry-subsystem-second-pass)) return `UGridTileRegistryBase*`/`UGridPieceRegistryBase*` — the subsystem duplicates these at `OnWorldBeginPlay` from `Instanced` templates on the level's `ConnectIt_LevelConfigDataAsset`, so they're null if that template is unset or the world hasn't begun play yet. Check validity before use. `UConnectIt_GameUtilityLibrary::GetTileRegistry()`/`GetPieceRegistry()` are the preferred entry points.
 
 | UI Value | Owning Class | C++ Accessor | BP Accessor | Net Availability | Change Signal | Home |
 |---|---|---|---|---|---|---|
-| Board dimensions (row/column counts, min/max) | `UGridTileRegistryBase` | `GetRowCount/GetColumnCount/GetMinRow/GetMaxRow/GetMinColumn/GetMaxColumn` | `BlueprintPure` | All (static per level) | none needed | PlayerController registry |
+| Board dimensions (row/column counts, min/max) | `UGridTileRegistryBase` | `GetRowCount/GetColumnCount/GetMinRow/GetMaxRow/GetMinColumn/GetMaxColumn` | `BlueprintPure` | All (static per level) | none needed | BoardRegistrySubsystem |
 | All tile positions | `UGridTileRegistryBase` / `UConnectIt_GameUtilityLibrary` | `GetAllTilePositions()` / `GetAllGridTiles(WorldContextObject)` | `BlueprintPure` | All | none needed | UtilityLibrary |
-| Grid ↔ world conversion | `UGridTileRegistryBase` | `GridPositionToWorld/WorldToGridPosition` | `BlueprintPure` | All | n/a | PlayerController registry |
+| Grid ↔ world conversion | `UGridTileRegistryBase` | `GridPositionToWorld/WorldToGridPosition` | `BlueprintPure` | All | n/a | BoardRegistrySubsystem |
 | Tile actor at position | `UGridTileRegistryBase` / `UConnectIt_GameUtilityLibrary` | `GetTileAtPosition(Position)` | `BlueprintPure` | All | n/a | UtilityLibrary |
-| Piece actor at position | `UGridPieceRegistryBase` | `GetPiece(Position)` | `BlueprintPure` | All | n/a | PlayerController registry |
+| Piece actor at position | `UGridPieceRegistryBase` | `GetPiece(Position)` | `BlueprintPure` | All | n/a | BoardRegistrySubsystem |
 | **Per-tile occupying faction** | `FConnectItBoardState` | `GetTileData(Position)->FactionPiece` (inline, not BP-callable) | none | All | `OnBoardStateChanged` | `GAP 4` |
 | **Per-tile multiplier** | `FConnectItBoardState` | same struct, not BP-callable | none | All | `OnBoardStateChanged` | `GAP 4` |
 | **Per-tile is-active** | `FConnectItBoardState` | same struct, not BP-callable | none | All | `OnBoardStateChanged` | `GAP 4` |

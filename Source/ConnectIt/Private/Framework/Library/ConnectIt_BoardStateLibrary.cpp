@@ -1,6 +1,6 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
-#include "Library/ConnectIt_BoardStateLibrary.h"
+#include "Framework/Library/ConnectIt_BoardStateLibrary.h"
 
 
 bool UConnectIt_BoardStateLibrary::GetTileData(

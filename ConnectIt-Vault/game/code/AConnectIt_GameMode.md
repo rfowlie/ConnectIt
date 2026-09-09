@@ -44,8 +44,11 @@ for board-change requests.
   constructor (NewObject in the ctor runs before Blueprint-child property overrides — a
   CDO/archetype-timing pitfall this project has hit before).
 - `InitialiseBoard` calls
-  [[game/code/UConnectIt_BoardStateComponent|UConnectIt_BoardStateComponent]]`::InitialiseBoardState`
-  after tiles register.
+  [[game/code/UConnectIt_BoardStateComponent|UConnectIt_BoardStateComponent]]`::InitialiseBoardState`,
+  resolving `TileRegistry`/`PieceRegistry` via `UConnectIt_GameUtilityLibrary` →
+  `UConnectIt_BoardRegistrySubsystem` (one canonical per-world instance, initialised at
+  `OnWorldBeginPlay` — always ready by the time `InitialiseBoard` runs off
+  `HandleMatchHasStarted`).
 - `AConnectIt_PlayerController::ServerRouteBoardChangeRequest` → `ProcessBoardRequest`.
 
 ## Gotchas

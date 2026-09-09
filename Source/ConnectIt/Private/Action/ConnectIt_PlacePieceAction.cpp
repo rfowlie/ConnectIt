@@ -4,9 +4,8 @@
 #include "Action/ConnectIt_PlacePieceAction.h"
 #include "Board/ConnectIt_BoardStateComponent.h"
 #include "ConnectIt_Structs.h"
-#include "Framework/Controller/ConnectIt_PlayerController.h"
 #include "Interface/GridFactionInterface.h"
-#include "Library/ConnectIt_GameUtilityLibrary.h"
+#include "Framework/Library/ConnectIt_GameUtilityLibrary.h"
 #include "StructUtils/InstancedStruct.h"
 #include "Tile/GridTileBase.h"
 #include "Tile/GridTileRegistryBase.h"
@@ -38,13 +37,9 @@ void UConnectIt_PlacePieceAction::PostInitialiseAction_Implementation()
         return;
     }
     
-    // TileRegistry now lives on the owning controller, not the board
-    // manager (per-machine local lookup) -- see AConnectIt_PlayerController.
-    if (const AConnectIt_PlayerController* PC =
-        Cast<AConnectIt_PlayerController>(OwningController))
-    {
-        TileRegistry = PC->GetTileRegistry();
-    }
+    // TileRegistry lives on UConnectIt_BoardRegistrySubsystem now -- one
+    // canonical per-world instance, not per-controller.
+    TileRegistry = UConnectIt_GameUtilityLibrary::GetTileRegistry(this);
 
     if (!IsValid(TileRegistry))
     {

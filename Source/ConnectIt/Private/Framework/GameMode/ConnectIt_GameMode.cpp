@@ -8,13 +8,12 @@
 #include "Board/Rules/ConnectIt_BoardRules.h"
 #include "ConnectIt_GameplayTags.h"
 #include "Framework/Controller/ConnectIt_AIController.h"
-#include "Framework/Controller/ConnectIt_PlayerController.h"
 #include "Framework/Data/ConnectIt_LevelConfigDataAsset.h"
 #include "Framework/GameState/ConnectIt_GameState.h"
 #include "Framework/GameState/TurnBasedGameState.h"
 #include "Framework/PlayerState/TurnBasedPlayerState.h"
 #include "GameEvent/GameEventTaskSubsystem.h"
-#include "Library/ConnectIt_GameUtilityLibrary.h"
+#include "Framework/Library/ConnectIt_GameUtilityLibrary.h"
 #include "Tile/GridTileRegistryBase.h"
 #include "Turn/Participant/TurnBasedParticipantManagerComponent.h"
 
@@ -134,30 +133,18 @@ void AConnectIt_GameMode::InitialiseBoard()
         return;
     }
 
-    // TileRegistry lives per-machine on AConnectIt_PlayerController now --
-    // grab any connected one's for this one-time tile enumeration. Tile
-    // layout is level-authored and deterministic, so every connected
-    // controller's registry necessarily agrees; called after all tiles
-    // have registered (this function's own comment), by which point every
-    // connected controller has already had BeginPlay run.
-    UGridTileRegistryBase* TileRegistry = nullptr;
-    for (FConstPlayerControllerIterator It = GetWorld()->GetPlayerControllerIterator(); It; ++It)
-    {
-        if (const AConnectIt_PlayerController* PC = Cast<AConnectIt_PlayerController>(It->Get()))
-        {
-            if (IsValid(PC->GetTileRegistry()))
-            {
-                TileRegistry = PC->GetTileRegistry();
-                break;
-            }
-        }
-    }
+    // TileRegistry lives on UConnectIt_BoardRegistrySubsystem now -- one
+    // canonical per-world instance, initialised at OnWorldBeginPlay, well
+    // before this function runs (called from HandleMatchHasStarted, off
+    // PostLogin/ready-check completion).
+    UGridTileRegistryBase* TileRegistry =
+        UConnectIt_GameUtilityLibrary::GetTileRegistry(this);
 
     if (!IsValid(TileRegistry))
     {
         UE_LOG(LogTemp, Error,
-            TEXT("ConnectIt_GameMode: InitialiseBoard — no connected "
-                 "AConnectIt_PlayerController has a valid TileRegistry"));
+            TEXT("ConnectIt_GameMode: InitialiseBoard — "
+                 "UConnectIt_BoardRegistrySubsystem has no valid TileRegistry"));
         return;
     }
 
@@ -176,11 +163,11 @@ void AConnectIt_GameMode::InitialiseBoard()
         ? BoardRules->GetTargetScore()
         : 0.f;
 
-    // PieceRegistry param is unused inside InitialiseBoardState (confirmed)
-    // and now lives per-client on the player controller anyway -- nothing
-    // meaningful to pass here.
+    // PieceRegistry param is still unused inside InitialiseBoardState's body
+    // (confirmed) -- passed through anyway now that a real one is available,
+    // so this stops being an actively misleading "always null" call.
     BoardState->InitialiseBoardState(
-        TileRegistry, nullptr, NumFactions,
+        TileRegistry, UConnectIt_GameUtilityLibrary::GetPieceRegistry(this), NumFactions,
         /*InitialMultiplier=*/1.0f, InitialTargetScore);
 
     UE_LOG(LogTemp, Log,

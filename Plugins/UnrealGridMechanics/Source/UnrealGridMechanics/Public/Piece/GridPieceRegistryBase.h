@@ -30,11 +30,20 @@ class UNREALGRIDMECHANICS_API UGridPieceRegistryBase : public UObject
 public:
 
     // Called once by whoever owns this instance (e.g. ABoardManagerBase),
-    // before any other method here is used.
-    // Discovers every AGridTileBase in the world, takes ownership of the
-    // list, and registers each with UGridHoverSubsystem for hover relay.
-    // Also starts listening for tiles spawned / streamed in later.
+    // before any other method here is used. Currently a no-op stub -- unlike
+    // UGridTileRegistryBase's InitialiseRegistry, there is no bulk
+    // discovery/registration to do here yet, since pieces register with
+    // UGridHoverSubsystem individually as they're retrieved (see
+    // RetrievePiece), not up front.
     virtual void InitialiseRegistry();
+
+    // Unregisters every piece still in PieceMap from UGridHoverSubsystem and
+    // clears the map -- the symmetric counterpart to InitialiseRegistry,
+    // proportional to what this class actually does today (per-piece
+    // register/unregister via RetrievePiece/ReleasePiece, not bulk
+    // discovery), unlike UGridTileRegistryBase::ShutdownRegistry, which also
+    // has an actor-spawned delegate to unhook.
+    virtual void ShutdownRegistry();
 
     // Get-or-create: returns the piece already mapped to Position, or asks
     // InstantiatePiece to create one and caches the result.

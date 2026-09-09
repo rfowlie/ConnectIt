@@ -16,6 +16,7 @@ public class ConnectIt : ModuleRules
 			"InputCore",
 			"EnhancedInput",
 			"UMG",
+			"DeveloperSettings",
 			"GameplayTags",
 			"GameplayTasks",
 			"GameplayAbilities",
@@ -29,6 +30,7 @@ public class ConnectIt : ModuleRules
 
 		PrivateDependencyModuleNames.AddRange(new string[]
 		{
+			"DeveloperSettings",
 			"AIModule",
 			"UnrealCodingUtils",
 			"UnrealGameMechanics",

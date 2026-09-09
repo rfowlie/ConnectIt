@@ -27,7 +27,7 @@ it can be used.
 
 ## Public API surface
 
-- `UAI_UtilityGameActionController` (`PickNextAction`, `GetEvaluatedActions`,
+- [[UAI_UtilityGameActionController]] (`PickNextAction`, `GetEvaluatedActions`,
   `SelectEvaluatedAction`, `GameActionHandlers` array).
 - `UAI_UtilityGameActionEvaluator` (`GetEvaluatedActions` native event,
   `SetEvaluationWeights`, `EvaluationWeights` map).
