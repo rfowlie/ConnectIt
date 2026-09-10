@@ -5,8 +5,8 @@ role: primary
 source:
   - Source/ConnectIt/Public/Framework/GameMode/ConnectIt_GameMode.h
   - Source/ConnectIt/Private/Framework/GameMode/ConnectIt_GameMode.cpp
-reconciled: 2026-09-07
-commit: 668872e
+reconciled: 2026-09-10
+commit: eddd631
 ---
 
 # AConnectIt_GameMode
@@ -67,7 +67,24 @@ wanted), `UConnectIt_BoardRequestMediator` (a `HandleXRequest`), a `FConnectItRe
 payload struct, and `FConnectItBoardChangeEvent` fields — see
 [[add-a-board-request-type|recipes/add-a-board-request-type]].
 
+## Changes
+
+- 2026-09-10 — re-ingested to the `_code` schema; provenance re-anchored (`eddd631`).
+- 2026-09-09 — `InitialiseBoard` stopped doing its own `FConstPlayerControllerIterator`
+  scan for the registries; now pulls them from `UConnectIt_GameUtilityLibrary` →
+  [[UConnectIt_BoardRegistrySubsystem|UConnectIt_BoardRegistrySubsystem]], and passes a
+  real `PieceRegistry` into `InitialiseBoardState` instead of `nullptr`. Removed a
+  silent-failure path (the scan could run before any controller connected). See
+  [[ConnectIt/decisions/2026-09-09-board-registries-to-world-subsystem|decisions/2026-09-09-board-registries-to-world-subsystem]].
+- 2026-09-08 — board authority moved here: `AConnectIt_BoardManager` (world actor)
+  retired; `BoardRequestMediator` + `BoardRules` constructed in `HandleMatchHasStarted`
+  as server-only UObject members. See
+  [[ConnectIt/decisions/2026-09-08-board-architecture-overhaul|decisions/2026-09-08-board-architecture-overhaul]].
+
 ## See also
 
-- In-repo: `old/Source/ConnectIt/Docs/README.md`; `old/Source/ConnectIt/Docs/Workflows/ServerAuthoritative-ActionRequest.md`.
-- [[place-piece-request|systems/place-piece-request]]
+- Decisions: [[ConnectIt/decisions/2026-09-08-board-architecture-overhaul|board-architecture-overhaul]],
+  [[ConnectIt/decisions/2026-09-09-board-registries-to-world-subsystem|board-registries-to-world-subsystem]]
+- Flow: [[place-piece-request|systems/place-piece-request]] (the ServerAuthoritative
+  action-request pattern)
+- [[UConnectIt_BoardRegistrySubsystem|UConnectIt_BoardRegistrySubsystem]]

@@ -5,8 +5,8 @@ role: primary
 source:
   - Source/ConnectIt/Public/Framework/GameState/ConnectIt_GameState.h
   - Source/ConnectIt/Private/Framework/GameState/ConnectIt_GameState.cpp
-reconciled: 2026-09-07
-commit: 668872e
+reconciled: 2026-09-10
+commit: eddd631
 ---
 
 # AConnectIt_GameState
@@ -48,7 +48,7 @@ for UI.
 ## Gotchas
 
 - Board state lives **here**, not on any board actor — see
-  `old/Source/ConnectIt/Docs/Workflows/SingleSourceOfTruth-Replication.md`. Same reasoning as
+  [[ConnectIt/CLAUDE|ConnectIt overview]] (SingleSourceOfTruth-Replication pattern). Same reasoning as
   `UTurnBasedParticipantManagerComponent` living on the GameState.
 - Per-tile / per-state helpers (`IsTileOccupied`, `GetScore`, …) are also on
   `UConnectIt_BoardStateLibrary` (takes `FConnectItBoardState` by const&) so they work on
@@ -62,7 +62,11 @@ Changing `FConnectItMatchResult` touches the results UI and `AConnectIt_GameMode
 game-over handlers. Board read wrappers mirror `UConnectIt_BoardStateComponent` /
 `UConnectIt_BoardStateLibrary` — keep them in sync.
 
+## Changes
+
+- 2026-09-10 — re-ingested to the `_code` schema; provenance re-anchored.
+
 ## See also
 
-- In-repo: `old/Source/ConnectIt/Docs/Workflows/SingleSourceOfTruth-Replication.md`; `old/Source/ConnectIt/Docs/RuntimeStateAccess.md`.
+- In-repo: [[ConnectIt/CLAUDE|ConnectIt overview]].
 - [[board-state-single-source-of-truth|systems/board-state-single-source-of-truth]]

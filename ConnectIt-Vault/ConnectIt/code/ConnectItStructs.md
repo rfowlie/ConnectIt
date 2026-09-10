@@ -4,8 +4,8 @@ kind: USTRUCT
 role: primary
 source:
   - Source/ConnectIt/Public/ConnectIt_Structs.h
-reconciled: 2026-09-07
-commit: 668872e
+reconciled: 2026-09-10
+commit: 6477d5d
 ---
 
 # ConnectItStructs
@@ -69,6 +69,10 @@ envelope**, never duplicated into a payload.
 `UConnectIt_BoardStateLibrary`, every UI reader, the MinMax AI (which builds hypothetical
 `FConnectItBoardState`s), and the debug widgets.
 
+## Changes
+
+- 2026-09-10 — re-ingested to the `_code` schema; provenance re-anchored.
+
 ## See also
 
-- In-repo: `old/Source/ConnectIt/Docs/UIValueCatalogue.md`; `old/Source/ConnectIt/Docs/Workflows/SingleSourceOfTruth-Replication.md`.
+- In-repo: [[ConnectIt/CLAUDE|ConnectIt overview]].

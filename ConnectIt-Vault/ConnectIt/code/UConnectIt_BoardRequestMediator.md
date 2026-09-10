@@ -5,8 +5,8 @@ role: primary
 source:
   - Source/ConnectIt/Public/Board/ConnectIt_BoardRequestMediator.h
   - Source/ConnectIt/Private/Board/ConnectIt_BoardRequestMediator.cpp
-reconciled: 2026-09-07
-commit: 668872e
+reconciled: 2026-09-10
+commit: f4cba67
 ---
 
 # UConnectIt_BoardRequestMediator
@@ -64,8 +64,12 @@ A new request type: this class (`ProcessRequest` dispatch + `HandleXRequest`),
 (result fields), the gameplay tag, `UConnectIt_BoardStateComponent::EnqueueBoardEventTags`,
 and a `UTurnBasedAction` subclass that sends it.
 
+## Changes
+
+- 2026-09-10 — re-ingested to the `_code` schema; provenance re-anchored.
+
 ## See also
 
-- In-repo: `old/Source/ConnectIt/Docs/Workflows/ServerAuthoritative-ActionRequest.md`; `old/Source/ConnectIt/Docs/LegacyPipeline.md`.
-- [[place-piece-request|systems/place-piece-request]] ·
+- In-repo: [[ConnectIt/CLAUDE|ConnectIt overview]].
+- [[place-piece-request|systems/place-piece-request]] Â·
   [[add-a-board-request-type|recipes/add-a-board-request-type]]

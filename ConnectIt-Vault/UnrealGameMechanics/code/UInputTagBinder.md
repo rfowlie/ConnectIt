@@ -6,7 +6,7 @@ source:
   - Plugins/UnrealGameMechanics/Source/UnrealGameMechanics/Public/Input/InputTagBinder.h
   - Plugins/UnrealGameMechanics/Source/UnrealGameMechanics/Private/Input/InputTagBinder.cpp
   - Plugins/UnrealGameMechanics/Source/UnrealGameMechanics/Public/Input/InputTagBinding.h
-reconciled: 2026-09-06
+reconciled: 2026-09-10
 commit: e28339c
 ---
 
@@ -60,7 +60,11 @@ Change `FInputTagBinding` or the dispatch signature and also update every consum
 switch (`UTurnBasedAction::OnBoundInputTriggered`) and any designer data assets holding
 `FInputTagBinding` arrays.
 
+## Changes
+
+- 2026-09-10 — re-ingested to the `_code` schema; provenance re-anchored.
+
 ## See also
 
-- In-repo: `old/Plugins/UnrealGameMechanics/Docs/README.md` → *Input*; `old/Plugins/UnrealGameMechanics/Docs/Systems.md` → input section.
+- In-repo: [[UnrealGameMechanics/CLAUDE|UnrealGameMechanics overview]] → *Input*.
 - Consumer: [[UnrealTurnBasedMechanics/code/UTurnBasedAction|UTurnBasedAction]]

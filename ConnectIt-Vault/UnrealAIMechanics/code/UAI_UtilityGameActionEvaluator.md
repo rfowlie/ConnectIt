@@ -6,7 +6,7 @@ source:
   - Plugins/UnrealAIMechanics/Source/UnrealAIMechanics/Public/Utility/AI_UtilityGameActionEvaluator.h
   - Plugins/UnrealAIMechanics/Source/UnrealAIMechanics/Public/Utility/AI_UtilityStructs.h
   - Plugins/UnrealAIMechanics/Source/UnrealAIMechanics/Public/Utility/AI_UtilityLibrary.h
-reconciled: 2026-09-06
+reconciled: 2026-09-10
 commit: d0cba36
 ---
 
@@ -52,7 +52,11 @@ candidate actions for
 `FGameActionEvaluated`'s shape is the contract between evaluators, the library sort, and
 the controller's (unimplemented) selection.
 
+## Changes
+
+- 2026-09-10 — re-ingested to the `_code` schema; provenance re-anchored.
+
 ## See also
 
-- In-repo: `old/Plugins/UnrealAIMechanics/Docs/README.md`, `old/Plugins/UnrealAIMechanics/Docs/Systems.md`.
+- In-repo: [[UnrealAIMechanics/CLAUDE|UnrealAIMechanics overview]].
 - [[UnrealAIMechanics/code/UAI_UtilityGameActionController|UAI_UtilityGameActionController]]

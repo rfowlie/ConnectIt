@@ -5,7 +5,7 @@ role: primary
 source:
   - Plugins/UnrealGridMechanics/Source/UnrealGridMechanics/Public/Piece/GridPieceRegistryComponent.h
   - Plugins/UnrealGridMechanics/Source/UnrealGridMechanics/Private/Piece/GridPieceRegistryComponent.cpp
-reconciled: 2026-09-06
+reconciled: 2026-09-10
 commit: f694874
 ---
 
@@ -58,11 +58,15 @@ registration, and the `IActorPoolInterface` activate/deactivate calls all live h
 ## Cross-impact
 
 Depends on the pool's get/activate split — see
-[[UnrealGameMechanics/systems/actor-pooling-lifecycle|actor-pooling-lifecycle]]. Changing
+[[UnrealGameMechanics/code/systems/actor-pooling-lifecycle|actor-pooling-lifecycle]]. Changing
 the primitive set affects the game module's place/score game events and any Blueprint
 that composes them.
 
+## Changes
+
+- 2026-09-10 — re-ingested to the `_code` schema; provenance re-anchored.
+
 ## See also
 
-- In-repo: `old/Plugins/UnrealGridMechanics/Docs/README.md` → *Piece*; `old/Plugins/UnrealGridMechanics/Docs/Systems.md` → piece registry + the removal note.
-- [[UnrealGridMechanics/recipes/place-and-remove-a-piece|recipes/place-and-remove-a-piece]]
+- In-repo: [[UnrealGridMechanics/CLAUDE|UnrealGridMechanics overview]] → *Piece*.
+- [[UnrealGridMechanics/code/recipes/place-and-remove-a-piece|recipes/place-and-remove-a-piece]]

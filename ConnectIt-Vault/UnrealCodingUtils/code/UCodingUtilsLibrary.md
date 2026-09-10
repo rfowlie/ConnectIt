@@ -5,7 +5,7 @@ role: primary
 source:
   - Plugins/UnrealCodingUtils/Source/UnrealCodingUtils/Public/Library/CodingUtilsLibrary.h
   - Plugins/UnrealCodingUtils/Source/UnrealCodingUtils/Private/Library/CodingUtilsLibrary.cpp
-reconciled: 2026-09-06
+reconciled: 2026-09-10
 commit: 3086271
 ---
 
@@ -44,6 +44,10 @@ None. Pure static helpers.
 Self-contained. Renaming the class or functions is a find-and-replace across callers in
 the plugins and game module.
 
+## Changes
+
+- 2026-09-10 — re-ingested to the `_code` schema; provenance re-anchored.
+
 ## See also
 
-- In-repo: `old/Plugins/UnrealCodingUtils/Docs/README.md`, `old/Plugins/UnrealCodingUtils/Docs/Systems.md`.
+- In-repo: [[UnrealCodingUtils/CLAUDE|UnrealCodingUtils overview]].

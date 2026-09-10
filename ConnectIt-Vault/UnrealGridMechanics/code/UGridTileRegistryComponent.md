@@ -5,7 +5,7 @@ role: primary
 source:
   - Plugins/UnrealGridMechanics/Source/UnrealGridMechanics/Public/Tile/GridTileRegistryComponent.h
   - Plugins/UnrealGridMechanics/Source/UnrealGridMechanics/Private/Tile/GridTileRegistryComponent.cpp
-reconciled: 2026-09-06
+reconciled: 2026-09-10
 commit: ec992a2
 ---
 
@@ -54,7 +54,11 @@ Change `GridSize` semantics or the discovery mechanism and also update
 `UGridPieceRegistryComponent`, `UBoardShiftComponent::BuildWorldPositionMap`, the game
 board manager, and `UGridValidatorBase` (editor).
 
+## Changes
+
+- 2026-09-10 — re-ingested to the `_code` schema; provenance re-anchored.
+
 ## See also
 
-- In-repo: `old/Plugins/UnrealGridMechanics/Docs/README.md` → *Tile*; `old/Plugins/UnrealGridMechanics/Docs/Systems.md` → registries.
-- [[UnrealGridMechanics/systems/hover-relay|systems/hover-relay]]
+- In-repo: [[UnrealGridMechanics/CLAUDE|UnrealGridMechanics overview]] → *Tile*.
+- [[UnrealGridMechanics/code/systems/hover-relay|systems/hover-relay]]

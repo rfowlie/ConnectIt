@@ -5,7 +5,7 @@ role: primary
 source:
   - Plugins/UnrealTurnBasedMechanics/Source/UnrealTurnBasedMechanics/Public/Action/TurnBasedActionBase.h
   - Plugins/UnrealTurnBasedMechanics/Source/UnrealTurnBasedMechanics/Private/Action/TurnBasedActionBase.cpp
-reconciled: 2026-09-06
+reconciled: 2026-09-10
 commit: e28339c
 ---
 
@@ -56,6 +56,10 @@ Change the lifecycle hook set and also update: `UTurnBasedAction` and
 `UTurnBasedSpectatorAction` `_Implementation` overrides, and
 `UTurnBasedActionsComponent::BindActionDelegates`.
 
+## Changes
+
+- 2026-09-10 — re-ingested to the `_code` schema; provenance re-anchored.
+
 ## See also
 
-- In-repo: `old/Plugins/UnrealTurnBasedMechanics/Docs/README.md` → *Action*; `old/Plugins/UnrealTurnBasedMechanics/Docs/Systems.md` → *The Action Stack*.
+- In-repo: [[UnrealTurnBasedMechanics/CLAUDE|UnrealTurnBasedMechanics overview]] → *Action*.

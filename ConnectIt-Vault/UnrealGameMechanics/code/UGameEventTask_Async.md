@@ -5,7 +5,7 @@ role: primary
 source:
   - Plugins/UnrealGameMechanics/Source/UnrealGameMechanics/Public/GameEvent/GameEventTask_Async.h
   - Plugins/UnrealGameMechanics/Source/UnrealGameMechanics/Private/GameEvent/GameEventTask_Async.cpp
-reconciled: 2026-09-06
+reconciled: 2026-09-10
 commit: 99cdd6a
 ---
 
@@ -54,8 +54,12 @@ finished; the manager won't advance its phase until every task in that phase has
 Change the completion signature and also update `UGameEventTaskManager`
 (`CheckPhaseComplete` bind), `UGameEventTaskSubsystem`, `UGameTurnHandler`.
 
+## Changes
+
+- 2026-09-10 — re-ingested to the `_code` schema; provenance re-anchored.
+
 ## See also
 
-- In-repo: `old/Plugins/UnrealGameMechanics/Docs/README.md` → *GameEvent*.
-- [[UnrealGameMechanics/systems/gated-event-tag-queue|systems/gated-event-tag-queue]] ·
-  [[UnrealGameMechanics/recipes/gate-a-response-on-a-tag|recipes/gate-a-response-on-a-tag]]
+- In-repo: [[UnrealGameMechanics/CLAUDE|UnrealGameMechanics overview]] → *GameEvent*.
+- [[UnrealGameMechanics/code/systems/gated-event-tag-queue|systems/gated-event-tag-queue]] Â·
+  [[UnrealGameMechanics/code/recipes/gate-a-response-on-a-tag|recipes/gate-a-response-on-a-tag]]

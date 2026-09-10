@@ -5,7 +5,7 @@ role: primary
 source:
   - Plugins/UnrealGameMechanics/Source/UnrealGameMechanics/Public/GameEvent/GameEventTaskSubsystem.h
   - Plugins/UnrealGameMechanics/Source/UnrealGameMechanics/Private/GameEvent/GameEventTaskSubsystem.cpp
-reconciled: 2026-09-06
+reconciled: 2026-09-10
 commit: ec992a2
 ---
 
@@ -24,7 +24,7 @@ subsystem. Managers are created lazily per tag and live for the world's lifetime
 - Wiring a visual/UI system to a gameplay event it doesn't own (it binds against a tag,
   not an actor).
 - This is the mechanism `UnrealTurnBasedMechanics`' turn-end gate runs on — see
-  [[UnrealTurnBasedMechanics/systems/turn-end-tag-gate|that flow]].
+  [[UnrealTurnBasedMechanics/code/systems/turn-end-tag-gate|that flow]].
 
 ## Entry points
 
@@ -66,8 +66,12 @@ Change the queue/phase semantics and also update:
 contract), `UDWidget_GameEventTaskSubsystem`, and every consumer that calls
 `QueueTagContainer` / `BindOnTagComplete` (notably `UTurnBasedParticipantManagerComponent`).
 
+## Changes
+
+- 2026-09-10 — re-ingested to the `_code` schema; provenance re-anchored.
+
 ## See also
 
-- In-repo: `old/Plugins/UnrealGameMechanics/Docs/README.md` → *GameEvent*; `old/Plugins/UnrealGameMechanics/Docs/Systems.md` → the gated-sequencing section.
-- [[UnrealGameMechanics/systems/gated-event-tag-queue|systems/gated-event-tag-queue]]
-- [[UnrealGameMechanics/recipes/gate-a-response-on-a-tag|recipes/gate-a-response-on-a-tag]]
+- In-repo: [[UnrealGameMechanics/CLAUDE|UnrealGameMechanics overview]] → *GameEvent*.
+- [[UnrealGameMechanics/code/systems/gated-event-tag-queue|systems/gated-event-tag-queue]]
+- [[UnrealGameMechanics/code/recipes/gate-a-response-on-a-tag|recipes/gate-a-response-on-a-tag]]

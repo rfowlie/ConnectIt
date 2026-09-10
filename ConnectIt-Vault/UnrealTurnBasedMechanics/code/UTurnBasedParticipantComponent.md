@@ -5,7 +5,7 @@ role: primary
 source:
   - Plugins/UnrealTurnBasedMechanics/Source/UnrealTurnBasedMechanics/Public/Turn/Participant/TurnBasedParticipantComponent.h
   - Plugins/UnrealTurnBasedMechanics/Source/UnrealTurnBasedMechanics/Private/Turn/Participant/TurnBasedParticipantComponent.cpp
-reconciled: 2026-09-06
+reconciled: 2026-09-10
 commit: e28339c
 ---
 
@@ -58,7 +58,10 @@ Change the notification payload and also update: `FTurnNotification`,
 `UTurnBasedParticipantManagerComponent::BuildNotification` / `NotifyActiveParticipant`,
 `UTurnBasedControllerCoordinatorComponent` (consumers), any debug widget reading it.
 
+## Changes
+
+- 2026-09-10 — re-ingested to the `_code` schema; provenance re-anchored.
+
 ## See also
 
-- In-repo: `old/Plugins/UnrealTurnBasedMechanics/Docs/README.md` → *Turn/Participant*; `old/Plugins/UnrealTurnBasedMechanics/Docs/Systems.md` →
-  *Turn/Participant — the Match State Machine*.
+- In-repo: [[UnrealTurnBasedMechanics/CLAUDE|UnrealTurnBasedMechanics overview]] → *Turn/Participant*.

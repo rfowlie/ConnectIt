@@ -5,7 +5,7 @@ role: primary
 source:
   - Plugins/UnrealGameIntelligence/Source/UnrealGameIntelligence/Public/InfluenceMap/GI_InfluenceMapSubsystem.h
   - Plugins/UnrealGameIntelligence/Source/UnrealGameIntelligence/Private/InfluenceMap/GI_InfluenceMapSubsystem.cpp
-reconciled: 2026-09-06
+reconciled: 2026-09-10
 commit: 32e3e7c
 ---
 
@@ -61,9 +61,12 @@ visualisers before registering.
 Changing the registration/selection API touches every project visualiser and the debug
 widget subclass. The `OnVisualiserSelected` signature is bound by project UI.
 
+## Changes
+
+- 2026-09-10 — re-ingested to the `_code` schema; provenance re-anchored.
+
 ## See also
 
-- In-repo: `old/Plugins/UnrealGameIntelligence/Docs/README.md` → *InfluenceMap*; `old/Plugins/UnrealGameIntelligence/Source/UnrealGameIntelligence/README/InfluenceMap_README.md` (composite-map
-  design guide — note its `IGI_InfluenceMap` references are phantom).
-- [[UnrealGameIntelligence/systems/influence-map-visualisation|systems/influence-map-visualisation]] ·
-  [[UnrealGameIntelligence/recipes/add-an-influence-map-visualiser|recipes/add-an-influence-map-visualiser]]
+- In-repo: [[UnrealGameIntelligence/CLAUDE|UnrealGameIntelligence overview]] → *InfluenceMap*.
+- [[UnrealGameIntelligence/code/systems/influence-map-visualisation|systems/influence-map-visualisation]] Â·
+  [[UnrealGameIntelligence/code/recipes/add-an-influence-map-visualiser|recipes/add-an-influence-map-visualiser]]

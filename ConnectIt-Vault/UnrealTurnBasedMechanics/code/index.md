@@ -1,22 +1,18 @@
 ---
 schema: code
-reconciled: 2026-09-06
+reconciled: 2026-09-10
 commit: 3086271
 ---
 
 # UnrealTurnBasedMechanics — code index
 
-Per-type help pages for the plugin's public API. Governed by [[_schema/code|_schema/code.md]].
-These are an **overlay** on the authoritative in-repo reference
-([`old/Plugins/UnrealTurnBasedMechanics/Docs/README.md`](../../../old/Plugins/UnrealTurnBasedMechanics/Docs/README.md),
-[`old/Plugins/UnrealTurnBasedMechanics/Docs/Systems.md`](../../../old/Plugins/UnrealTurnBasedMechanics/Docs/Systems.md)) — entry
-points, collaborators, gotchas, cross-impact, freshness. They do not restate it.
+Inventory + module map. Governed by [[_core/_schema/_code|_core/_schema/_code.md]].
+Domain overview: [[UnrealTurnBasedMechanics/CLAUDE|CLAUDE.md]].
 
-Source root: `Plugins/UnrealTurnBasedMechanics/Source/UnrealTurnBasedMechanics/`
-Provenance: pages are anchored to a commit; refresh with
-`git log <source> <commit>..HEAD`.
+`status`: **current** = page written & reconciled · **stub** = no page yet · **stale** =
+drift detected · **covered in X** = documented inside another type's page.
 
-`status`: **current** = page written & reconciled · **stub** = no page yet · **stale** = drift detected.
+## Inventory
 
 | Type | Kind | Area | Role | Source (`Public/…`, `Private/…`) | Status |
 |---|---|---|---|---|---|
@@ -30,28 +26,50 @@ Provenance: pages are anchored to a commit; refresh with
 | UTurnBasedSpectatorAction | UCLASS (abstract) | Action | primary | `Action/TurnBasedSpectatorAction.{h,cpp}` | stub |
 | FTurnActionSnapshot / FTurnBasedActionsComponentInfo | USTRUCT | Action | internal (debug) | `Action/TurnBasedActionsComponent.h` | covered in UTurnBasedActionsComponent |
 | UTurnBasedPauseAction | UCLASS | Action/Spectator | primary (default) | `Action/Spectator/TurnBasedPauseAction.{h,cpp}` | stub |
-| ATurnBasedGameMode | UCLASS | Framework/GameMode | primary | `Framework/GameMode/TurnBasedGameMode.{h,cpp}` | stub |
-| ATurnBasedGameState | UCLASS | Framework/GameState | primary | `Framework/GameState/TurnBasedGameState.{h,cpp}` | stub |
-| ATurnBasedPlayerState | UCLASS | Framework/PlayerState | primary (thin) | `Framework/PlayerState/TurnBasedPlayerState.{h,cpp}` | stub |
-| ATurnBasedPlayerControllerBase | UCLASS (abstract) | Framework/Controller | primary | `Framework/Controller/TurnBasedPlayerControllerBase.{h,cpp}` | stub |
-| ATurnBasedAIController | UCLASS (abstract) | Framework/Controller | primary | `Framework/Controller/TurnBasedAIController.{h,cpp}` | stub |
+| ATurnBasedGameMode / GameState / PlayerState | UCLASS | Framework | primary | `Framework/{GameMode,GameState,PlayerState}/*.{h,cpp}` | stub |
+| ATurnBasedPlayerControllerBase / ATurnBasedAIController | UCLASS (abstract) | Framework/Controller | primary | `Framework/Controller/TurnBased{PlayerControllerBase,AIController}.{h,cpp}` | stub |
 | UTurnBasedControllerCoordinatorComponent | UCLASS (component) | Framework/Controller | primary (plumbing) | `Framework/Controller/TurnBasedControllerCoordinatorComponent.{h,cpp}` | stub |
 | UTurnBasedGameEvent | UCLASS (abstract) | GameEvent | primary (extension point) | `GameEvent/TurnBasedGameEvent.{h,cpp}` | stub |
-| USequentialTurnOrderStrategy | UCLASS | Turn/Order | primary (default) | `Turn/Order/SequentialTurnOrderStrategy.{h,cpp}` | stub |
-| URandomTurnOrderStrategy | UCLASS | Turn/Order | internal (alt) | `Turn/Order/RandomTurnOrderStrategy.{h,cpp}` | stub |
+| USequentialTurnOrderStrategy / URandomTurnOrderStrategy | UCLASS | Turn/Order | `Sequential` = default; `Random` = alt | `Turn/Order/{Sequential,Random}TurnOrderStrategy.{h,cpp}` | stub |
 | FTurnBasedParticipantManagerInfo | USTRUCT | Turn/Participant | internal (debug) | `Turn/Participant/TurnBasedParticipantManagerComponent.h` | covered in UTurnBasedParticipantManagerComponent |
-| Enums (`EMatchPhase`, `ETurnPhase`, `ETurnEndReason`, `EParticipantType`, `ETurnBasedActionState`, `ETurnModifierType`) | UENUM ×6 | Top-level | primary | `TurnBasedMechanicsEnums.h` | stub → `Enums.md` |
-| Structs (`FTurnParticipantInfo`, `FTurnStartContext`, `FTurnNotification`, `FTurnBasedActionRecord`, `FTurnActionRequest`, `FTurnModifier`) | USTRUCT ×6 | Top-level | primary | `TurnBasedMechanicsStructs.h` | stub → `Structs.md` |
+| Enums (`EMatchPhase`, `ETurnPhase`, `ETurnEndReason`, `EParticipantType`, `ETurnBasedActionState`, `ETurnModifierType`) | UENUM ×6 | Top-level | primary | `TurnBasedMechanicsEnums.h` | stub |
+| Structs (`FTurnParticipantInfo`, `FTurnStartContext`, `FTurnNotification`, `FTurnBasedActionRecord`, `FTurnActionRequest`, `FTurnModifier`) | USTRUCT ×6 | Top-level | primary | `TurnBasedMechanicsStructs.h` | stub |
 | UTurnBasedMechanicsLibrary | UCLASS (UBlueprintFunctionLibrary) | Top-level | internal | `TurnBasedMechanicsLibrary.{h,cpp}` | stub |
-| UDWidget_TurnBasedActionsComponent | UCLASS (abstract) | Debug | internal (tooling) | `Debug/DWidget_TurnBasedActionsComponent.h`, `Private/Debug/…cpp` | stub |
-| UDWidget_TurnBasedParticipantManagerComponent | UCLASS (abstract) | Debug | internal (tooling) | `Debug/DWidget_TurnBasedParticipantManagerComponent.h`, `Private/Debug/…cpp` | stub |
-| FUnrealTurnBasedMechanicsModule | class (IModuleInterface) | Top-level | internal | `UnrealTurnBasedMechanics.h`, `Private/UnrealTurnBasedMechanics.cpp` | stub |
+| UDWidget_TurnBasedActionsComponent / …ParticipantManagerComponent | UCLASS (abstract) | Debug | internal (tooling) | `Debug/DWidget_TurnBased*.h` | stub |
+| FUnrealTurnBasedMechanicsModule | class (IModuleInterface) | Top-level | internal | `UnrealTurnBasedMechanics.h` | stub |
 
 `TurnBasedMechanicsDelegates.h` holds two native-only multicast delegates
 (`FOnTurnNotification_Native`, `FOnOpponentTurnStarted_Native`) reused as the `_Native`
 siblings on `UTurnBasedParticipantComponent` — not a type, no page.
 
+## Map
+
+`Plugins/UnrealTurnBasedMechanics/Source/UnrealTurnBasedMechanics/` — one Runtime module
+(`LogTurnBasedMechanics`). Sub-areas:
+
+- **`Action/`** — the per-controller **action stack**
+  ([[UnrealTurnBasedMechanics/code/UTurnBasedActionsComponent|UTurnBasedActionsComponent]])
+  fed from a
+  [[UnrealTurnBasedMechanics/code/UActionLoadoutDataAsset|UActionLoadoutDataAsset]] with
+  five system slots. `UTurnBasedActionBase` → `UTurnBasedAction` (per-turn, with the grid
+  hover→select pipeline + board-change confirmation gate) / `UTurnBasedSpectatorAction`
+  (passive views). See
+  [[UnrealTurnBasedMechanics/code/systems/action-stack-lifecycle|systems/action-stack-lifecycle]].
+- **`Turn/Participant/`** — the replicated match state machine
+  ([[UnrealTurnBasedMechanics/code/UTurnBasedParticipantManagerComponent|…ManagerComponent]]
+  on the GameState): ready-check, timers, forfeit/reconnect, and the **tag-gated turn-end
+  sequence**. See
+  [[UnrealTurnBasedMechanics/code/systems/turn-end-tag-gate|systems/turn-end-tag-gate]].
+- **`Turn/Order/`** — pluggable [[UnrealTurnBasedMechanics/code/ITurnOrderInterface|ITurnOrderInterface]]
+  strategy (default sequential).
+- **`Framework/`** — `ATurnBased*` GameMode/State/PlayerState/Controller bases; the
+  coordinator component wires participant + actions components identically onto player and
+  AI controllers.
+- **`GameEvent/` (`UTurnBasedGameEvent`), `Debug/`** — extension point + debug widgets.
+
+**Start at:** `UTurnBasedActionsComponent` → the two `systems/` flows.
+
 ## Related
 
-- Flows: [[UnrealTurnBasedMechanics/systems/index|systems/index.md]]
-- Recipes: [[UnrealTurnBasedMechanics/recipes/index|recipes/index.md]]
+- Flows: [[UnrealTurnBasedMechanics/code/systems/index|code/systems/index.md]]
+- Recipes: [[UnrealTurnBasedMechanics/code/recipes/index|code/recipes/index.md]]

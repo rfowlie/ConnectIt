@@ -5,7 +5,7 @@ role: primary
 source:
   - Plugins/UnrealTurnBasedMechanics/Source/UnrealTurnBasedMechanics/Public/Turn/Participant/TurnBasedParticipantManagerComponent.h
   - Plugins/UnrealTurnBasedMechanics/Source/UnrealTurnBasedMechanics/Private/Turn/Participant/TurnBasedParticipantManagerComponent.cpp
-reconciled: 2026-09-06
+reconciled: 2026-09-10
 commit: 3086271
 ---
 
@@ -44,7 +44,7 @@ turn advancement. Server-authoritative; a handful of fields replicate to clients
 - **UnrealGameMechanics `UGameEventTaskSubsystem`:** `EndTurn` queues `TurnEndEventTag`
   via `QueueTagContainer`; `AdvanceToNextParticipant` is bound as that tag's
   `BindOnTagComplete` handler in `BeginPlay`. See
-  [[UnrealTurnBasedMechanics/systems/turn-end-tag-gate|turn-end-tag-gate]].
+  [[UnrealTurnBasedMechanics/code/systems/turn-end-tag-gate|turn-end-tag-gate]].
 - **`ITurnOrderInterface`:** delegates next/first index selection.
 - **`ATurnBasedGameState` / `ATurnBasedPlayerState`:** the only sanctioned writer of their
   match/participant fields (`friend`); `SetMatchPhase`, participant setters.
@@ -77,7 +77,10 @@ Change the phase set / lifecycle and also update: `ETurnPhase` / `EMatchPhase` /
 `FTurnNotification` / `FTurnBasedParticipantManagerInfo`,
 `UDWidget_TurnBasedParticipantManagerComponent`.
 
+## Changes
+
+- 2026-09-10 — re-ingested to the `_code` schema; provenance re-anchored.
+
 ## See also
 
-- In-repo: `old/Plugins/UnrealTurnBasedMechanics/Docs/README.md` → *Turn/Participant*; `old/Plugins/UnrealTurnBasedMechanics/Docs/Systems.md` →
-  *Turn/Participant — the Match State Machine* and *Known Rough Edges*.
+- In-repo: [[UnrealTurnBasedMechanics/CLAUDE|UnrealTurnBasedMechanics overview]] → *Turn/Participant*.

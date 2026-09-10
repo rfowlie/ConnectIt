@@ -5,7 +5,7 @@ role: primary
 source:
   - Plugins/UnrealGridMechanics/Source/UnrealGridMechanics/Public/GridMechanics_ShapeLibrary.h
   - Plugins/UnrealGridMechanics/Source/UnrealGridMechanics/Private/GridMechanics_ShapeLibrary.cpp
-reconciled: 2026-09-06
+reconciled: 2026-09-10
 commit: 0ed7243
 ---
 
@@ -53,7 +53,11 @@ the "did this move complete a line / a square" question.
 Self-contained. Scoring code that consumes `FShapeConfiguration.Score` owns the
 name→score mapping, not this library.
 
+## Changes
+
+- 2026-09-10 — re-ingested to the `_code` schema; provenance re-anchored.
+
 ## See also
 
-- In-repo: `old/Plugins/UnrealGridMechanics/Docs/README.md` → *Library*.
+- In-repo: [[UnrealGridMechanics/CLAUDE|UnrealGridMechanics overview]] → *Library*.
 - [[UnrealGridMechanics/code/UGridMechanics_GridLibrary|UGridMechanics_GridLibrary]]

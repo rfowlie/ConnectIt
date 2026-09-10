@@ -4,7 +4,7 @@ kind: UINTERFACE
 role: primary
 source:
   - Plugins/UnrealGameIntelligence/Source/UnrealGameIntelligence/Public/Utility/Interface/UtilityScoreHandler.h
-reconciled: 2026-09-06
+reconciled: 2026-09-10
 commit: 0ed7243
 ---
 
@@ -41,6 +41,10 @@ score's meaning.
 
 Self-contained.
 
+## Changes
+
+- 2026-09-10 — re-ingested to the `_code` schema; provenance re-anchored.
+
 ## See also
 
-- In-repo: `old/Plugins/UnrealGameIntelligence/Docs/README.md` → *Utility*.
+- In-repo: [[UnrealGameIntelligence/CLAUDE|UnrealGameIntelligence overview]] → *Utility*.

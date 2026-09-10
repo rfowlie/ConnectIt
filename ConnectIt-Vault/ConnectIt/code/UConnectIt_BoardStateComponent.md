@@ -6,8 +6,8 @@ source:
   - Source/ConnectIt/Public/Board/ConnectIt_BoardStateComponent.h
   - Source/ConnectIt/Private/Board/ConnectIt_BoardStateComponent.cpp
   - Source/ConnectIt/Public/ConnectIt_Structs.h
-reconciled: 2026-09-07
-commit: 668872e
+reconciled: 2026-09-10
+commit: 6477d5d
 ---
 
 # UConnectIt_BoardStateComponent
@@ -72,9 +72,12 @@ Adding a change kind ⇒ new `FConnectItBoardChangeEvent` fields + an
 the fields. UI reading the snapshot (`AConnectIt_GameState` wrappers, debug widgets,
 `UConnectIt_BoardStateLibrary`) must handle the new fields.
 
+## Changes
+
+- 2026-09-10 — re-ingested to the `_code` schema; provenance re-anchored.
+
 ## See also
 
-- In-repo: `old/Source/ConnectIt/Docs/Workflows/SingleSourceOfTruth-Replication.md`;
-  `old/Source/ConnectIt/Docs/Workflows/GameplayTag-EventSequencing.md`; `old/Source/ConnectIt/Docs/UIValueCatalogue.md`.
-- [[board-state-single-source-of-truth|systems/board-state-single-source-of-truth]] ·
+- In-repo: [[ConnectIt/CLAUDE|ConnectIt overview]].
+- [[board-state-single-source-of-truth|systems/board-state-single-source-of-truth]] Â·
   [[ConnectItStructs|ConnectItStructs]]

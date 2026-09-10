@@ -7,7 +7,7 @@ source:
   - Plugins/UnrealGameIntelligence/Source/UnrealGameIntelligence/Public/MinMax/MinMaxABPruning.h
   - Plugins/UnrealGameIntelligence/Source/UnrealGameIntelligence/Public/MinMax/MinMaxABMoveOrder.h
   - Plugins/UnrealGameIntelligence/Source/UnrealGameIntelligence/Public/MinMax/MinMaxUtility.h
-reconciled: 2026-09-06
+reconciled: 2026-09-10
 commit: 1cb84bd
 ---
 
@@ -60,7 +60,10 @@ reflection.
 Isolated. Converging the game module onto these means providing a `TNode` that satisfies
 `c_min_max_tree_builder` and deleting the game's own implementation.
 
+## Changes
+
+- 2026-09-10 — re-ingested to the `_code` schema; provenance re-anchored.
+
 ## See also
 
-- In-repo: `old/Plugins/UnrealGameIntelligence/Docs/README.md` → *MinMax*; `old/Plugins/UnrealGameIntelligence/Docs/Systems.md` → MinMax templates + the
-  "not used by the consuming project" note.
+- In-repo: [[UnrealGameIntelligence/CLAUDE|UnrealGameIntelligence overview]] → *MinMax*.

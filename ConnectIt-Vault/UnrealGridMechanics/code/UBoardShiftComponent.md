@@ -7,7 +7,7 @@ source:
   - Plugins/UnrealGridMechanics/Source/UnrealGridMechanics/Private/Board/Shift/BoardShiftComponent.cpp
   - Plugins/UnrealGridMechanics/Source/UnrealGridMechanics/Public/Board/Shift/GridMechanics_GridShiftLibrary.h
   - Plugins/UnrealGridMechanics/Source/UnrealGridMechanics/Public/Board/Shift/GridShiftTypes.h
-reconciled: 2026-09-06
+reconciled: 2026-09-10
 commit: 876ce22
 ---
 
@@ -65,7 +65,11 @@ The game's board manager commits `ComputeShift` results into `UBoardStateCompone
 tile actors consume `FTileShiftInstruction`. Changing `FShiftResult` shape touches all
 three plus `GridMechanics_GridShiftLibrary`.
 
+## Changes
+
+- 2026-09-10 — re-ingested to the `_code` schema; provenance re-anchored.
+
 ## See also
 
-- In-repo: `old/Plugins/UnrealGridMechanics/Docs/README.md` → *Board/Shift*; `old/Plugins/UnrealGridMechanics/Docs/Systems.md` → shift system.
-- [[UnrealGridMechanics/systems/board-shift|systems/board-shift]]
+- In-repo: [[UnrealGridMechanics/CLAUDE|UnrealGridMechanics overview]] → *Board/Shift*.
+- [[UnrealGridMechanics/code/systems/board-shift|systems/board-shift]]

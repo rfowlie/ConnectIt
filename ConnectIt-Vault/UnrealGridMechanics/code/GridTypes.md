@@ -5,7 +5,7 @@ role: primary
 source:
   - Plugins/UnrealGridMechanics/Source/UnrealGridMechanics/Public/GridMechanicsBaseStructs.h
   - Plugins/UnrealGridMechanics/Source/UnrealGridMechanics/Public/GridMechanicsBaseEnums.h
-reconciled: 2026-09-06
+reconciled: 2026-09-10
 commit: 0ed7243
 ---
 
@@ -57,6 +57,10 @@ These types are load-bearing across the whole plugin and `UnrealTurnBasedMechani
 change to `FGridPosition`'s layout or hash ripples into every `TMap<FGridPosition, …>`
 (registries, shift `PositionRemap`, board state).
 
+## Changes
+
+- 2026-09-10 — re-ingested to the `_code` schema; provenance re-anchored.
+
 ## See also
 
-- In-repo: `old/Plugins/UnrealGridMechanics/Docs/README.md` → *Top-level (Structs/Enums)*.
+- In-repo: [[UnrealGridMechanics/CLAUDE|UnrealGridMechanics overview]] → *Top-level (Structs/Enums)*.

@@ -5,7 +5,7 @@ role: primary
 source:
   - Plugins/UnrealTurnBasedMechanics/Source/UnrealTurnBasedMechanics/Public/Action/TurnBasedAction.h
   - Plugins/UnrealTurnBasedMechanics/Source/UnrealTurnBasedMechanics/Private/Action/TurnBasedAction.cpp
-reconciled: 2026-09-06
+reconciled: 2026-09-10
 commit: acbfa6f
 ---
 
@@ -20,7 +20,7 @@ Blueprint).
 ## When you touch this
 
 - Adding a new player move / ability as a `UTurnBasedAction` subclass — see
-  [[UnrealTurnBasedMechanics/recipes/add-a-turn-action|recipes/add-a-turn-action]].
+  [[UnrealTurnBasedMechanics/code/recipes/add-a-turn-action|recipes/add-a-turn-action]].
 - Changing the selection pipeline or how board changes are requested.
 
 ## Entry points
@@ -61,7 +61,7 @@ Blueprint).
   identifier, not a display string.
 - Board change goes `RequestBoardChange` → `OnChangeRequested` → the component's
   `HandleBoardChangeRequested` (freezes the stack) — see
-  [[UnrealTurnBasedMechanics/systems/action-stack-lifecycle|action-stack-lifecycle]].
+  [[UnrealTurnBasedMechanics/code/systems/action-stack-lifecycle|action-stack-lifecycle]].
 - Commented-out `SelectionInputAction` / `SelectionInputKey` fields + `TODO`s: the
   selection-input story is still settling; don't assume a default selection `UInputAction`.
 
@@ -73,6 +73,10 @@ A new subclass must be registered in
 `FInputTagBinding` entries; new gameplay-tag request types need a project `USTRUCT` for
 `FTurnActionRequest::Payload`.
 
+## Changes
+
+- 2026-09-10 — re-ingested to the `_code` schema; provenance re-anchored.
+
 ## See also
 
-- In-repo: `old/Plugins/UnrealTurnBasedMechanics/Docs/README.md` → *Action*; `old/Plugins/UnrealTurnBasedMechanics/Docs/Systems.md` → *The Action Stack*.
+- In-repo: [[UnrealTurnBasedMechanics/CLAUDE|UnrealTurnBasedMechanics overview]] → *Action*.

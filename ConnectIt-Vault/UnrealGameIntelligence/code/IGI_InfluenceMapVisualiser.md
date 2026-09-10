@@ -6,7 +6,7 @@ source:
   - Plugins/UnrealGameIntelligence/Source/UnrealGameIntelligence/Public/InfluenceMap/GI_InfluenceMapVisualiserInterface.h
   - Plugins/UnrealGameIntelligence/Source/UnrealGameIntelligence/Public/InfluenceMap/GI_FloatGridDataProviderInterface.h
   - Plugins/UnrealGameIntelligence/Source/UnrealGameIntelligence/Public/InfluenceMap/GI_InfluenceMapWidget.h
-reconciled: 2026-09-06
+reconciled: 2026-09-10
 commit: 32e3e7c
 ---
 
@@ -70,7 +70,11 @@ A new data shape = a new provider interface (mirroring
 `IGI_FloatGridDataProviderInterface`) + visualiser types that consume it. The subsystem
 and widget are untouched.
 
+## Changes
+
+- 2026-09-10 — re-ingested to the `_code` schema; provenance re-anchored.
+
 ## See also
 
-- In-repo: `old/Plugins/UnrealGameIntelligence/Source/UnrealGameIntelligence/README/InfluenceMap_README.md` (design guide), `old/Plugins/UnrealGameIntelligence/Docs/README.md` → *InfluenceMap*.
-- [[UnrealGameIntelligence/recipes/add-an-influence-map-visualiser|recipes/add-an-influence-map-visualiser]]
+- In-repo: [[UnrealGameIntelligence/CLAUDE|UnrealGameIntelligence overview]] → *InfluenceMap*.
+- [[UnrealGameIntelligence/code/recipes/add-an-influence-map-visualiser|recipes/add-an-influence-map-visualiser]]

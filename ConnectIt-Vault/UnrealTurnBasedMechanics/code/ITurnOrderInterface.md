@@ -5,7 +5,7 @@ role: primary
 source:
   - Plugins/UnrealTurnBasedMechanics/Source/UnrealTurnBasedMechanics/Public/Turn/Order/TurnOrderInterface.h
   - Plugins/UnrealTurnBasedMechanics/Source/UnrealTurnBasedMechanics/Private/Turn/Order/TurnOrderInterface.cpp
-reconciled: 2026-09-06
+reconciled: 2026-09-10
 commit: d605013
 ---
 
@@ -56,6 +56,10 @@ A new strategy is self-contained — just implement the interface and assign it.
 needs extra per-participant data, that goes on `FTurnParticipantInfo` (and its population
 in `UTurnBasedParticipantManagerComponent`).
 
+## Changes
+
+- 2026-09-10 — re-ingested to the `_code` schema; provenance re-anchored.
+
 ## See also
 
-- In-repo: `old/Plugins/UnrealTurnBasedMechanics/Docs/README.md` → *Turn/Order*; `old/Plugins/UnrealTurnBasedMechanics/Docs/Systems.md` → *Turn Order*.
+- In-repo: [[UnrealTurnBasedMechanics/CLAUDE|UnrealTurnBasedMechanics overview]] → *Turn/Order*.

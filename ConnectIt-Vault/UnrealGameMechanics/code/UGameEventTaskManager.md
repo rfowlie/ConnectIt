@@ -5,7 +5,7 @@ role: primary
 source:
   - Plugins/UnrealGameMechanics/Source/UnrealGameMechanics/Public/GameEvent/GameEventTaskManager.h
   - Plugins/UnrealGameMechanics/Source/UnrealGameMechanics/Private/GameEvent/GameEventTaskManager.cpp
-reconciled: 2026-09-06
+reconciled: 2026-09-10
 commit: 99cdd6a
 ---
 
@@ -49,6 +49,13 @@ async tasks in **phase order** (phase 0 fully completes before phase 1 starts, e
 - `PhaseIndex` starts at `-1`; `bAsyncTasksInitiated` guards re-entry.
 - Empty manager ⇒ `OnManagerComplete` fires essentially synchronously from
   `InitiateAllTasks`.
+- **`Create()` is a convenience, not the ownership answer.** `UGameEventTaskManager::Create()`
+  (like `UGameTurnHandler::Create()` / `UActorPool::Create()`) defaults to the transient
+  package with no owner. `UGameEventTaskSubsystem::GetOrCreateManager` deliberately uses
+  `NewObject<UGameEventTaskManager>(this)` instead — outering to the subsystem gives a
+  correct GC chain (its `ManagersByTag` `UPROPERTY` map keeps every manager reachable for
+  the world's lifetime). Reach for `NewObject(owner)` over a `Create()` helper whenever
+  the object must survive GC tied to something specific.
 
 ## Cross-impact
 
@@ -58,7 +65,11 @@ Change phase/completion logic and also update:
 [[UnrealGameMechanics/code/UGameEventTask_Async|UGameEventTask_Async]], `UGameTurnHandler`
 (registers turn-start/end async tasks against its own managers).
 
+## Changes
+
+- 2026-09-10 — re-ingested to the `_code` schema; provenance re-anchored.
+
 ## See also
 
-- In-repo: `old/Plugins/UnrealGameMechanics/Docs/README.md` → *GameEvent*; `old/Plugins/UnrealGameMechanics/Docs/Systems.md` → gated sequencing.
-- [[UnrealGameMechanics/systems/gated-event-tag-queue|systems/gated-event-tag-queue]]
+- In-repo: [[UnrealGameMechanics/CLAUDE|UnrealGameMechanics overview]] → *GameEvent*.
+- [[UnrealGameMechanics/code/systems/gated-event-tag-queue|systems/gated-event-tag-queue]]

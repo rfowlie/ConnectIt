@@ -6,7 +6,7 @@ source:
   - Plugins/UnrealGameMechanics/Source/UnrealGameMechanics/Public/State/StackedStateMachine.h
   - Plugins/UnrealGameMechanics/Source/UnrealGameMechanics/Private/State/StackedStateMachine.cpp
   - Plugins/UnrealGameMechanics/Source/UnrealGameMechanics/Public/State/StackedState.h
-reconciled: 2026-09-06
+reconciled: 2026-09-10
 commit: 99cdd6a
 ---
 
@@ -57,7 +57,10 @@ Covers `UStackedState` (the abstract per-entry base).
 Self-contained pattern. If you change the transition-delegate set, update every
 `UStackedState` subclass and the machine's bind/unbind in `PushState` / `PopState`.
 
+## Changes
+
+- 2026-09-10 — re-ingested to the `_code` schema; provenance re-anchored.
+
 ## See also
 
-- In-repo: `old/Plugins/UnrealGameMechanics/Docs/README.md` → *State*; `old/Plugins/UnrealGameMechanics/Docs/Systems.md` → the two state-machine patterns
-  (single-state `UGameMechanicsStateBase` vs. this stack-based one).
+- In-repo: [[UnrealGameMechanics/CLAUDE|UnrealGameMechanics overview]] → *State*.

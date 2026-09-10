@@ -7,7 +7,7 @@ source:
   - Plugins/UnrealGameMechanics/Source/UnrealGameMechanics/Private/Pooling/ActorPoolSubsystem.cpp
   - Plugins/UnrealGameMechanics/Source/UnrealGameMechanics/Public/Pooling/ActorPool.h
   - Plugins/UnrealGameMechanics/Source/UnrealGameMechanics/Public/Pooling/ActorPoolInterface.h
-reconciled: 2026-09-06
+reconciled: 2026-09-10
 commit: bcdbce3
 ---
 
@@ -60,7 +60,11 @@ pooled actor to customise activate/deactivate).
 Change the get/activate contract and also update every consumer that relies on the
 split timing (grid piece registry especially), and `IActorPoolInterface` implementers.
 
+## Changes
+
+- 2026-09-10 — re-ingested to the `_code` schema; provenance re-anchored.
+
 ## See also
 
-- In-repo: `old/Plugins/UnrealGameMechanics/Docs/README.md` → *Pooling*; `old/Plugins/UnrealGameMechanics/Docs/Systems.md` → pooling section.
-- [[UnrealGameMechanics/systems/actor-pooling-lifecycle|systems/actor-pooling-lifecycle]]
+- In-repo: [[UnrealGameMechanics/CLAUDE|UnrealGameMechanics overview]] → *Pooling*.
+- [[UnrealGameMechanics/code/systems/actor-pooling-lifecycle|systems/actor-pooling-lifecycle]]

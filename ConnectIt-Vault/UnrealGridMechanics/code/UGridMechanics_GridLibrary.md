@@ -5,7 +5,7 @@ role: primary
 source:
   - Plugins/UnrealGridMechanics/Source/UnrealGridMechanics/Public/GridMechanics_GridLibrary.h
   - Plugins/UnrealGridMechanics/Source/UnrealGridMechanics/Private/GridMechanics_GridLibrary.cpp
-reconciled: 2026-09-06
+reconciled: 2026-09-10
 commit: ae9c1f0
 ---
 
@@ -31,7 +31,7 @@ grid-position arithmetic, 8-neighbour traversal, and **N-in-a-row connection ana
   `GetClosestGridDirectionBetweenPositions` (returns `Up` + warns if P1==P2).
 - **Traversal:** `GetPositionNeighbors` — 8 neighbours, clockwise from Up.
 - **Connections:** `CountValidWindows` (windows of `ConnectLength` through a point along
-  one direction; O(L²)), `CountPossibleGridConnections` (sum over 8 dirs; default
+  one direction; O(LÂ²)), `CountPossibleGridConnections` (sum over 8 dirs; default
   `ConnectLength = 4`; **0 if the point isn't itself in `ValidPositions`**),
   `GetPotentialConnectionCountPerDirection` (per-direction breakdown, for AI),
   `CreateConnectionsFloodMap` (C++-only; sorted `TArray<TPair<int32,FGridPosition>>` for
@@ -59,7 +59,11 @@ Self-contained (pure functions). Changing the neighbour order or the
 `GridDirectionVectors` map would shift every consumer's direction indexing —
 [[UnrealGridMechanics/code/GridTypes|EGridDirection]] arithmetic assumes clockwise-from-Up.
 
+## Changes
+
+- 2026-09-10 — re-ingested to the `_code` schema; provenance re-anchored.
+
 ## See also
 
-- In-repo: `old/Plugins/UnrealGridMechanics/Docs/README.md` → *Library*; `old/Plugins/UnrealGridMechanics/Docs/Systems.md` → grid math.
+- In-repo: [[UnrealGridMechanics/CLAUDE|UnrealGridMechanics overview]] → *Library*.
 - [[UnrealGridMechanics/code/UGridMechanics_ShapeLibrary|UGridMechanics_ShapeLibrary]] (line/shape detection)

@@ -5,7 +5,7 @@ role: primary
 source:
   - Plugins/UnrealAIMechanics/Source/UnrealAIMechanics/Public/Utility/AI_UtilityGameActionController.h
   - Plugins/UnrealAIMechanics/Source/UnrealAIMechanics/Private/Utility/AI_UtilityGameActionController.cpp
-reconciled: 2026-09-06
+reconciled: 2026-09-10
 commit: becf253
 ---
 
@@ -52,6 +52,10 @@ objects, gathers their scored candidate actions, and (is meant to) pick the best
 If revived: enable in `.uproject`; the evaluator contract and `FGameActionEvaluated`
 shape are the extension surface.
 
+## Changes
+
+- 2026-09-10 — re-ingested to the `_code` schema; provenance re-anchored.
+
 ## See also
 
-- In-repo: `old/Plugins/UnrealAIMechanics/Docs/README.md`, `old/Plugins/UnrealAIMechanics/Docs/Systems.md`.
+- In-repo: [[UnrealAIMechanics/CLAUDE|UnrealAIMechanics overview]].

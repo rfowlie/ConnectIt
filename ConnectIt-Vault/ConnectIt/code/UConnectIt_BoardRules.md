@@ -9,7 +9,7 @@ source:
   - Source/ConnectIt/Public/Board/Rules/ConnectIt_WinCondition.h
   - Source/ConnectIt/Public/Board/Rules/ConnectIt_LineScoringRule.h
   - Source/ConnectIt/Public/Board/Rules/ConnectIt_ScoreThresholdWinCondition.h
-reconciled: 2026-09-07
+reconciled: 2026-09-10
 commit: 668872e
 ---
 
@@ -78,7 +78,11 @@ A new strategy is self-contained: implement the interface, assign it on `UConnec
 (or leave the default). If it needs new per-move result data, that goes on
 `FConnectItBoardChangeEvent` + `EnqueueBoardEventTags`.
 
+## Changes
+
+- 2026-09-10 — re-ingested to the `_code` schema; provenance re-anchored.
+
 ## See also
 
-- In-repo: `old/Source/ConnectIt/Docs/README.md` → rules; `old/Source/ConnectIt/Docs/Duplication.md`.
+- In-repo: [[ConnectIt/CLAUDE|ConnectIt overview]].
 - [[add-a-scoring-rule|recipes/add-a-scoring-rule]]

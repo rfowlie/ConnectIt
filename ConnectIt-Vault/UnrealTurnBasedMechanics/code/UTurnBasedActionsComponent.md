@@ -5,7 +5,7 @@ role: primary
 source:
   - Plugins/UnrealTurnBasedMechanics/Source/UnrealTurnBasedMechanics/Public/Action/TurnBasedActionsComponent.h
   - Plugins/UnrealTurnBasedMechanics/Source/UnrealTurnBasedMechanics/Private/Action/TurnBasedActionsComponent.cpp
-reconciled: 2026-09-06
+reconciled: 2026-09-10
 commit: ae9c1f0
 ---
 
@@ -52,8 +52,8 @@ the plugin (~25 UPROPERTY / ~32 UFUNCTION).
 - **Fires:** `OnBoardChangeRequested(+_Native)`, `OnTurnEndRequested(+_Native)`,
   `OnTurnEndReady`, `OnActionPushed/Popped/Completed/Cancelled` (+ `…Safe` snapshot
   siblings for observers).
-- Flows: [[UnrealTurnBasedMechanics/systems/action-stack-lifecycle|action-stack-lifecycle]],
-  [[UnrealTurnBasedMechanics/systems/turn-end-tag-gate|turn-end-tag-gate]].
+- Flows: [[UnrealTurnBasedMechanics/code/systems/action-stack-lifecycle|action-stack-lifecycle]],
+  [[UnrealTurnBasedMechanics/code/systems/turn-end-tag-gate|turn-end-tag-gate]].
 
 ## Gotchas
 
@@ -79,7 +79,11 @@ Change the slot set or lifecycle and also update:
 `UDWidget_TurnBasedActionsComponent` (reads `GetInfo()` / the `…Safe` delegates),
 `FTurnBasedActionsComponentInfo`.
 
+## Changes
+
+- 2026-09-10 — re-ingested to the `_code` schema; provenance re-anchored.
+
 ## See also
 
-- In-repo: `old/Plugins/UnrealTurnBasedMechanics/Docs/README.md` → *Action*; `old/Plugins/UnrealTurnBasedMechanics/Docs/Systems.md` → *The Action Stack*.
-- [[UnrealTurnBasedMechanics/recipes/add-a-turn-action|recipes/add-a-turn-action]]
+- In-repo: [[UnrealTurnBasedMechanics/CLAUDE|UnrealTurnBasedMechanics overview]] → *Action*.
+- [[UnrealTurnBasedMechanics/code/recipes/add-a-turn-action|recipes/add-a-turn-action]]

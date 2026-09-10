@@ -5,7 +5,7 @@ role: primary
 source:
   - Plugins/UnrealTurnBasedMechanics/Source/UnrealTurnBasedMechanics/Public/Action/ActionLoadoutDataAsset.h
   - Plugins/UnrealTurnBasedMechanics/Source/UnrealTurnBasedMechanics/Private/Action/ActionLoadoutDataAsset.cpp
-reconciled: 2026-09-06
+reconciled: 2026-09-10
 commit: e28339c
 ---
 
@@ -63,7 +63,11 @@ this asset (property + `Get*Action` + `IsDataValid`),
 the `Notify*` that pushes it), the loadout assets themselves, and — if surfaced —
 `UDWidget_TurnBasedActionsComponent`.
 
+## Changes
+
+- 2026-09-10 — re-ingested to the `_code` schema; provenance re-anchored.
+
 ## See also
 
-- In-repo: `old/Plugins/UnrealTurnBasedMechanics/Docs/README.md` → *Action*; `old/Plugins/UnrealTurnBasedMechanics/Docs/Systems.md` → *The Action Stack*.
-- [[UnrealTurnBasedMechanics/recipes/add-a-turn-action|recipes/add-a-turn-action]]
+- In-repo: [[UnrealTurnBasedMechanics/CLAUDE|UnrealTurnBasedMechanics overview]] → *Action*.
+- [[UnrealTurnBasedMechanics/code/recipes/add-a-turn-action|recipes/add-a-turn-action]]
