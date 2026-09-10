@@ -15,12 +15,12 @@ commit: 7008bcf
 
 ## What happens
 
-[[game/code/UConnectIt_State_Game|UConnectIt_State_Game]] is a composite single-state
+[[UConnectIt_State_Game|UConnectIt_State_Game]] is a composite single-state
 machine (on `UnrealGameMechanics`' `UGameMechanicsStateSimple` +
 `IGameStateHandlerInterface`) that models one player's turn as three phases:
 **SelectTile → PlacePiece → UpdateGameBoard**, then hand off to the next player's turn.
 Each phase is a `UConnectIt_State_Base` subclass with a `GameStateTag` and cached
-[[game/code/UConnectIt_GameFacade|GameFacade / GameViewModel]]. Transitions are
+[[UConnectIt_GameFacade|GameFacade / GameViewModel]]. Transitions are
 BlueprintNativeEvents on the composite (`OnTileSelected`, `OnPiecePlaced`, `OnBoardUpdated`,
 `StartNextPlayerTurn`), and every phase change broadcasts `OnGameStateChanged` with the
 phase tag. This is the game's *local phase model* — the network-authoritative match state
@@ -49,7 +49,7 @@ stateDiagram-v2
 2. **SelectTile** (`UConnectIt_State_SelectTile`) — player picks a tile; `OnTileSelected`.
 3. **PlacePiece** (`UConnectIt_State_PlacePiece`) — drives placement; the real board
    mutation is the server request flow
-   ([[game/systems/place-piece-request|place-piece-request]]); `OnPiecePlaced`.
+   ([[place-piece-request|place-piece-request]]); `OnPiecePlaced`.
 4. **UpdateGameBoard** (`UConnectIt_State_UpdateGameBoard`) — waits for board update /
    gated visuals; `OnBoardUpdated`.
 5. `StartNextPlayerTurn` → back to SelectTile for the next participant; `GameTurnTracker`

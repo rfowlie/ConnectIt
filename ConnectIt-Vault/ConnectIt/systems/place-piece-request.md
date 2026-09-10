@@ -25,12 +25,12 @@ hover→select pipeline, then on a valid selection builds an `FTurnActionRequest
 freezes the action stack (`bAwaitingRequestConfirmation`) and re-broadcasts. The
 ConnectIt player controller routes it to the server via `ServerRouteBoardChangeRequest`,
 which calls `AConnectIt_GameMode::ProcessBoardRequest` →
-[[game/code/UConnectIt_BoardRequestMediator|UConnectIt_BoardRequestMediator]]`::ProcessRequest`
+[[UConnectIt_BoardRequestMediator|UConnectIt_BoardRequestMediator]]`::ProcessRequest`
 → `HandlePlacePieceRequest`. That handler validates the tile, writes the piece into a
 working `FConnectItBoardState`, runs
-[[game/code/UConnectIt_BoardRules|UConnectIt_BoardRules]] (`ApplyScoring`,
+[[UConnectIt_BoardRules|UConnectIt_BoardRules]] (`ApplyScoring`,
 `CheckWinCondition`), builds the `FConnectItBoardChangeEvent`, and commits via
-[[game/code/UConnectIt_BoardStateComponent|UConnectIt_BoardStateComponent]]`::SetBoardState`.
+[[UConnectIt_BoardStateComponent|UConnectIt_BoardStateComponent]]`::SetBoardState`.
 That replicates the snapshot and, on **both** server and client,
 `EnqueueBoardEventTags()` fires the gated tag sequence (piece-placed → line-scored →
 player-win) on
@@ -108,7 +108,7 @@ sequenceDiagram
 ## Cross-impact
 
 Adding a request type mirrors this whole chain — see
-[[game/recipes/add-a-board-request-type|recipes/add-a-board-request-type]]. The gated tag
+[[add-a-board-request-type|recipes/add-a-board-request-type]]. The gated tag
 step is [[UnrealGameMechanics/systems/gated-event-tag-queue|gated-event-tag-queue]].
 
 ## See also

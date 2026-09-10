@@ -24,14 +24,14 @@ last commit to touch this module — the game is mid–"board architecture overh
 
 | Type | Kind | Area | Role | Source (`Public/…`) | Status |
 |---|---|---|---|---|---|
-| [[game/code/AConnectIt_GameMode\|AConnectIt_GameMode]] (`EConnectItMatchType`) | UCLASS (AGameMode) | Framework/GameMode | primary (server-only owner) | `Framework/GameMode/ConnectIt_GameMode.{h,cpp}` | current |
-| [[game/code/AConnectIt_GameState\|AConnectIt_GameState]] (`FConnectItMatchResult`, `EMatchEndReason`) | UCLASS (AGameState) | Framework/GameState | primary | `Framework/GameState/ConnectIt_GameState.{h,cpp}` | current |
-| [[game/code/UConnectIt_BoardStateComponent\|UConnectIt_BoardStateComponent]] | UCLASS (component) | Board | primary (single source of truth) | `Board/ConnectIt_BoardStateComponent.{h,cpp}` | current |
-| [[game/code/UConnectIt_BoardRequestMediator\|UConnectIt_BoardRequestMediator]] | UCLASS (UObject) | Board | primary (server-only) | `Board/ConnectIt_BoardRequestMediator.{h,cpp}` | current |
-| [[game/code/UConnectIt_BoardRules\|UConnectIt_BoardRules]] (`IConnectIt_ScoringRule`, `IConnectIt_WinCondition`, `UConnectIt_LineScoringRule`, `UConnectIt_ScoreThresholdWinCondition`) | UCLASS / UINTERFACE | Board/Rules | primary (pluggable strategies) | `Board/Rules/*.{h,cpp}` | current |
-| [[game/code/ConnectItStructs\|ConnectItStructs]] (`FConnectItBoardState`, `FConnectItTileData`, `FConnectItBoardChangeEvent`, `FConnectItBoardStateSnapshot`, `FConnectItRequest*` payloads) | USTRUCT ×~12 | Top-level | primary (data) | `ConnectIt_Structs.h` | current |
-| [[game/code/UConnectIt_State_Game\|UConnectIt_State_Game]] (`UConnectIt_State_Base`, `…_SelectTile`, `…_PlacePiece`, `…_UpdateGameBoard`) | UCLASS | Framework/Game State Machine | primary | `Framework/Game State Machine/*.{h,cpp}` | current |
-| [[game/code/UConnectIt_GameFacade\|UConnectIt_GameFacade]] (`UConnectIt_GameViewModel`) | UCLASS (UObject) | Framework/Data | primary (read / write model) | `Framework/Data/ConnectIt_GameFacade.{h,cpp}`, `.../ConnectIt_GameViewModel.{h,cpp}` | current |
+| [[AConnectIt_GameMode\|AConnectIt_GameMode]] (`EConnectItMatchType`) | UCLASS (AGameMode) | Framework/GameMode | primary (server-only owner) | `Framework/GameMode/ConnectIt_GameMode.{h,cpp}` | current |
+| [[AConnectIt_GameState\|AConnectIt_GameState]] (`FConnectItMatchResult`, `EMatchEndReason`) | UCLASS (AGameState) | Framework/GameState | primary | `Framework/GameState/ConnectIt_GameState.{h,cpp}` | current |
+| [[UConnectIt_BoardStateComponent\|UConnectIt_BoardStateComponent]] | UCLASS (component) | Board | primary (single source of truth) | `Board/ConnectIt_BoardStateComponent.{h,cpp}` | current |
+| [[UConnectIt_BoardRequestMediator\|UConnectIt_BoardRequestMediator]] | UCLASS (UObject) | Board | primary (server-only) | `Board/ConnectIt_BoardRequestMediator.{h,cpp}` | current |
+| [[UConnectIt_BoardRules\|UConnectIt_BoardRules]] (`IConnectIt_ScoringRule`, `IConnectIt_WinCondition`, `UConnectIt_LineScoringRule`, `UConnectIt_ScoreThresholdWinCondition`) | UCLASS / UINTERFACE | Board/Rules | primary (pluggable strategies) | `Board/Rules/*.{h,cpp}` | current |
+| [[ConnectItStructs\|ConnectItStructs]] (`FConnectItBoardState`, `FConnectItTileData`, `FConnectItBoardChangeEvent`, `FConnectItBoardStateSnapshot`, `FConnectItRequest*` payloads) | USTRUCT ×~12 | Top-level | primary (data) | `ConnectIt_Structs.h` | current |
+| [[UConnectIt_State_Game\|UConnectIt_State_Game]] (`UConnectIt_State_Base`, `…_SelectTile`, `…_PlacePiece`, `…_UpdateGameBoard`) | UCLASS | Framework/Game State Machine | primary | `Framework/Game State Machine/*.{h,cpp}` | current |
+| [[UConnectIt_GameFacade\|UConnectIt_GameFacade]] (`UConnectIt_GameViewModel`) | UCLASS (UObject) | Framework/Data | primary (read / write model) | `Framework/Data/ConnectIt_GameFacade.{h,cpp}`, `.../ConnectIt_GameViewModel.{h,cpp}` | current |
 | AConnectIt_PlayerController | UCLASS (APlayerController) | Framework/Controller | primary | `Framework/Controller/ConnectIt_PlayerController.{h,cpp}` | stub — covered in systems/place-piece-request |
 | AConnectIt_AIController | UCLASS (AAIController) | Framework/Controller | primary | `Framework/Controller/ConnectIt_AIController.{h,cpp}` | stub |
 | AConnectIt_GameMode_Play | UCLASS | Framework/GameMode | primary | `Framework/GameMode/ConnectIt_GameMode_Play.h` | stub |
@@ -51,6 +51,6 @@ last commit to touch this module — the game is mid–"board architecture overh
 
 ## Related
 
-- Flows: [[game/systems/index|systems/index.md]]
-- Recipes: [[game/recipes/index|recipes/index.md]]
+- Flows: [[ConnectIt/systems/index|systems/index.md]]
+- Recipes: [[ConnectIt/recipes/index|recipes/index.md]]
 - Suite context: [[architecture/overview|architecture/overview.md]]

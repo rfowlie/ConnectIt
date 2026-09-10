@@ -3,7 +3,7 @@
 Dated records of notable decisions and work sessions on ConnectIt — the "why we did it
 this way" log that doesn't belong to any single plugin.
 
-This section's marker is [`_section.md`](_section.md) (`schemas: []` — the entry format
+This section's marker is [`_section.md`](devlog/_section.md) (`schemas: []` — the entry format
 below is a local convention, not a schema).
 
 ## What goes here

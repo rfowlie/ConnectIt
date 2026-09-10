@@ -13,8 +13,8 @@ commit: 668872e
 
 `ATurnBasedGameMode` subclass. The **server-only** hub: it owns the two objects that
 replaced the retired `AConnectIt_BoardManager` actor —
-[[game/code/UConnectIt_BoardRequestMediator|UConnectIt_BoardRequestMediator]] and
-[[game/code/UConnectIt_BoardRules|UConnectIt_BoardRules]] — and is the single entry point
+[[UConnectIt_BoardRequestMediator|UConnectIt_BoardRequestMediator]] and
+[[UConnectIt_BoardRules|UConnectIt_BoardRules]] — and is the single entry point
 for board-change requests.
 
 ## When you touch this
@@ -44,7 +44,7 @@ for board-change requests.
   constructor (NewObject in the ctor runs before Blueprint-child property overrides — a
   CDO/archetype-timing pitfall this project has hit before).
 - `InitialiseBoard` calls
-  [[game/code/UConnectIt_BoardStateComponent|UConnectIt_BoardStateComponent]]`::InitialiseBoardState`,
+  [[UConnectIt_BoardStateComponent|UConnectIt_BoardStateComponent]]`::InitialiseBoardState`,
   resolving `TileRegistry`/`PieceRegistry` via `UConnectIt_GameUtilityLibrary` →
   `UConnectIt_BoardRegistrySubsystem` (one canonical per-world instance, initialised at
   `OnWorldBeginPlay` — always ready by the time `InitialiseBoard` runs off
@@ -65,9 +65,9 @@ for board-change requests.
 A new request type touches: `AConnectIt_GameMode` (only if a new public forwarder is
 wanted), `UConnectIt_BoardRequestMediator` (a `HandleXRequest`), a `FConnectItRequest*`
 payload struct, and `FConnectItBoardChangeEvent` fields — see
-[[game/recipes/add-a-board-request-type|recipes/add-a-board-request-type]].
+[[add-a-board-request-type|recipes/add-a-board-request-type]].
 
 ## See also
 
 - In-repo: `old/Source/ConnectIt/Docs/README.md`; `old/Source/ConnectIt/Docs/Workflows/ServerAuthoritative-ActionRequest.md`.
-- [[game/systems/place-piece-request|systems/place-piece-request]]
+- [[place-piece-request|systems/place-piece-request]]

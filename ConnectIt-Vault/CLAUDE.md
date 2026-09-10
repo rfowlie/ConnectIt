@@ -36,7 +36,7 @@ same name as the plugin. Plus three cross-cutting sections: `game/`, `architectu
 | [[UnrealCodingUtils/high-level\|UnrealCodingUtils]] | active (enabled) | Tiny dependency-free helper grab-bag; currently one class (`IsAuthoritative(UActorComponent*)`). |
 | [[UnrealAIMechanics/high-level\|UnrealAIMechanics]] | dormant (not enabled) | Weighted-scoring "Utility AI" action picker; core selection method is still a stub. |
 | [[UnrealUIMechanics/high-level\|UnrealUIMechanics]] | stub (not enabled) | Empty generated module skeleton — no classes yet. |
-| [[game/high-level\|game/]] | — | The ConnectIt game module itself (`../Source/ConnectIt/`): game-specific systems, rules, and how it consumes the plugin suite. |
+| [[ConnectIt/high-level\|game/]] | — | The ConnectIt game module itself (`../Source/ConnectIt/`): game-specific systems, rules, and how it consumes the plugin suite. |
 | [[architecture/overview\|architecture/]] | — | Cross-cutting: the plugin dependency graph, layering rules, what "game-agnostic" means here. |
 | [[devlog/README\|devlog/]] | — | Dated decision / session records. |
 

@@ -13,7 +13,7 @@ commit: 668872e
 # UConnectIt_BoardStateComponent
 
 `UBoardStateComponentBase` subclass on
-[[game/code/AConnectIt_GameState|AConnectIt_GameState]]. **The board's single source of
+[[AConnectIt_GameState|AConnectIt_GameState]]. **The board's single source of
 truth.** Exactly one replicated property — `FConnectItBoardStateSnapshot BoardSnapshot`
 (previous + current `FConnectItBoardState` + the `FConnectItBoardChangeEvent` describing
 the delta) — so state and "what changed" arrive atomically, and one signal drives every
@@ -49,7 +49,7 @@ visual system on both server and client.
   `QueueTagContainer` once per event, fixed order: shift/piece-placed → line-scored →
   player-win.
 - Written by
-  [[game/code/UConnectIt_BoardRequestMediator|UConnectIt_BoardRequestMediator]] handlers
+  [[UConnectIt_BoardRequestMediator|UConnectIt_BoardRequestMediator]] handlers
   via `SetBoardState`.
 
 ## Gotchas
@@ -76,5 +76,5 @@ the fields. UI reading the snapshot (`AConnectIt_GameState` wrappers, debug widg
 
 - In-repo: `old/Source/ConnectIt/Docs/Workflows/SingleSourceOfTruth-Replication.md`;
   `old/Source/ConnectIt/Docs/Workflows/GameplayTag-EventSequencing.md`; `old/Source/ConnectIt/Docs/UIValueCatalogue.md`.
-- [[game/systems/board-state-single-source-of-truth|systems/board-state-single-source-of-truth]] ·
-  [[game/code/ConnectItStructs|ConnectItStructs]]
+- [[board-state-single-source-of-truth|systems/board-state-single-source-of-truth]] ·
+  [[ConnectItStructs|ConnectItStructs]]

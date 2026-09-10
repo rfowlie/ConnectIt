@@ -13,12 +13,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "extras/templates/TSchemaCode.md",
+                "file": "_logs/2026-09-09-5.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "TSchemaCode"
+              "title": "2026-09-09-5"
             }
           }
         ]
@@ -206,6 +206,11 @@
   },
   "active": "97e0ab6e321a7903",
   "lastOpenFiles": [
+    "ideas.md",
+    "_extras/_clippings/Asserts in Unreal Engine  Unreal Engine 5.8 Documentation.md",
+    "extras/templates/TSchemaCode.md",
+    "_extras/_clippings",
+    "_extras",
     "_logs/README.md",
     "_logs/2026-09-09-5.md",
     "_logs/2026-09-09-4.md",
@@ -218,30 +223,25 @@
     "CLAUDE.md",
     "UnrealGameMechanics/high-level.md",
     "UnrealGameMechanics/code/index.md",
-    "game/_section.md",
-    "game/updates/wiki/2026-09-09-board-registry-subsystem.md",
-    "game/updates/wiki",
-    "game/updates/raw/2026-09-09-board-registry-subsystem.md",
-    "game/updates/raw",
-    "game/updates",
+    "ConnectIt/_section.md",
+    "ConnectIt/updates/wiki/2026-09-09-board-registry-subsystem.md",
+    "ConnectIt/updates/wiki",
+    "ConnectIt/updates/raw/2026-09-09-board-registry-subsystem.md",
+    "ConnectIt/updates/raw",
+    "ConnectIt/updates",
     "devlog/_section.md",
     "_schema/README.md",
     "_schema/decisions.md",
     "UnrealGameMechanics/_section.md",
     "UnrealGridMechanics/high-level.md",
-    "game/high-level.md",
+    "ConnectIt/high-level.md",
     "UnrealTurnBasedMechanics/high-level.md",
     "UnrealAIMechanics/high-level.md",
     "UnrealCodingUtils/high-level.md",
-    "old/Plugins/UnrealAIMechanics/Docs/Systems.md",
-    "old/Plugins/UnrealAIMechanics/Docs/README.md",
-    "extras/templates/TSchemaCode.md",
     "old/Plugins/UnrealGameIntelligence/Source/UnrealGameIntelligence/README",
     "old/Source/ConnectIt/Docs/Workflows",
     "old/Plugins/UnrealGameIntelligence/Source/UnrealGameIntelligence",
     "old/Source/ConnectIt/Docs",
-    "old/Plugins/UnrealTurnBasedMechanics/Docs",
-    "old/Plugins/UnrealGridMechanics/Docs",
     "Untitled.canvas"
   ]
 }

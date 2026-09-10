@@ -12,7 +12,7 @@ commit: 668872e
 # UConnectIt_BoardRequestMediator
 
 Plain `UObject`, **server-only**, constructed and owned by
-[[game/code/AConnectIt_GameMode|AConnectIt_GameMode]]. Accepts a validated
+[[AConnectIt_GameMode|AConnectIt_GameMode]]. Accepts a validated
 `FTurnActionRequest`, unwraps its `Payload` into the concrete `FConnectItRequest*` struct
 the `RequestType` expects, and routes to a per-type `HandleXRequest`. The successor to the
 retired `AConnectIt_BoardManager::ProcessRequest`.
@@ -40,9 +40,9 @@ retired `AConnectIt_BoardManager::ProcessRequest`.
 
 ## Collaborators
 
-- `GetBoardState()` → [[game/code/UConnectIt_BoardStateComponent|UConnectIt_BoardStateComponent]]
+- `GetBoardState()` → [[UConnectIt_BoardStateComponent|UConnectIt_BoardStateComponent]]
   on the GameState. Handlers build a working `FConnectItBoardState`, run
-  [[game/code/UConnectIt_BoardRules|UConnectIt_BoardRules]] (`ApplyScoring` /
+  [[UConnectIt_BoardRules|UConnectIt_BoardRules]] (`ApplyScoring` /
   `CheckWinCondition`) on it, then commit via `SetBoardState(NewState, ChangeEvent)`.
 - `BoardRules` (injected via `Initialise`).
 
@@ -67,5 +67,5 @@ and a `UTurnBasedAction` subclass that sends it.
 ## See also
 
 - In-repo: `old/Source/ConnectIt/Docs/Workflows/ServerAuthoritative-ActionRequest.md`; `old/Source/ConnectIt/Docs/LegacyPipeline.md`.
-- [[game/systems/place-piece-request|systems/place-piece-request]] ·
-  [[game/recipes/add-a-board-request-type|recipes/add-a-board-request-type]]
+- [[place-piece-request|systems/place-piece-request]] ·
+  [[add-a-board-request-type|recipes/add-a-board-request-type]]

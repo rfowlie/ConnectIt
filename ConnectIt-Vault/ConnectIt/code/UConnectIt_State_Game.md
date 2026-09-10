@@ -42,7 +42,7 @@ Covers `UConnectIt_State_Base` (`GameStateTag`, cached `GameViewModel` + `GameFa
 ## Collaborators
 
 - Each `UConnectIt_State_Base` caches a
-  [[game/code/UConnectIt_GameFacade|UConnectIt_GameFacade]] (read) and
+  [[UConnectIt_GameFacade|UConnectIt_GameFacade]] (read) and
   `UConnectIt_GameViewModel` (write).
 - Drives / observes the turn via `UnrealTurnBasedMechanics` (the actual replicated match
   state machine is `UTurnBasedParticipantManagerComponent`; this is the game's local

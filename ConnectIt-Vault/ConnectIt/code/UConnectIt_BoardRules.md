@@ -15,7 +15,7 @@ commit: 668872e
 
 # UConnectIt_BoardRules (+ scoring / win-condition strategies)
 
-`UObject`, **server-only**, on [[game/code/AConnectIt_GameMode|AConnectIt_GameMode]].
+`UObject`, **server-only**, on [[AConnectIt_GameMode|AConnectIt_GameMode]].
 Holds the board's two **pluggable strategies** — an `IConnectIt_ScoringRule` and an
 `IConnectIt_WinCondition` — mirroring `UnrealTurnBasedMechanics`'
 [[UnrealTurnBasedMechanics/code/ITurnOrderInterface|ITurnOrderInterface]] pattern.
@@ -59,7 +59,7 @@ Holds the board's two **pluggable strategies** — an `IConnectIt_ScoringRule` a
 
 ## Collaborators
 
-- Called by [[game/code/UConnectIt_BoardRequestMediator|UConnectIt_BoardRequestMediator]]
+- Called by [[UConnectIt_BoardRequestMediator|UConnectIt_BoardRequestMediator]]
   handlers on a working `FConnectItBoardState` before it's committed via `SetBoardState`.
 
 ## Gotchas
@@ -81,4 +81,4 @@ A new strategy is self-contained: implement the interface, assign it on `UConnec
 ## See also
 
 - In-repo: `old/Source/ConnectIt/Docs/README.md` → rules; `old/Source/ConnectIt/Docs/Duplication.md`.
-- [[game/recipes/add-a-scoring-rule|recipes/add-a-scoring-rule]]
+- [[add-a-scoring-rule|recipes/add-a-scoring-rule]]

@@ -2,7 +2,7 @@
 date: 2026-09-09
 slug: board-registry-subsystem
 unit: game
-raw: "[[raw/2026-09-09-board-registry-subsystem]]"
+raw: "[[ConnectIt/updates/raw/2026-09-09-board-registry-subsystem]]"
 ---
 
 # 2026-09-09 — Tile/piece registries move to a world subsystem
@@ -71,5 +71,5 @@ which explicitly multi-client-tests via an `L_NetworkTest`-style setup.
 
 ## Links
 
-- Raw: [[raw/2026-09-09-board-registry-subsystem]]
-- Related: [`old/Source/ConnectIt/Docs/ConnectItModule.md#board-registry-subsystem-second-pass`](../../old/Source/ConnectIt/Docs/ConnectItModule.md#board-registry-subsystem-second-pass), [[game/high-level|game/high-level.md]], [[game/code/AConnectIt_GameMode|game/code/AConnectIt_GameMode.md]]
+- Raw: [[ConnectIt/updates/raw/2026-09-09-board-registry-subsystem]]
+- Related: [`old/Source/ConnectIt/Docs/ConnectItModule.md#board-registry-subsystem-second-pass`](../../old/Source/ConnectIt/Docs/ConnectItModule.md#board-registry-subsystem-second-pass), [[ConnectIt/high-level|game/high-level.md]], [[AConnectIt_GameMode|game/code/AConnectIt_GameMode.md]]

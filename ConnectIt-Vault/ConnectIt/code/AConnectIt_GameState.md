@@ -13,7 +13,7 @@ commit: 668872e
 
 `ATurnBasedGameState` subclass. Replicated, one instance per world, on server **and every
 client** — so it hosts the two things that must be a single source of truth: the
-[[game/code/UConnectIt_BoardStateComponent|UConnectIt_BoardStateComponent]] (board) and a
+[[UConnectIt_BoardStateComponent|UConnectIt_BoardStateComponent]] (board) and a
 replicated `FConnectItMatchResult` (results screen). Also the convenience read-API layer
 for UI.
 
@@ -65,4 +65,4 @@ game-over handlers. Board read wrappers mirror `UConnectIt_BoardStateComponent` 
 ## See also
 
 - In-repo: `old/Source/ConnectIt/Docs/Workflows/SingleSourceOfTruth-Replication.md`; `old/Source/ConnectIt/Docs/RuntimeStateAccess.md`.
-- [[game/systems/board-state-single-source-of-truth|systems/board-state-single-source-of-truth]]
+- [[board-state-single-source-of-truth|systems/board-state-single-source-of-truth]]

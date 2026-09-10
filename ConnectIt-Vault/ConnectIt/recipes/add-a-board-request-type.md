@@ -22,8 +22,8 @@ chain as place-piece.
 
 ## Prerequisites
 
-- Read [[game/systems/place-piece-request|place-piece-request]] and
-  [[game/systems/board-state-single-source-of-truth|board-state-single-source-of-truth]].
+- Read [[place-piece-request|place-piece-request]] and
+  [[board-state-single-source-of-truth|board-state-single-source-of-truth]].
 - The existing `FConnectItRequest*` structs + `HandleXRequest` handlers are your
   templates.
 
@@ -85,8 +85,8 @@ chain as place-piece.
 
 ## See also
 
-- [[game/code/UConnectIt_BoardRequestMediator|UConnectIt_BoardRequestMediator]] ·
-  [[game/code/UConnectIt_BoardStateComponent|UConnectIt_BoardStateComponent]] ·
-  [[game/code/ConnectItStructs|ConnectItStructs]]
+- [[UConnectIt_BoardRequestMediator|UConnectIt_BoardRequestMediator]] ·
+  [[UConnectIt_BoardStateComponent|UConnectIt_BoardStateComponent]] ·
+  [[ConnectItStructs|ConnectItStructs]]
 - In-repo: `old/Source/ConnectIt/Docs/Workflows/ServerAuthoritative-ActionRequest.md`;
   `old/Source/ConnectIt/Docs/Workflows/GameplayTag-EventSequencing.md`.

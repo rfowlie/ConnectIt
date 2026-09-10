@@ -46,7 +46,7 @@ lines), `bGameWon` (**edge-triggered**; + `WinningFactionSlot`), plus
 ### `FConnectItBoardStateSnapshot` — the ONE replicated property
 
 `PreviousState` + `CurrentState` + `ChangeEvent`, arriving together. Lives on
-[[game/code/UConnectIt_BoardStateComponent|UConnectIt_BoardStateComponent]].
+[[UConnectIt_BoardStateComponent|UConnectIt_BoardStateComponent]].
 
 ### `FConnectItRequest*` payloads (wrapped in `FTurnActionRequest::Payload`)
 

@@ -44,13 +44,13 @@ score board, game-over flow, and a rules "interpreter".
 ## Board architecture (post-refactor)
 
 The `AConnectIt_BoardManager` **actor is retired**. Board authority is now server-only
-UObjects on [[game/code/AConnectIt_GameMode|AConnectIt_GameMode]]:
-[[game/code/UConnectIt_BoardRequestMediator|UConnectIt_BoardRequestMediator]] (dispatches
+UObjects on [[AConnectIt_GameMode|AConnectIt_GameMode]]:
+[[UConnectIt_BoardRequestMediator|UConnectIt_BoardRequestMediator]] (dispatches
 `FTurnActionRequest`s to `HandleXRequest` handlers) and
-[[game/code/UConnectIt_BoardRules|UConnectIt_BoardRules]] (pluggable scoring / win
+[[UConnectIt_BoardRules|UConnectIt_BoardRules]] (pluggable scoring / win
 strategies). The board itself is one replicated snapshot on
-[[game/code/UConnectIt_BoardStateComponent|UConnectIt_BoardStateComponent]] (on the
-GameState) — see [[game/systems/board-state-single-source-of-truth|single-source-of-truth]].
+[[UConnectIt_BoardStateComponent|UConnectIt_BoardStateComponent]] (on the
+GameState) — see [[board-state-single-source-of-truth|single-source-of-truth]].
 The tag-reactive interpreter that turned board changes into piece spawn/despawn was
 removed; its replacement (a game-event queue on the mediator) is **unfinished** — several
 `UConnectIt_*GameEvent` bodies are commented out.
@@ -60,7 +60,7 @@ lookups) went through a second relocation: briefly on `AConnectIt_PlayerControll
 (per-machine), now on `UConnectIt_BoardRegistrySubsystem` (`UWorldSubsystem`, one canonical
 instance per world). The concrete registry subclass + tuned values a designer picks per
 level now live as `Instanced` template properties on
-[[game/code/index#UConnectIt_LevelConfigDataAsset|UConnectIt_LevelConfigDataAsset]]; the
+[[ConnectIt/code/index#UConnectIt_LevelConfigDataAsset|UConnectIt_LevelConfigDataAsset]]; the
 subsystem `DuplicateObject()`s its own runtime copy from each at `OnWorldBeginPlay` rather
 than ever using the template live (a `UDataAsset`'s subobjects are shared/loaded-once,
 unsafe to use directly as per-world state). See
@@ -71,9 +71,9 @@ unsafe to use directly as per-world state). See
 Partial ingest of `../../Source/ConnectIt/`, anchored to `668872e`. Per-type status in
 each index.
 
-- [[game/code/index|code/index.md]] ([[_schema/code|schema]]) — 8 pages
-- [[game/systems/index|systems/index.md]] ([[_schema/systems|schema]]) — `place-piece-request`, `board-state-single-source-of-truth`, `game-state-machine`
-- [[game/recipes/index|recipes/index.md]] ([[_schema/recipes|schema]]) — `add-a-scoring-rule`, `add-a-board-request-type`
+- [[ConnectIt/code/index|code/index.md]] ([[_schema/code|schema]]) — 8 pages
+- [[ConnectIt/systems/index|systems/index.md]] ([[_schema/systems|schema]]) — `place-piece-request`, `board-state-single-source-of-truth`, `game-state-machine`
+- [[ConnectIt/recipes/index|recipes/index.md]] ([[_schema/recipes|schema]]) — `add-a-scoring-rule`, `add-a-board-request-type`
 
 ## Still to ingest
 

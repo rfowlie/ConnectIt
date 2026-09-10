@@ -21,7 +21,7 @@ component.
 
 - Understand the flow: the mediator writes the piece into a working `FConnectItBoardState`,
   then calls `UConnectIt_BoardRules::ApplyScoring` — see
-  [[game/systems/place-piece-request|place-piece-request]] §5.
+  [[place-piece-request|place-piece-request]] §5.
 - `UConnectIt_LineScoringRule` is the reference implementation (N-in-a-row).
 
 ## Steps
@@ -76,6 +76,6 @@ component.
 
 ## See also
 
-- [[game/code/UConnectIt_BoardRules|UConnectIt_BoardRules]] ·
-  [[game/code/ConnectItStructs|ConnectItStructs]]
+- [[UConnectIt_BoardRules|UConnectIt_BoardRules]] ·
+  [[ConnectItStructs|ConnectItStructs]]
 - In-repo: `old/Source/ConnectIt/Docs/README.md` → rules; `old/Source/ConnectIt/Docs/Duplication.md`.

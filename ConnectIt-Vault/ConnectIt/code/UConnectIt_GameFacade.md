@@ -14,7 +14,7 @@ commit: 7008bcf
 # UConnectIt_GameFacade (+ UConnectIt_GameViewModel)
 
 The read / write split for game logic and UI over
-[[game/code/UConnectIt_State_Game|UConnectIt_State_Game]]:
+[[UConnectIt_State_Game|UConnectIt_State_Game]]:
 
 - **`UConnectIt_GameFacade`** — *read-only* window onto the game. "Access information
   about the game without being able to change anything."
@@ -50,7 +50,7 @@ The read / write split for game logic and UI over
 
 - **Facade is read-only by contract** — if you need to change state, that's the view
   model (or, for board changes, the server request path via
-  [[game/systems/place-piece-request|place-piece-request]]).
+  [[place-piece-request|place-piece-request]]).
 - Several methods carry `TODO`s (messy player-ID handling; wanting to return cloned/const
   data so callers can't tamper) — treat return values as read-only even where the
   signature doesn't enforce it.

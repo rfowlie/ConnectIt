@@ -15,8 +15,8 @@ commit: 668872e
 
 The entire board is one replicated property:
 `FConnectItBoardStateSnapshot BoardSnapshot` on
-[[game/code/UConnectIt_BoardStateComponent|UConnectIt_BoardStateComponent]] (which lives
-on the replicated [[game/code/AConnectIt_GameState|AConnectIt_GameState]]). The snapshot
+[[UConnectIt_BoardStateComponent|UConnectIt_BoardStateComponent]] (which lives
+on the replicated [[AConnectIt_GameState|AConnectIt_GameState]]). The snapshot
 carries **previous state + current state + a `FConnectItBoardChangeEvent`** describing the
 delta — so a listener always has both "what it is now" and "what just changed," delivered
 atomically. The server mutates only through `SetBoardState`; clients receive
@@ -51,7 +51,7 @@ flowchart TD
 ## Steps
 
 1. Server handler builds a working `FConnectItBoardState`, runs
-   [[game/code/UConnectIt_BoardRules|rules]], assembles `FConnectItBoardChangeEvent`.
+   [[UConnectIt_BoardRules|rules]], assembles `FConnectItBoardChangeEvent`.
 2. `SetBoardState(NewState, ChangeEvent)` — current→`PreviousState`, apply `NewState`,
    store `ChangeEvent` inside the one snapshot.
 3. Snapshot replicates. `OnRep_BoardSnapshot` on clients.
@@ -84,4 +84,4 @@ Every UI reader (`AConnectIt_GameState` wrappers, `UConnectIt_BoardStateLibrary`
 
 - In-repo: `old/Source/ConnectIt/Docs/Workflows/SingleSourceOfTruth-Replication.md`;
   `old/Source/ConnectIt/Docs/Workflows/GameplayTag-EventSequencing.md`; `old/Source/ConnectIt/Docs/RuntimeStateAccess.md`.
-- [[game/systems/place-piece-request|systems/place-piece-request]]
+- [[place-piece-request|systems/place-piece-request]]
