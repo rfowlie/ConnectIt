@@ -114,7 +114,7 @@ public:
     // Unregisters every owned tile and stops listening for new spawns.
     virtual void ShutdownRegistry();
 
-private:
+protected:
 
     // Authoritative, ordered list of every tile in the level.
     UPROPERTY()

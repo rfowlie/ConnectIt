@@ -107,6 +107,14 @@ public:
         return { BoardSnapshot.CurrentState, BoardSnapshot.ChangeEvent };
     }
 
+    // --- Helpers ---
+    
+    UFUNCTION(BlueprintPure, Category = "Board State")
+    int32 GetPositionMultiplier(const FGridPosition GridPosition) const;
+
+    UFUNCTION(BlueprintPure, Category = "Board State")
+    int32 GetTileMultiplier(const AGridTileBase* GridTile) const;
+    
     // Resolved: per-tile/per-state helper queries (IsTileOccupied, GetScore,
     // etc.) live on UConnectIt_BoardStateLibrary, not here -- a
     // UBlueprintFunctionLibrary taking FConnectItBoardState by const&, so it

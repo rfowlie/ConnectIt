@@ -84,8 +84,7 @@ struct FConnectItBoardState
     // --- Accessors ---
 
     // Find tile data by position -- returns nullptr if not found
-    const FConnectItTileData* GetTileData(
-        const FGridPosition& Position) const
+    const FConnectItTileData* GetTileData(const FGridPosition& Position) const
     {
         const int32 Index = TilePositions.IndexOfByKey(Position);
         return TileDataArray.IsValidIndex(Index)

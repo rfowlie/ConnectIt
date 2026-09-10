@@ -2,6 +2,7 @@
 
 #include "Board/ConnectIt_BoardStateComponent.h"
 #include "ConnectIt_GameplayTags.h"
+#include "Framework/Library/ConnectIt_GameUtilityLibrary.h"
 #include "GameEvent/GameEventTaskSubsystem.h"
 #include "Library/CodingUtilsLibrary.h"
 #include "Net/UnrealNetwork.h"
@@ -86,6 +87,33 @@ const FConnectItBoardState* UConnectIt_BoardStateComponent::GetBoardSnapShotCurr
 const FConnectItBoardState* UConnectIt_BoardStateComponent::GetBoardSnapShotPrevious() const
 {
     return &BoardSnapshot.PreviousState;
+}
+
+int32 UConnectIt_BoardStateComponent::GetPositionMultiplier(const FGridPosition GridPosition) const
+{
+    const FConnectItTileData* TileData = GetCurrentState().GetTileData(GridPosition);
+    if (!TileData)
+    {
+        UE_LOG(LogTemp, Error, TEXT(
+            "UConnectIt_BoardStateComponent::GetPositionMultiplier - GridPosition (X:%d Y:%d) invalid"),
+            GridPosition.X, GridPosition.Y);
+        return 0;
+    }
+
+    return TileData->Multiplier;
+}
+
+int32 UConnectIt_BoardStateComponent::GetTileMultiplier(const AGridTileBase* GridTile) const
+{
+    const auto TileRegistry = UConnectIt_GameUtilityLibrary::GetTileRegistry(this);
+    if (!TileRegistry)
+    {
+        UE_LOG(LogTemp, Error, TEXT(
+            "UConnectIt_BoardStateComponent::GetTileMultiplier - Tile Registry invalid"));
+        return 0;
+    }
+    
+    return GetPositionMultiplier(TileRegistry->GetPositionOfTile(GridTile));
 }
 
 void UConnectIt_BoardStateComponent::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const

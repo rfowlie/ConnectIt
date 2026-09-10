@@ -27,4 +27,5 @@ public:
 
     UFUNCTION(BlueprintPure, Category = "ConnectIt|Board")
     UConnectIt_BoardStateComponent* GetBoardState() const;
+    
 };

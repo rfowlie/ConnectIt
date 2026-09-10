@@ -137,6 +137,9 @@ AGridTileBase* UGridTileRegistryBase::GetTileAtPosition(FGridPosition Position) 
     return nullptr;
 }
 
+// TODO: in general how can we alert classes when we return a null FGridPosition
+// as the default is just (0, 0) which might actually be a tile position
+// will be a annoying bug
 FGridPosition UGridTileRegistryBase::GetPositionOfTile(const AGridTileBase* Tile) const
 {
     if (!IsValid(Tile)) return FGridPosition();
