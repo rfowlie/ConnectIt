@@ -17,7 +17,7 @@ Vault root only, exactly one. Never inside a domain — a domain keeps its own
 
 | Folder | Holds | Governed by |
 |---|---|---|
-| `_core/_schema/` | The mechanical spec — one rulebook per section kind, plus `README.md`. | itself |
+| `_core/_schema/` | The mechanical spec — one rulebook per section kind, plus `__README.md`. | itself |
 | `_core/_templates/` | Every note template (`TSchema*`, `TCode*`). Obsidian's Templates plugin points here. | this file |
 | `_core/_logs/` | The vault-wide maintenance log. | [`_schema/_logs.md`](_logs.md) |
 | `_core/_clippings/` | The vault-wide unprocessed capture dump. | [`_schema/_clippings.md`](_clippings.md) |
@@ -52,5 +52,5 @@ templates where their governing schema defines one.
 
 ## Deviations
 
-Add `_core/README.md` starting `Extends _schema/_core.md. Differences:` if a vault
+Add `_core/__README.md` starting `Extends _schema/_core.md. Differences:` if a vault
 adds or omits a non-domain folder.

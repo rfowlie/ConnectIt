@@ -6,5 +6,5 @@
 
 <!--
 Status: active | suspended | complete | dropped
-Change a Status cell, then run /reconcile-tasks to file the row.
+Change a Status cell, then run /process-tasks to file the row.
 -->

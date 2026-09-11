@@ -15,7 +15,7 @@ open, notes to self, links to anything created or touched.
 
 ## Rules
 
-- Dated filename, one per day (see `_schema/README.md` → **Dated event notes**) — but
+- Dated filename, one per day (see `_schema/__README.md` → **Dated event notes**) — but
   unlike the others, a daily note *is* edited through its own day.
 - **Not a log.** `_logs` is machine-written maintenance history; `daily/` is the human's
   own running notes. Different folder, different purpose.
@@ -29,5 +29,5 @@ open, notes to self, links to anything created or touched.
 
 ## Deviations
 
-Add `daily/README.md` starting `Extends _schema/_daily.md. Differences:` if a domain
+Add `daily/__README.md` starting `Extends _schema/_daily.md. Differences:` if a domain
 wants a fixed daily structure or a weekly/monthly rollup.

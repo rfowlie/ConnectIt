@@ -14,12 +14,12 @@ place for the decision's full context — that lives in the area's main referenc
 
 ## Rules
 
-- Follows the **dated event note** convention (see `_schema/README.md`): dated filename,
+- Follows the **dated event note** convention (see `_schema/__README.md`): dated filename,
   append-only, never rewritten.
 - A superseded note is marked `Status: superseded by [[<newer-slug>]]` — not deleted.
 - One decision per file. If a session settles three things, that's three notes.
 
 ## Deviations
 
-Add `decisions/README.md` starting `Extends _schema/_decisions.md. Differences:` if a
+Add `decisions/__README.md` starting `Extends _schema/_decisions.md. Differences:` if a
 domain needs extra frontmatter or a different slug scheme.

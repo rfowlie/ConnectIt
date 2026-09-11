@@ -8,4 +8,4 @@ Governed by [`_schema/_tasks.md`](../_schema/_tasks.md). A domain's own tasks li
 
 - Add rows to `active.md` by hand.
 - To retire a task: set its `Status` to `suspended` / `complete` / `dropped`, then run
-  `/reconcile-tasks` — it moves the row to the matching file and stamps `Moved`.
+  `/process-tasks` — it moves the row to the matching file and stamps `Moved`.

@@ -26,5 +26,5 @@ Each file carries a one-line pointer to the other.
 
 ## Deviations
 
-Add `user/README.md` starting `Extends _schema/_user.md. Differences:` if a domain needs
+Add `user/__README.md` starting `Extends _schema/_user.md. Differences:` if a domain needs
 extra structure or fields.

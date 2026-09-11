@@ -21,7 +21,7 @@ folder, plus the rules for how sections, domains, and routers fit together.
 |---|---|---|---|---|
 | **Router / context** | `CLAUDE.md` | yes — every ancestor dir of the file you're editing | one domain, or the vault | where am I, what is this, current state, what to read next |
 | **Schema / spec** | `_schema/_<section>.md` | no (referenced) | any folder of that kind, anywhere | what a `<section>/` *is*, its invariants, naming rule, what must never happen there |
-| **Local override** | `<domain>/<section>/README.md` | no (referenced) | one specific folder | how *this* section differs from the schema |
+| **Local override** | `<domain>/<section>/__README.md` | no (referenced) | one specific folder | how *this* section differs from the schema |
 
 On conflict: the **schema wins** on section rules; the `CLAUDE.md` wins on state and routing.
 
@@ -37,7 +37,7 @@ project, personal. Each domain:
   empty directories anyway).
 
 An **active project is a domain** — a root-level folder with its own `CLAUDE.md` — not a
-section type. A domain that only groups child domains carries a `README.md` index
+section type. A domain that only groups child domains carries a `__README.md` index
 instead of a full router.
 
 ## The section catalogue
@@ -100,6 +100,11 @@ operating rules (log every change, keep `ABOUT.md` current) and the steps to dro
 - Templates live in `_core/_templates/`: `TSchema<Section>.md` for a section's note
   shape (referenced from the schema as `[[TSchema<Section>]]`), `TCode*` for the code-doc
   note kinds, `TSchema.md` for authoring a new schema file.
+- **Every folder-explainer note is `__README.md`**, not `README.md` — the double
+  underscore sorts it above every ordinary note in that folder and makes it visually
+  unmistakable at a glance. Applies everywhere the pattern appears: the spec index
+  (this file), every `_core/_<section>/__README.md`, and every domain-level deviation
+  note (`<domain>/<section>/__README.md`).
 
 ## What earns a schema
 
@@ -131,7 +136,7 @@ corrections go in the next entry). `_daily` is the one that's edited through its
 
 ## How a domain deviates from a schema
 
-Add a `README.md` **inside that section folder**, opening:
+Add a `__README.md` **inside that section folder**, opening:
 
 ```
 Extends _schema/_<section>.md. Differences:

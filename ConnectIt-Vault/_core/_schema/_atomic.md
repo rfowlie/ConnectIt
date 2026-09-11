@@ -12,13 +12,13 @@ unrelated notes can mingle and spark connections.
 
 > **Warn on multiples.** If a second `atomic/` (or `_atomic/`) folder appears anywhere in
 > the vault, that's an error — merge its notes into `_core/_atomic/` and delete it.
-> Don't silently maintain two pools.
+> Don't silently maintain two pools. `/process-atomic` runs this check and fix.
 
 ## Structure
 
 ```
 _core/_atomic/
-  README.md               what this folder is
+  __README.md               what this folder is
   about-atomic-notes.md   the editable "how this vault writes atomic notes" reference
   mental-model.md         anchor note for notes tagged `mental model`
   <kebab-slug>.md         one note per idea, named for the idea (not its source)
@@ -70,5 +70,5 @@ atomic notes behave.
 
 ## Deviations
 
-Add `_core/_atomic/README.md` differences inline, or a note in that README — there is
-only one atomic folder, so the usual per-domain deviation pattern doesn't apply.
+Add `_core/_atomic/__README.md` differences inline, or a note in that `__README` — there
+is only one atomic folder, so the usual per-domain deviation pattern doesn't apply.

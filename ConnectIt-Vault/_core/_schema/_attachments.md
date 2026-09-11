@@ -35,5 +35,5 @@ No template — `attachments/` defines a storage folder, not notes of a fixed sh
 
 ## Deviations
 
-Add `attachments/README.md` starting `Extends _schema/_attachments.md. Differences:` if a
+Add `attachments/__README.md` starting `Extends _schema/_attachments.md. Differences:` if a
 domain needs a naming scheme or a retention rule.

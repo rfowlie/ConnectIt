@@ -34,17 +34,19 @@ row was relocated. A domain may add columns (`Priority`, `Source`, …); keep `T
 - **The user enters and prioritises tasks by hand.** Claude does not invent tasks or
   reorder them.
 - **To retire a task:** set its `Status` cell in `active.md` to `suspended` / `complete`
-  / `dropped`, then run `/reconcile-tasks` — the skill moves the row to the matching
+  / `dropped`, then run `/process-tasks` — the skill moves the row to the matching
   archive file and stamps `Moved`. Nothing leaves `active.md` until the skill runs.
-- `active.md` should contain only `Status: active` rows after a reconcile.
+- `active.md` should contain only `Status: active` rows after a process run.
 - Archive files are append-only in spirit — a resumed task is moved back to `active.md`
-  by hand (or a future skill), not rewritten in place.
+  by hand today. Reviving a task is planned as part of a future sprint-planning skill,
+  not `/process-tasks` (which is one-directional by design) — see `ABOUT.md` → Open
+  questions.
 - Created on first use.
 
 ## Mounts
 
 Either: `_core/_tasks/` for vault-level work, `<domain>/tasks/` for a domain's own.
-`/reconcile-tasks` sweeps every `tasks/` folder in the vault.
+`/process-tasks` sweeps every `tasks/` folder in the vault.
 
 ## Template
 
@@ -52,6 +54,6 @@ Either: `_core/_tasks/` for vault-level work, `<domain>/tasks/` for a domain's o
 
 ## Deviations
 
-Add `tasks/README.md` starting `Extends _schema/_tasks.md. Differences:` for extra
+Add `tasks/__README.md` starting `Extends _schema/_tasks.md. Differences:` for extra
 columns, extra statuses, or (later) an Obsidian Bases view in place of the markdown
 tables.

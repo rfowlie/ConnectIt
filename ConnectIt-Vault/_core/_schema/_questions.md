@@ -49,5 +49,5 @@ domain's own.
 
 ## Deviations
 
-Add `questions/README.md` starting `Extends _schema/_questions.md. Differences:` for extra
+Add `questions/__README.md` starting `Extends _schema/_questions.md. Differences:` for extra
 frontmatter or a required triage cadence.

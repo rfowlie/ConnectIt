@@ -24,6 +24,8 @@ belong here too.
   lands; `clippings/` is a staging area, not an exemption.
 - **Delete an item once it's routed** (or record why it was discarded). `clippings/` is
   not an archive.
+- **No `/process-*` skill touches this folder.** Deciding where a clip belongs is a
+  judgment call every time — routing stays manual, on purpose.
 
 ## File naming
 
@@ -39,5 +41,5 @@ fixed shape.
 ## Deviations
 
 A domain whose `clippings/` is filled by a different tool, or needs a different retention
-rule, adds `clippings/README.md` starting `Extends _schema/_clippings.md. Differences:`
+rule, adds `clippings/__README.md` starting `Extends _schema/_clippings.md. Differences:`
 and lists only the changes.

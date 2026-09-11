@@ -1,17 +1,22 @@
 ---
-name: reconcile-tasks
+name: process-tasks
 description: >-
   When the user has changed task rows in a tasks/active.md to Status suspended / complete
   / dropped and wants them filed. Vault-wide: finds every tasks/ folder, relocates each
   retired row to its archive file with a Moved date, and reports what moved. Use for
-  "reconcile tasks", "file my done tasks", "tidy the task lists".
+  "process tasks", "/process-tasks", "file my done tasks", "tidy the task lists".
 ---
 
-# Reconcile Tasks
+# Process Tasks
 
 Keep every `tasks/active.md` showing only active work by moving retired rows to their
 archive files. The deliverable is a **precise relocation** — nothing is rephrased,
 reprioritised, or deleted.
+
+**One-directional by design.** This skill only moves rows *out of* `active.md`. Reviving
+a `suspended` task is deliberately out of scope here — it's planned as part of a future
+sprint-planning workflow skill (surface suspended tasks as available to resume; see
+`ABOUT.md` → Open questions). Move a task back by hand until that exists.
 
 ## Purpose
 
@@ -58,7 +63,7 @@ Unrecognised statuses, malformed rows, archive files created, anything skipped.
 
 ### 3. Log
 Write an `_core/_logs/<YYYY-MM-DD-HHMM>.md` note per `[[TSchemaLogs]]` (scope `vault`),
-and add its line to `_core/_logs/README.md`. Confirm the path.
+and add its line to `_core/_logs/__README.md`. Confirm the path.
 
 ## Style
 

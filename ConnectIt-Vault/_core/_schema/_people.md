@@ -27,5 +27,5 @@ suffix (`people/alex-kim-designer.md`).
 
 ## Deviations
 
-Add `people/README.md` starting `Extends _schema/_people.md. Differences:` if a domain
+Add `people/__README.md` starting `Extends _schema/_people.md. Differences:` if a domain
 tracks extra fields (e.g. deal stage, retainer terms).

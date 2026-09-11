@@ -14,7 +14,8 @@ Reusable procedures Claude can run on demand — the "programs" of this vault.
   edit the authored copy, mirror it, and note the change in the relevant log —
   `<domain>/logs/` for a domain skill, `_core/_logs/` for a vault-wide one.
 - The authored copy is canonical; `.claude/skills/` is a generated mirror, not
-  hand-edited.
+  hand-edited. `/process-skills` checks every vault-wide skill's mirror exists and
+  matches, and fixes it if not — scoped to this vault, not other vaults holding a copy.
 
 ## Template
 
@@ -40,5 +41,5 @@ Every skill in this vault is held to the same bar:
 
 ## Deviations
 
-Add `skills/README.md` starting `Extends _schema/_skills.md. Differences:` if a domain
+Add `skills/__README.md` starting `Extends _schema/_skills.md. Differences:` if a domain
 authors skills differently.

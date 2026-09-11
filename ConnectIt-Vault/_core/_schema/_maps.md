@@ -29,5 +29,5 @@ a generated list.
 
 ## Deviations
 
-Add `maps/README.md` starting `Extends _schema/_maps.md. Differences:` if a domain wants
+Add `maps/__README.md` starting `Extends _schema/_maps.md. Differences:` if a domain wants
 a fixed section order or a required "start here" map.

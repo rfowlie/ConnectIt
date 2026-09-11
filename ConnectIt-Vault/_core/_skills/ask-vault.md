@@ -80,7 +80,7 @@ corroboration").
 
 ### 6. Log it
 Write sections 1–5 to `_core/_ask-vault/<YYYY-MM-DD>-<slug>.md` using the shape in
-`_core/_ask-vault/README.md`. Kebab-case slug from the question; `-2` on a same-day
+`_core/_ask-vault/__README.md`. Kebab-case slug from the question; `-2` on a same-day
 collision. Confirm the path at the end of the response.
 
 ## Style

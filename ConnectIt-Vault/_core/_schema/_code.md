@@ -37,7 +37,8 @@ A page is fresh while `git log <source paths> <commit>..HEAD` is empty. `reconci
 the date a human last read the page against the code; the two are independent. To
 refresh: re-read the source, rewrite the affected sections, reset `commit:` and
 `reconciled:`. This replaces the baseline `created:` / `source:` frontmatter for every
-note in `code/`.
+note in `code/`. `/process-code` runs this drift check across every page and refreshes
+what's stale.
 
 ## `index.md`
 
@@ -120,6 +121,6 @@ row per recipe: `task | when you'd do it | status`.
 
 ## Deviations
 
-Add `code/README.md` starting `Extends _schema/_code.md. Differences:` when a domain needs
+Add `code/__README.md` starting `Extends _schema/_code.md. Differences:` when a domain needs
 section-specific rules (e.g. a plugin with no in-repo docs that wants fuller pages, a
 different page-grouping rule, or a domain that treats each plugin as its own sub-domain).

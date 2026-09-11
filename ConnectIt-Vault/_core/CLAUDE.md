@@ -13,7 +13,7 @@ restate the spec.
 
 When a session will touch vault structure, read first:
 
-1. [`_schema/README.md`](_schema/README.md) — how the vault works (the three layers, the
+1. [`_schema/__README.md`](_schema/__README.md) — how the vault works (the three layers, the
    section catalogue, naming, extraction).
 2. [`../ABOUT.md`](../ABOUT.md) — why it's shaped this way, and the decision history.
 
@@ -26,7 +26,7 @@ done:
 1. Write one note to `_logs/<YYYY-MM-DD-HHMM>.md` per
    [`_schema/_logs.md`](_schema/_logs.md) / [[TSchemaLogs]] — one per working session /
    change-set, append-only, never edited after writing. Add its line to
-   [`_logs/README.md`](_logs/README.md) (newest first).
+   [`_logs/__README.md`](_logs/__README.md) (newest first).
 2. Update [`../ABOUT.md`](../ABOUT.md) when the structure or its rationale shifted — the
    section table, Conventions, Open questions, and a Changelog line.
 
@@ -42,6 +42,6 @@ is the portable form.)
    file) so these rules load at the start of every session — a nested `CLAUDE.md`
    otherwise only loads once a file inside it is touched.
 3. The host's existing top-level folders become **domains** — each gets its own
-   `CLAUDE.md` and opts into the sections it uses (`_schema/README.md` → "Domains").
+   `CLAUDE.md` and opts into the sections it uses (`_schema/__README.md` → "Domains").
 4. `_core/_<section>/` are the vault-wide instances; a domain keeps its own
    `<domain>/<section>/`. `_core/` does not travel into an *extracted* domain.

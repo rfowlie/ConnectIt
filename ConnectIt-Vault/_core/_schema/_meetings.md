@@ -18,7 +18,7 @@ Add `-2` for a second meeting the same day with the same slug.
 
 ## Rules
 
-- Follows the **dated event note** convention (see `_schema/README.md`): dated filename,
+- Follows the **dated event note** convention (see `_schema/__README.md`): dated filename,
   append-only, one per file.
 - **A meeting that settles a non-obvious call also gets a `decisions/` note** — the
   meeting note records the discussion, the decision note records the "why".
@@ -30,5 +30,5 @@ Add `-2` for a second meeting the same day with the same slug.
 
 ## Deviations
 
-Add `meetings/README.md` starting `Extends _schema/_meetings.md. Differences:` if a
+Add `meetings/__README.md` starting `Extends _schema/_meetings.md. Differences:` if a
 domain needs a different slug scheme or extra frontmatter.

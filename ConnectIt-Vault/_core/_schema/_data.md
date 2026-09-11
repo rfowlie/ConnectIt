@@ -4,10 +4,10 @@ A `data/` folder is **reference** — stable facts and understanding, not a to-d
 
 ## Subfolders
 
-| Subfolder | Holds |
-|---|---|
-| `raw/` | Source material — transcripts, articles, posts, talks — ingested **verbatim**. One subfolder per source by kebab-case slug, files numbered `NN-` in ingest order, each with YAML frontmatter. |
-| `wiki/` | One synthesis note per source, built from everything in the matching `raw/<slug>/`. |
+| Subfolder | Holds                                                                                                                                                                                         |
+| --------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `raw/`    | Source material — transcripts, articles, posts, talks — ingested **verbatim**. One subfolder per source by kebab-case slug, files numbered `NN-` in ingest order, each with YAML frontmatter. |
+| `wiki/`   | One synthesis note per source, built from everything in the matching `raw/<slug>/`.                                                                                                           |
 
 Owner facts live in `_user`, not here. Mental models are `_atomic` notes tagged
 `mental model`, not here. Binary source files (PDFs, audio, images) live in
@@ -19,7 +19,8 @@ Owner facts live in `_user`, not here. Mental models are `_atomic` notes tagged
   fidelity. Caveats (garbled captions, a guest speaker, a hosted conversation) go in the
   frontmatter `note:`, not inline.
 - **Every `raw/<slug>/` file is reflected in `wiki/<slug>.md`.** A new raw file means a
-  wiki update. No wiki claim should lack raw support.
+  wiki update. No wiki claim should lack raw support. `/process-data` sweeps every
+  `data/` folder and writes the wiki notes missing for existing raw sources.
 - **Paraphrase in the source's voice in `wiki/`;** reserve quotation marks for phrases
   actually attested in `raw/`.
 - **One canonical file per subject.** If a domain has a single reference doc that is the
@@ -33,6 +34,6 @@ own shape plus frontmatter; a `wiki/<slug>.md` is free-form synthesis.
 
 ## Deviations
 
-A domain's `data/` (or a subfolder of it) adds a local `README.md` starting
+A domain's `data/` (or a subfolder of it) adds a local `__README.md` starting
 `Extends _schema/_data.md. Differences:` when it needs domain-specific rules — e.g. a
 per-source corpus convention.
