@@ -17,5 +17,5 @@ vectors), converge the game module's AI onto the plugin MinMax templates.
 
 ## Related
 
-- Types: [[UnrealGameIntelligence/code/index|code/index.md]]
-- Flows: [[UnrealGameIntelligence/code/systems/index|systems/index.md]]
+- Types: [[UnrealGameIntelligence/code/__INDEX|code/__INDEX.md]]
+- Flows: [[UnrealGameIntelligence/code/systems/__INDEX|systems/__INDEX.md]]

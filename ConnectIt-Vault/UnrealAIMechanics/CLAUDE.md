@@ -24,14 +24,14 @@ the array.
 
 ## Sections
 
-- **`code/`** — 2 type pages + `code/index.md`. Governed by
+- **`code/`** — 2 type pages + `code/__INDEX.md`. Governed by
   [[_core/_schema/_code|_core/_schema/_code.md]]. No `systems/` / `recipes/` while
   dormant.
 - `logs/` — created on first use.
 
 ## Start here
 
-[[UnrealAIMechanics/code/index|code/index.md]].
+[[UnrealAIMechanics/code/__INDEX|code/__INDEX.md]].
 
 ## Known rough edges
 

@@ -40,8 +40,8 @@ revisit).
   notes in the folder.
 - Created on first use — the writing process makes the folder if it's absent. Don't
   pre-scaffold.
-- Optional: a `logs/__README.md` may carry a newest-first one-line index for quick
-  start-of-session context.
+- Optional: a `logs/__INDEX.md` (per [[TIndex]]) may carry a newest-first one-line index
+  for quick start-of-session context.
 
 ## Template
 
@@ -50,5 +50,5 @@ revisit).
 ## Deviations
 
 Add `logs/__README.md` starting `Extends _schema/_logs.md. Differences:` if a domain needs
-a different retention rule or extra frontmatter. (A plain rolling index in that same file
-is not a deviation.)
+a different retention rule or extra frontmatter. (Its `logs/__INDEX.md`, if present, is a
+separate file and not itself a deviation.)

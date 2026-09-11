@@ -16,5 +16,5 @@ Newest first:
 
 ## Related
 
-- [[ConnectIt/code/index|code/index.md]] — inventory, suite map, known issues
-- [[ConnectIt/logs/README|logs/]] — ConnectIt-scoped maintenance passes
+- [[ConnectIt/code/__INDEX|code/__INDEX.md]] — inventory, suite map, known issues
+- [[ConnectIt/logs/__INDEX|logs/]] — ConnectIt-scoped maintenance passes

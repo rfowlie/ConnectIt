@@ -18,6 +18,8 @@ place for the decision's full context — that lives in the area's main referenc
   append-only, never rewritten.
 - A superseded note is marked `Status: superseded by [[<newer-slug>]]` — not deleted.
 - One decision per file. If a session settles three things, that's three notes.
+- Optional: a `decisions/__INDEX.md` (per [[TIndex]]) may carry a dated table of every
+  decision for quick scanning.
 
 ## Deviations
 

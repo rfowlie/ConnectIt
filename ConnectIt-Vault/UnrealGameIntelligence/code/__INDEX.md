@@ -51,5 +51,5 @@ plugin deps. Three loosely-related parts:
 
 ## Related
 
-- Flows: [[UnrealGameIntelligence/code/systems/index|code/systems/index.md]]
-- Recipes: [[UnrealGameIntelligence/code/recipes/index|code/recipes/index.md]]
+- Flows: [[UnrealGameIntelligence/code/systems/__INDEX|code/systems/__INDEX.md]]
+- Recipes: [[UnrealGameIntelligence/code/recipes/__INDEX|code/recipes/__INDEX.md]]

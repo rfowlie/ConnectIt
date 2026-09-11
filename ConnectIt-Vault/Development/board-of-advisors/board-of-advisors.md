@@ -105,7 +105,7 @@ You named a **severe mentorship gap** and low trust in the industry. Until you r
    - _Tyroller:_ has the loop proven fun to a stranger yet? If not, this decision doesn't matter.
    - _Ruswick:_ is this on the checklist? What's the next concrete task if it isn't?
 3. **Note where they disagree** — that's usually where your real judgement call is.
-4. **Log the consultation** in [`questions/`](questions/) as `YYYY-MM-DD-<slug>.md` — the question, each advisor's response, the synthesized recommendation, and the date. The `/ask-the-board` skill does this automatically; see [`questions/README.md`](questions/README.md).
+4. **Log the consultation** in [`questions/`](questions/) as `YYYY-MM-DD-<slug>.md` — the question, each advisor's response, the synthesized recommendation, and the date. The `/ask-the-board` skill does this automatically; see [`questions/__README.md`](questions/__README.md).
 
 ---
 

@@ -19,5 +19,5 @@ the single-state `UGameMechanicsStateBase` machine, debug-widget seed-then-react
 
 ## Related
 
-- Types: [[UnrealGameMechanics/code/index|code/index.md]]
-- Recipes: [[UnrealGameMechanics/code/recipes/index|recipes/index.md]]
+- Types: [[UnrealGameMechanics/code/__INDEX|code/__INDEX.md]]
+- Recipes: [[UnrealGameMechanics/code/recipes/__INDEX|recipes/__INDEX.md]]

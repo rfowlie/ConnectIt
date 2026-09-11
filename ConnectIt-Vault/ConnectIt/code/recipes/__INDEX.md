@@ -19,5 +19,5 @@ game-event queue.
 
 ## Related
 
-- Types: [[ConnectIt/code/index|code/index.md]]
-- Flows: [[ConnectIt/code/systems/index|systems/index.md]]
+- Types: [[ConnectIt/code/__INDEX|code/__INDEX.md]]
+- Flows: [[ConnectIt/code/systems/__INDEX|systems/__INDEX.md]]

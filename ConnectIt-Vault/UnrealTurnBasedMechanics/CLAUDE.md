@@ -28,13 +28,13 @@ wires the participant + actions components identically onto the player and AI co
 
 ## Sections
 
-- **`code/`** — per-type pages, `code/systems/`, `code/recipes/`, `code/index.md`.
+- **`code/`** — per-type pages, `code/systems/`, `code/recipes/`, `code/__INDEX.md`.
   Governed by [[_core/_schema/_code|_core/_schema/_code.md]].
 - `logs/` — created on first use ([[_core/_schema/_logs|schema]]).
 
 ## Start here
 
-[[UnrealTurnBasedMechanics/code/index|code/index.md]].
+[[UnrealTurnBasedMechanics/code/__INDEX|code/__INDEX.md]].
 
 ## Known rough edges
 

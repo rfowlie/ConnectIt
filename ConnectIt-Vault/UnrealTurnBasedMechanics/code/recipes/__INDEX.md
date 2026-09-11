@@ -18,5 +18,5 @@ against `TurnEndEventTag`, add a system-action slot, wire a controller from scra
 
 ## Related
 
-- Types: [[UnrealTurnBasedMechanics/code/index|code/index.md]]
-- Flows: [[UnrealTurnBasedMechanics/code/systems/index|systems/index.md]]
+- Types: [[UnrealTurnBasedMechanics/code/__INDEX|code/__INDEX.md]]
+- Flows: [[UnrealTurnBasedMechanics/code/systems/__INDEX|systems/__INDEX.md]]

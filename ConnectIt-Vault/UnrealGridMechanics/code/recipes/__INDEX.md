@@ -18,5 +18,5 @@ score a line after a placement.
 
 ## Related
 
-- Types: [[UnrealGridMechanics/code/index|code/index.md]]
-- Flows: [[UnrealGridMechanics/code/systems/index|systems/index.md]]
+- Types: [[UnrealGridMechanics/code/__INDEX|code/__INDEX.md]]
+- Flows: [[UnrealGridMechanics/code/systems/__INDEX|systems/__INDEX.md]]

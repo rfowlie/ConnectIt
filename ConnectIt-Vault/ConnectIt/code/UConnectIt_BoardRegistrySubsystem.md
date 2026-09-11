@@ -113,4 +113,4 @@ Adding a new registry field: the `Instanced` template property on
 
 - Decision: [[ConnectIt/decisions/2026-09-09-board-registries-to-world-subsystem|decisions/2026-09-09-board-registries-to-world-subsystem]]
 - [[AConnectIt_GameMode|AConnectIt_GameMode]], [[UConnectIt_BoardStateComponent|UConnectIt_BoardStateComponent]]
-- Plugin bases: [[UnrealGridMechanics/code/index|UnrealGridMechanics/code/index.md]]
+- Plugin bases: [[UnrealGridMechanics/code/__INDEX|UnrealGridMechanics/code/__INDEX.md]]

@@ -31,12 +31,12 @@ logic — everything reusable lives in a plugin.
 - **Utils** — authority checks from [[UnrealCodingUtils/CLAUDE|UnrealCodingUtils]].
 
 The full suite dependency graph and layering is the **Map** section of
-[[ConnectIt/code/index|code/index.md]].
+[[ConnectIt/code/__INDEX|code/__INDEX.md]].
 
 ## Sections
 
 - **`code/`** — per-type pages, `code/systems/` flows, `code/recipes/` tasks,
-  `code/index.md` (inventory of every public type + the suite map + known issues).
+  `code/__INDEX.md` (inventory of every public type + the suite map + known issues).
   Governed by [[_core/_schema/_code|_core/_schema/_code.md]].
 - **`decisions/`** — one dated note per settled non-obvious call (board-architecture
   overhaul, registry relocation, legacy-pipeline retirement, …). Governed by
@@ -45,7 +45,7 @@ The full suite dependency graph and layering is the **Map** section of
 
 ## Start here
 
-[[ConnectIt/code/index|code/index.md]] — inventory, suite map, known issues.
+[[ConnectIt/code/__INDEX|code/__INDEX.md]] — inventory, suite map, known issues.
 
 ## Current state
 
@@ -56,7 +56,7 @@ The full suite dependency graph and layering is the **Map** section of
   snapshot on `UConnectIt_BoardStateComponent` (on the GameState). `TileRegistry` /
   `PieceRegistry` now live on `UConnectIt_BoardRegistrySubsystem` (`UWorldSubsystem`),
   `DuplicateObject`'d per world from `Instanced` templates on
-  `UConnectIt_LevelConfigDataAsset`. See [[ConnectIt/decisions/index|decisions/]].
+  `UConnectIt_LevelConfigDataAsset`. See [[ConnectIt/decisions/__INDEX|decisions/]].
 - **Retired / dead — do not document as live:** the tag-reactive interpreter pipeline
   (its game-event-queue replacement on the mediator is an empty stub); the whole ConnectIt
   shift pipeline; the legacy MVVM pipeline (`UConnectIt_State_*`, `UConnectIt_GameFacade`,

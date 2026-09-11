@@ -71,5 +71,5 @@ siblings on `UTurnBasedParticipantComponent` — not a type, no page.
 
 ## Related
 
-- Flows: [[UnrealTurnBasedMechanics/code/systems/index|code/systems/index.md]]
-- Recipes: [[UnrealTurnBasedMechanics/code/recipes/index|code/recipes/index.md]]
+- Flows: [[UnrealTurnBasedMechanics/code/systems/__INDEX|code/systems/__INDEX.md]]
+- Recipes: [[UnrealTurnBasedMechanics/code/recipes/__INDEX|code/recipes/__INDEX.md]]

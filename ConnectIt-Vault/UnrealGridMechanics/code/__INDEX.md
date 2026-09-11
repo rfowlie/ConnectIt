@@ -66,5 +66,5 @@ Domain overview: [[UnrealGridMechanics/CLAUDE|CLAUDE.md]].
 
 ## Related
 
-- Flows: [[UnrealGridMechanics/code/systems/index|code/systems/index.md]]
-- Recipes: [[UnrealGridMechanics/code/recipes/index|code/recipes/index.md]]
+- Flows: [[UnrealGridMechanics/code/systems/__INDEX|code/systems/__INDEX.md]]
+- Recipes: [[UnrealGridMechanics/code/recipes/__INDEX|code/recipes/__INDEX.md]]

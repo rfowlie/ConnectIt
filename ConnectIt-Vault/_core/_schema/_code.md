@@ -10,12 +10,14 @@ that contains source code.
 
 ```
 code/
-  index.md               inventory of every public type + a MAP of the codebase's core
+  __INDEX.md              inventory of every public type + a MAP of the codebase's core
                          directories / plugins / major systems (where to start)
   <TypeName>.md           one page per primary public class / struct / enum / interface
   <FileStem>.md           one page for a file's cluster of small types (Enums.md, …)
   systems/<flow-slug>.md  per-flow narrative pages — how several types collaborate
+  systems/__INDEX.md      one row per flow: flow | what it does | status
   recipes/<task-slug>.md  per-task step-by-step procedures for a concrete change
+  recipes/__INDEX.md      one row per recipe: task | when you'd do it | status
 ```
 
 Flat within each level — no source-tree mirroring.
@@ -40,7 +42,7 @@ refresh: re-read the source, rewrite the affected sections, reset `commit:` and
 note in `code/`. `/process-code` runs this drift check across every page and refreshes
 what's stale.
 
-## `index.md`
+## `__INDEX.md`
 
 Two jobs in one file:
 
@@ -84,7 +86,7 @@ Frontmatter: `schema: systems`, `spans:` (paths/types the flow crosses), `reconc
 5. **Cross-impact** — what else must change if this flow changes.
 6. **See also** — in-repo `Docs/`, related `code/` / `recipes/` pages.
 
-Link to `code/` pages; don't re-describe types. `systems/index.md` is one row per flow:
+Link to `code/` pages; don't re-describe types. `systems/__INDEX.md` is one row per flow:
 `flow | what it does | status`.
 
 ## `recipes/<task-slug>.md` — per-task page
@@ -101,7 +103,7 @@ order:
 5. **Pitfalls** — the mistakes people make on this task.
 6. **See also** — the `code/` / `systems/` pages behind the steps.
 
-Executable without leaving the vault + the named source files. `recipes/index.md` is one
+Executable without leaving the vault + the named source files. `recipes/__INDEX.md` is one
 row per recipe: `task | when you'd do it | status`.
 
 ## Rules
@@ -109,7 +111,7 @@ row per recipe: `task | when you'd do it | status`.
 - **No `raw/`** anywhere in `code/`. Provenance is the `commit:` anchor.
 - **Refresh, don't diff** — per the provenance model above, for every page kind.
 - **One page per primary type**; grouped small types share a file-stem page.
-- **`index.md` carries a row for every public type** and the codebase map.
+- **`__INDEX.md` carries a row for every public type** and the codebase map.
 - **The `systems/` diagram is mandatory.**
 - **`## Changes` is append-only** — never rewrite a past entry.
 - Created on first use, once the domain's source has been ingested. Don't pre-scaffold.
@@ -117,7 +119,8 @@ row per recipe: `task | when you'd do it | status`.
 ## Templates
 
 `[[TSchemaCode]]` (per-type, incl. `## Changes`) · `[[TCodeSystem]]` (flow page) ·
-`[[TCodeRecipe]]` (task page). `index.md` has no template — it's an inventory + map.
+`[[TCodeRecipe]]` (task page). `__INDEX.md` has no template of its own — it's an
+inventory + map, a specialized [[TIndex]] (see `_schema/__README.md`).
 
 ## Deviations
 

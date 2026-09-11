@@ -39,6 +39,12 @@ Every skill in this vault is held to the same bar:
 - A skill reads from `data/wiki/` and the domain's reference docs; it shouldn't
   hard-code facts that belong in a reference file.
 
+## Folder notes
+
+`skills/__README.md` holds the rules (this file's local deviations, if any); the live
+catalog of skills actually present belongs in `skills/__INDEX.md` (per [[TIndex]]),
+kept separate so the rules explainer doesn't have to grow with every new skill.
+
 ## Deviations
 
 Add `skills/__README.md` starting `Extends _schema/_skills.md. Differences:` if a domain

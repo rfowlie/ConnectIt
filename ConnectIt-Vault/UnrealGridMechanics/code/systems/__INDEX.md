@@ -18,5 +18,5 @@ piece spawn/despawn through the pool, cursor manager → selection.
 
 ## Related
 
-- Types: [[UnrealGridMechanics/code/index|code/index.md]]
-- Recipes: [[UnrealGridMechanics/code/recipes/index|recipes/index.md]]
+- Types: [[UnrealGridMechanics/code/__INDEX|code/__INDEX.md]]
+- Recipes: [[UnrealGridMechanics/code/recipes/__INDEX|recipes/__INDEX.md]]

@@ -20,13 +20,13 @@ interfaces. A separate editor module adds asset validation.
 
 ## Sections
 
-- **`code/`** — per-type pages, `code/systems/`, `code/recipes/`, `code/index.md`
+- **`code/`** — per-type pages, `code/systems/`, `code/recipes/`, `code/__INDEX.md`
   (inventory + map). Governed by [[_core/_schema/_code|_core/_schema/_code.md]].
 - `logs/` — created on first use ([[_core/_schema/_logs|schema]]).
 
 ## Start here
 
-[[UnrealGridMechanics/code/index|code/index.md]].
+[[UnrealGridMechanics/code/__INDEX|code/__INDEX.md]].
 
 ## Known rough edges
 

@@ -37,8 +37,8 @@ project, personal. Each domain:
   empty directories anyway).
 
 An **active project is a domain** — a root-level folder with its own `CLAUDE.md` — not a
-section type. A domain that only groups child domains carries a `__README.md` index
-instead of a full router.
+section type. A domain that only groups child domains carries a `__INDEX.md` (a list of
+its children) instead of a full router.
 
 ## The section catalogue
 
@@ -99,12 +99,23 @@ operating rules (log every change, keep `ABOUT.md` current) and the steps to dro
   and it lets any folder be extracted to a repo root with no renaming.
 - Templates live in `_core/_templates/`: `TSchema<Section>.md` for a section's note
   shape (referenced from the schema as `[[TSchema<Section>]]`), `TCode*` for the code-doc
-  note kinds, `TSchema.md` for authoring a new schema file.
-- **Every folder-explainer note is `__README.md`**, not `README.md` — the double
-  underscore sorts it above every ordinary note in that folder and makes it visually
-  unmistakable at a glance. Applies everywhere the pattern appears: the spec index
-  (this file), every `_core/_<section>/__README.md`, and every domain-level deviation
-  note (`<domain>/<section>/__README.md`).
+  note kinds, `TSchema.md` for authoring a new schema file, `TReadMe.md` / `TIndex.md`
+  for the two folder-level note kinds above.
+- **Two kinds of folder-level note, both `__`-prefixed and in caps** so they sort above
+  every ordinary note in that folder and read as machinery, not content, at a glance:
+  - **`__README.md`** — a static explainer: what the folder is, its rules, its note
+    shape. Doesn't grow. Template: [[TReadMe]].
+  - **`__INDEX.md`** — a living list of the folder's actual contents (dated, curated, or
+    an inventory table), meant to grow as content is added. Template: [[TIndex]].
+  A folder carries whichever actually describes it — including both, side by side, when
+  it genuinely needs a rules explainer *and* a growing content list (e.g. `_skills/`:
+  `__README.md` for the rules, `__INDEX.md` for the live-skills catalog). Don't force a
+  static folder to carry an index it doesn't need, and don't let an index's list double
+  as the folder's only explanation when real rules exist too. Applies everywhere the
+  pattern appears: the spec index (this file), every `_core/_<section>/`, and every
+  domain-level instance.
+  - A domain-level **deviation note** (see "How a domain deviates from a schema" below)
+    is always `__README.md` — it's explaining a difference, not listing content.
 
 ## What earns a schema
 

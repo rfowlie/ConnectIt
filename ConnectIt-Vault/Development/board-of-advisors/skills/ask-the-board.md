@@ -83,7 +83,7 @@ risk tolerance). If they don't meaningfully disagree, say that and don't manufac
 ### 6. Log the consultation
 After presenting the output, write it to
 `board-of-advisors/questions/<YYYY-MM-DD>-<slug>.md` following the format in
-`board-of-advisors/questions/README.md`:
+`board-of-advisors/questions/__README.md`:
 the question, each advisor's take, the agree/disagree points, and the recommendation.
 Use today's date and a kebab-case slug from the question. On a same-day collision add `-2`.
 Confirm the path written at the end of the response.

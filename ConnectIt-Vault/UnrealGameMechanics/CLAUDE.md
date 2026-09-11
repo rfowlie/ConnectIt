@@ -25,14 +25,14 @@ scoring/selection helpers, two state-machine patterns, a tag-broadcast component
 ## Sections
 
 - **`code/`** — per-type pages, `code/systems/` flow narratives, `code/recipes/` task
-  procedures, `code/index.md` (inventory of every public type + a module map). Governed by
+  procedures, `code/__INDEX.md` (inventory of every public type + a module map). Governed by
   [[_core/_schema/_code|_core/_schema/_code.md]].
 - `logs/` — domain-scoped maintenance passes, created on first use
   ([[_core/_schema/_logs|schema]]).
 
 ## Start here
 
-[[UnrealGameMechanics/code/index|code/index.md]] — inventory + where to start reading.
+[[UnrealGameMechanics/code/__INDEX|code/__INDEX.md]] — inventory + where to start reading.
 
 ## Known rough edges
 

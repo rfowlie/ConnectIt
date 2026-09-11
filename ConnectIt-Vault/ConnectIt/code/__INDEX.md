@@ -181,7 +181,7 @@ folded here). Full evidence/hypothesis/recommendation for the structural set liv
 
 - Reference: [[ConnectIt/code/runtime-state|runtime-state.md]] — which accessor to call to
   read live board / turn / action / sequencing state
-- Flows: [[ConnectIt/code/systems/index|systems/index.md]]
-- Recipes: [[ConnectIt/code/recipes/index|recipes/index.md]]
-- Decisions: [[ConnectIt/decisions/index|decisions/index.md]]
+- Flows: [[ConnectIt/code/systems/__INDEX|systems/__INDEX.md]]
+- Recipes: [[ConnectIt/code/recipes/__INDEX|recipes/__INDEX.md]]
+- Decisions: [[ConnectIt/decisions/__INDEX|decisions/__INDEX.md]]
 - Domain router: [[ConnectIt/CLAUDE|ConnectIt/CLAUDE.md]]

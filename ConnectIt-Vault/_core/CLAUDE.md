@@ -26,7 +26,7 @@ done:
 1. Write one note to `_logs/<YYYY-MM-DD-HHMM>.md` per
    [`_schema/_logs.md`](_schema/_logs.md) / [[TSchemaLogs]] — one per working session /
    change-set, append-only, never edited after writing. Add its line to
-   [`_logs/__README.md`](_logs/__README.md) (newest first).
+   [`_logs/__INDEX.md`](_logs/__INDEX.md) (newest first).
 2. Update [`../ABOUT.md`](../ABOUT.md) when the structure or its rationale shifted — the
    section table, Conventions, Open questions, and a Changelog line.
 

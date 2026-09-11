@@ -69,5 +69,5 @@ One Runtime module, `Plugins/UnrealGameMechanics/Source/UnrealGameMechanics/`. S
 
 ## Related
 
-- Flows: [[UnrealGameMechanics/code/systems/index|code/systems/index.md]]
-- Recipes: [[UnrealGameMechanics/code/recipes/index|code/recipes/index.md]]
+- Flows: [[UnrealGameMechanics/code/systems/__INDEX|code/systems/__INDEX.md]]
+- Recipes: [[UnrealGameMechanics/code/recipes/__INDEX|code/recipes/__INDEX.md]]

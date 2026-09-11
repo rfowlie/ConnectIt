@@ -19,5 +19,5 @@ server → `NotifyBoardChangeOutcome`), opponent-turn spectator view.
 
 ## Related
 
-- Types: [[UnrealTurnBasedMechanics/code/index|code/index.md]]
-- Recipes: [[UnrealTurnBasedMechanics/code/recipes/index|recipes/index.md]]
+- Types: [[UnrealTurnBasedMechanics/code/__INDEX|code/__INDEX.md]]
+- Recipes: [[UnrealTurnBasedMechanics/code/recipes/__INDEX|recipes/__INDEX.md]]

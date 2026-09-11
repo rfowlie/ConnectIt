@@ -19,5 +19,5 @@ match start / board initialisation, game-over lockout, the (in-progress) game-ev
 
 ## Related
 
-- Types: [[ConnectIt/code/index|code/index.md]]
-- Recipes: [[ConnectIt/code/recipes/index|recipes/index.md]]
+- Types: [[ConnectIt/code/__INDEX|code/__INDEX.md]]
+- Recipes: [[ConnectIt/code/recipes/__INDEX|recipes/__INDEX.md]]

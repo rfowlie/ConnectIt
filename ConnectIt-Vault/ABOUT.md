@@ -2,7 +2,7 @@
 
 The **reasoning** behind this vault's structure — the *why*, the decision history, and
 what's still unsettled. The mechanical *how* lives in
-[`_core/_schema/README.md`](_core/_schema/README.md); this file is what you read to
+[`_core/_schema/__README.md`](_core/_schema/__README.md); this file is what you read to
 understand the shape rather than operate it.
 
 ## What this vault is
@@ -62,7 +62,7 @@ Full rulebook per section: `_core/_schema/_<section>.md`.
 
 ## Open questions
 
-- **Section mount point.** `_core/_schema/README.md` marks most sections "mounts at:
+- **Section mount point.** `_core/_schema/__README.md` marks most sections "mounts at:
   either" as provisional — whether the shared sections live at the vault root, per-domain,
   or both is unsettled. Current practice: `logs` and `decisions` split by scope
   (vault-wide vs `ConnectIt`); everything else vault-wide in `_core/`.
@@ -72,7 +72,7 @@ Full rulebook per section: `_core/_schema/_<section>.md`.
 - **`ideas.md`** (vault root) — a raw design-thinking pile from early Sept 2026; partly
   captured into `ConnectIt/` notes, partly not. Needs routing into `_core/_clippings/`
   or the relevant domain, or deletion.
-- **Known-issues follow-through.** `ConnectIt/code/index.md` `## Known issues` now records
+- **Known-issues follow-through.** `ConnectIt/code/__INDEX.md` `## Known issues` now records
   the structural-overlap register and two confirmed correctness bugs extracted from the
   in-repo docs — recorded, not triaged. Each needs an owner decision or a C++ change.
 - **Legacy MVVM pipeline still in the tree.** Documented as dead
@@ -81,6 +81,27 @@ Full rulebook per section: `_core/_schema/_<section>.md`.
 
 ## Changelog
 
+- **2026-09-11** — Ran `/process`'s full sweep for the first time: 0 drift across 35
+  `code/` pages checked against git history, nothing to move in `tasks/`, no `data/raw/`
+  or rogue `atomic/` folders to reconcile. Bootstrapped `.claude/skills/` (didn't exist
+  before) with all 7 vault-wide skills, so they're now actually invocable as
+  `/ask-vault`, `/process`, and the five `/process-<schema>` commands. Log:
+  `_core/_logs/2026-09-11-0112.md`.
+- **2026-09-11** — Split the folder-explainer note kind into two, mirroring the
+  canonical `_core` change: `__README.md` (static explainer) and `__INDEX.md` (a living
+  content list), templated by `_core/_templates/TReadMe.md` / `TIndex.md`.
+  `_core/_skills/__README.md` split into a trimmed `__README.md` (rules) + new
+  `__INDEX.md` (live-skills catalog); `_core/_logs/__README.md` →
+  `_core/_logs/__INDEX.md` and `_core/_skills/drafts/__README.md` →
+  `_core/_skills/drafts/__INDEX.md` (both keep their own content, only the filename +
+  framing changed). Renamed every domain `code/index.md`, `code/recipes/index.md`,
+  `code/systems/index.md`, and `ConnectIt/decisions/index.md` to `__INDEX.md`;
+  `ConnectIt/logs/README.md` → `ConnectIt/logs/__INDEX.md` (it was index-shaped despite
+  the old name); `Development/board-of-advisors/knowledge/raw/README.md`,
+  `knowledge/wiki/README.md`, and `questions/README.md` → `__README.md` (missing the
+  vault's own `__` prefix convention). Updated every wikilink/reference to a renamed
+  file. `_core/_templates/TSchema.md` and `TSchemaTasks.md` (already locally customized)
+  were left untouched, as were this vault's own `_core/_logs/` dated entries.
 - **2026-09-10** — migrated the whole vault onto `_core/`: retired all `_section.md` and
   the vault-root `_schema/`; gave each of the 8 domains a `CLAUDE.md` router; created
   this file; re-ingested every domain's `code/` to the consolidated `_code` schema

@@ -18,5 +18,5 @@ widget on `UDWidgetBase`.
 
 ## Related
 
-- Types: [[UnrealGameMechanics/code/index|code/index.md]]
-- Flows: [[UnrealGameMechanics/code/systems/index|systems/index.md]]
+- Types: [[UnrealGameMechanics/code/__INDEX|code/__INDEX.md]]
+- Flows: [[UnrealGameMechanics/code/systems/__INDEX|systems/__INDEX.md]]

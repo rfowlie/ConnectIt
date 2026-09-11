@@ -18,14 +18,14 @@ Expected to grow only along this narrow axis.
 
 ## Sections
 
-- **`code/`** — one type page + `code/index.md`. Governed by
+- **`code/`** — one type page + `code/__INDEX.md`. Governed by
   [[_core/_schema/_code|_core/_schema/_code.md]]. No `systems/` / `recipes/` — no flow or
   task to document yet.
 - `logs/` — created on first use.
 
 ## Start here
 
-[[UnrealCodingUtils/code/index|code/index.md]].
+[[UnrealCodingUtils/code/__INDEX|code/__INDEX.md]].
 
 ## Known rough edges
 

@@ -89,4 +89,4 @@ convenience wrappers over reaching into a manager directly.
   [[UConnectIt_BoardRegistrySubsystem|UConnectIt_BoardRegistrySubsystem]]
 - Flows: [[board-state-single-source-of-truth|systems/board-state-single-source-of-truth]],
   [[place-piece-request|systems/place-piece-request]]
-- [[ConnectIt/code/index|code/index.md]]
+- [[ConnectIt/code/__INDEX|code/__INDEX.md]]

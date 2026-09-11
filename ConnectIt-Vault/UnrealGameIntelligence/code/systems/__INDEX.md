@@ -15,5 +15,5 @@ Candidate flows not yet written (`stub`): MinMax tree build → solve (single vs
 
 ## Related
 
-- Types: [[UnrealGameIntelligence/code/index|code/index.md]]
-- Recipes: [[UnrealGameIntelligence/code/recipes/index|recipes/index.md]]
+- Types: [[UnrealGameIntelligence/code/__INDEX|code/__INDEX.md]]
+- Recipes: [[UnrealGameIntelligence/code/recipes/__INDEX|recipes/__INDEX.md]]
