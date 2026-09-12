@@ -57,7 +57,7 @@ One line per sub-skill: what it found / changed, or "nothing to do."
 
 ### Log
 Write **one** `_core/_logs/<YYYY-MM-DD-HHMM>.md` note (scope `vault`) per
-`[[TSchemaLogs]]` covering the whole run — `## Changed` lists every file every sub-skill
+`_core/_templates/TSchemaLogs.md` covering the whole run — `## Changed` lists every file every sub-skill
 touched, grouped by which skill touched it. Add its line to `_core/_logs/__INDEX.md`.
 Confirm the path.
 

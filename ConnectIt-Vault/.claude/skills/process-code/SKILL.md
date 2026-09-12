@@ -70,8 +70,8 @@ Stale pages left unrefreshed (missing source paths), and every `stub` row seen (
 reminder of what still has no page — not a task list to act on).
 
 ### 4. Log
-Write an `_core/_logs/<YYYY-MM-DD-HHMM>.md` note per `[[TSchemaLogs]]` (scope `vault`),
-and add its line to `_core/_logs/__INDEX.md`. Confirm the path.
+Write an `_core/_logs/<YYYY-MM-DD-HHMM>.md` note per `_core/_templates/TSchemaLogs.md`
+(scope `vault`), and add its line to `_core/_logs/__INDEX.md`. Confirm the path.
 
 ## Style
 

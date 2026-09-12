@@ -76,7 +76,8 @@ delete without being asked), or a `name:` collision found in Pass 2.
 
 ### 3. Log
 - Vault-wide changes (Pass 1): write an `_core/_logs/<YYYY-MM-DD-HHMM>.md` note per
-  `[[TSchemaLogs]]` (scope `vault`), and add its line to `_core/_logs/__INDEX.md`.
+  `_core/_templates/TSchemaLogs.md` (scope `vault`), and add its line to
+  `_core/_logs/__INDEX.md`.
 - Domain-skill changes (Pass 2): additionally group by domain and write each domain's own
   `<domain>/_logs/<YYYY-MM-DD-HHMM>.md` note (scope `<domain>`) — create that domain's
   `_logs/` on first use, like any other domain section — and add its line to

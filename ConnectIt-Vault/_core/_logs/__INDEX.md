@@ -8,6 +8,13 @@ in `<domain>/_logs/`, not here.
 
 Newest first:
 
+- [2026-09-11-1500-2](2026-09-11-1500-2.md) — session — converted the remaining 9
+  authored `[[TSchemaLogs]]` wikilinks (7 skills + 2 schema files) to the Markdown-link
+  standard and re-mirrored the 7 skills; caught and fixed a filename collision with the
+  pre-existing `2026-09-11-1500.md` along the way (see that note — restored, untouched)
+- [2026-09-11-2340](2026-09-11-2340.md) — session — `_discussions` added as a full schema
+  (topic-threaded, no subfolders) + `TSchemaDiscussions` template + new
+  `/process-discussion` skill to file transcripts into it
 - [2026-09-11-1500](2026-09-11-1500.md) — session — `_`-prefix naming rule reversed
   vault-wide (every schema-governed section folder, not just `_core/`); 5 folders
   `git mv`'d, 12 schema rulebooks + every cross-reference fixed, 34 `ConnectIt/`

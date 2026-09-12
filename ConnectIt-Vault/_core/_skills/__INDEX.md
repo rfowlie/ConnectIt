@@ -12,6 +12,12 @@ Live skills:
   broken `[text](path)` link, propose a fix for it, apply only what the user confirms.
   Markdown links don't self-heal on a file move the way `[[wikilinks]]` do (see
   `_core/CLAUDE.md` → Link format), so this is the mechanical upkeep for that trade-off.
+- **[`process-discussion.md`](process-discussion.md)** — despite the name, **not** part of
+  the sweep family below: it's input-driven, not a folder sweep. Takes one transcript
+  (pasted, or a file path) and files it as a `_discussions/` note per
+  `_schema/_discussions.md` — summary + Tasks/Deliverables/Questions/Updates/Workflows up
+  top, each topic linked back to its most recent prior mention, transcript verbatim at the
+  bottom. Not run by `/process` (nothing to sweep without a transcript in hand).
 
 **`process-*` family** — one mechanical health-check-and-fix per schema, named
 `/process-<schema>` for consistency. [`process.md`](process.md) runs all of them in one

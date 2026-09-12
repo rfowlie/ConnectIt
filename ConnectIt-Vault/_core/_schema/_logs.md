@@ -25,7 +25,7 @@ Frontmatter:
 - `scope:` — `vault`, or the domain name.
 - `tags:` — at least `log`.
 
-Body (see [[TSchemaLogs]]): **Request** (one line — what was asked for) · **Overview**
+Body (see [`TSchemaLogs`](../_templates/TSchemaLogs.md)): **Request** (one line — what was asked for) · **Overview**
 (what was actually done, and why) · **Created** (`[[wikilinks]]` to new notes/files) ·
 **Changed** (`[[wikilinks]]` to changed notes, each with a short what-changed) ·
 **Flags & Follow-ups** (assumptions, gaps, offered-but-not-done, decisions, anything to
@@ -45,7 +45,7 @@ revisit).
 
 ## Template
 
-[[TSchemaLogs]]
+[`TSchemaLogs`](../_templates/TSchemaLogs.md)
 
 ## Deviations
 

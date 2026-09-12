@@ -44,6 +44,7 @@ vault; see [`_core/CLAUDE.md`](_core/CLAUDE.md).
 | `tasks` | Status tables (`active`/`suspended`/`complete`) | `_core/_tasks/` (vault) · `optimal-co-developer/_tasks/` |
 | `questions` | One note per open, unresolved question | `_core/_questions/` (vault) · `optimal-co-developer/_questions/` |
 | `meetings` | One dated note per meeting or session | `optimal-co-developer/_meetings/` |
+| `discussions` | One dated note per discussion; topics link to their most recent prior mention instead of a folder hierarchy | schema defined, no note yet (`ConnectIt/_discussions/` empty) |
 | `daily` | One free-form note per day | `optimal-co-developer/_daily/` |
 | `ask-vault` `attachments` | Vault-level instances | `_core/_*/` |
 | `data` `user` `people` `maps` | Available, not yet used | — |
@@ -84,7 +85,10 @@ Full rulebook per section: `_core/_schema/_<section>.md`.
   (vault-wide vs `ConnectIt`); everything else vault-wide in `_core/`.
 - **Schema near-duplicates / gaps.** Raised in
   [`_core/_ask-vault/2026-09-09-schema-similarity-and-gaps.md`](_core/_ask-vault/2026-09-09-schema-similarity-and-gaps.md)
-  — needs a direct schema-audit pass, not `/ask-vault` (which reads content only).
+  — needs a direct schema-audit pass, not `/ask-vault` (which reads content only). The new
+  `discussions` section (added 2026-09-11) adds another instance: it overlaps `meetings`
+  (both are "one dated note per conversation") and is distinguished only by
+  attendee-tracking vs. topic-threading — worth folding into the same audit.
 - **`ideas.md`** (vault root) — a raw design-thinking pile from early Sept 2026; partly
   captured into `ConnectIt/` notes, partly not. Needs routing into `_core/_clippings/`
   or the relevant domain, or deletion.
@@ -111,6 +115,21 @@ Full rulebook per section: `_core/_schema/_<section>.md`.
 
 ## Changelog
 
+- **2026-09-11** — Added `_discussions` as a full schema: one dated note per discussion
+  (call, brainstorm, transcribed conversation), organized by having each note link every
+  topic it covers back to the most recent prior `_discussions/` note that also covered it,
+  instead of a folder hierarchy — so the folder stays flat. New files:
+  `_core/_schema/_discussions.md`, `_core/_templates/TSchemaDiscussions.md` (with a
+  Workflows section alongside Summary/Topics/Tasks/Deliverables/Questions/Updates/
+  Transcript), and a new skill, `_core/_skills/process-discussion.md` (+ its
+  `.claude/skills/` mirror), that takes a transcript and files it per the new template —
+  flagged in `_core/_skills/__INDEX.md` as input-driven, not part of the `process-*` sweep
+  family, so it's excluded from `/process`'s combined run. Registered the section in
+  `_core/_schema/__README.md`'s catalogue and `ConnectIt/CLAUDE.md`'s Sections list. Noted
+  the new overlap with `_meetings` under the existing "Schema near-duplicates" open
+  question rather than resolving it. No `_discussions/` note exists yet — the transcript
+  that prompted this ("Actions setup 1.m4a") is deferred to a later turn. Log:
+  `_core/_logs/2026-09-11-2340.md`.
 - **2026-09-11** — Reversed the section-folder naming rule: every schema-governed section
   folder is now `_`-prefixed, domain-level or vault-wide, not just `_core/`/`_schema/`
   (the pre-existing `optimal-co-developer/_skills/` was the tell). `git mv`'d the 5 bare

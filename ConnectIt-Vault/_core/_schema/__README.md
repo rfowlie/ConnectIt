@@ -52,9 +52,10 @@ its children) instead of a full router.
 | `_questions` | One note per open, unresolved question | `[[TSchemaQuestions]]` | either |
 | `_tasks` | Work tracked as status tables (`active` / `suspended` / `complete`) | `[[TSchemaTasks]]` | either |
 | `_skills` | Reusable procedures Claude can run on demand | `[[TSchemaSkills]]` | either |
-| `_logs` | Append-only record of automated maintenance passes | `[[TSchemaLogs]]` | either |
+| `_logs` | Append-only record of automated maintenance passes | [`TSchemaLogs`](../_templates/TSchemaLogs.md) | either |
 | `_people` | One note per person — a lightweight CRM | `[[TSchemaPeople]]` | either |
 | `_meetings` | One dated note per meeting or call | `[[TSchemaMeetings]]` | either |
+| `_discussions` | One dated note per discussion (call, brainstorm, transcribed conversation); topics link back to their most recent prior mention instead of a folder hierarchy | `[[TSchemaDiscussions]]` | either |
 | `_daily` | One free-form note per day — the human's capture surface | `[[TSchemaDaily]]` | either |
 | `_maps` | Hand-curated Maps of Content — deliberate entry points | `[[TSchemaMaps]]` | either |
 | `_atomic` | One self-contained note per idea — a flat Zettelkasten pool | `[[TSchemaAtomic]]` | `_core/_atomic/` only |

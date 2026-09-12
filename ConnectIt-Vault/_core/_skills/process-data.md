@@ -58,8 +58,8 @@ Empty/unreadable raw entries skipped; any `wiki/` file with no matching `raw/` s
 
 ### 3. Log
 Per the vault's standing rule: write an `_core/_logs/<YYYY-MM-DD-HHMM>.md` note (scope
-`vault`) per `[[TSchemaLogs]]`, and add its line to `_core/_logs/__INDEX.md`. Confirm the
-path.
+`vault`) per `_core/_templates/TSchemaLogs.md`, and add its line to
+`_core/_logs/__INDEX.md`. Confirm the path.
 
 ## Style
 

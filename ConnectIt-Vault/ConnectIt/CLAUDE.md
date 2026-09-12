@@ -42,6 +42,9 @@ The full suite dependency graph and layering is the **Map** section of
   overhaul, registry relocation, legacy-pipeline retirement, …). Governed by
   [`_core/_schema/_decisions.md`](../_core/_schema/_decisions.md).
 - **`_logs/`** — ConnectIt-scoped maintenance passes ([schema](../_core/_schema/_logs.md)).
+- **`_discussions/`** — one dated note per discussion (calls, brainstorms, transcribed
+  voice memos); topics link back to their most recent prior mention instead of a folder
+  hierarchy. Governed by [`_core/_schema/_discussions.md`](../_core/_schema/_discussions.md).
 
 ## Start here
 
