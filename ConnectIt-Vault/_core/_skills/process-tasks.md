@@ -1,15 +1,15 @@
 ---
 name: process-tasks
 description: >-
-  When the user has changed task rows in a tasks/active.md to Status suspended / complete
-  / dropped and wants them filed. Vault-wide: finds every tasks/ folder, relocates each
+  When the user has changed task rows in a _tasks/active.md to Status suspended / complete
+  / dropped and wants them filed. Vault-wide: finds every _tasks/ folder, relocates each
   retired row to its archive file with a Moved date, and reports what moved. Use for
   "process tasks", "/process-tasks", "file my done tasks", "tidy the task lists".
 ---
 
 # Process Tasks
 
-Keep every `tasks/active.md` showing only active work by moving retired rows to their
+Keep every `_tasks/active.md` showing only active work by moving retired rows to their
 archive files. The deliverable is a **precise relocation** — nothing is rephrased,
 reprioritised, or deleted.
 
@@ -20,19 +20,19 @@ sprint-planning workflow skill (surface suspended tasks as available to resume; 
 
 ## Purpose
 
-The user tracks work in `tasks/` status tables and marks a row done by editing its
+The user tracks work in `_tasks/` status tables and marks a row done by editing its
 `Status` cell. This skill is the mechanical step that acts on that edit: cut the row from
 `active.md`, append it to `suspended.md` / `complete.md` / `dropped.md`, stamp a `Moved`
 date. It never decides what a task's status *should* be.
 
 ## Inputs to read first
 
-1. Every `tasks/active.md` in the vault — `_core/_tasks/active.md` and each
-   `<domain>/tasks/active.md`. Use a glob for `**/tasks/active.md`.
+1. Every `_tasks/active.md` in the vault — `_core/_tasks/active.md` and each
+   `<domain>/_tasks/active.md`. Use a glob for `**/_tasks/active.md`.
 2. For each, its sibling archive files (`suspended.md`, `complete.md`, `dropped.md`) —
    read the header row so appended rows match the columns.
 
-If a `tasks/` folder has no `active.md`, skip it. If an archive file is missing, create
+If a `_tasks/` folder has no `active.md`, skip it. If an archive file is missing, create
 it from the `active.md` header plus a trailing `Moved` column.
 
 ## Arguments
@@ -55,7 +55,7 @@ For each `active.md`:
 ## Output format
 
 ### 1. Moved
-A table per `tasks/` folder that changed: `Folder | Task | From → To`. If nothing moved,
+A table per `_tasks/` folder that changed: `Folder | Task | From → To`. If nothing moved,
 say so.
 
 ### 2. Flags

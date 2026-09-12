@@ -13,19 +13,19 @@ Expected to grow only along this narrow axis.
   sub-area `Library/`. Depends only on `Core`.
 - **Status:** active — enabled in `ConnectIt.uproject`.
 - **Type:** game-agnostic plugin, independently extractable.
-- **Consumed by:** any plugin or [[ConnectIt/CLAUDE|ConnectIt]] needing a component-level
+- **Consumed by:** any plugin or [ConnectIt](../ConnectIt/CLAUDE.md) needing a component-level
   authority check.
 
 ## Sections
 
 - **`code/`** — one type page + `code/__INDEX.md`. Governed by
-  [[_core/_schema/_code|_core/_schema/_code.md]]. No `systems/` / `recipes/` — no flow or
+  [`_core/_schema/_code.md`](../_core/_schema/_code.md). No `systems/` / `recipes/` — no flow or
   task to document yet.
 - `logs/` — created on first use.
 
 ## Start here
 
-[[UnrealCodingUtils/code/__INDEX|code/__INDEX.md]].
+[code/__INDEX.md](code/__INDEX.md).
 
 ## Known rough edges
 

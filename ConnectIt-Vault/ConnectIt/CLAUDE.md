@@ -20,43 +20,43 @@ logic — everything reusable lives in a plugin.
 ## How it consumes the suite
 
 - **Turn-based framework** — GameMode / GameState / PlayerState / controllers derive from
-  the `ATurnBased*` bases in [[UnrealTurnBasedMechanics/CLAUDE|UnrealTurnBasedMechanics]].
+  the `ATurnBased*` bases in [UnrealTurnBasedMechanics](../UnrealTurnBasedMechanics/CLAUDE.md).
 - **Board / grid** — tiles, pieces, registries, board-state base, grid math from
-  [[UnrealGridMechanics/CLAUDE|UnrealGridMechanics]].
+  [UnrealGridMechanics](../UnrealGridMechanics/CLAUDE.md).
 - **Scaffolding** — phase-barrier / tag-queue sequencing, pooling, input tag binding,
-  scoring helpers from [[UnrealGameMechanics/CLAUDE|UnrealGameMechanics]].
+  scoring helpers from [UnrealGameMechanics](../UnrealGameMechanics/CLAUDE.md).
 - **AI / debug** — implements the influence-map + utility-score debug interfaces from
-  [[UnrealGameIntelligence/CLAUDE|UnrealGameIntelligence]]; carries its **own** MinMax
+  [UnrealGameIntelligence](../UnrealGameIntelligence/CLAUDE.md); carries its **own** MinMax
   (not the plugin templates).
-- **Utils** — authority checks from [[UnrealCodingUtils/CLAUDE|UnrealCodingUtils]].
+- **Utils** — authority checks from [UnrealCodingUtils](../UnrealCodingUtils/CLAUDE.md).
 
 The full suite dependency graph and layering is the **Map** section of
-[[ConnectIt/code/__INDEX|code/__INDEX.md]].
+[code/__INDEX.md](code/__INDEX.md).
 
 ## Sections
 
 - **`code/`** — per-type pages, `code/systems/` flows, `code/recipes/` tasks,
   `code/__INDEX.md` (inventory of every public type + the suite map + known issues).
-  Governed by [[_core/_schema/_code|_core/_schema/_code.md]].
-- **`decisions/`** — one dated note per settled non-obvious call (board-architecture
+  Governed by [`_core/_schema/_code.md`](../_core/_schema/_code.md).
+- **`_decisions/`** — one dated note per settled non-obvious call (board-architecture
   overhaul, registry relocation, legacy-pipeline retirement, …). Governed by
-  [[_core/_schema/_decisions|_core/_schema/_decisions.md]].
-- **`logs/`** — ConnectIt-scoped maintenance passes ([[_core/_schema/_logs|schema]]).
+  [`_core/_schema/_decisions.md`](../_core/_schema/_decisions.md).
+- **`_logs/`** — ConnectIt-scoped maintenance passes ([schema](../_core/_schema/_logs.md)).
 
 ## Start here
 
-[[ConnectIt/code/__INDEX|code/__INDEX.md]] — inventory, suite map, known issues.
+[code/__INDEX.md](code/__INDEX.md) — inventory, suite map, known issues.
 
 ## Current state
 
 - **Board architecture** is post-refactor: `AConnectIt_BoardManager` (the world actor) is
   **retired**. Board authority is server-only UObjects on
-  [[ConnectIt/code/AConnectIt_GameMode|AConnectIt_GameMode]] —
+  [AConnectIt_GameMode](code/AConnectIt_GameMode.md) —
   `UConnectIt_BoardRequestMediator` + `UConnectIt_BoardRules`. The board is one replicated
   snapshot on `UConnectIt_BoardStateComponent` (on the GameState). `TileRegistry` /
   `PieceRegistry` now live on `UConnectIt_BoardRegistrySubsystem` (`UWorldSubsystem`),
   `DuplicateObject`'d per world from `Instanced` templates on
-  `UConnectIt_LevelConfigDataAsset`. See [[ConnectIt/decisions/__INDEX|decisions/]].
+  `UConnectIt_LevelConfigDataAsset`. See [_decisions/](_decisions/__INDEX.md).
 - **Retired / dead — do not document as live:** the tag-reactive interpreter pipeline
   (its game-event-queue replacement on the mediator is an empty stub); the whole ConnectIt
   shift pipeline; the legacy MVVM pipeline (`UConnectIt_State_*`, `UConnectIt_GameFacade`,

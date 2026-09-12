@@ -18,7 +18,7 @@ commit: eddd631
 > **This flow is not live.** It documents the shape of ConnectIt's original
 > single-machine, non-networked turn loop, kept for the before/after contrast. No live
 > code drives it — see [[UConnectIt_State_Game|UConnectIt_State_Game]] and
-> [[ConnectIt/decisions/2026-09-08-retire-legacy-mvvm-pipeline|decisions/2026-09-08-retire-legacy-mvvm-pipeline]].
+> [[ConnectIt/_decisions/2026-09-08-retire-legacy-mvvm-pipeline|decisions/2026-09-08-retire-legacy-mvvm-pipeline]].
 
 [[UConnectIt_State_Game|UConnectIt_State_Game]] was a composite single-state machine (on
 `UnrealGameMechanics`' `UGameMechanicsStateSimple` + `IGameStateHandlerInterface`) that
@@ -73,6 +73,6 @@ Deleting the legacy pipeline removes this flow entirely. See
 
 ## See also
 
-- Decision: [[ConnectIt/decisions/2026-09-08-retire-legacy-mvvm-pipeline|decisions/2026-09-08-retire-legacy-mvvm-pipeline]]
+- Decision: [[ConnectIt/_decisions/2026-09-08-retire-legacy-mvvm-pipeline|decisions/2026-09-08-retire-legacy-mvvm-pipeline]]
 - Live turn: [[place-piece-request|systems/place-piece-request]]
 - [[UConnectIt_State_Game|UConnectIt_State_Game]], [[UConnectIt_GameFacade|UConnectIt_GameFacade]]

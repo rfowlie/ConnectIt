@@ -2,7 +2,7 @@
 
 A small, self-contained **Utility AI** (weighted-scoring decision) plugin — a generic
 action-picker pattern, distinct from
-[[UnrealGameIntelligence/CLAUDE|UnrealGameIntelligence]]'s tree search.
+[UnrealGameIntelligence](../UnrealGameIntelligence/CLAUDE.md)'s tree search.
 `UAI_UtilityGameActionController` holds an `Instanced` array of pluggable
 `UAI_UtilityGameActionEvaluator` objects; each scores candidate actions from a
 per-`FGameplayTag` weight map (`GetEvaluatedActions()` is a `BlueprintNativeEvent`), and
@@ -25,13 +25,13 @@ the array.
 ## Sections
 
 - **`code/`** — 2 type pages + `code/__INDEX.md`. Governed by
-  [[_core/_schema/_code|_core/_schema/_code.md]]. No `systems/` / `recipes/` while
+  [`_core/_schema/_code.md`](../_core/_schema/_code.md). No `systems/` / `recipes/` while
   dormant.
 - `logs/` — created on first use.
 
 ## Start here
 
-[[UnrealAIMechanics/code/__INDEX|code/__INDEX.md]].
+[code/__INDEX.md](code/__INDEX.md).
 
 ## Known rough edges
 

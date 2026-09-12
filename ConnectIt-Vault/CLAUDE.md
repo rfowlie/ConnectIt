@@ -17,18 +17,23 @@ strategy game in Unreal Engine 5 (C++). The vault sits inside the game repo at
 ## Domains
 
 Vault root = [`_core/`](_core/CLAUDE.md) (the operating system) + these domains, each a
-stand-alone folder with its own `CLAUDE.md`. The 7 plugins are game-agnostic and
-independently extractable; `ConnectIt` is the only game-specific domain.
+stand-alone folder with its own `CLAUDE.md`. The 7 plugins and `ConnectIt` are the
+game-side domains (the plugins game-agnostic and independently extractable, `ConnectIt`
+the only game-specific one); `Development` is the owner's personal operating-system
+domain, unrelated to the game's own code.
 
 | Domain | What it is |
-|---|---|
-| [[ConnectIt/CLAUDE\|ConnectIt]] | The game module — rules, scoring, board setup, AI; wires the suite together. Start here. |
-| [[UnrealGameMechanics/CLAUDE\|UnrealGameMechanics]] | Suite base: gated GameEvent phase-barrier + tag queue, turn bookkeeping, actor pooling, Enhanced Input tag binder, scoring / state-machine helpers, debug-widget base. |
-| [[UnrealGridMechanics/CLAUDE\|UnrealGridMechanics]] | Game-agnostic 2D grid/board: coords + directions, grid/shape math, tile/piece actors, registries, hover subsystems, replicated board state, row/col shift, editor validator. |
-| [[UnrealTurnBasedMechanics/CLAUDE\|UnrealTurnBasedMechanics]] | Network-replicated turn-based match: per-controller action stack, replicated match state machine (ready-check, timers, forfeit/reconnect), pluggable turn order, `ATurnBased*` framework bases. |
-| [[UnrealGameIntelligence/CLAUDE\|UnrealGameIntelligence]] | AI toolkit: influence-map debug-visualisation framework + header-only MinMax templates + utility-score debug interface. |
-| [[UnrealCodingUtils/CLAUDE\|UnrealCodingUtils]] | Tiny dependency-free helper library — component-level authority checks. |
-| [[UnrealAIMechanics/CLAUDE\|UnrealAIMechanics]] | Weighted-scoring "Utility AI" action picker. **Dormant** — not enabled, core selection method stubbed. |
-| [[UnrealUIMechanics/CLAUDE\|UnrealUIMechanics]] | UI widgets plugin. **Stub** — empty module skeleton, not enabled. |
+| --- | --- |
+| [ConnectIt](ConnectIt/CLAUDE.md) | The game module — rules, scoring, board setup, AI; wires the suite together. Start here. |
+| [UnrealGameMechanics](UnrealGameMechanics/CLAUDE.md) | Suite base: gated GameEvent phase-barrier + tag queue, turn bookkeeping, actor pooling, Enhanced Input tag binder, scoring / state-machine helpers, debug-widget base. |
+| [UnrealGridMechanics](UnrealGridMechanics/CLAUDE.md) | Game-agnostic 2D grid/board: coords + directions, grid/shape math, tile/piece actors, registries, hover subsystems, replicated board state, row/col shift, editor validator. |
+| [UnrealTurnBasedMechanics](UnrealTurnBasedMechanics/CLAUDE.md) | Network-replicated turn-based match: per-controller action stack, replicated match state machine (ready-check, timers, forfeit/reconnect), pluggable turn order, `ATurnBased*` framework bases. |
+| [UnrealGameIntelligence](UnrealGameIntelligence/CLAUDE.md) | AI toolkit: influence-map debug-visualisation framework + header-only MinMax templates + utility-score debug interface. |
+| [UnrealCodingUtils](UnrealCodingUtils/CLAUDE.md) | Tiny dependency-free helper library — component-level authority checks. |
+| [UnrealAIMechanics](UnrealAIMechanics/CLAUDE.md) | Weighted-scoring "Utility AI" action picker. **Dormant** — not enabled, core selection method stubbed. |
+| [UnrealUIMechanics](UnrealUIMechanics/CLAUDE.md) | UI widgets plugin. **Stub** — empty module skeleton, not enabled. |
+| [Development](Development/CLAUDE.md) | The owner's personal knowledge vault: the virtual advisory board, career/owner knowledge, and the game-projects group (its own nested `CLAUDE.md` tree, self-contained). |
 
-`../Plugins/AdvancedSessions-5-5/` is third-party (vendored) — no domain here.
+`../Plugins/AdvancedSessions-5-5/` is third-party (vendored) — no domain here. `Unsorted/`
+is a top-level folder with no `CLAUDE.md` yet — not a domain under the model until it gets
+one.

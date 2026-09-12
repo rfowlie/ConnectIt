@@ -31,7 +31,7 @@ Vault root only, exactly one. Never inside a domain — a domain keeps its own
 ## Rules
 
 - **Non-domain only.** `_core/` holds vault-scoped instances and the spec — no
-  domain-scoped content. A domain's own `logs/` / `tasks/` / `clippings/` / etc. live in
+  domain-scoped content. A domain's own `_logs/` / `_tasks/` / `_clippings/` / etc. live in
   that domain, not here.
 - **Named children are `_`-prefixed** — same convention as `_schema/`.
 - **Fixed skeleton.** `_core/` and its named children exist from the start; they are

@@ -96,7 +96,7 @@ Adding a new registry field: the `Instanced` template property on
   added to the plugin (was missing — an asymmetry vs `UGridTileRegistryBase` flagged as a
   TODO in the unused `ABoardManagerBase` prototype). `GetPieceRegistry()` added to the
   utility library; `PieceRegistry` was 100% dead code before this pass.
-  [[ConnectIt/decisions/2026-09-09-board-registries-to-world-subsystem|decisions/2026-09-09-board-registries-to-world-subsystem]].
+  [[ConnectIt/_decisions/2026-09-09-board-registries-to-world-subsystem|decisions/2026-09-09-board-registries-to-world-subsystem]].
 
 ## Manual / content steps still outstanding
 
@@ -111,6 +111,6 @@ Adding a new registry field: the `Instanced` template property on
 
 ## See also
 
-- Decision: [[ConnectIt/decisions/2026-09-09-board-registries-to-world-subsystem|decisions/2026-09-09-board-registries-to-world-subsystem]]
+- Decision: [[ConnectIt/_decisions/2026-09-09-board-registries-to-world-subsystem|decisions/2026-09-09-board-registries-to-world-subsystem]]
 - [[AConnectIt_GameMode|AConnectIt_GameMode]], [[UConnectIt_BoardStateComponent|UConnectIt_BoardStateComponent]]
 - Plugin bases: [[UnrealGridMechanics/code/__INDEX|UnrealGridMechanics/code/__INDEX.md]]

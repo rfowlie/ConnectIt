@@ -4,10 +4,19 @@ The **vault-wide** maintenance log — automated passes that touch the whole vau
 domains. One timestamped note per run, newest first.
 
 Governed by [`_schema/_logs.md`](_logs.md). A single domain's own passes go
-in `<domain>/logs/`, not here.
+in `<domain>/_logs/`, not here.
 
 Newest first:
 
+- [2026-09-11-1500](2026-09-11-1500.md) — session — `_`-prefix naming rule reversed
+  vault-wide (every schema-governed section folder, not just `_core/`); 5 folders
+  `git mv`'d, 12 schema rulebooks + every cross-reference fixed, 34 `ConnectIt/`
+  wikilinks retargeted; `optimal-co-developer` schema folders built out + new
+  `/ask-partner` skill; `Development/CLAUDE.md` "Default posture" section added;
+  `/process-skills` extended for domain skills and run (2 new mirrors, 5 refreshed)
+- [[2026-09-11-1430]] — session — link-format standard set (Markdown links, not
+  wikilinks); 9 `CLAUDE.md` files converted; two `_core/_atomic/` notes on the reasoning;
+  new `fix-links` skill
 - [[2026-09-11-0112]] — session — `/process` full sweep: 0 drift across 35 code pages,
   bootstrapped `.claude/skills/` (7 mirrors, none existed before)
 - [[2026-09-10-0900]] — session — `_core/` migration: retired `_section.md` + `high-level.md`, per-domain `CLAUDE.md` routers, root `CLAUDE.md` → domain map, `ABOUT.md` created, `devlog/`+`extras/` removed, logs conformed + split to `ConnectIt/logs/`, skills mirrored to `.claude/`

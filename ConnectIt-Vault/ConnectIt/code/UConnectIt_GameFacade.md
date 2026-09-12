@@ -18,7 +18,7 @@ commit: eddd631
 > `UConnectIt_GameFacade`'s replacement — `UConnectIt_GameUtilityLibrary` — says so in
 > its own doc comment: *"Replaces UConnectIt_GameFacade for the networked game."* Kept in
 > the tree, not built on. See
-> [[ConnectIt/decisions/2026-09-08-retire-legacy-mvvm-pipeline|decisions/2026-09-08-retire-legacy-mvvm-pipeline]].
+> [[ConnectIt/_decisions/2026-09-08-retire-legacy-mvvm-pipeline|decisions/2026-09-08-retire-legacy-mvvm-pipeline]].
 
 ## What it is
 
@@ -67,6 +67,6 @@ for the full removal list.
 
 ## See also
 
-- Decision: [[ConnectIt/decisions/2026-09-08-retire-legacy-mvvm-pipeline|decisions/2026-09-08-retire-legacy-mvvm-pipeline]]
+- Decision: [[ConnectIt/_decisions/2026-09-08-retire-legacy-mvvm-pipeline|decisions/2026-09-08-retire-legacy-mvvm-pipeline]]
 - [[UConnectIt_State_Game|UConnectIt_State_Game]] (the state machine this fed)
 - Live replacement path: [[place-piece-request|systems/place-piece-request]]

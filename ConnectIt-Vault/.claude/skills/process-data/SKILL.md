@@ -2,14 +2,14 @@
 name: process-data
 description: >-
   When the user wants every raw source note reflected in its synthesis note. Finds every
-  data/ folder in the vault, matches each raw/<slug> entry to its wiki/<slug>.md, and
+  _data/ folder in the vault, matches each raw/<slug> entry to its wiki/<slug>.md, and
   writes any missing wiki note as a summary of the raw material. Use for "process data",
   "/process-data", "catch up my wiki notes", "summarize new raw sources".
 ---
 
 # Data Process
 
-Keep every `data/wiki/` in sync with its `data/raw/` — one synthesis note per source,
+Keep every `_data/wiki/` in sync with its `_data/raw/` — one synthesis note per source,
 written the moment a raw file has none.
 
 ## Purpose
@@ -20,21 +20,21 @@ synthesis, never touch `raw/`.
 
 ## Inputs to read first
 
-1. Every `data/` folder in the vault — glob `**/data/raw/**` to find them (a domain's own
-   `<domain>/data/`, or a bare vault-root `data/`).
+1. Every `_data/` folder in the vault — glob `**/_data/raw/**` to find them (a domain's own
+   `<domain>/_data/`, or a bare vault-root `_data/`).
 2. [`_schema/_data.md`](../_schema/_data.md) — the rules a new wiki note must follow
    (paraphrase in the source's voice; reserve quotes for what's actually in `raw/`; one
    canonical file per subject).
-3. For each `data/` found, its `raw/<slug>/` entries and existing `wiki/<slug>.md` files —
+3. For each `_data/` found, its `raw/<slug>/` entries and existing `wiki/<slug>.md` files —
    to compute the gap.
 
 ## Arguments
 
-- None. If the user names a domain or a specific `data/` folder, limit the sweep to it.
+- None. If the user names a domain or a specific `_data/` folder, limit the sweep to it.
 
 ## Steps
 
-For each `data/` folder found:
+For each `_data/` folder found:
 
 1. List every source slug in `raw/` (one subfolder per source).
 2. List every existing `wiki/<slug>.md`.
@@ -49,7 +49,7 @@ For each `data/` folder found:
 ## Output format
 
 ### 1. Processed
-A table: `data/ folder | slug | action`. List only the gaps actually filled, plus a
+A table: `_data/ folder | slug | action`. List only the gaps actually filled, plus a
 one-line total (`N raw entries scanned, M wiki notes written`).
 
 ### 2. Flags

@@ -4,8 +4,8 @@ One note per `/ask-vault` run (or a Q&A done by hand the same way) — a record 
 vault could say about a question at the time it was asked*, answered **only** from the
 vault's own content notes.
 
-Not a `decisions/` note: a Q&A is an *input* to a decision, not the decision itself. If a
-Q&A settles a call, that call also gets a `decisions/` note.
+Not a `_decisions/` note: a Q&A is an *input* to a decision, not the decision itself. If a
+Q&A settles a call, that call also gets a `_decisions/` note.
 
 ## Filename
 

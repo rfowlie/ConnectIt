@@ -32,7 +32,7 @@ and why.
 
 ## Deviations
 
-Add `<section>/README.md` starting `Extends _schema/_<section>.md. Differences:` if a
+Add `<section>/__README.md` starting `Extends _schema/_<section>.md. Differences:` if a
 domain needs this section to behave differently. List only the deltas.
 
 ---
@@ -43,5 +43,5 @@ Checklist before committing a new schema file:
 - [ ] H1 is the short label `# _schema/_<section>.md` (files live in `_core/_schema/`).
 - [ ] Has a `## Structure` map, a `## Template` section, and a `## Deviations` section.
 - [ ] It governs a file structure — not just a note shape (that's a `T*` template).
-- [ ] Added to the section catalogue in `_core/_schema/README.md`.
+- [ ] Added to the section catalogue in `_core/_schema/__README.md`.
 - [ ] `ABOUT.md` section table + Changelog updated.

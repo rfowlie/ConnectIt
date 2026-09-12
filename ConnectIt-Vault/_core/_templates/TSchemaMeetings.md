@@ -19,7 +19,7 @@ What was discussed.
 
 ## Decisions
 
-Links to any `decisions/` notes this meeting produced.
+Links to any `_decisions/` notes this meeting produced.
 
 ## Next
 

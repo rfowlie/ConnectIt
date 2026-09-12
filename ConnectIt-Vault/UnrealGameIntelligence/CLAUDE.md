@@ -22,19 +22,19 @@ parts:
 - **Status:** active — enabled. Convention: folder-scoped `GI_` prefix, `FGI_On*` dynamic
   delegates, C++20 `requires`-concepts (unique to this plugin).
 - **Type:** game-agnostic plugin, independently extractable.
-- **Consumed by:** [[ConnectIt/CLAUDE|ConnectIt]] — **only** the influence-map /
+- **Consumed by:** [ConnectIt](../ConnectIt/CLAUDE.md) — **only** the influence-map /
   utility-score debug interfaces. The MinMax templates are **not used** — the game module
   carries its own parallel MinMax implementation.
 
 ## Sections
 
 - **`code/`** — per-type pages, `code/systems/`, `code/recipes/`, `code/__INDEX.md`.
-  Governed by [[_core/_schema/_code|_core/_schema/_code.md]].
-- `logs/` — created on first use ([[_core/_schema/_logs|schema]]).
+  Governed by [`_core/_schema/_code.md`](../_core/_schema/_code.md).
+- `logs/` — created on first use ([schema](../_core/_schema/_logs.md)).
 
 ## Start here
 
-[[UnrealGameIntelligence/code/__INDEX|code/__INDEX.md]].
+[code/__INDEX.md](code/__INDEX.md).
 
 ## Known rough edges
 

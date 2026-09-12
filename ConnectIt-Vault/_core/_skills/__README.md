@@ -5,5 +5,5 @@ than a single domain. Each is mirrored to `.claude/skills/<name>/SKILL.md`, whic
 where Claude Code loads it from.
 
 Governed by [`_schema/_skills.md`](_skills.md). A domain's own skills live
-in `<domain>/skills/`, not here. `drafts/` holds unconverted raw material — not live
+in `<domain>/_skills/`, not here. `drafts/` holds unconverted raw material — not live
 skills. The live catalog of skills actually present is [`__INDEX.md`](__INDEX.md).

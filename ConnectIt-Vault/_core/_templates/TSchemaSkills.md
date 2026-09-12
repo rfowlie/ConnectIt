@@ -18,7 +18,7 @@ The files this skill loads before doing anything, in order, and why:
 
 1. `path/to/file.md` — what it provides.
 2. `<domain>/user/<file>.md` — the personal context every answer must fit.
-3. `<domain>/data/wiki/<slug>.md` — voice / framework profile; note the fallback if one is missing.
+3. `<domain>/_data/wiki/<slug>.md` — voice / framework profile; note the fallback if one is missing.
 
 If an expected input is absent: say so, do not invent it.
 

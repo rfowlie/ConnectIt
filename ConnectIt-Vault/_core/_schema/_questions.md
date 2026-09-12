@@ -1,14 +1,14 @@
 # _schema/_questions.md
 
-A `questions/` folder holds **one note per open question or unresolved thread** — the
+A `_questions/` folder holds **one note per open question or unresolved thread** — the
 things the vault (or a domain) hasn't settled yet. It's the live counterpart to
 `_decisions` (settled calls) and distinct from an `_ask-vault` record (a one-shot Q&A
-snapshot); a `questions/` note can *link* to either as the thing that closes it.
+snapshot); a `_questions/` note can *link* to either as the thing that closes it.
 
 ## Structure
 
 ```
-questions/
+_questions/
   <kebab-slug>.md    one per question — a stable name that persists until the question closes
 ```
 
@@ -40,7 +40,7 @@ Body:
 
 ## Mounts
 
-Either: `_core/_questions/` for vault-level threads, `<domain>/questions/` for a
+Either: `_core/_questions/` for vault-level threads, `<domain>/_questions/` for a
 domain's own.
 
 ## Template
@@ -49,5 +49,5 @@ domain's own.
 
 ## Deviations
 
-Add `questions/__README.md` starting `Extends _schema/_questions.md. Differences:` for extra
+Add `_questions/__README.md` starting `Extends _schema/_questions.md. Differences:` for extra
 frontmatter or a required triage cadence.

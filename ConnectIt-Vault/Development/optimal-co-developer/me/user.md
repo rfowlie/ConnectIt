@@ -2,7 +2,7 @@
 
 Who I am as a developer, and how to work with me. This is a first draft, pulled from an interview — some of it is first-articulation thinking and will be revised. We agreed to revisit after shipping the first title.
 
-> Canonical for **working style**. For owner **facts** (status, goals, blockers, constraints), see [`../board-of-advisors/knowledge/me/career-coach.md`](career-coach.md). On overlap: that file wins on what's true, this one wins on how to act on it.
+> Canonical for **working style**. For owner **facts** (status, goals, blockers, constraints), see [`../board-of-advisors/_knowledge/me/career-coach.md`](career-coach.md). On overlap: that file wins on what's true, this one wins on how to act on it.
 
 ---
 

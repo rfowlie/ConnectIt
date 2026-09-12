@@ -1,12 +1,12 @@
 # _schema/_tasks.md
 
-A `tasks/` folder tracks the open and closed work that has entered a domain (or the
+A `_tasks/` folder tracks the open and closed work that has entered a domain (or the
 vault). It is a set of **status tables**, not one note per task — every task is a row.
 
 ## Structure
 
 ```
-tasks/
+_tasks/
   active.md       the working list — tasks currently in play
   suspended.md    parked tasks, kept for when they resume
   complete.md     finished tasks (archive)
@@ -45,8 +45,8 @@ row was relocated. A domain may add columns (`Priority`, `Source`, …); keep `T
 
 ## Mounts
 
-Either: `_core/_tasks/` for vault-level work, `<domain>/tasks/` for a domain's own.
-`/process-tasks` sweeps every `tasks/` folder in the vault.
+Either: `_core/_tasks/` for vault-level work, `<domain>/_tasks/` for a domain's own.
+`/process-tasks` sweeps every `_tasks/` folder in the vault.
 
 ## Template
 
@@ -54,6 +54,6 @@ Either: `_core/_tasks/` for vault-level work, `<domain>/tasks/` for a domain's o
 
 ## Deviations
 
-Add `tasks/__README.md` starting `Extends _schema/_tasks.md. Differences:` for extra
+Add `_tasks/__README.md` starting `Extends _schema/_tasks.md. Differences:` for extra
 columns, extra statuses, or (later) an Obsidian Bases view in place of the markdown
 tables.

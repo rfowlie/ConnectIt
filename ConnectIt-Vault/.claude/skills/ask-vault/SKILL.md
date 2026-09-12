@@ -36,10 +36,10 @@ whichever exist for material on the question:
 
 1. `_core/_atomic/` — the single-idea pool, incl. notes tagged `mental model`; usually
    the densest hits.
-2. `data/wiki/**` in every domain — per-source synthesis.
-3. `decisions/` — settled calls and their reasoning; `questions/` — open threads.
+2. `_data/wiki/**` in every domain — per-source synthesis.
+3. `_decisions/` — settled calls and their reasoning; `_questions/` — open threads.
 4. `maps/` — curated entry points; follow their links.
-5. `people/`, `meetings/`, `daily/` — when the question is about a person, a conversation,
+5. `_people/`, `_meetings/`, `_daily/` — when the question is about a person, a conversation,
    or a date.
 6. `code/` pages — for questions about a domain's source (what a type does, a flow, a
    recipe).

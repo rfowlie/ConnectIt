@@ -1,6 +1,6 @@
 # _schema/_clippings.md
 
-A `clippings/` folder is an **unprocessed capture dump**. The Obsidian Web Clipper is the
+A `_clippings/` folder is an **unprocessed capture dump**. The Obsidian Web Clipper is the
 main feeder — saved articles, videos, and pages land here before they're read, sorted,
 and moved to where they belong. Other quick captures (a pasted note, an emailed link)
 belong here too.
@@ -10,19 +10,19 @@ belong here too.
 - **Vault-wide `_core/_clippings/`** — the catch-all. Capture now, decide later.
   Processing it **triages each item into the right domain** (and the right section within
   that domain).
-- **Domain `clippings/`** — scoped to one domain. Processing it routes items **within
+- **Domain `_clippings/`** — scoped to one domain. Processing it routes items **within
   that domain only**; never reach into another domain or the vault root.
 
 ## Rules
 
-- **Everything in `clippings/` is unprocessed.** Presence means "not yet dealt with." An
-  empty `clippings/` is the goal state.
-- Nothing in `clippings/` feeds any process while it sits there.
+- **Everything in `_clippings/` is unprocessed.** Presence means "not yet dealt with." An
+  empty `_clippings/` is the goal state.
+- Nothing in `_clippings/` feeds any process while it sits there.
 - **Processing a clip = moving it to its real home.** Source material goes to the target
-  `data/raw/` (verbatim, with its origin metadata — URL, author, capture date — intact);
-  a decision goes to `decisions/`, and so on. Normal section rules apply wherever an item
-  lands; `clippings/` is a staging area, not an exemption.
-- **Delete an item once it's routed** (or record why it was discarded). `clippings/` is
+  `_data/raw/` (verbatim, with its origin metadata — URL, author, capture date — intact);
+  a decision goes to `_decisions/`, and so on. Normal section rules apply wherever an item
+  lands; `_clippings/` is a staging area, not an exemption.
+- **Delete an item once it's routed** (or record why it was discarded). `_clippings/` is
   not an archive.
 - **No `/process-*` skill touches this folder.** Deciding where a clip belongs is a
   judgment call every time — routing stays manual, on purpose.
@@ -40,6 +40,6 @@ fixed shape.
 
 ## Deviations
 
-A domain whose `clippings/` is filled by a different tool, or needs a different retention
-rule, adds `clippings/__README.md` starting `Extends _schema/_clippings.md. Differences:`
+A domain whose `_clippings/` is filled by a different tool, or needs a different retention
+rule, adds `_clippings/__README.md` starting `Extends _schema/_clippings.md. Differences:`
 and lists only the changes.

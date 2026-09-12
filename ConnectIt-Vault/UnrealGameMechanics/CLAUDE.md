@@ -17,22 +17,22 @@ scoring/selection helpers, two state-machine patterns, a tag-broadcast component
   `Widget/`, `Debug/`.
 - **Status:** active — enabled in `ConnectIt.uproject`. Plugin dep: `EnhancedInput`.
 - **Type:** game-agnostic plugin, independently extractable.
-- **Base of the suite:** consumed by [[UnrealGridMechanics/CLAUDE|UnrealGridMechanics]],
-  [[UnrealTurnBasedMechanics/CLAUDE|UnrealTurnBasedMechanics]], and
-  [[ConnectIt/CLAUDE|ConnectIt]]. TurnBased's turn-end sequence routes through
+- **Base of the suite:** consumed by [UnrealGridMechanics](../UnrealGridMechanics/CLAUDE.md),
+  [UnrealTurnBasedMechanics](../UnrealTurnBasedMechanics/CLAUDE.md), and
+  [ConnectIt](../ConnectIt/CLAUDE.md). TurnBased's turn-end sequence routes through
   `UGameEventTaskSubsystem`.
 
 ## Sections
 
 - **`code/`** — per-type pages, `code/systems/` flow narratives, `code/recipes/` task
   procedures, `code/__INDEX.md` (inventory of every public type + a module map). Governed by
-  [[_core/_schema/_code|_core/_schema/_code.md]].
+  [`_core/_schema/_code.md`](../_core/_schema/_code.md).
 - `logs/` — domain-scoped maintenance passes, created on first use
-  ([[_core/_schema/_logs|schema]]).
+  ([schema](../_core/_schema/_logs.md)).
 
 ## Start here
 
-[[UnrealGameMechanics/code/__INDEX|code/__INDEX.md]] — inventory + where to start reading.
+[code/__INDEX.md](code/__INDEX.md) — inventory + where to start reading.
 
 ## Known rough edges
 

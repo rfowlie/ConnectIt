@@ -75,16 +75,16 @@ payload struct, and `FConnectItBoardChangeEvent` fields — see
   [[UConnectIt_BoardRegistrySubsystem|UConnectIt_BoardRegistrySubsystem]], and passes a
   real `PieceRegistry` into `InitialiseBoardState` instead of `nullptr`. Removed a
   silent-failure path (the scan could run before any controller connected). See
-  [[ConnectIt/decisions/2026-09-09-board-registries-to-world-subsystem|decisions/2026-09-09-board-registries-to-world-subsystem]].
+  [[ConnectIt/_decisions/2026-09-09-board-registries-to-world-subsystem|decisions/2026-09-09-board-registries-to-world-subsystem]].
 - 2026-09-08 — board authority moved here: `AConnectIt_BoardManager` (world actor)
   retired; `BoardRequestMediator` + `BoardRules` constructed in `HandleMatchHasStarted`
   as server-only UObject members. See
-  [[ConnectIt/decisions/2026-09-08-board-architecture-overhaul|decisions/2026-09-08-board-architecture-overhaul]].
+  [[ConnectIt/_decisions/2026-09-08-board-architecture-overhaul|decisions/2026-09-08-board-architecture-overhaul]].
 
 ## See also
 
-- Decisions: [[ConnectIt/decisions/2026-09-08-board-architecture-overhaul|board-architecture-overhaul]],
-  [[ConnectIt/decisions/2026-09-09-board-registries-to-world-subsystem|board-registries-to-world-subsystem]]
+- Decisions: [[ConnectIt/_decisions/2026-09-08-board-architecture-overhaul|board-architecture-overhaul]],
+  [[ConnectIt/_decisions/2026-09-09-board-registries-to-world-subsystem|board-registries-to-world-subsystem]]
 - Flow: [[place-piece-request|systems/place-piece-request]] (the ServerAuthoritative
   action-request pattern)
 - [[UConnectIt_BoardRegistrySubsystem|UConnectIt_BoardRegistrySubsystem]]

@@ -1,6 +1,6 @@
 # _schema/_data.md
 
-A `data/` folder is **reference** — stable facts and understanding, not a to-do list.
+A `_data/` folder is **reference** — stable facts and understanding, not a to-do list.
 
 ## Subfolders
 
@@ -11,7 +11,7 @@ A `data/` folder is **reference** — stable facts and understanding, not a to-d
 
 Owner facts live in `_user`, not here. Mental models are `_atomic` notes tagged
 `mental model`, not here. Binary source files (PDFs, audio, images) live in
-`_attachments`, not `data/raw/` — `raw/` is text sources only.
+`_attachments`, not `_data/raw/` — `raw/` is text sources only.
 
 ## Rules
 
@@ -20,7 +20,7 @@ Owner facts live in `_user`, not here. Mental models are `_atomic` notes tagged
   frontmatter `note:`, not inline.
 - **Every `raw/<slug>/` file is reflected in `wiki/<slug>.md`.** A new raw file means a
   wiki update. No wiki claim should lack raw support. `/process-data` sweeps every
-  `data/` folder and writes the wiki notes missing for existing raw sources.
+  `_data/` folder and writes the wiki notes missing for existing raw sources.
 - **Paraphrase in the source's voice in `wiki/`;** reserve quotation marks for phrases
   actually attested in `raw/`.
 - **One canonical file per subject.** If a domain has a single reference doc that is the
@@ -29,11 +29,11 @@ Owner facts live in `_user`, not here. Mental models are `_atomic` notes tagged
 
 ## Template
 
-No per-note template — `data/` defines a folder layout. `raw/` files keep the source's
+No per-note template — `_data/` defines a folder layout. `raw/` files keep the source's
 own shape plus frontmatter; a `wiki/<slug>.md` is free-form synthesis.
 
 ## Deviations
 
-A domain's `data/` (or a subfolder of it) adds a local `__README.md` starting
+A domain's `_data/` (or a subfolder of it) adds a local `__README.md` starting
 `Extends _schema/_data.md. Differences:` when it needs domain-specific rules — e.g. a
 per-source corpus convention.

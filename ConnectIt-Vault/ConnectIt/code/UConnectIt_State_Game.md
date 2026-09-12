@@ -17,7 +17,7 @@ commit: eddd631
 > `Framework/GameMode/ConnectIt_GameMode`, `Framework/GameState/`, `GameEvent/`)
 > constructs, includes, or references it — confirmed by exhaustive grep. It is kept in
 > the source tree, not built on. Do not extend it or wire new code to it. See
-> [[ConnectIt/decisions/2026-09-08-retire-legacy-mvvm-pipeline|decisions/2026-09-08-retire-legacy-mvvm-pipeline]].
+> [[ConnectIt/_decisions/2026-09-08-retire-legacy-mvvm-pipeline|decisions/2026-09-08-retire-legacy-mvvm-pipeline]].
 
 ## What it is
 
@@ -78,7 +78,7 @@ Removing this pipeline also removes: `UConnectIt_State_*` (5 classes),
 
 ## See also
 
-- Decision: [[ConnectIt/decisions/2026-09-08-retire-legacy-mvvm-pipeline|decisions/2026-09-08-retire-legacy-mvvm-pipeline]]
+- Decision: [[ConnectIt/_decisions/2026-09-08-retire-legacy-mvvm-pipeline|decisions/2026-09-08-retire-legacy-mvvm-pipeline]]
 - Live path: [[place-piece-request|systems/place-piece-request]],
   [[board-state-single-source-of-truth|systems/board-state-single-source-of-truth]]
 - [[UConnectIt_GameFacade|UConnectIt_GameFacade]] (the read/write split, also retired)

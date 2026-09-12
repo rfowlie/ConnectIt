@@ -9,6 +9,19 @@ domain gets `<domain>/<section>/`; the vault gets `_core/_<section>/`.
 Full rulebook: [`_schema/_core.md`](_schema/_core.md). This file points; it does not
 restate the spec.
 
+## Link format
+
+**Vault-wide standard: standard Markdown links, `[text](path)` — not Obsidian
+`[[wikilinks]]`.** Chosen 2026-09-11 once the `_core/` structure stabilized enough that
+files stop moving often: a Markdown link's path is directly actionable by an AI
+co-developer working from the file tree (no vault-wide name search to resolve a target),
+at the cost of needing a human or the [`fix-links`](_skills/fix-links.md) skill to keep
+paths correct across a move — an acceptable trade now that restructuring is rare. Full
+reasoning: [`wikilink-aliases-separate-target-from-display`](_atomic/wikilink-aliases-separate-target-from-display.md)
+and [`link-format-choice-depends-on-maintainer-and-consumer`](_atomic/link-format-choice-depends-on-maintainer-and-consumer.md).
+Run `/fix-links` after any file move or rename to catch what a Markdown link's lack of
+auto-rewrite would otherwise leave stale.
+
 ## Start of session
 
 When a session will touch vault structure, read first:
@@ -24,9 +37,9 @@ rulebook, `_core/`, a skill, or the reasoning behind the setup — before the ch
 done:
 
 1. Write one note to `_logs/<YYYY-MM-DD-HHMM>.md` per
-   [`_schema/_logs.md`](_schema/_logs.md) / [[TSchemaLogs]] — one per working session /
-   change-set, append-only, never edited after writing. Add its line to
-   [`_logs/__INDEX.md`](_logs/__INDEX.md) (newest first).
+   [`_schema/_logs.md`](_schema/_logs.md) / [`TSchemaLogs`](_templates/TSchemaLogs.md) —
+   one per working session / change-set, append-only, never edited after writing. Add its
+   line to [`_logs/__INDEX.md`](_logs/__INDEX.md) (newest first).
 2. Update [`../ABOUT.md`](../ABOUT.md) when the structure or its rationale shifted — the
    section table, Conventions, Open questions, and a Changelog line.
 

@@ -1,6 +1,6 @@
 # _schema/_logs.md
 
-A `logs/` folder is an **append-only record of automated maintenance passes** over a
+A `_logs/` folder is an **append-only record of automated maintenance passes** over a
 domain — or, at `_core/_logs/`, over the whole vault. **One note per run**, flat in the
 folder. This is machine-written history; the human's own day-to-day notes go in `_daily`,
 not here.
@@ -9,11 +9,11 @@ not here.
 
 - **`_core/_logs/`** — the vault-wide log: passes that touch the whole vault or cross
   domains.
-- **`<domain>/logs/`** — a single domain's log: passes scoped to that domain.
+- **`<domain>/_logs/`** — a single domain's log: passes scoped to that domain.
 
 ## Filename
 
-`logs/<YYYY-MM-DD-HHMM>.md` — local, 24-hour. Date-only (`<YYYY-MM-DD>.md`) is fine when
+`_logs/<YYYY-MM-DD-HHMM>.md` — local, 24-hour. Date-only (`<YYYY-MM-DD>.md`) is fine when
 the time isn't known; add `-2`, `-3` for same-timestamp collisions.
 
 ## What a note holds
@@ -40,7 +40,7 @@ revisit).
   notes in the folder.
 - Created on first use — the writing process makes the folder if it's absent. Don't
   pre-scaffold.
-- Optional: a `logs/__INDEX.md` (per [[TIndex]]) may carry a newest-first one-line index
+- Optional: a `_logs/__INDEX.md` (per [[TIndex]]) may carry a newest-first one-line index
   for quick start-of-session context.
 
 ## Template
@@ -49,6 +49,6 @@ revisit).
 
 ## Deviations
 
-Add `logs/__README.md` starting `Extends _schema/_logs.md. Differences:` if a domain needs
-a different retention rule or extra frontmatter. (Its `logs/__INDEX.md`, if present, is a
+Add `_logs/__README.md` starting `Extends _schema/_logs.md. Differences:` if a domain needs
+a different retention rule or extra frontmatter. (Its `_logs/__INDEX.md`, if present, is a
 separate file and not itself a deviation.)

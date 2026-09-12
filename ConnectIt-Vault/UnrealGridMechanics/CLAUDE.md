@@ -13,20 +13,20 @@ interfaces. A separate editor module adds asset validation.
   + `UnrealGridMechanicsEditor` (Editor). Sub-areas: `Board/`, `Tile/`, `Piece/`,
   `Cursor/`, `Subsystem/`, `Interface/`, top-level grid math; editor `Validator/`.
 - **Status:** active — enabled in `ConnectIt.uproject`. Deps: `GameplayAbilities`,
-  `DataValidation`, [[UnrealGameMechanics/CLAUDE|UnrealGameMechanics]].
+  `DataValidation`, [UnrealGameMechanics](../UnrealGameMechanics/CLAUDE.md).
 - **Type:** game-agnostic plugin, independently extractable.
-- **Consumed by:** [[UnrealTurnBasedMechanics/CLAUDE|UnrealTurnBasedMechanics]],
-  [[ConnectIt/CLAUDE|ConnectIt]].
+- **Consumed by:** [UnrealTurnBasedMechanics](../UnrealTurnBasedMechanics/CLAUDE.md),
+  [ConnectIt](../ConnectIt/CLAUDE.md).
 
 ## Sections
 
 - **`code/`** — per-type pages, `code/systems/`, `code/recipes/`, `code/__INDEX.md`
-  (inventory + map). Governed by [[_core/_schema/_code|_core/_schema/_code.md]].
-- `logs/` — created on first use ([[_core/_schema/_logs|schema]]).
+  (inventory + map). Governed by [`_core/_schema/_code.md`](../_core/_schema/_code.md).
+- `logs/` — created on first use ([schema](../_core/_schema/_logs.md)).
 
 ## Start here
 
-[[UnrealGridMechanics/code/__INDEX|code/__INDEX.md]].
+[code/__INDEX.md](code/__INDEX.md).
 
 ## Known rough edges
 

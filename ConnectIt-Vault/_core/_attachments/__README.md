@@ -4,7 +4,7 @@ The **vault-level** store for non-note files — images, PDFs, audio, video, bin
 that aren't scoped to a single domain.
 
 Governed by [`_schema/_attachments.md`](../_schema/_attachments.md). A domain's own files
-live in `<domain>/attachments/`.
+live in `<domain>/_attachments/`.
 
-**Immutable.** Like `data/raw/`, nothing here is edited, renamed, or deleted by Claude —
+**Immutable.** Like `_data/raw/`, nothing here is edited, renamed, or deleted by Claude —
 only by the user. Notes link in; they don't rewrite what's here.

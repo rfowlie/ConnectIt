@@ -8,7 +8,7 @@ is the per-turn action, with cooldowns and an Enhanced-Input grid-tile
 hover→validate→select pipeline. `UTurnBasedParticipantManagerComponent` (on the game
 state) is the replicated match state machine: ready-check, turn timers,
 forfeit-on-disconnect, reconnect handling, and a **gameplay-tag-gated turn-end sequence**
-routed through [[UnrealGameMechanics/CLAUDE|UnrealGameMechanics]]'
+routed through [UnrealGameMechanics](../UnrealGameMechanics/CLAUDE.md)'
 `UGameEventTaskSubsystem`. Turn order is a pluggable strategy. A coordinator component
 wires the participant + actions components identically onto the player and AI controllers.
 
@@ -20,21 +20,21 @@ wires the participant + actions components identically onto the player and AI co
   `GameEvent/`, `Debug/`.
 - **Status:** active — enabled. The most disciplined plugin (consistent dual dynamic +
   `_Native` delegates, `_Internal` wrapper pattern, `Turn Based|` Category prefix). Deps:
-  `EnhancedInput`, [[UnrealGameMechanics/CLAUDE|UnrealGameMechanics]],
-  [[UnrealGridMechanics/CLAUDE|UnrealGridMechanics]].
+  `EnhancedInput`, [UnrealGameMechanics](../UnrealGameMechanics/CLAUDE.md),
+  [UnrealGridMechanics](../UnrealGridMechanics/CLAUDE.md).
 - **Type:** game-agnostic plugin, independently extractable.
-- **Consumed by:** [[ConnectIt/CLAUDE|ConnectIt]] — its GameMode / GameState / controllers
+- **Consumed by:** [ConnectIt](../ConnectIt/CLAUDE.md) — its GameMode / GameState / controllers
   derive from the `ATurnBased*` bases.
 
 ## Sections
 
 - **`code/`** — per-type pages, `code/systems/`, `code/recipes/`, `code/__INDEX.md`.
-  Governed by [[_core/_schema/_code|_core/_schema/_code.md]].
-- `logs/` — created on first use ([[_core/_schema/_logs|schema]]).
+  Governed by [`_core/_schema/_code.md`](../_core/_schema/_code.md).
+- `logs/` — created on first use ([schema](../_core/_schema/_logs.md)).
 
 ## Start here
 
-[[UnrealTurnBasedMechanics/code/__INDEX|code/__INDEX.md]].
+[code/__INDEX.md](code/__INDEX.md).
 
 ## Known rough edges
 

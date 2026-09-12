@@ -115,7 +115,7 @@ AdvancedSessions-5-5 — vendored third-party, not integrated
    `FInstancedStruct Payload` on its request/modifier structs so the game module can
    extend turn data without changing the plugin; no `Client_`/`Multicast_` RPCs exist in
    `Source/ConnectIt` — every "tell everyone" need is a replicated-property change
-   instead. See [[ConnectIt/decisions/2026-09-06-suite-conventions|decisions/2026-09-06-suite-conventions]].
+   instead. See [[ConnectIt/_decisions/2026-09-06-suite-conventions|decisions/2026-09-06-suite-conventions]].
 
 ### Do not document as live
 
@@ -124,7 +124,7 @@ sub-states, [[UConnectIt_GameFacade|UConnectIt_GameFacade]] / `UConnectIt_GameVi
 `UConnectIt_PlayerData`, `AConnectIt_GameMode_Play`, and the two `IConnectIt_*Handler`
 interfaces — is **unreferenced dead code**, superseded by the replicated board pipeline.
 Kept in the tree, not built on. See
-[[ConnectIt/decisions/2026-09-08-retire-legacy-mvvm-pipeline|decisions/2026-09-08-retire-legacy-mvvm-pipeline]].
+[[ConnectIt/_decisions/2026-09-08-retire-legacy-mvvm-pipeline|decisions/2026-09-08-retire-legacy-mvvm-pipeline]].
 Also retired: `AConnectIt_BoardManager` and its subsystem, the whole ConnectIt shift
 pipeline, the tag-reactive interpreter (its game-event-queue replacement on the mediator
 is an empty stub).
@@ -183,5 +183,5 @@ folded here). Full evidence/hypothesis/recommendation for the structural set liv
   read live board / turn / action / sequencing state
 - Flows: [[ConnectIt/code/systems/__INDEX|systems/__INDEX.md]]
 - Recipes: [[ConnectIt/code/recipes/__INDEX|recipes/__INDEX.md]]
-- Decisions: [[ConnectIt/decisions/__INDEX|decisions/__INDEX.md]]
+- Decisions: [[ConnectIt/_decisions/__INDEX|decisions/__INDEX.md]]
 - Domain router: [[ConnectIt/CLAUDE|ConnectIt/CLAUDE.md]]

@@ -6,13 +6,13 @@ Reusable procedures Claude can run on demand — the "programs" of this vault.
 
 | Location | Role |
 |---|---|
-| `<domain>/skills/<name>.md` | Authored home for a **domain** skill — portable, tool-agnostic, part of the folder you would copy anywhere. |
+| `<domain>/_skills/<name>.md` | Authored home for a **domain** skill — portable, tool-agnostic, part of the folder you would copy anywhere. |
 | `_core/_skills/<name>.md` | Authored home for a **vault-wide** skill — one that operates on the whole vault rather than a single domain. |
 | `.claude/skills/<name>/SKILL.md` | Where Claude Code **loads** any skill from. Only skills here are invocable as `/<name>`. |
 
 - Every skill keeps its **authored copy** and the **`.claude/skills/` mirror** in sync:
   edit the authored copy, mirror it, and note the change in the relevant log —
-  `<domain>/logs/` for a domain skill, `_core/_logs/` for a vault-wide one.
+  `<domain>/_logs/` for a domain skill, `_core/_logs/` for a vault-wide one.
 - The authored copy is canonical; `.claude/skills/` is a generated mirror, not
   hand-edited. `/process-skills` checks every vault-wide skill's mirror exists and
   matches, and fixes it if not — scoped to this vault, not other vaults holding a copy.
@@ -36,16 +36,16 @@ Every skill in this vault is held to the same bar:
 
 - `name` in frontmatter is kebab-case and matches the filename / folder.
 - `description` leads with the trigger condition — it is what Claude matches on.
-- A skill reads from `data/wiki/` and the domain's reference docs; it shouldn't
+- A skill reads from `_data/wiki/` and the domain's reference docs; it shouldn't
   hard-code facts that belong in a reference file.
 
 ## Folder notes
 
-`skills/__README.md` holds the rules (this file's local deviations, if any); the live
-catalog of skills actually present belongs in `skills/__INDEX.md` (per [[TIndex]]),
+`_skills/__README.md` holds the rules (this file's local deviations, if any); the live
+catalog of skills actually present belongs in `_skills/__INDEX.md` (per [[TIndex]]),
 kept separate so the rules explainer doesn't have to grow with every new skill.
 
 ## Deviations
 
-Add `skills/__README.md` starting `Extends _schema/_skills.md. Differences:` if a domain
+Add `_skills/__README.md` starting `Extends _schema/_skills.md. Differences:` if a domain
 authors skills differently.

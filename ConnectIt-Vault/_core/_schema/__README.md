@@ -93,8 +93,12 @@ operating rules (log every change, keep `ABOUT.md` current) and the steps to dro
 
 - Schema folder is `_core/_schema/`. Each rulebook is `_<section>.md`; its H1 keeps the
   short label `# _schema/_<section>.md`.
-- **Live section folders a domain creates are bare** — `data/`, `people/`, `decisions/`.
-  The `_` prefix is only for `_schema/`, `_core/`, and their contents.
+- **Every schema-governed section folder is `_`-prefixed, domain-level or vault-wide** —
+  `_data/`, `_people/`, `_decisions/`. The prefix means "governed by a `_schema/_<section>.md`
+  rulebook," not "core-only." (Reversed 2026-09-11 — this bullet used to say the opposite,
+  that live section folders a domain creates are bare. `_code`, `_atomic`, `_maps`, and
+  `_user` are not part of that reversal pass; see [`ABOUT.md`](../../ABOUT.md) → Open
+  questions.)
 - Context files are always named `CLAUDE.md` at every level — required for auto-loading,
   and it lets any folder be extracted to a repo root with no renaming.
 - Templates live in `_core/_templates/`: `TSchema<Section>.md` for a section's note
