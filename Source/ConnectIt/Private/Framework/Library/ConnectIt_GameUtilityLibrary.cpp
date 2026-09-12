@@ -12,6 +12,7 @@
 #include "Board/ConnectIt_BoardStateComponent.h"
 #include "Board/ConnectIt_PieceRegistry.h"
 #include "Board/ConnectIt_TileRegistry.h"
+#include "Framework/PlayerState/ConnectIt_PlayerState.h"
 #include "Turn/Participant/TurnBasedParticipantManagerComponent.h"
 #include "Turn/Participant/TurnBasedParticipantComponent.h"
 #include "Tile/GridTileBase.h"
@@ -217,6 +218,35 @@ AConnectIt_GameState* UConnectIt_GameUtilityLibrary::GetConnectItGameState(
     if (!IsValid(World)) return nullptr;
 
     return World->GetGameState<AConnectIt_GameState>();
+}
+
+void UConnectIt_GameUtilityLibrary::GetAllConnectItPlayerStates(
+    TArray<AConnectIt_PlayerState*>& OutPlayerStates, 
+    const UObject* WorldContextObject)
+{
+    if (!IsValid(WorldContextObject)) return;
+
+    OutPlayerStates.Empty();
+    for (int32 index = 0; index < UGameplayStatics::GetNumPlayerStates(WorldContextObject); index++)
+    {
+        if (AConnectIt_PlayerState* PlayerState = Cast<AConnectIt_PlayerState>(
+            UGameplayStatics::GetPlayerState(WorldContextObject, index)))
+        {
+            OutPlayerStates.Add(PlayerState);
+        }
+    }
+}
+
+AConnectIt_PlayerState* UConnectIt_GameUtilityLibrary::GetLocalConnectItPlayerState(const UObject* WorldContextObject)
+{
+    if (!IsValid(WorldContextObject)) return nullptr;
+    
+    AConnectIt_GameState* GameState = GetConnectItGameState(WorldContextObject);
+    if (!IsValid(GameState)) return nullptr;
+
+    APlayerState* PlayerState = UGameplayStatics::GetPlayerState(
+        WorldContextObject, GetLocalPlayerSlotIndex(WorldContextObject));
+    return Cast<AConnectIt_PlayerState>(PlayerState);
 }
 
 UTurnBasedParticipantManagerComponent* UConnectIt_GameUtilityLibrary::GetParticipantManager(

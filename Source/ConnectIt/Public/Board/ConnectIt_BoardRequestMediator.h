@@ -13,6 +13,9 @@ class UTurnBasedGameEvent;
 class UConnectIt_BoardRules;
 class UConnectIt_BoardStateComponent;
 
+// TODO: should adjsut this to listen to server player controller broadcasts
+// that way the flow is the player broadcasts a request instead of reaching into here force the request...
+
 // Accepts and dispatches board-change requests -- the server-only successor
 // to AConnectIt_BoardManager::ProcessRequest, now a plain UObject
 // constructed and owned by AConnectIt_GameMode instead of a world Actor.

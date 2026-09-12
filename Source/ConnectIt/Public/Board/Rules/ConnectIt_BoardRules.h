@@ -5,10 +5,11 @@
 #include "CoreMinimal.h"
 #include "UObject/Object.h"
 #include "Board/Rules/ConnectIt_ScoringRule.h"
+#include "Board/Rules/ConnectIt_TilePlaceableRule.h"
 #include "Board/Rules/ConnectIt_WinCondition.h"
 #include "ConnectIt_BoardRules.generated.h"
 
-// Owns the board's pluggable scoring/win-condition strategies. Lives on
+// Owns the board's pluggable scoring/win-condition/placement strategies. Lives on
 // AConnectIt_GameMode (server-only) alongside UConnectIt_BoardRequestMediator
 // -- renamed and converted from UConnectIt_BoardRulesComponent, which used
 // to sit on the now-retired AConnectIt_BoardManager actor. Never touched by
@@ -24,17 +25,25 @@ class CONNECTIT_API UConnectIt_BoardRules : public UObject
 public:
 
     // Swappable scoring strategy -- defaults to UConnectIt_LineScoringRule
-    // in Initialise() if left unset. Mirrors TurnBasedParticipantManagerComponent::
-    // TurnOrderStrategy.
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "ConnectIt|Rules",
+    // in Initialise() if left unset. TObjectPtr<UObject> + Instanced +
+    // MustImplement (not TScriptInterface -- Instanced only drives the
+    // inline class-pick/edit Details-panel behaviour on an FObjectProperty,
+    // which TScriptInterface's FInterfaceProperty is not).
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Instanced, Category = "ConnectIt|Rules",
         meta = (MustImplement = "/Script/ConnectIt.ConnectIt_ScoringRule"))
-    TScriptInterface<IConnectIt_ScoringRule> ScoringRule;
+    TObjectPtr<UObject> ScoringRule;
 
     // Swappable win-condition strategy -- defaults to
     // UConnectIt_ScoreThresholdWinCondition in Initialise() if left unset.
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "ConnectIt|Rules",
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Instanced, Category = "ConnectIt|Rules",
         meta = (MustImplement = "/Script/ConnectIt.ConnectIt_WinCondition"))
-    TScriptInterface<IConnectIt_WinCondition> WinConditionRule;
+    TObjectPtr<UObject> WinConditionRule;
+
+    // Swappable placement-validity strategy -- defaults to
+    // UConnectIt_UnoccupiedTilePlaceableRule in Initialise() if left unset.
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Instanced, Category = "ConnectIt|Rules",
+        meta = (MustImplement = "/Script/ConnectIt.ConnectIt_TilePlaceableRule"))
+    TObjectPtr<UObject> TilePlaceableRule;
 
     // Called once by whoever constructs this instance (AConnectIt_GameMode)
     // -- defaults ScoringRule/WinConditionRule if left unset. Replaces the
@@ -62,6 +71,11 @@ public:
     // strategy object directly and is not.
     UFUNCTION(BlueprintPure, Category = "ConnectIt|Rules")
     float GetTargetScore() const;
+
+    // Wraps IConnectIt_TilePlaceableRule::Execute_IsTilePlaceable --
+    // Error-logs and returns false if TilePlaceableRule is unset (should
+    // not happen post-Initialise).
+    bool IsTilePlaceable(const FConnectItBoardState& State, FGridPosition Position) const;
 
     // Which strategies are configured -- debug visibility only, a
     // server-only object with no networked identity.

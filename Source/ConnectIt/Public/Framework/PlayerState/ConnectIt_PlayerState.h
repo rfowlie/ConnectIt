@@ -13,4 +13,9 @@ UCLASS()
 class CONNECTIT_API AConnectIt_PlayerState : public APlayerState
 {
 	GENERATED_BODY()
+
+	// TODO: add read only actions list
+	// TODO: listen to mediator to update actions list
+
+	
 };

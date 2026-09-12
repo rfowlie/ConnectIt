@@ -78,6 +78,7 @@ void AConnectIt_GameMode::HandleMatchHasStarted()
     {
         BoardRules->ScoringRule = LevelConfig->ScoringRule;
         BoardRules->WinConditionRule = LevelConfig->WinConditionRule;
+        BoardRules->TilePlaceableRule = LevelConfig->TilePlaceableRule;
     }
     BoardRules->Initialise();
 

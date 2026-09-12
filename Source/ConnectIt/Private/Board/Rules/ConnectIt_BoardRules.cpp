@@ -5,12 +5,13 @@
 
 #include "Board/Rules/ConnectIt_LineScoringRule.h"
 #include "Board/Rules/ConnectIt_ScoreThresholdWinCondition.h"
+#include "Board/Rules/ConnectIt_UnoccupiedTilePlaceableRule.h"
 
 
 void UConnectIt_BoardRules::Initialise()
 {
     // Set default rules
-    if (!ScoringRule.GetObject())
+    if (!ScoringRule)
     {
         ScoringRule = NewObject<UConnectIt_LineScoringRule>(
             this, UConnectIt_LineScoringRule::StaticClass());
@@ -20,7 +21,7 @@ void UConnectIt_BoardRules::Initialise()
                  "— defaulting to LineScoringRule"));
     }
 
-    if (!WinConditionRule.GetObject())
+    if (!WinConditionRule)
     {
         WinConditionRule = NewObject<UConnectIt_ScoreThresholdWinCondition>(
             this, UConnectIt_ScoreThresholdWinCondition::StaticClass());
@@ -28,6 +29,16 @@ void UConnectIt_BoardRules::Initialise()
         UE_LOG(LogTemp, Log,
             TEXT("ConnectIt_BoardRules: No win condition set "
                  "— defaulting to ScoreThresholdWinCondition"));
+    }
+
+    if (!TilePlaceableRule)
+    {
+        TilePlaceableRule = NewObject<UConnectIt_UnoccupiedTilePlaceableRule>(
+            this, UConnectIt_UnoccupiedTilePlaceableRule::StaticClass());
+
+        UE_LOG(LogTemp, Log,
+            TEXT("ConnectIt_BoardRules: No tile-placeable rule set "
+                 "— defaulting to UnoccupiedTilePlaceableRule"));
     }
 }
 
@@ -37,7 +48,7 @@ float UConnectIt_BoardRules::ApplyScoring(
     int32 FactionSlot,
     TArray<FGridPosition>& OutScoringPositions) const
 {
-    if (!ScoringRule.GetInterface())
+    if (!ScoringRule)
     {
         UE_LOG(LogTemp, Error,
             TEXT("ConnectIt_BoardRules: ApplyScoring — "
@@ -46,14 +57,14 @@ float UConnectIt_BoardRules::ApplyScoring(
     }
 
     return IConnectIt_ScoringRule::Execute_ApplyScoring(
-        ScoringRule.GetObject(), MutableState, Position, FactionSlot,
+        ScoringRule, MutableState, Position, FactionSlot,
         OutScoringPositions);
 }
 
 void UConnectIt_BoardRules::CheckWinCondition(
     FConnectItBoardState& MutableState) const
 {
-    if (!WinConditionRule.GetInterface())
+    if (!WinConditionRule)
     {
         UE_LOG(LogTemp, Error,
             TEXT("ConnectIt_BoardRules: CheckWinCondition — "
@@ -62,26 +73,41 @@ void UConnectIt_BoardRules::CheckWinCondition(
     }
 
     IConnectIt_WinCondition::Execute_CheckWinCondition(
-        WinConditionRule.GetObject(), MutableState);
+        WinConditionRule, MutableState);
 }
 
 float UConnectIt_BoardRules::GetTargetScore() const
 {
-    if (!WinConditionRule.GetInterface()) return 0.f;
+    if (!WinConditionRule) return 0.f;
 
-    return IConnectIt_WinCondition::Execute_GetTargetScore(WinConditionRule.GetObject());
+    return IConnectIt_WinCondition::Execute_GetTargetScore(WinConditionRule);
+}
+
+bool UConnectIt_BoardRules::IsTilePlaceable(
+    const FConnectItBoardState& State, FGridPosition Position) const
+{
+    if (!TilePlaceableRule)
+    {
+        UE_LOG(LogTemp, Error,
+            TEXT("ConnectIt_BoardRules: IsTilePlaceable — "
+                 "no TilePlaceableRule set"));
+        return false;
+    }
+
+    return IConnectIt_TilePlaceableRule::Execute_IsTilePlaceable(
+        TilePlaceableRule, State, Position);
 }
 
 FName UConnectIt_BoardRules::GetActiveWinConditionName() const
 {
-    return WinConditionRule.GetObject()
-        ? WinConditionRule.GetObject()->GetClass()->GetFName()
+    return WinConditionRule
+        ? WinConditionRule->GetClass()->GetFName()
         : NAME_None;
 }
 
 FName UConnectIt_BoardRules::GetActiveScoringRuleName() const
 {
-    return ScoringRule.GetObject()
-        ? ScoringRule.GetObject()->GetClass()->GetFName()
+    return ScoringRule
+        ? ScoringRule->GetClass()->GetFName()
         : NAME_None;
 }

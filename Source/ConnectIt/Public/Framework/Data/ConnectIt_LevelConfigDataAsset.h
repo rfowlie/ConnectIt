@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "Engine/DataAsset.h"
 #include "Board/Rules/ConnectIt_ScoringRule.h"
+#include "Board/Rules/ConnectIt_TilePlaceableRule.h"
 #include "Board/Rules/ConnectIt_WinCondition.h"
 #include "ConnectIt_LevelConfigDataAsset.generated.h"
 
@@ -60,17 +61,26 @@ public:
     // equivalent Instanced selection that used to live on the placed
     // UConnectIt_BoardRulesComponent instance.
 
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "ConnectIt|Rules",
+    // TObjectPtr<UObject> + Instanced + MustImplement (not TScriptInterface
+    // -- Instanced only drives the inline class-pick/edit Details-panel
+    // behaviour on an FObjectProperty, which TScriptInterface's
+    // FInterfaceProperty is not).
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Instanced, Category = "ConnectIt|Rules",
         meta = (MustImplement = "/Script/ConnectIt.ConnectIt_ScoringRule"))
-    TScriptInterface<IConnectIt_ScoringRule> ScoringRule;
+    TObjectPtr<UObject> ScoringRule;
 
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "ConnectIt|Rules",
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Instanced, Category = "ConnectIt|Rules",
         meta = (MustImplement = "/Script/ConnectIt.ConnectIt_WinCondition"))
-    TScriptInterface<IConnectIt_WinCondition> WinConditionRule;
+    TObjectPtr<UObject> WinConditionRule;
+
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Instanced, Category = "ConnectIt|Rules",
+        meta = (MustImplement = "/Script/ConnectIt.ConnectIt_TilePlaceableRule"))
+    TObjectPtr<UObject> TilePlaceableRule;
 
     // --- Board Registries ---
-    // Instanced (concrete-class UObject polymorphism), not TScriptInterface
-    // like the rules above -- a designer picks a whole UConnectIt_TileRegistry/
+    // Instanced concrete-class UObject polymorphism, same shape as the rules
+    // above but typed directly to a concrete registry base rather than an
+    // interface -- a designer picks a whole UConnectIt_TileRegistry/
     // UConnectIt_PieceRegistry subclass with its own inline-editable
     // sub-properties (e.g. GridSize), the same pattern ABoardManagerBase
     // used to expose these with. Typed to the ConnectIt-specific subclasses

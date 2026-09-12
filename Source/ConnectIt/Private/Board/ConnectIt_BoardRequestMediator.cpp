@@ -205,7 +205,7 @@ bool UConnectIt_BoardRequestMediator::HandlePlacePieceRequest(
     const FGridPosition TargetPosition = Request.Positions[0];
     const FConnectItBoardState& Current = BoardState->GetCurrentState();
 
-    if (!Current.IsTileValidForPlacement(TargetPosition))
+    if (!BoardRules->IsTilePlaceable(Current, TargetPosition))
     {
         UE_LOG(LogTemp, Warning,
             TEXT("ConnectIt_BoardRequestMediator: PlacePiece rejected "
@@ -222,10 +222,12 @@ bool UConnectIt_BoardRequestMediator::HandlePlacePieceRequest(
         TileData->SetFactionPiece(FactionID);
     }
 
+    // check scoring achieved (updates NewState)
     TArray<FGridPosition> ScoringPositions;
     const float PointsScored = BoardRules->ApplyScoring(
         NewState, TargetPosition, FactionID, ScoringPositions);
 
+    // check win achieved
     BoardRules->CheckWinCondition(NewState);
 
     // Record what happened -- replicated alongside the state itself via

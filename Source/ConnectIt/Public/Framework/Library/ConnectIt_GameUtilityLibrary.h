@@ -6,6 +6,7 @@
 #include "Kismet/BlueprintFunctionLibrary.h"
 #include "ConnectIt_GameUtilityLibrary.generated.h"
 
+class AConnectIt_PlayerState;
 struct FGridPosition;
 class AGridTileBase;
 class AConnectIt_GameState;
@@ -137,6 +138,18 @@ public:
     static AConnectIt_GameState* GetConnectItGameState(
         const UObject* WorldContextObject);
 
+    // retreive any players player state by index
+    UFUNCTION(BlueprintPure, Category = "ConnectIt|Utility",
+        meta = (WorldContext = "WorldContextObject"))
+    static void GetAllConnectItPlayerStates(
+        TArray<AConnectIt_PlayerState*>& OutPlayerStates, const UObject* WorldContextObject);
+
+    // shortcut to get the local players player state
+    UFUNCTION(BlueprintPure, Category = "ConnectIt|Utility",
+        meta = (WorldContext = "WorldContextObject"))
+    static AConnectIt_PlayerState* GetLocalConnectItPlayerState(
+        const UObject* WorldContextObject);
+
     // Returns the participant manager from game state
     // Shortcut for UI and systems that need turn phase or participant list
     UFUNCTION(BlueprintPure, Category = "ConnectIt|Utility",
@@ -145,7 +158,7 @@ public:
         const UObject* WorldContextObject);
 
     // Returns the current turn phase
-    // Convenience for UI -- avoids two step game state lookup
+    // Convenience for UI -- avoids two-step game state lookup
     UFUNCTION(BlueprintPure, Category = "ConnectIt|Utility",
         meta = (WorldContext = "WorldContextObject"))
     static ETurnPhase GetCurrentTurnPhase(
