@@ -224,6 +224,10 @@ public:
     UFUNCTION(BlueprintPure, Category = "Turn Based")
     FTurnParticipantInfo GetParticipantBySlot(int32 InSlotIndex, bool& bOutValid) const;
 
+    UFUNCTION(BlueprintPure, Category = "Turn Based")
+    TArray<FTurnParticipantInfo> GetAllParticipants() const;
+
+    
     // Everything a debug widget needs, in one call -- see
     // FTurnBasedParticipantManagerInfo's own comment.
     UFUNCTION(BlueprintPure, Category = "Turn Based|Debug")

@@ -1,0 +1,2 @@
+
+I think the shape we should aim for first is create one new action (let's go with the SWAP action that is already being discussed) and give each player 3 uses of the skill at the start of the match. The bonus skill can only be used once per turn and acts as the turn (no placing a piece after). Players cannot gain more uses of the skill after using it 3 times. We will want to make sure that the UI indicates number of uses.

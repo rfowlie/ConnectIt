@@ -6,6 +6,12 @@ Vault-wide passes go in `_core/_logs/`.
 
 Newest first:
 
+- [2026-09-12-0102](2026-09-12-0102.md) — session — opened `ConnectIt/_tasks/` (README +
+  active/complete/suspended), added it to `ConnectIt/CLAUDE.md`'s section list, seeded
+  1 open task from the board-mediator discussion
+- [2026-09-12-0044](2026-09-12-0044.md) — process-discussion — `board-mediator-and-action-config-design`
+  filed from a pasted transcript, 7 topics (2 continuing the swap-action-ui-design note,
+  5 first mentions)
 - [2026-09-11-2346](2026-09-11-2346.md) — process-discussion — first `_discussions/` note:
   `swap-action-ui-design`, filed from a pasted transcript, 5 topics (all first mentions)
 - [[2026-09-09-5]] — session — debugged cursor-hover regression: `CI_LevelConfig_Test.uasset` `TileRegistry` slot held the wrong (plugin base) type → nulled on load → no tiles registered with `UGridHoverSubsystem`. Diagnosis only; fixed manually.

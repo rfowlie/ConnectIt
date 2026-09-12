@@ -600,6 +600,11 @@ FTurnParticipantInfo UTurnBasedParticipantManagerComponent::GetParticipantBySlot
     return FTurnParticipantInfo();
 }
 
+TArray<FTurnParticipantInfo> UTurnBasedParticipantManagerComponent::GetAllParticipants() const
+{
+    return Participants;
+}
+
 // --- Helpers ---
 
 AController* UTurnBasedParticipantManagerComponent::GetControllerAtIndex(
