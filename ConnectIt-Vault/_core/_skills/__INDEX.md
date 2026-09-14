@@ -18,6 +18,11 @@ Live skills:
   `_schema/_discussions.md` — summary + Tasks/Deliverables/Questions/Updates/Workflows up
   top, each topic linked back to its most recent prior mention, transcript verbatim at the
   bottom. Not run by `/process` (nothing to sweep without a transcript in hand).
+- **[`improve-system.md`](improve-system.md)** — end-of-session maintenance pass: runs
+  `/process`'s full sweep first, then reconstructs the session, routes its output to the
+  right domain per `Development/CLAUDE.md`'s routing table, checks `CLAUDE.md`/schema
+  accuracy, and flags anything stale/duplicated/contradictory. Writes one combined log
+  covering the whole run.
 
 **`process-*` family** — one mechanical health-check-and-fix per schema, named
 `/process-<schema>` for consistency. [`process.md`](process.md) runs all of them in one

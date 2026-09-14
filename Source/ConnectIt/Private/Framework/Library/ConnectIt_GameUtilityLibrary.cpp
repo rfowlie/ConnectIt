@@ -240,13 +240,31 @@ void UConnectIt_GameUtilityLibrary::GetAllConnectItPlayerStates(
 AConnectIt_PlayerState* UConnectIt_GameUtilityLibrary::GetLocalConnectItPlayerState(const UObject* WorldContextObject)
 {
     if (!IsValid(WorldContextObject)) return nullptr;
-    
-    AConnectIt_GameState* GameState = GetConnectItGameState(WorldContextObject);
-    if (!IsValid(GameState)) return nullptr;
 
-    APlayerState* PlayerState = UGameplayStatics::GetPlayerState(
-        WorldContextObject, GetLocalPlayerSlotIndex(WorldContextObject));
-    return Cast<AConnectIt_PlayerState>(PlayerState);
+    UWorld* World = WorldContextObject->GetWorld();
+    if (!IsValid(World)) return nullptr;
+
+    APlayerController* PC = World->GetFirstPlayerController();
+    if (!IsValid(PC)) return nullptr;
+
+    return Cast<AConnectIt_PlayerState>(PC->PlayerState);
+}
+
+AConnectIt_PlayerState* UConnectIt_GameUtilityLibrary::GetPlayerStateForFaction(
+    const UObject* WorldContextObject, int32 FactionID)
+{
+    TArray<AConnectIt_PlayerState*> PlayerStates;
+    GetAllConnectItPlayerStates(PlayerStates, WorldContextObject);
+
+    for (AConnectIt_PlayerState* PlayerState : PlayerStates)
+    {
+        if (IsValid(PlayerState) && PlayerState->GetSlotIndex() == FactionID)
+        {
+            return PlayerState;
+        }
+    }
+
+    return nullptr;
 }
 
 UTurnBasedParticipantManagerComponent* UConnectIt_GameUtilityLibrary::GetParticipantManager(

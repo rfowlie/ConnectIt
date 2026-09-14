@@ -183,6 +183,10 @@ public:
 
     // Push a specific runtime action instance onto the stack
     UFUNCTION(BlueprintCallable, Category = "Turn Based|Actions")
+    bool TryPushActionByClass(TSubclassOf<UTurnBasedAction> ActionClass);
+    
+    // Push a specific runtime action instance onto the stack
+    UFUNCTION(BlueprintCallable, Category = "Turn Based|Actions")
     bool TryPushActionByRef(UTurnBasedAction* Action);
 
     // Cancel and pop the top action if it is cancellable

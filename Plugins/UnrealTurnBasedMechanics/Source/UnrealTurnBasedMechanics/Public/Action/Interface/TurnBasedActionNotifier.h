@@ -3,13 +3,16 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "GameplayTagContainer.h"
 #include "UObject/Interface.h"
 #include "TurnBasedActionNotifier.generated.h"
 
 class UTurnBasedAction;
 
 
-DECLARE_DYNAMIC_DELEGATE_OneParam(FTurnBasedActionNotifierDelegate, TSubclassOf<UTurnBasedAction>, ActionClass);
+DECLARE_DYNAMIC_DELEGATE_TwoParams(FTurnBasedActionNotifierDelegate,
+	TSubclassOf<UTurnBasedAction>, ActionClass, FGameplayTag, ActionTag);
+
 
 // This class does not need to be modified.
 UINTERFACE()

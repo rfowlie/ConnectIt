@@ -497,6 +497,20 @@ bool UTurnBasedActionsComponent::TryPushAction(FGameplayTag ActionTag)
     return TryPushActionByRef(FindActionByTag(ActionTag));
 }
 
+bool UTurnBasedActionsComponent::TryPushActionByClass(TSubclassOf<UTurnBasedAction> ActionClass)
+{
+    UTurnBasedAction* const* Found = RuntimeActions.FindByPredicate(
+        [ActionClass](const UTurnBasedAction* A)
+        {
+            return A->GetClass() == ActionClass;
+        });
+
+    if (!Found) return false;
+   
+    TryPushActionByRef(*Found);
+    return true;
+}
+
 bool UTurnBasedActionsComponent::TryPushActionByRef(UTurnBasedAction* Action)
 {
     if (bAwaitingRequestConfirmation)

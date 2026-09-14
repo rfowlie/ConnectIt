@@ -11,7 +11,7 @@
 #include "Framework/Data/ConnectIt_LevelConfigDataAsset.h"
 #include "Framework/GameState/ConnectIt_GameState.h"
 #include "Framework/GameState/TurnBasedGameState.h"
-#include "Framework/PlayerState/TurnBasedPlayerState.h"
+#include "Framework/PlayerState/ConnectIt_PlayerState.h"
 #include "GameEvent/GameEventTaskSubsystem.h"
 #include "Framework/Library/ConnectIt_GameUtilityLibrary.h"
 #include "Tile/GridTileRegistryBase.h"
@@ -21,7 +21,7 @@
 AConnectIt_GameMode::AConnectIt_GameMode()
 {
     GameStateClass  = AConnectIt_GameState::StaticClass();
-    PlayerStateClass = ATurnBasedPlayerState::StaticClass();
+    PlayerStateClass = AConnectIt_PlayerState::StaticClass();
 
     TurnDuration     = 90.f;
     ForfeitThreshold = 3;
@@ -96,6 +96,7 @@ void AConnectIt_GameMode::HandleMatchHasStarted()
 
     // Initialise board -- reads tile positions from registry
     InitialiseBoard();
+    
 }
 
 void AConnectIt_GameMode::HandleMatchHasEnded()

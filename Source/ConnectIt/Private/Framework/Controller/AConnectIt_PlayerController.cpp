@@ -7,10 +7,17 @@
 #include "Turn/Participant/TurnBasedParticipantComponent.h"
 #include "Turn/Participant/TurnBasedParticipantManagerComponent.h"
 #include "Action/ActionLoadoutDataAsset.h"
+#include "Action/ConnectIt_TurnBasedActionsComponent.h"
 #include "Action/TurnBasedActionsComponent.h"
 #include "Framework/Data/ConnectIt_LevelConfigDataAsset.h"
 
 
+AConnectIt_PlayerController::AConnectIt_PlayerController(
+    const FObjectInitializer& ObjectInitializer)
+    : Super(ObjectInitializer.SetDefaultSubobjectClass<UConnectIt_TurnBasedActionsComponent>(
+        TEXT("ActionsComponent")))
+{
+}
 
 void AConnectIt_PlayerController::BeginPlay()
 {

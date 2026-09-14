@@ -99,13 +99,16 @@ private:
     // FConnectItRequestRemovePiece's comment.
     bool HandleRemovePieceRequest(const FConnectItRequestRemovePiece& Request) const;
 
-    // Requires both positions occupied. Deliberately does not re-run
-    // scoring/win-condition checks -- IConnectIt_ScoringRule::ApplyScoring
-    // is defined around a single just-completed position; a swap changes
-    // two positions at once and there's no obvious single-position call
-    // that means the right thing here. Left as a known scope gap rather
-    // than a guessed-at implementation -- see class/action comments.
-    bool HandleSwapPiecesRequest(const FConnectItRequestSwapPieces& Request) const;
+    // Requires both positions occupied and exactly one of them to belong to
+    // FactionID (a trade, not an arbitrary reposition) and FactionID to
+    // still have SWAP uses remaining (UConnectIt_GameUtilityLibrary::
+    // GetPlayerStateForFaction, server-authoritative -- the client-side
+    // action's own pre-checks are cosmetic only). Re-runs
+    // IConnectIt_ScoringRule::ApplyScoring once per swapped position (its
+    // new occupying faction) and IConnectIt_WinCondition::CheckWinCondition
+    // once, same as HandleCapturePieceRequest -- a swap that completes a
+    // line scores like any other turn-ending move.
+    bool HandleSwapPiecesRequest(const FConnectItRequestSwapPieces& Request, int32 FactionID) const;
 
     bool HandleToggleTileActiveRequest(const FConnectItRequestToggleTileActive& Request) const;
 

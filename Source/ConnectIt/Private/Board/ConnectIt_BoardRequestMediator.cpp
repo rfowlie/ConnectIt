@@ -9,6 +9,7 @@
 #include "Board/Rules/ConnectIt_BoardRules.h"
 #include "Framework/GameState/ConnectIt_GameState.h"
 #include "Framework/Library/ConnectIt_GameUtilityLibrary.h"
+#include "Framework/PlayerState/ConnectIt_PlayerState.h"
 #include "GameEvent/ConnectIt_PlacePieceGameEvent.h"
 
 
@@ -146,7 +147,7 @@ bool UConnectIt_BoardRequestMediator::ProcessRequest(const FTurnActionRequest& R
         if (const FConnectItRequestSwapPieces* Payload =
             Request.Payload.GetPtr<FConnectItRequestSwapPieces>())
         {
-            return HandleSwapPiecesRequest(*Payload);
+            return HandleSwapPiecesRequest(*Payload, Request.FactionID);
         }
 
         UE_LOG(LogTemp, Error,
@@ -398,8 +399,22 @@ bool UConnectIt_BoardRequestMediator::HandleRemovePieceRequest(
 }
 
 bool UConnectIt_BoardRequestMediator::HandleSwapPiecesRequest(
-    const FConnectItRequestSwapPieces& Request) const
+    const FConnectItRequestSwapPieces& Request, const int32 FactionID) const
 {
+    // Server-authoritative use-budget check -- the client-side action's own
+    // pre-check (CanActivate-equivalent) is cosmetic only, this is the real
+    // gate. Never trust a client to have already enforced this.
+    AConnectIt_PlayerState* PlayerState =
+        UConnectIt_GameUtilityLibrary::GetPlayerStateForFaction(this, FactionID);
+    if (!IsValid(PlayerState) || PlayerState->GetSwapActionUsesRemaining() <= 0)
+    {
+        UE_LOG(LogTemp, Warning,
+            TEXT("ConnectIt_BoardRequestMediator: SwapPieces rejected -- "
+                 "faction %d has no SWAP uses remaining"),
+            FactionID);
+        return false;
+    }
+    
     // UConnectIt_BoardStateComponent* BoardState = GetBoardState();
     UConnectIt_BoardStateComponent* BoardState = UConnectIt_GameUtilityLibrary::GetBoardStateComponent(this);
     const FConnectItBoardState& Current = BoardState->GetCurrentState();
@@ -416,8 +431,21 @@ bool UConnectIt_BoardRequestMediator::HandleSwapPiecesRequest(
         return false;
     }
 
-    FConnectItBoardState NewState = Current;
+    // A trade, not an arbitrary reposition -- exactly one side must belong
+    // to the requesting faction.
+    const bool bOwnsA = DataA->FactionPiece == FactionID;
+    const bool bOwnsB = DataB->FactionPiece == FactionID;
+    if (bOwnsA == bOwnsB)
+    {
+        UE_LOG(LogTemp, Warning,
+            TEXT("ConnectIt_BoardRequestMediator: SwapPieces rejected -- "
+                 "faction %d must own exactly one of (%d,%d)/(%d,%d)"),
+            FactionID, Request.PositionA.X, Request.PositionA.Y,
+            Request.PositionB.X, Request.PositionB.Y);
+        return false;
+    }
 
+    FConnectItBoardState NewState = Current;
     FConnectItTileData* MutableA = NewState.GetTileDataMutable(Request.PositionA);
     FConnectItTileData* MutableB = NewState.GetTileDataMutable(Request.PositionB);
     int32 A = MutableA->FactionPiece;
@@ -425,13 +453,50 @@ bool UConnectIt_BoardRequestMediator::HandleSwapPiecesRequest(
     MutableA->SetFactionPiece(B);
     MutableB->SetFactionPiece(A);
 
-    // No scoring/win-condition re-check -- see class header comment
+    // Re-run scoring for both positions' new occupying faction -- a swap
+    // that completes a line now scores like any other turn-ending move
+    // (previously a documented, deliberate gap). Evaluated independently
+    // per position since A and B now belong to different factions by
+    // construction (see the ownership check above); ScoringLinePositions
+    // accumulates both calls' results (ApplyScoring appends, never clears).
+    // Known simplification: FConnectItBoardChangeEvent only carries a
+    // single ScoringFactionSlot, so the rare case of BOTH positions
+    // completing a line in the same swap can only name one of the two
+    // scoring factions in the event -- ScoreBoard itself (mutated inside
+    // ApplyScoring) is correct for both regardless.
+    TArray<FGridPosition> ScoringPositions;
+    const float PointsScoredA = BoardRules->ApplyScoring(
+        NewState, Request.PositionA, B, ScoringPositions);
+    const float PointsScoredB = BoardRules->ApplyScoring(
+        NewState, Request.PositionB, A, ScoringPositions);
+
+    BoardRules->CheckWinCondition(NewState);
+
     FConnectItBoardChangeEvent ChangeEvent;
-    ChangeEvent.bPiecesSwapped = true;
-    ChangeEvent.SwapPositionA  = Request.PositionA;
-    ChangeEvent.SwapPositionB  = Request.PositionB;
+    ChangeEvent.bPiecesSwapped      = true;
+    ChangeEvent.SwapPositionA       = Request.PositionA;
+    ChangeEvent.SwapPositionB       = Request.PositionB;
+    ChangeEvent.bLineScored         = PointsScoredA > 0.f || PointsScoredB > 0.f;
+    ChangeEvent.ScoringFactionSlot  = PointsScoredA > 0.f ? B : A;
+    ChangeEvent.PointsScored        = PointsScoredA + PointsScoredB;
+    ChangeEvent.ScoringLinePositions = ScoringPositions;
+    ChangeEvent.bGameWon            = NewState.bGameOver && !Current.bGameOver;
+    ChangeEvent.WinningFactionSlot  = NewState.WinningFactionSlot;
+
+    if (ChangeEvent.bLineScored)
+    {
+        UE_LOG(LogTemp, Log,
+            TEXT("ConnectIt_BoardRequestMediator: Swap scored — "
+                 "faction %d: %.0f, faction %d: %.0f"),
+            B, PointsScoredA, A, PointsScoredB);
+    }
 
     BoardState->SetBoardState(NewState, ChangeEvent);
+
+    // Decrement only after the swap has been committed -- never burn a use
+    // on a request that got rejected above.
+    PlayerState->ConsumeSwapUse();
+
     return true;
 }
 

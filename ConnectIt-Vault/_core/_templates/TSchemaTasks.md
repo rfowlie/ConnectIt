@@ -6,7 +6,7 @@
 
 <!--
 Status: active | suspended | complete | dropped
-To retire a task: change its Status cell here, then run /reconcile-tasks — the row is
+To retire a task: change its Status cell here, then run /process-tasks — the row is
 moved to suspended.md / complete.md / dropped.md and stamped with a Moved date.
 Archive files use the same table plus a trailing `Moved` column.
 -->

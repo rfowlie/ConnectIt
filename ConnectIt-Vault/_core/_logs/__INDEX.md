@@ -8,6 +8,11 @@ in `<domain>/_logs/`, not here.
 
 Newest first:
 
+- [2026-09-12-1809](2026-09-12-1809.md) — session — resolved the repo-root
+  `.claude/skills/` open question: retired `reconcile-tasks` (→ `process-tasks`), deleted
+  stale `ask-the-board`/`ask-vault` root copies, re-authored + mirrored `improve-system`
+  (now runs `/process` first) and `session-open`/`session-close` (new `Development/_skills/`
+  + new `_sessions` schema), removed the "vault-wide skill needs no mirror" policy
 - [2026-09-11-1500-2](2026-09-11-1500-2.md) — session — converted the remaining 9
   authored `[[TSchemaLogs]]` wikilinks (7 skills + 2 schema files) to the Markdown-link
   standard and re-mirrored the 7 skills; caught and fixed a filename collision with the

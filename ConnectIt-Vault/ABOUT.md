@@ -38,7 +38,8 @@ vault; see [`_core/CLAUDE.md`](_core/CLAUDE.md).
 | `code` | Per-type pages + `systems/` flows + `recipes/` tasks + an index/map; git-anchored provenance, no `raw/`; `## Changes` history per page | every domain (8) |
 | `logs` | Append-only machine-written maintenance history, one dated note per run | `_core/_logs/` (vault) · `ConnectIt/_logs/` |
 | `decisions` | One dated note per non-obvious settled call | `ConnectIt/_decisions/` · `optimal-co-developer/_decisions/` |
-| `skills` | Reusable procedures, authored here, mirrored to `.claude/skills/` | `_core/_skills/` (vault) · `board-of-advisors/_skills/` · `optimal-co-developer/_skills/` |
+| `skills` | Reusable procedures, authored here, mirrored to `.claude/skills/` — **every skill gets both, no exceptions** | `_core/_skills/` (vault) · `Development/_skills/` (Development-wide) · `board-of-advisors/_skills/` · `optimal-co-developer/_skills/` |
+| `sessions` | One dated note per work session, Open/Close halves | `ConnectIt/_sessions/` (schema defined, no note yet) |
 | `atomic` | Single-idea Zettelkasten pool — **single instance, `_core/_atomic/` only** | `_core/_atomic/` |
 | `clippings` | Unprocessed capture dump; empty is the goal | `_core/_clippings/` |
 | `tasks` | Status tables (`active`/`suspended`/`complete`) | `_core/_tasks/` (vault) · `optimal-co-developer/_tasks/` |
@@ -103,11 +104,12 @@ Full rulebook per section: `_core/_schema/_<section>.md`.
   whose own display text names a fuller path than the link actually points to. Found
   2026-09-11 while explaining the link-format switch; not yet fixed. A candidate first
   real run for the new `fix-links` skill.
-- **Repo-root `.claude/skills/` still holds a separate, older skill set**
-  (`ask-the-board`, `improve-system`, `session-close`, `session-open`, plus stale
-  `ask-vault` / `reconcile-tasks` mirrors predating the `process-*` rename) that doesn't
-  match this vault's `_core/_skills/` catalog or its `ConnectIt-Vault/.claude/skills/`
-  mirrors. Likely belongs to `Development/`'s own skill set; not reconciled.
+- ~~**Repo-root `.claude/skills/` still holds a separate, older skill set**~~ — **Resolved
+  2026-09-12**, see Changelog. `reconcile-tasks` retired in favor of `process-tasks`;
+  `ask-the-board`/`ask-vault` root copies were stale pre-`_`-prefix-migration duplicates,
+  deleted; `improve-system`/`session-open`/`session-close` re-authored under
+  `Development/`/`_core/` and properly mirrored. The repo-root `.claude/skills/` folder no
+  longer exists — every skill now lives only under `ConnectIt-Vault/.claude/skills/`.
 - **`_code`/`_atomic`/`_maps`/`_user` still bare.** The 2026-09-11 `_`-prefix reversal
   (see Conventions) covers every other schema-governed section folder, domain or
   vault-wide; these four kept their old bare naming on purpose — a separate future pass
@@ -115,6 +117,39 @@ Full rulebook per section: `_core/_schema/_<section>.md`.
 
 ## Changelog
 
+- **2026-09-12** — Reconciled the repo-root `.claude/skills/` open question (removed the
+  "vault-wide skill needs no authored mirror" exception entirely — every skill now gets
+  both an authored copy and a `.claude/skills/` mirror, no exceptions):
+  - `reconcile-tasks` retired — superseded by `process-tasks`, which already does the same
+    job against the current `_tasks/` (not `tasks/`) naming.
+  - Root `ask-the-board`/`ask-vault` copies deleted — stale pre-2026-09-11-migration
+    duplicates (still referenced un-prefixed `board-of-advisors/knowledge/`/`questions/`
+    paths); the real, current versions already live at `Development/board-of-advisors/`
+    and `ConnectIt-Vault/.claude/skills/`.
+  - `improve-system` re-authored at `_core/_skills/improve-system.md` (vault-wide): now
+    runs `/process`'s full sweep as its first step (folding in what its old manual "wiki↔raw
+    parity"/"skill sync" checks duplicated), keeping only what's genuinely unique
+    (session reconstruction, routing to non-process-covered homes, `CLAUDE.md`/schema
+    accuracy, flagging) and writing one `_core/_logs/` note per run instead of the old
+    bespoke `board-of-advisors/logs/raw+wiki/` dual-log design (which predated, and didn't
+    match, the real single-note `_logs` schema).
+  - `session-open`/`session-close` re-authored at `Development/_skills/` (Development-wide,
+    not tied to either sub-project) with paths corrected to the current structure
+    (`ConnectIt/CLAUDE.md`, `Development/optimal-co-developer/...`). Added a new schema,
+    **`_sessions`** (`_core/_schema/_sessions.md` + `TSchemaSessions`), for the dated
+    Open/Close notes these two skills produce — mounts per-domain only (e.g.
+    `ConnectIt/_sessions/`), since a session is always work on one specific project, even
+    though the two skills that produce them are authored generically. Registered in
+    `_core/_schema/__README.md`'s catalogue and `ConnectIt/CLAUDE.md`'s Sections list.
+  - All three re-authored skills mirrored to `ConnectIt-Vault/.claude/skills/`; the entire
+    repo-root `.claude/skills/` folder deleted (nothing left there needed it).
+  - Fixed `Development/CLAUDE.md`'s "Where new information goes" table (the reusable-
+    procedure and maintenance-log rows still described the retired policy) and its
+    start-of-session step 6 (referenced the retired dual-log path); added a "Sections
+    directly on `Development/`" note for the new `_skills/`. Did **not** do a full pass on
+    `Development/CLAUDE.md`'s other pre-existing stale content (wikilink-style links,
+    broken `career-coach.md`/`user.md` link text) — already flagged below, left for that
+    separate pass. Log: `_core/_logs/2026-09-12-1809.md`.
 - **2026-09-11** — Added `_discussions` as a full schema: one dated note per discussion
   (call, brainstorm, transcribed conversation), organized by having each note link every
   topic it covers back to the most recent prior `_discussions/` note that also covered it,

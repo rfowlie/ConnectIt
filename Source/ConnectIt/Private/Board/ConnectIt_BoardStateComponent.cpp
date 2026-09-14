@@ -89,6 +89,35 @@ const FConnectItBoardState* UConnectIt_BoardStateComponent::GetBoardSnapShotPrev
     return &BoardSnapshot.PreviousState;
 }
 
+int32 UConnectIt_BoardStateComponent::GetFactionPieceCount(const int32 FactionId) const
+{
+    int32 Count = 0;
+    for (auto TileData : GetCurrentState().TileDataArray)
+    {
+        if (TileData.FactionPiece == FactionId)
+        {
+            Count++;
+        }
+    }
+
+    return Count;
+}
+
+TArray<FGridPosition> UConnectIt_BoardStateComponent::GetFactionPiecePositions(const int32 FactionId) const
+{
+    TArray<FGridPosition> Positions;
+    const auto CurrentState = GetCurrentState();
+    for (int32 Index = 0 ; Index < CurrentState.TilePositions.Num(); Index++)
+    {
+        if (CurrentState.GetTileDataAt(Index).FactionPiece == FactionId)
+        {
+            Positions.Add(CurrentState.TilePositions[Index]);
+        }  
+    }
+
+    return Positions;
+}
+
 int32 UConnectIt_BoardStateComponent::GetPositionMultiplier(const FGridPosition GridPosition) const
 {
     const FConnectItTileData* TileData = GetCurrentState().GetTileData(GridPosition);

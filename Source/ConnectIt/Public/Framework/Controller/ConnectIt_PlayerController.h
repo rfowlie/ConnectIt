@@ -22,6 +22,20 @@ class CONNECTIT_API AConnectIt_PlayerController : public ATurnBasedPlayerControl
 {
     GENERATED_BODY()
 
+public:
+
+    // Installs UConnectIt_TurnBasedActionsComponent in place of the base's
+    // hardcoded UTurnBasedActionsComponent (see base ctor's
+    // CreateDefaultSubobject<UTurnBasedActionsComponent>(TEXT("ActionsComponent")))
+    // -- the standard FObjectInitializer::SetDefaultSubobjectClass override
+    // technique, so PlacePiece/SWAP's alternate-required turn-end logic
+    // lives here, not in a game-specific fork of the plugin's component.
+    // Requires ATurnBasedPlayerControllerBase's own constructor to accept
+    // and forward FObjectInitializer (added there for exactly this) -- a
+    // bare zero-arg Super() has no argument slot to carry the override
+    // through, this doesn't work with a plain Super().
+    explicit AConnectIt_PlayerController(const FObjectInitializer& ObjectInitializer);
+
 protected:
 
     virtual void BeginPlay() override;

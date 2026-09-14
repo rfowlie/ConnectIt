@@ -36,17 +36,6 @@ void UConnectIt_PlacePieceAction::PostInitialiseAction_Implementation()
                  "OwningController is null"));
         return;
     }
-    
-    // TileRegistry lives on UConnectIt_BoardRegistrySubsystem now -- one
-    // canonical per-world instance, not per-controller.
-    TileRegistry = UConnectIt_GameUtilityLibrary::GetTileRegistry(this);
-
-    if (!IsValid(TileRegistry))
-    {
-        UE_LOG(LogTemp, Error,
-            TEXT("PlacePieceAction: PostInitialiseAction -- "
-                 "OwningController has no valid TileRegistry"));
-    }
 }
 
 void UConnectIt_PlacePieceAction::Activate_Internal_Implementation()
@@ -73,7 +62,6 @@ void UConnectIt_PlacePieceAction::OnCompleted_Implementation()
 
 bool UConnectIt_PlacePieceAction::IsValidHoverTile_Implementation(AGridTileBase* Tile) const
 {
-    if (!IsValid(TileRegistry)) return false;
     if (!IsValid(Tile)) return false;
 
     const UConnectIt_BoardStateComponent* BoardState =
@@ -82,7 +70,8 @@ bool UConnectIt_PlacePieceAction::IsValidHoverTile_Implementation(AGridTileBase*
 
     // Position is not stored on the tile itself -- resolved via the
     // owning controller's tile registry
-    FGridPosition Position = TileRegistry->GetPositionOfTile(Tile);
+    const auto TileRegistry = UConnectIt_GameUtilityLibrary::GetTileRegistry(GetPlayerController());
+    const FGridPosition Position = TileRegistry->GetPositionOfTile(Tile);
 
     // Tile must be valid for placement in current board state
     // IsTileValidForPlacement checks both bIsActive and !IsOccupied
@@ -116,11 +105,18 @@ void UConnectIt_PlacePieceAction::HandleHoverCleared_Implementation(
 
 void UConnectIt_PlacePieceAction::HandleValidSelection_Implementation(AGridTileBase* Tile)
 {
-    if (!IsValid(TileRegistry)) return;
+    // if (!IsValid(TileRegistry)) return;
     if (!IsValid(Tile)) return;
 
-    FGridPosition Position = TileRegistry->GetPositionOfTile(Tile);
+    const auto TileRegistry = UConnectIt_GameUtilityLibrary::GetTileRegistry(GetPlayerController());
+    if (!TileRegistry)
+    {
+        UE_LOG(LogTemp, Error, TEXT("HandleValidSelection_Implementation - Tire Registry nullptr"));
+        return;
+    }
 
+    FGridPosition Position = TileRegistry->GetPositionOfTile(Tile);
+    
     // Build the request -- board manager handles all mutation
     // Action has no knowledge of pools, piece actors, or state changes
     FTurnActionRequest Request;

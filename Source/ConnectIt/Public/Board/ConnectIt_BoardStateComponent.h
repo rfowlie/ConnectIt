@@ -108,6 +108,14 @@ public:
     }
 
     // --- Helpers ---
+
+    // get count of pieces a player has, probably a better way to track this
+    UFUNCTION(BlueprintPure, Category = "Board State")
+    int32 GetFactionPieceCount(const int32 FactionId) const;
+
+    // get all grid positions controlled by a faction
+    UFUNCTION(BlueprintPure, Category = "Board State")
+    TArray<FGridPosition> GetFactionPiecePositions(const int32 FactionId) const;
     
     UFUNCTION(BlueprintPure, Category = "Board State")
     int32 GetPositionMultiplier(const FGridPosition GridPosition) const;

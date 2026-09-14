@@ -47,6 +47,12 @@ The full suite dependency graph and layering is the **Map** section of
   hierarchy. Governed by [`_core/_schema/_discussions.md`](../_core/_schema/_discussions.md).
 - **`_tasks/`** — status tables (`active` / `suspended` / `complete`) for ConnectIt-domain
   work. Governed by [`_core/_schema/_tasks.md`](../_core/_schema/_tasks.md).
+- **`_sessions/`** — one dated note per work session, bookended by
+  [`/session-open`](../Development/_skills/session-open.md) and
+  [`/session-close`](../Development/_skills/session-close.md) (authored under
+  `Development/_skills/` since the procedure is generic; the session notes themselves live
+  here, scoped to this domain). Governed by
+  [`_core/_schema/_sessions.md`](../_core/_schema/_sessions.md).
 
 ## Start here
 

@@ -150,6 +150,16 @@ public:
     static AConnectIt_PlayerState* GetLocalConnectItPlayerState(
         const UObject* WorldContextObject);
 
+    // Returns the player state for a given FactionID (== SlotIndex),
+    // regardless of which machine calls it -- unlike
+    // GetLocalConnectItPlayerState, which is scoped to the local player
+    // only. Server-callable authority checks (e.g. SWAP's use-count gate in
+    // UConnectIt_BoardRequestMediator) need this form.
+    UFUNCTION(BlueprintPure, Category = "ConnectIt|Utility",
+        meta = (WorldContext = "WorldContextObject"))
+    static AConnectIt_PlayerState* GetPlayerStateForFaction(
+        const UObject* WorldContextObject, int32 FactionID);
+
     // Returns the participant manager from game state
     // Shortcut for UI and systems that need turn phase or participant list
     UFUNCTION(BlueprintPure, Category = "ConnectIt|Utility",

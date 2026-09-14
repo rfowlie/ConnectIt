@@ -55,6 +55,7 @@ its children) instead of a full router.
 | `_logs` | Append-only record of automated maintenance passes | [`TSchemaLogs`](../_templates/TSchemaLogs.md) | either |
 | `_people` | One note per person — a lightweight CRM | `[[TSchemaPeople]]` | either |
 | `_meetings` | One dated note per meeting or call | `[[TSchemaMeetings]]` | either |
+| `_sessions` | One dated note per work session, bookended Open/Close halves | `[[TSchemaSessions]]` | domain only — never vault-wide |
 | `_discussions` | One dated note per discussion (call, brainstorm, transcribed conversation); topics link back to their most recent prior mention instead of a folder hierarchy | `[[TSchemaDiscussions]]` | either |
 | `_daily` | One free-form note per day — the human's capture surface | `[[TSchemaDaily]]` | either |
 | `_maps` | Hand-curated Maps of Content — deliberate entry points | `[[TSchemaMaps]]` | either |

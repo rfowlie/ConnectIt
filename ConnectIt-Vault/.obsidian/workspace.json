@@ -4,11 +4,12 @@
     "type": "split",
     "children": [
       {
-        "id": "0efe22d5e5a27cf3",
+        "id": "0c2e707b52e053aa",
         "type": "tabs",
+        "dimension": 99.99999999999999,
         "children": [
           {
-            "id": "b60be44b25dd3dad",
+            "id": "9529f203626984cd",
             "type": "leaf",
             "state": {
               "type": "markdown",
@@ -19,24 +20,6 @@
               },
               "icon": "lucide-file",
               "title": "BRAIN DUMP"
-            }
-          }
-        ]
-      },
-      {
-        "id": "baeafe698aee342d",
-        "type": "tabs",
-        "children": [
-          {
-            "id": "d1af33d14c9be97a",
-            "type": "leaf",
-            "pinned": true,
-            "state": {
-              "type": "graph",
-              "state": {},
-              "pinned": true,
-              "icon": "lucide-git-fork",
-              "title": "Graph view"
             }
           }
         ]
@@ -204,44 +187,44 @@
       "bases:Create new base": false
     }
   },
-  "active": "b60be44b25dd3dad",
+  "active": "9529f203626984cd",
   "lastOpenFiles": [
-    "CLAUDE.md",
-    "_core/_schema/_code.md",
-    "BRAIN DUMP.md",
     "ConnectIt/_tasks/active.md",
+    "ConnectIt/_discussions/2026-09-12-action-state-architecture.md",
+    "Development/optimal-co-developer/_questions/2026-09-13-action-state-architecture-vs-demo-progress.md",
+    "BRAIN DUMP.md",
+    "ConnectIt/_discussions/2026-09-12-board-mediator-and-action-config-design.md",
+    "ConnectIt/_logs/2026-09-12-1943.md",
+    "_core/_skills/ask-vault.md",
+    "Development/optimal-co-developer/_tasks/active.md",
+    "Development/optimal-co-developer/_questions/2026-09-12-board-mediator-refactor-vs-demo-progress.md",
+    "_core/_logs/2026-09-12-1809.md",
+    "_core/_skills/improve-system.md",
+    "Development/_skills/session-close.md",
+    "Development/_skills/session-close.md.tmp.30184.1250b3d1e2c8",
+    "Development/_skills/session-open.md",
+    "Development/_skills",
+    "_core/_templates/TSchemaSessions.md",
+    "_core/_schema/_sessions.md",
+    "_core/_schema/_sessions.md.tmp.30184.193f6b9e1a54",
+    "ConnectIt/_logs/2026-09-12-0102.md",
     "ConnectIt/_tasks/suspended.md",
     "ConnectIt/_tasks/complete.md",
-    "ConnectIt/_logs/2026-09-12-0102.md",
+    "CLAUDE.md",
+    "_core/_schema/_code.md",
     "ConnectIt/_tasks/__README.md",
     "ConnectIt/_tasks",
     "_core/_tasks/__README.md",
-    "ConnectIt/_discussions/2026-09-12-board-mediator-and-action-config-design.md",
-    "Development/optimal-co-developer/_questions/2026-09-12-board-mediator-refactor-vs-demo-progress.md",
     "ConnectIt/_logs/2026-09-12-0044.md",
     "_core/_logs/2026-09-12-0044.md",
     "ConnectIt/_discussions/2026-09-11-swap-action-ui-design.md",
     "_core/_logs/2026-09-11-1500-2.md",
-    "_core/_questions/__README.md",
-    "ConnectIt/_logs/2026-09-11-2346.md",
-    "_core/_logs/2026-09-11-2340.md",
-    "_core/_skills/process-discussion.md",
-    "_core/_templates/TSchemaDiscussions.md",
-    "_core/_schema/_discussions.md",
-    "Development/optimal-co-developer/_questions/2026-09-11-vault-restructuring-vs-demo-focus.md",
-    "_core/_schema/_meetings.md",
-    "_core/_logs/2026-09-11-1500.md",
-    "Development/optimal-co-developer/_skills/ask-partner.md",
-    "Development/optimal-co-developer/_tasks/complete.md",
     "Development/optimal-co-developer/_tasks/suspended.md.tmp.24376.e48f89ae18c0",
     "Development/optimal-co-developer/_tasks",
     "Development/optimal-co-developer/_daily",
     "Development/optimal-co-developer/_decisions",
     "Development/optimal-co-developer/_questions",
     "Development/optimal-co-developer/_meetings",
-    "ConnectIt/_discussions",
-    "_core/_schema/AsK0kk1i",
-    "ConnectIt/_logs",
     "Untitled.canvas"
   ]
 }

@@ -6,6 +6,9 @@ Vault-wide passes go in `_core/_logs/`.
 
 Newest first:
 
+- [2026-09-12-1943](2026-09-12-1943.md) — process-discussion — `action-state-architecture`
+  filed from a pasted transcript, 4 topics (1 continuing the board-mediator discussion,
+  3 first mentions); Questions-and-an-Update only, no Tasks/Deliverables/Workflows
 - [2026-09-12-0102](2026-09-12-0102.md) — session — opened `ConnectIt/_tasks/` (README +
   active/complete/suspended), added it to `ConnectIt/CLAUDE.md`'s section list, seeded
   1 open task from the board-mediator discussion

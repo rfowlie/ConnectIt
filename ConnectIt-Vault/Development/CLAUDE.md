@@ -55,6 +55,15 @@ continues.
 Each sub-project `CLAUDE.md` is written to stand alone — it can become a repo root if the
 sub-project is ever extracted.
 
+## Sections directly on `Development/`
+
+- **`_skills/`** — procedures that are the owner's general cross-project practice, not
+  scoped to either sub-project above: [`session-open`](_skills/session-open.md) /
+  [`session-close`](_skills/session-close.md) (bookend a work session on whichever game
+  domain is active — today, `ConnectIt`; the session notes themselves live in that
+  domain's own `_sessions/`, not here). Governed by
+  [`_core/_schema/_skills.md`](../_core/_schema/_skills.md).
+
 ## Structure: how folders are governed
 
 Three layers (full detail in [`_schema/README.md`](_schema/README.md)):
@@ -101,9 +110,8 @@ wins on state and routing.
    [`board-of-advisors/_knowledge/wiki/`](board-of-advisors/_knowledge/wiki/) profile(s) and
    check [`board-of-advisors/_questions/`](board-of-advisors/_questions/) for prior consultations.
 5. If it's game work, read the game's `CLAUDE.md` for status and the next action.
-6. Skim the latest entry in `board-of-advisors/_logs/wiki/improve-system/` (via its
-   `README.md` index) for what changed in recent maintenance passes — once the first
-   `/improve-system` run has created it.
+6. Skim the newest `_core/_logs/` entries (via `_core/_logs/__INDEX.md`) for what changed
+   in recent maintenance passes.
 7. Then act — decisively, tied to the real constraints.
 
 ## Where new information goes
@@ -118,9 +126,9 @@ _(Used by the `improve-system` skill to route a session's output.)_
 | Something about players / collaborators / target studios | `board-of-advisors/_knowledge/audience/<name>.md` |
 | A transcript / article / post to preserve | `board-of-advisors/_knowledge/raw/<person-slug>/NN-title.md` (verbatim) + update `.../wiki/<person-slug>.md` |
 | A board consultation | `board-of-advisors/_questions/<date>-<slug>.md` |
-| Progress, a next action, a scope decision on a game | that game's `CLAUDE.md` (e.g. `game-projects/connect-it/CLAUDE.md`) |
-| A new reusable procedure | sub-project skill → `<sub-project>/_skills/<name>.md` + `.claude/skills/<name>/SKILL.md`; vault-wide → `.claude/skills/<name>/SKILL.md` only |
-| A record of what a maintenance pass changed | `board-of-advisors/_logs/raw/improve-system/<timestamp>.md` + summary in `.../wiki/…` (written by `/improve-system`, not by hand) |
+| Progress, a next action, a scope decision on a game | that game domain's `CLAUDE.md` (e.g. [`ConnectIt/CLAUDE.md`](../ConnectIt/CLAUDE.md)) |
+| A new reusable procedure | **always both**: an authored copy — `<sub-project>/_skills/<name>.md` (sub-project-scoped), `Development/_skills/<name>.md` (Development-wide, not tied to a sub-project), or `_core/_skills/<name>.md` (vault-wide) — **and** its `.claude/skills/<name>/SKILL.md` mirror. No skill is ever mirror-only or authored-only. |
+| A record of what a maintenance pass changed | one `_core/_logs/<timestamp>.md` note, scope `vault` (written by `/improve-system`, not by hand) |
 
 ---
 

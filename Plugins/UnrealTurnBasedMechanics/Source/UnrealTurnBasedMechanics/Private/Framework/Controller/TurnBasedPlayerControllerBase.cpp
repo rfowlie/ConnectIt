@@ -7,7 +7,9 @@
 #include "Framework/Controller/TurnBasedControllerCoordinatorComponent.h"
 
 
-ATurnBasedPlayerControllerBase::ATurnBasedPlayerControllerBase()
+ATurnBasedPlayerControllerBase::ATurnBasedPlayerControllerBase(
+	const FObjectInitializer& ObjectInitializer)
+	: Super(ObjectInitializer)
 {
 	ParticipantComponent =
 		CreateDefaultSubobject<UTurnBasedParticipantComponent>(

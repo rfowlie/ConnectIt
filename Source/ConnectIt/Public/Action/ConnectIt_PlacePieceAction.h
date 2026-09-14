@@ -69,8 +69,8 @@ private:
     // TileRegistry lives on UConnectIt_BoardRegistrySubsystem now (one
     // canonical per-world instance) -- resolved once in
     // PostInitialiseAction_Implementation.
-    UPROPERTY()
-    TObjectPtr<UGridTileRegistryBase> TileRegistry = nullptr;
+    // UPROPERTY()
+    // TObjectPtr<UGridTileRegistryBase> TileRegistry = nullptr;
 
     // Gets owning faction ID from participant component slot index
     int32 GetOwningControllerFactionID() const;
