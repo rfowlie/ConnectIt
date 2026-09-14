@@ -5,8 +5,8 @@ role: primary
 source:
   - Source/ConnectIt/Public/Framework/GameMode/ConnectIt_GameMode.h
   - Source/ConnectIt/Private/Framework/GameMode/ConnectIt_GameMode.cpp
-reconciled: 2026-09-10
-commit: eddd631
+reconciled: 2026-09-14
+commit: 131609f
 ---
 
 # AConnectIt_GameMode
@@ -25,6 +25,9 @@ for board-change requests.
 
 ## Entry points
 
+- **Constructor:** sets `PlayerStateClass = AConnectIt_PlayerState::StaticClass()` (was
+  the plugin's own `ATurnBasedPlayerState` until 2026-09-14 — every `PlayerState` in the
+  game is a real `AConnectIt_PlayerState` now, not dead code).
 - **Config (`EditDefaultsOnly`):** `MatchType` (`EConnectItMatchType::Adventure` |
   `Online`), `AIControllerClass`, `AIDisplayName`, `NumFactions` (drives scoreboard size).
 - `ProcessBoardRequest(const FTurnActionRequest&) → bool` — **the** board-request entry
@@ -50,6 +53,12 @@ for board-change requests.
   `OnWorldBeginPlay` — always ready by the time `InitialiseBoard` runs off
   `HandleMatchHasStarted`).
 - `AConnectIt_PlayerController::ServerRouteBoardChangeRequest` → `ProcessBoardRequest`.
+- **`HandleMatchHasStarted`** also grants each `AConnectIt_PlayerState` in
+  `GameState->PlayerArray` its match-lifetime SWAP budget (`SwapUsesRemaining = 3`),
+  stamped explicitly rather than relied on as a UPROPERTY default — see
+  [[AConnectIt_PlayerState|AConnectIt_PlayerState]] (stub — covered here) and
+  `UConnectIt_BoardRequestMediator::HandleSwapPiecesRequest`, the only server-side
+  consumer of that budget.
 
 ## Gotchas
 
@@ -69,6 +78,10 @@ payload struct, and `FConnectItBoardChangeEvent` fields — see
 
 ## Changes
 
+- 2026-09-14 — `PlayerStateClass` fixed to `AConnectIt_PlayerState` (was silently dead
+  code — every `PlayerState` was a plugin `ATurnBasedPlayerState`, see
+  [[ConnectIt/_discussions/2026-09-14-swap-implementation-qa|_discussions/2026-09-14-swap-implementation-qa]]);
+  `HandleMatchHasStarted` now grants each player their `SwapUsesRemaining` budget.
 - 2026-09-10 — re-ingested to the `_code` schema; provenance re-anchored (`eddd631`).
 - 2026-09-09 — `InitialiseBoard` stopped doing its own `FConstPlayerControllerIterator`
   scan for the registries; now pulls them from `UConnectIt_GameUtilityLibrary` →

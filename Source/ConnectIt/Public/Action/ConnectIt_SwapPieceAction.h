@@ -58,6 +58,8 @@ protected:
     // Resolves and caches TileRegistry -- same pattern as
     // UConnectIt_PlacePieceAction.
     virtual void PostInitialiseAction_Implementation() override;
+    virtual void OnCancelled_Implementation() override;
+    virtual void OnCompleted_Implementation() override;
 
     virtual bool IsValidHoverTile_Implementation(AGridTileBase* Tile) const override;
     virtual bool IsValidSelectionTile_Implementation(AGridTileBase* Tile) const override;
@@ -86,4 +88,6 @@ private:
     // Gets owning faction ID from participant component slot index --
     // same pattern as UConnectIt_PlacePieceAction.
     int32 GetOwningControllerFactionID() const;
+    
+    bool ResetAction();
 };

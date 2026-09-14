@@ -199,11 +199,32 @@ UConnectIt_LevelConfigDataAsset* UConnectIt_GameUtilityLibrary::GetLevelConfig(
     const TSoftObjectPtr<UConnectIt_LevelConfigDataAsset>* Entry = Settings->LevelConfigs.Find(LevelName);
     if (!Entry)
     {
-        UE_LOG(LogTemp, Error,
+        // Missing per-level registration is expected to happen (a new/
+        // duplicated level nobody's added to ConnectIt_LevelConfigSettings
+        // yet) -- fall back to DefaultLevelConfig with a loud Warning
+        // instead of silently returning null. A null return here used to
+        // cascade into every level-config-dependent system (tile registry,
+        // action loadout) being silently unset, with nothing pointing back
+        // at "you forgot to register this level" -- see
+        // ConnectIt/_decisions/2026-09-14-level-config-default-fallback.md.
+        UE_LOG(LogTemp, Warning,
             TEXT("ConnectIt_GameUtilityLibrary: No ConnectIt_LevelConfigDataAsset "
-                 "registered for level '%s' in ConnectIt_LevelConfigSettings"),
+                 "registered for level '%s' in ConnectIt_LevelConfigSettings -- "
+                 "falling back to DefaultLevelConfig. Add an entry for this level "
+                 "to silence this and use level-specific rules/loadouts."),
             *LevelName.ToString());
-        return nullptr;
+
+        if (Settings->DefaultLevelConfig.IsNull())
+        {
+            UE_LOG(LogTemp, Error,
+                TEXT("ConnectIt_GameUtilityLibrary: ...and DefaultLevelConfig is "
+                     "also unset in ConnectIt_LevelConfigSettings -- no config "
+                     "available for level '%s'"),
+                *LevelName.ToString());
+            return nullptr;
+        }
+
+        return Settings->DefaultLevelConfig.LoadSynchronous();
     }
 
     return Entry->LoadSynchronous();

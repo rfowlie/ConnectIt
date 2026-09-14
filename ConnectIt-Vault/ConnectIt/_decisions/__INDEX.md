@@ -8,6 +8,7 @@ Newest first:
 
 | Date | Decision | Status |
 |---|---|---|
+| [[ConnectIt/_decisions/2026-09-14-level-config-default-fallback\|2026-09-14-level-config-default-fallback]] | `GetLevelConfig` falls back to a `DefaultLevelConfig` + warns, instead of erroring to null, when a level isn't registered | Active |
 | [[ConnectIt/_decisions/2026-09-09-faction-visuals-subsystem-built-then-removed\|2026-09-09-faction-visuals-subsystem-built-then-removed]] | Build the faction-visuals subsystem, then remove it — stay white-box | Active |
 | [[ConnectIt/_decisions/2026-09-09-board-registries-to-world-subsystem\|2026-09-09-board-registries-to-world-subsystem]] | Tile/piece registries live on a `UWorldSubsystem`, duplicated per world from level-config templates | Active |
 | [[ConnectIt/_decisions/2026-09-08-board-architecture-overhaul\|2026-09-08-board-architecture-overhaul]] | Retire `AConnectIt_BoardManager`; split its jobs across GameMode / GameState / config | Active |

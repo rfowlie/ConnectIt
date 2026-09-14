@@ -6,6 +6,23 @@ Vault-wide passes go in `_core/_logs/`.
 
 Newest first:
 
+- [2026-09-14-0207](2026-09-14-0207.md) — session — applied the 2026-09-14 check-in's task
+  candidates to `_tasks/`: 2 rows completed, 1 rewritten (root-action task → HUD-owned-UI
+  confirmation), 4 added (Board Shift, turn-end AND/OR groups, blocker prototype,
+  `DefaultLevelConfig` confirmation) — by explicit owner request, not the default
+  candidates-only flow
+- [2026-09-14-0044](2026-09-14-0044.md) — session — opened `ConnectIt/_questions/`,
+  logged the first open question (`action-gameplay-tags` — 4-5 disconnected places an
+  action tag has to be set), linked to the related `_tasks/active.md` fix
+- [2026-09-14-0039](2026-09-14-0039.md) — session — `GetLevelConfig` now falls back to a
+  new `DefaultLevelConfig` (+ warns) instead of erroring to null on an unregistered
+  level; root-caused the missing-actions bug on the duplicated map; decision note added
+- [2026-09-14-0018](2026-09-14-0018.md) — process-discussion — `swap-implementation-qa`
+  filed from a compiled (not pasted) transcript — 5 SWAP debugging Q&A exchanges, 4 topics
+  (1 continuing `action-state-architecture`, 3 first mentions)
+- [2026-09-13-2342](2026-09-13-2342.md) — session — added `_discussions/__INDEX.md`
+  (3 notes indexed), closing the flag from 2026-09-12-1943; linked it from
+  `ConnectIt/CLAUDE.md`
 - [2026-09-12-1943](2026-09-12-1943.md) — process-discussion — `action-state-architecture`
   filed from a pasted transcript, 4 topics (1 continuing the board-mediator discussion,
   3 first mentions); Questions-and-an-Update only, no Tasks/Deliverables/Workflows

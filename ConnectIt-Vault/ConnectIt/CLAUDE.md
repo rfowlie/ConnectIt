@@ -44,7 +44,8 @@ The full suite dependency graph and layering is the **Map** section of
 - **`_logs/`** — ConnectIt-scoped maintenance passes ([schema](../_core/_schema/_logs.md)).
 - **`_discussions/`** — one dated note per discussion (calls, brainstorms, transcribed
   voice memos); topics link back to their most recent prior mention instead of a folder
-  hierarchy. Governed by [`_core/_schema/_discussions.md`](../_core/_schema/_discussions.md).
+  hierarchy. [`__INDEX.md`](_discussions/__INDEX.md) tracks the growing list. Governed by
+  [`_core/_schema/_discussions.md`](../_core/_schema/_discussions.md).
 - **`_tasks/`** — status tables (`active` / `suspended` / `complete`) for ConnectIt-domain
   work. Governed by [`_core/_schema/_tasks.md`](../_core/_schema/_tasks.md).
 - **`_sessions/`** — one dated note per work session, bookended by
@@ -53,22 +54,9 @@ The full suite dependency graph and layering is the **Map** section of
   `Development/_skills/` since the procedure is generic; the session notes themselves live
   here, scoped to this domain). Governed by
   [`_core/_schema/_sessions.md`](../_core/_schema/_sessions.md).
+- **`_questions/`** — one note per open, unresolved ConnectIt-scoped question, living
+  until it closes. Governed by [`_core/_schema/_questions.md`](../_core/_schema/_questions.md).
 
 ## Start here
 
 [code/__INDEX.md](code/__INDEX.md) — inventory, suite map, known issues.
-
-## Current state
-
-- **Board architecture** is post-refactor: `AConnectIt_BoardManager` (the world actor) is
-  **retired**. Board authority is server-only UObjects on
-  [AConnectIt_GameMode](code/AConnectIt_GameMode.md) —
-  `UConnectIt_BoardRequestMediator` + `UConnectIt_BoardRules`. The board is one replicated
-  snapshot on `UConnectIt_BoardStateComponent` (on the GameState). `TileRegistry` /
-  `PieceRegistry` now live on `UConnectIt_BoardRegistrySubsystem` (`UWorldSubsystem`),
-  `DuplicateObject`'d per world from `Instanced` templates on
-  `UConnectIt_LevelConfigDataAsset`. See [_decisions/](_decisions/__INDEX.md).
-- **Retired / dead — do not document as live:** the tag-reactive interpreter pipeline
-  (its game-event-queue replacement on the mediator is an empty stub); the whole ConnectIt
-  shift pipeline; the legacy MVVM pipeline (`UConnectIt_State_*`, `UConnectIt_GameFacade`,
-  `UConnectIt_GameViewModel`, `AConnectIt_GameMode_Play`).

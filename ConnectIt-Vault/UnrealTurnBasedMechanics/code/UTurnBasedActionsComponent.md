@@ -5,8 +5,8 @@ role: primary
 source:
   - Plugins/UnrealTurnBasedMechanics/Source/UnrealTurnBasedMechanics/Public/Action/TurnBasedActionsComponent.h
   - Plugins/UnrealTurnBasedMechanics/Source/UnrealTurnBasedMechanics/Private/Action/TurnBasedActionsComponent.cpp
-reconciled: 2026-09-10
-commit: ae9c1f0
+reconciled: 2026-09-14
+commit: 131609f
 ---
 
 # UTurnBasedActionsComponent
@@ -33,7 +33,10 @@ the plugin (~25 UPROPERTY / ~32 UFUNCTION).
   `NotifyMatchEnded`.
 - **Stack ops:** `PushAction` (force-deactivates old top, no pop), `SafePopAction`
   (refuses to empty the stack), `ClearAndPush` (tear down + new sole root),
-  `TryPushAction(FGameplayTag)` / `TryPushActionByRef`, `CancelTopAction`.
+  `TryPushAction(FGameplayTag)` / `TryPushActionByRef` / `TryPushActionByClass(TSubclassOf<UTurnBasedAction>)`
+  (added 2026-09-14 — resolves to the already-cloned `RuntimeActions` instance of that
+  class, same as `TryPushAction` does by tag; **does not** construct a new instance),
+  `CancelTopAction`.
 - **Turn end:** `CanEndTurn()` → `CanAutoEndTurn()` (BlueprintNativeEvent designer
   override); `RequestTurnEnd()` broadcasts `OnTurnEndRequested`.
 - **Board change:** `NotifyBoardChangeOutcome(FTurnActionRequest, bSucceeded)` — the one
@@ -81,6 +84,9 @@ Change the slot set or lifecycle and also update:
 
 ## Changes
 
+- 2026-09-14 — added `TryPushActionByClass` (resolve-by-class, same shape as
+  `TryPushAction`'s resolve-by-tag) — for UI code that only has a
+  `TSubclassOf<UTurnBasedAction>` handy, not the action's `ActionTag`.
 - 2026-09-10 — re-ingested to the `_code` schema; provenance re-anchored.
 
 ## See also

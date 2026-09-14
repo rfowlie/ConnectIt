@@ -43,7 +43,7 @@ vault; see [`_core/CLAUDE.md`](_core/CLAUDE.md).
 | `atomic` | Single-idea Zettelkasten pool — **single instance, `_core/_atomic/` only** | `_core/_atomic/` |
 | `clippings` | Unprocessed capture dump; empty is the goal | `_core/_clippings/` |
 | `tasks` | Status tables (`active`/`suspended`/`complete`) | `_core/_tasks/` (vault) · `optimal-co-developer/_tasks/` |
-| `questions` | One note per open, unresolved question | `_core/_questions/` (vault) · `optimal-co-developer/_questions/` |
+| `questions` | One note per open, unresolved question | `_core/_questions/` (vault) · `optimal-co-developer/_questions/` · `ConnectIt/_questions/` |
 | `meetings` | One dated note per meeting or session | `optimal-co-developer/_meetings/` |
 | `discussions` | One dated note per discussion; topics link to their most recent prior mention instead of a folder hierarchy | schema defined, no note yet (`ConnectIt/_discussions/` empty) |
 | `daily` | One free-form note per day | `optimal-co-developer/_daily/` |

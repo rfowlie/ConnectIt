@@ -28,7 +28,7 @@ scope/cadence guarding, or design sparring.
 | [`_decisions/`](_decisions/__README.md) | Non-obvious settled calls about the collaboration itself. Governed by [`_schema/_decisions.md`](../../_core/_schema/_decisions.md). |
 | [`_daily/`](_daily/__README.md) | Free-form daily notes about working with the co-developer. Governed by [`_schema/_daily.md`](../../_core/_schema/_daily.md). |
 | [`_tasks/`](_tasks/__README.md) | Work tracked on the co-developer relationship itself — not the flagship project's own tasks. Governed by [`_schema/_tasks.md`](../../_core/_schema/_tasks.md). |
-| [`_skills/`](_skills/ask-partner.md) | Authored home for this domain's skills — `/ask-partner`, the single-voice counterpart to `/ask-the-board`. Governed by [`_schema/_skills.md`](../../_core/_schema/_skills.md). |
+| [`_skills/`](_skills/ask-partner.md) | Authored home for this domain's skills — `/ask-partner` (single-voice counterpart to `/ask-the-board`), and the `/meeting-open` / `/meeting-closed` check-in pair. Governed by [`_schema/_skills.md`](../../_core/_schema/_skills.md). |
 
 ## Relationship to career-coach.md
 

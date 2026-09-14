@@ -1,7 +1,7 @@
 ---
 schema: code
-reconciled: 2026-09-10
-commit: 3086271
+reconciled: 2026-09-14
+commit: 131609f
 ---
 
 # UnrealTurnBasedMechanics — code index

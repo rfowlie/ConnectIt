@@ -8,6 +8,20 @@ in `<domain>/_logs/`, not here.
 
 Newest first:
 
+- [2026-09-14-0204](2026-09-14-0204.md) — meeting-closed — closed the first
+  `Development/optimal-co-developer/_meetings/` note (2026-09-14 check-in); filed 3
+  `ConnectIt/_decisions/` notes (action-state-on-PlayerState/ActionsComponent-as-builder,
+  Actions-UI-owned-by-HUD, turn-end AND/OR requirement groups); task candidates listed in
+  the meeting note, not filed to `_tasks/active.md`
+- [2026-09-14-0055](2026-09-14-0055.md) — process — full sweep: 1 task row filed, 7 of 35
+  `current` code pages refreshed (`ConnectIt` + `UnrealTurnBasedMechanics`, both
+  SWAP-touched since last reconciliation — the other 5 domains clean), atomic/skills/data
+  all clean; flagged a missing `ITurnBasedActionNotifier` inventory row + stale
+  `ConnectIt/code/__INDEX.md` framing
+- [2026-09-13-2339](2026-09-13-2339.md) — session — authored the `/meeting-open` /
+  `/meeting-closed` check-in skill pair in `Development/optimal-co-developer/_skills/` +
+  mirrors, extended `_meetings/__README.md` for the transcript+summary shape and
+  plain-string attendees
 - [2026-09-12-1809](2026-09-12-1809.md) — session — resolved the repo-root
   `.claude/skills/` open question: retired `reconcile-tasks` (→ `process-tasks`), deleted
   stale `ask-the-board`/`ask-vault` root copies, re-authored + mirrored `improve-system`

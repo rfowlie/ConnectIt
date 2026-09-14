@@ -23,6 +23,17 @@ class CONNECTIT_API UConnectIt_LevelConfigSettings : public UDeveloperSettings
 
 public:
 
+
+    // Used by GetLevelConfig when the current level's name has no entry above
+    // -- e.g. a newly duplicated/created level nobody's registered yet.
+    // Logged as a Warning when this fallback is taken (register the level
+    // properly to silence it) rather than the previous hard Error-and-null,
+    // which used to leave every level-config-dependent system (tile
+    // registry, action loadout) silently unset with no obvious cause.
+    UPROPERTY(EditAnywhere, Config, Category = "ConnectIt")
+    TSoftObjectPtr<UConnectIt_LevelConfigDataAsset> DefaultLevelConfig;
+    
     UPROPERTY(EditAnywhere, Config, Category = "ConnectIt")
     TMap<FName, TSoftObjectPtr<UConnectIt_LevelConfigDataAsset>> LevelConfigs;
+
 };

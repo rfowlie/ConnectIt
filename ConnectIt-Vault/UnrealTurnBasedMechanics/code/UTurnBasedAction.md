@@ -5,8 +5,8 @@ role: primary
 source:
   - Plugins/UnrealTurnBasedMechanics/Source/UnrealTurnBasedMechanics/Public/Action/TurnBasedAction.h
   - Plugins/UnrealTurnBasedMechanics/Source/UnrealTurnBasedMechanics/Private/Action/TurnBasedAction.cpp
-reconciled: 2026-09-10
-commit: acbfa6f
+reconciled: 2026-09-14
+commit: 131609f
 ---
 
 # UTurnBasedAction

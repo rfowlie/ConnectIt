@@ -6,8 +6,8 @@ source:
   - Source/ConnectIt/Public/Board/ConnectIt_BoardStateComponent.h
   - Source/ConnectIt/Private/Board/ConnectIt_BoardStateComponent.cpp
   - Source/ConnectIt/Public/ConnectIt_Structs.h
-reconciled: 2026-09-10
-commit: 6477d5d
+reconciled: 2026-09-14
+commit: 131609f
 ---
 
 # UConnectIt_BoardStateComponent
@@ -46,8 +46,14 @@ visual system on both server and client.
   `BroadcastChange()` then `EnqueueBoardEventTags()` — symmetric.
 - `EnqueueBoardEventTags()` reads `ChangeEvent` and fires
   [[UnrealGameMechanics/code/UGameEventTaskSubsystem|UGameEventTaskSubsystem]]
-  `QueueTagContainer` once per event, fixed order: shift/piece-placed → line-scored →
-  player-win.
+  `QueueTagContainer` once per flag set on that event — each call represents exactly one
+  concrete mutation kind, so at most one of the "concrete change" tags fires per call:
+  `bPiecePlaced` → `ConnectIt_Event_PiecePlaced`, `bPieceRemoved` → `…PieceRemoved`,
+  `bPiecesSwapped` → `…PiecesSwapped`, `bPieceCaptured` → `…PieceCaptured`,
+  `bTileMultiplierDestroyed` → `…TileMultiplierDestroyed`, `bTileActiveToggled` →
+  `…TileActiveToggled` (this last one has no ordering relationship with the others — a
+  disjoint kind of change). Then, independently, the two "knock-on" tags:
+  `bLineScored` → `…LineScored`, `bGameWon` → `…PlayerWin`.
 - Written by
   [[UConnectIt_BoardRequestMediator|UConnectIt_BoardRequestMediator]] handlers
   via `SetBoardState`.
@@ -74,6 +80,11 @@ the fields. UI reading the snapshot (`AConnectIt_GameState` wrappers, debug widg
 
 ## Changes
 
+- 2026-09-14 — corrected the Collaborators event-tag list: it previously described a
+  three-tag "shift/piece-placed → line-scored → player-win" fixed order that no longer
+  matches the source — six independent concrete-change tags now exist (including
+  `bPiecesSwapped`/`bPieceCaptured` from the SWAP/capture work), each firing from its own
+  disjoint `ChangeEvent` flag.
 - 2026-09-10 — re-ingested to the `_code` schema; provenance re-anchored.
 
 ## See also

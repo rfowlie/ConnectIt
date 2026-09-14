@@ -37,7 +37,7 @@ void UConnectIt_SwapPieceAction::PostInitialiseAction_Implementation()
 
     // TileRegistry lives on UConnectIt_BoardRegistrySubsystem -- one
     // canonical per-world instance, not per-controller.
-    TileRegistry = UConnectIt_GameUtilityLibrary::GetTileRegistry(this);
+    TileRegistry = UConnectIt_GameUtilityLibrary::GetTileRegistry(GetPlayerController());
 
     if (!IsValid(TileRegistry))
     {
@@ -45,6 +45,16 @@ void UConnectIt_SwapPieceAction::PostInitialiseAction_Implementation()
             TEXT("PieceSwapperAction: PostInitialiseAction -- "
                  "OwningController has no valid TileRegistry"));
     }
+}
+
+void UConnectIt_SwapPieceAction::OnCancelled_Implementation()
+{
+    ResetAction();
+}
+
+void UConnectIt_SwapPieceAction::OnCompleted_Implementation()
+{
+    ResetAction();
 }
 
 bool UConnectIt_SwapPieceAction::IsValidHoverTile_Implementation(AGridTileBase* Tile) const
@@ -203,4 +213,22 @@ int32 UConnectIt_SwapPieceAction::GetOwningControllerFactionID() const
     }
 
     return FactionId;
+}
+
+
+bool UConnectIt_SwapPieceAction::ResetAction()
+{
+    Super::OnCompleted_Implementation();
+
+    if (!IsValid(TileRegistry))
+    {
+        UE_LOG(LogTemp, Error,
+               TEXT("PieceSwapperAction: OnCompleted_Implementation -- "
+                   "OwningController has no valid TileRegistry"));
+        return true;
+    }
+
+    bHasSelectionFirst = false;
+    PositionFirst = FGridPosition();
+    return false;
 }

@@ -1,7 +1,7 @@
 ---
 schema: code
-reconciled: 2026-09-10
-commit: 6477d5d
+reconciled: 2026-09-14
+commit: efc8052
 ---
 
 # ConnectIt (game module) — code index
@@ -11,8 +11,11 @@ Per-type help pages for the `ConnectIt` game module (`Source/ConnectIt/`). Gover
 why / what changed" notes over the code. The exhaustive per-member reference is the
 code itself (`../../Source/ConnectIt/`).
 
-Source root: `Source/ConnectIt/`. Anchor commit `6477d5d` = *Create Connect It Registry*,
-the last commit to touch this module. The game is mid–**board-architecture overhaul**:
+Source root: `Source/ConnectIt/`. Anchor commit `efc8052` = *Implement SWAP*, the last
+commit to touch this module (`/process-code` re-ran 2026-09-14 — 4 pages refreshed, see
+their own `## Changes`; the SWAP action work is a newer phase layered on top of the
+board-architecture work below, not yet folded into this paragraph's own framing). The
+game is mid–**board-architecture overhaul**:
 the `AConnectIt_BoardManager` actor is retired, replaced by server-only UObjects on
 [[AConnectIt_GameMode|AConnectIt_GameMode]]; the tile/piece registries have moved again,
 onto [[UConnectIt_BoardRegistrySubsystem|UConnectIt_BoardRegistrySubsystem]]; several

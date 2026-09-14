@@ -5,8 +5,8 @@ role: primary
 source:
   - Plugins/UnrealTurnBasedMechanics/Source/UnrealTurnBasedMechanics/Public/Turn/Participant/TurnBasedParticipantManagerComponent.h
   - Plugins/UnrealTurnBasedMechanics/Source/UnrealTurnBasedMechanics/Private/Turn/Participant/TurnBasedParticipantManagerComponent.cpp
-reconciled: 2026-09-10
-commit: 3086271
+reconciled: 2026-09-14
+commit: 1d1c70f
 ---
 
 # UTurnBasedParticipantManagerComponent
@@ -31,6 +31,8 @@ turn advancement. Server-authoritative; a handful of fields replicate to clients
   `NotifyParticipantReconnected`.
 - **Queries (client-safe where replicated):** `IsActiveParticipant(AController*)`,
   `IsMatchOver()`, `GetActiveParticipant(bool&)`, `GetParticipantBySlot(int32, bool&)`,
+  `GetAllParticipants() → TArray<FTurnParticipantInfo>` (added 2026-09-14 — the full
+  replicated `Participants` array, for callers that need every slot rather than one),
   `GetControllerAtIndex` (null on clients), `GetInfo()`.
 - **Override (Blueprint):** `CheckAllParticipantsRegistered` (BlueprintImplementableEvent).
 - **Fires:** `OnTurnPhaseChanged`, `OnTurnChanged`, `OnActiveControllerChanged`,
@@ -79,6 +81,8 @@ Change the phase set / lifecycle and also update: `ETurnPhase` / `EMatchPhase` /
 
 ## Changes
 
+- 2026-09-14 — added `GetAllParticipants()`, a plain accessor for the full `Participants`
+  array.
 - 2026-09-10 — re-ingested to the `_code` schema; provenance re-anchored.
 
 ## See also
