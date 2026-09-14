@@ -29,10 +29,7 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "ConnectIt|Piece")
 	void InitialisePiece(int32 InFactionID, FGridPosition InGridPosition);
 
-	// Faction this piece belongs to
-	UPROPERTY(BlueprintReadOnly, ReplicatedUsing = OnRep_FactionID,
-		Category = "ConnectIt|Piece")
-	int32 FactionID = -1;
+	
 
 	// Grid position this piece occupies
 	UPROPERTY(BlueprintReadOnly, Replicated, Category = "ConnectIt|Piece")
@@ -50,6 +47,10 @@ public:
 		TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
 protected:
+
+	// Faction this piece belongs to
+	UPROPERTY(BlueprintReadWrite, ReplicatedUsing = OnRep_FactionID, Category = "ConnectIt|Piece")
+	int32 FactionID = -1;
 
 	// TODO: rename to Initialize_Internal as this fires during the initialize function
 	// Called when FactionID replicates to clients
