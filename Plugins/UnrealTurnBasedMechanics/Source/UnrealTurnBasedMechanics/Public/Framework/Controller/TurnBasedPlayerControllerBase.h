@@ -26,7 +26,16 @@ class UNREALTURNBASEDMECHANICS_API ATurnBasedPlayerControllerBase
 
 public:
 
-	ATurnBasedPlayerControllerBase();
+	// Takes FObjectInitializer (default-valued, so every existing no-arg
+	// call site is unaffected) so a project-specific subclass can override
+	// ActionsComponent's concrete class via
+	// ObjectInitializer.SetDefaultSubobjectClass<T>(TEXT("ActionsComponent"))
+	// before calling Super(ObjectInitializer) -- the standard technique for
+	// swapping a CreateDefaultSubobject's class from a derived C++ class,
+	// which requires this constructor to actually accept and forward the
+	// initializer (a bare zero-arg Super() has no argument slot for it).
+	explicit ATurnBasedPlayerControllerBase(
+		const FObjectInitializer& ObjectInitializer = FObjectInitializer::Get());
 
 	// TODO: make components protected
 	UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly,

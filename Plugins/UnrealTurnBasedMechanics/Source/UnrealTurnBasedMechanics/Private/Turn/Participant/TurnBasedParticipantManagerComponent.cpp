@@ -6,6 +6,7 @@
 #include "GameEvent/GameEventTaskSubsystem.h"
 #include "Net/UnrealNetwork.h"
 #include "Framework/PlayerState/TurnBasedPlayerState.h"
+#include "GameFramework/GameMode.h"
 #include "Turn/Order/SequentialTurnOrderStrategy.h"
 #include "Turn/Participant/TurnBasedParticipantComponent.h"
 
@@ -19,6 +20,10 @@ UTurnBasedParticipantManagerComponent::UTurnBasedParticipantManagerComponent()
 void UTurnBasedParticipantManagerComponent::BeginPlay()
 {
     Super::BeginPlay();
+
+    // bind to game state match over
+    FGameModeEvents::GameModeMatchStateSetEvent.AddUObject(
+        this, &ThisClass::OnGameModeWaitingPostMatch);
 
     if (!TurnOrderStrategy.GetObject())
     {
@@ -49,6 +54,26 @@ void UTurnBasedParticipantManagerComponent::BeginPlay()
     }
 }
 
+void UTurnBasedParticipantManagerComponent::OnGameModeWaitingPostMatch(FName Name)
+{
+    if (Name != MatchState::WaitingPostMatch) return;
+
+    // Stop any in-flight turn timer -- otherwise a still-running timer
+    // could later fire HandleTurnTimeout -> EndTurn and re-enter the
+    // turn-advance machinery after the match has already ended.
+    GetWorld()->GetTimerManager().ClearTimer(TurnTimerHandle);
+    ReplicatedTurnStartServerTime = -1.f;
+
+    SetPhase(ETurnPhase::GameOver);
+    SetMatchPhase(EMatchPhase::GameOver);
+    OnGameOver.Broadcast();
+
+    UE_LOG(LogTurnBasedMechanics, Log,
+        TEXT("TurnBasedParticipantManager: MatchState -> WaitingPostMatch -- "
+             "entering GameOver, no further turn/board updates will fire"));
+}
+
+
 void UTurnBasedParticipantManagerComponent::GetLifetimeReplicatedProps(
     TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
@@ -59,6 +84,7 @@ void UTurnBasedParticipantManagerComponent::GetLifetimeReplicatedProps(
     DOREPLIFETIME(UTurnBasedParticipantManagerComponent, TurnNumber);
     DOREPLIFETIME(UTurnBasedParticipantManagerComponent, Participants);
     DOREPLIFETIME(UTurnBasedParticipantManagerComponent, ReplicatedTurnDuration);
+    DOREPLIFETIME(UTurnBasedParticipantManagerComponent, ReplicatedTurnStartServerTime);
 }
 
 // --- Setup ---
@@ -211,6 +237,7 @@ void UTurnBasedParticipantManagerComponent::NotifyParticipantDisconnected(
         && CurrentPhase == ETurnPhase::TurnActive)
     {
         GetWorld()->GetTimerManager().ClearTimer(TurnTimerHandle);
+        ReplicatedTurnStartServerTime = -1.f;
         DisconnectedParticipantIndex = DisconnectedIndex;
 
         SetPhase(ETurnPhase::TurnPaused);
@@ -262,6 +289,15 @@ void UTurnBasedParticipantManagerComponent::NotifyParticipantReconnected(
                 BuildNotification(ReconnectedIndex, ETurnPhase::TurnActive));
         }
 
+        // Restarts with the full TurnDuration, not the remaining time at
+        // disconnect -- pre-existing behaviour, not changed here. Re-stamp
+        // the start time to match so the client-derived countdown mirrors
+        // exactly what actually happens rather than showing a stale value.
+        if (const ATurnBasedGameState* GS = GetOwningGameState())
+        {
+            ReplicatedTurnStartServerTime = GS->GetServerWorldTimeSeconds();
+        }
+
         GetWorld()->GetTimerManager().SetTimer(
             TurnTimerHandle,
             this,
@@ -298,7 +334,11 @@ void UTurnBasedParticipantManagerComponent::StartTurn(int32 ParticipantIndex)
 
     ActiveParticipantIndex = ParticipantIndex;
     ReplicatedTurnDuration = TurnDuration;
-    TurnNumber++;
+    if (const ATurnBasedGameState* GS = GetOwningGameState())
+    {
+        ReplicatedTurnStartServerTime = GS->GetServerWorldTimeSeconds();
+    }
+    ++TurnNumber;
     Participants[ParticipantIndex].TurnsTaken++;
 
     // Match is now actively running a turn
@@ -329,6 +369,7 @@ void UTurnBasedParticipantManagerComponent::EndTurn(ETurnEndReason Reason)
     check(!IsRunningClientOnly());
 
     GetWorld()->GetTimerManager().ClearTimer(TurnTimerHandle);
+    ReplicatedTurnStartServerTime = -1.f;
 
     SetPhase(ETurnPhase::TurnEnd);
     NotifyActiveParticipant(ETurnPhase::TurnEnd, Reason);
@@ -367,8 +408,8 @@ void UTurnBasedParticipantManagerComponent::AdvanceToNextParticipant(FGameplayTa
     check(!IsRunningClientOnly());
     check(TurnOrderStrategy.GetInterface() != nullptr);
 
-    // Check game over before selecting next participant
-    if (CheckGameOver()) return;
+    // Check enough active participants remain before selecting next one
+    if (CheckValidNumberOfPlayers()) return;
 
     const int32 NextIndex =
         ITurnOrderInterface::Execute_GetNextParticipantIndex(
@@ -379,8 +420,10 @@ void UTurnBasedParticipantManagerComponent::AdvanceToNextParticipant(FGameplayTa
 
     if (NextIndex == INDEX_NONE)
     {
-        SetMatchPhase(EMatchPhase::GameOver);
-        OnGameOver.Broadcast();
+        // Same category of "plugin cannot validly continue" as
+        // CheckValidNumberOfPlayers -- defer to the project rather than
+        // unilaterally declaring the match over.
+        NotifyInvalidNumberOfPlayers();
         return;
     }
 
@@ -460,7 +503,7 @@ void UTurnBasedParticipantManagerComponent::CheckReadyStatus()
     StartTurn(FirstIndex);
 }
 
-bool UTurnBasedParticipantManagerComponent::CheckGameOver() const
+bool UTurnBasedParticipantManagerComponent::CheckValidNumberOfPlayers() const
 {
     const int32 ActiveCount = Participants.FilterByPredicate(
         [](const FTurnParticipantInfo& Info)
@@ -470,15 +513,24 @@ bool UTurnBasedParticipantManagerComponent::CheckGameOver() const
 
     if (ActiveCount > 1) return false;
 
-    SetMatchPhase(EMatchPhase::GameOver);
-    OnGameOver.Broadcast();
-
     UE_LOG(LogTurnBasedMechanics, Log,
-        TEXT("TurnBasedParticipantManager: Game over — "
-             "%d active participants remaining"),
+        TEXT("TurnBasedParticipantManager: Invalid number of active "
+             "participants remaining (%d)"),
         ActiveCount);
 
+    NotifyInvalidNumberOfPlayers();
     return true;
+}
+
+void UTurnBasedParticipantManagerComponent::NotifyInvalidNumberOfPlayers() const
+{
+    SetMatchPhase(EMatchPhase::InvalidNumberOfPlayers);
+    OnInvalidNumberOfPlayers.Broadcast();
+
+    UE_LOG(LogTurnBasedMechanics, Log,
+        TEXT("TurnBasedParticipantManager: Invalid number of active "
+             "participants -- notifying project to resolve (fix it, or "
+             "call EndMatch())"));
 }
 
 void UTurnBasedParticipantManagerComponent::BroadcastTurnStart(const int32 ActiveIndex)
@@ -514,6 +566,43 @@ void UTurnBasedParticipantManagerComponent::BroadcastTurnStart(const int32 Activ
 void UTurnBasedParticipantManagerComponent::BroadcastControllerChanged(int32 ActiveIndex)
 {
     // TODO: where and why do we need this?
+}
+
+// --- Queries ---
+
+FTurnParticipantInfo UTurnBasedParticipantManagerComponent::GetActiveParticipant(
+    bool& bOutValid) const
+{
+    if (Participants.IsValidIndex(ActiveParticipantIndex))
+    {
+        bOutValid = true;
+        return Participants[ActiveParticipantIndex];
+    }
+
+    bOutValid = false;
+    return FTurnParticipantInfo();
+}
+
+FTurnParticipantInfo UTurnBasedParticipantManagerComponent::GetParticipantBySlot(
+    int32 InSlotIndex, bool& bOutValid) const
+{
+    if (const FTurnParticipantInfo* Found = Participants.FindByPredicate(
+        [InSlotIndex](const FTurnParticipantInfo& Info)
+        {
+            return Info.SlotIndex == InSlotIndex;
+        }))
+    {
+        bOutValid = true;
+        return *Found;
+    }
+
+    bOutValid = false;
+    return FTurnParticipantInfo();
+}
+
+TArray<FTurnParticipantInfo> UTurnBasedParticipantManagerComponent::GetAllParticipants() const
+{
+    return Participants;
 }
 
 // --- Helpers ---
@@ -615,6 +704,7 @@ void UTurnBasedParticipantManagerComponent::OnRep_CurrentPhase()
 void UTurnBasedParticipantManagerComponent::OnRep_ActiveParticipantIndex()
 {
     // Clients react here -- e.g. highlight active player in UI
+    OnParticipantIndexChanged.Broadcast(ActiveParticipantIndex);
 }
 
 void UTurnBasedParticipantManagerComponent::OnRep_TurnNumber()
@@ -625,4 +715,5 @@ void UTurnBasedParticipantManagerComponent::OnRep_TurnNumber()
     // the notification. See TurnNumber's own doc comment for why this needs
     // its own ReplicatedUsing instead of piggybacking on OnRep_CurrentPhase.
     OnTurnPhaseChanged.Broadcast(CurrentPhase);
+    OnTurnChanged.Broadcast(TurnNumber);
 }

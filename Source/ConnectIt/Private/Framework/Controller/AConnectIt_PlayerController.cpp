@@ -1,15 +1,23 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 
-#include "Board/ConnectIt_BoardManager.h"
 #include "Framework/Controller/ConnectIt_PlayerController.h"
-#include "Library/ConnectIt_GameUtilityLibrary.h"
+#include "Framework/GameMode/ConnectIt_GameMode.h"
+#include "Framework/Library/ConnectIt_GameUtilityLibrary.h"
 #include "Turn/Participant/TurnBasedParticipantComponent.h"
 #include "Turn/Participant/TurnBasedParticipantManagerComponent.h"
+#include "Action/ActionLoadoutDataAsset.h"
+#include "Action/ConnectIt_TurnBasedActionsComponent.h"
 #include "Action/TurnBasedActionsComponent.h"
-#include "Framework/Data/ConnectIt_ConfigComponent.h"
+#include "Framework/Data/ConnectIt_LevelConfigDataAsset.h"
 
 
+AConnectIt_PlayerController::AConnectIt_PlayerController(
+    const FObjectInitializer& ObjectInitializer)
+    : Super(ObjectInitializer.SetDefaultSubobjectClass<UConnectIt_TurnBasedActionsComponent>(
+        TEXT("ActionsComponent")))
+{
+}
 
 void AConnectIt_PlayerController::BeginPlay()
 {
@@ -27,41 +35,44 @@ void AConnectIt_PlayerController::BeginPlay()
         this,
         &AConnectIt_PlayerController::HandleBoardChangeRequested);
 
-    // Initialise from board manager
-    InitialiseFromBoardManager();
+    // Initialise from level config
+    InitialiseFromLevelConfig();
+}
+
+void AConnectIt_PlayerController::EndPlay(const EEndPlayReason::Type EndPlayReason)
+{
+    Super::EndPlay(EndPlayReason);
 }
 
 // --- Initialisation ---
 
-void AConnectIt_PlayerController::InitialiseFromBoardManager()
+void AConnectIt_PlayerController::InitialiseFromLevelConfig()
 {
-    CachedBoardManager =
-        UConnectIt_GameUtilityLibrary::GetBoardManager(this);
+    const UConnectIt_LevelConfigDataAsset* LevelConfig =
+        UConnectIt_GameUtilityLibrary::GetLevelConfig(this);
 
-    if (!IsValid(CachedBoardManager))
+    if (!IsValid(LevelConfig))
     {
         UE_LOG(LogTemp, Error,
-            TEXT("ConnectIt_PlayerController: No AConnectIt_BoardManager "
-                 "found in world"));
+            TEXT("ConnectIt_PlayerController: No ConnectIt_LevelConfigDataAsset "
+                 "found for the current level"));
         return;
     }
 
-    // Get player loadout from board manager config
-    UActionLoadoutDataAsset* Loadout =
-        CachedBoardManager->GetConfigComponent()->PlayerLoadout;
+    UActionLoadoutDataAsset* Loadout = LevelConfig->PlayerLoadout;
 
     if (!IsValid(Loadout))
     {
         UE_LOG(LogTemp, Error,
-            TEXT("ConnectIt_PlayerController: No player loadout set "
-                 "on board manager config"));
+            TEXT("ConnectIt_PlayerController: No PlayerLoadout set "
+                 "on the level config"));
         return;
     }
 
     ActionsComponent->InitialiseFromLoadout(Loadout);
 
     UE_LOG(LogTemp, Log,
-        TEXT("ConnectIt_PlayerController: Initialised from board manager "
+        TEXT("ConnectIt_PlayerController: Initialised from level config "
              "with loadout '%s'"),
         *Loadout->LoadoutName);
 }
@@ -91,11 +102,13 @@ void AConnectIt_PlayerController::ServerRouteBoardChangeRequest_Implementation(
     UTurnBasedParticipantManagerComponent* ParticipantManager =
         ParticipantComponent->GetParticipantManager();
 
-    if (!IsValid(ParticipantManager) || !ParticipantManager->IsActiveParticipant(this))
+    if (!IsValid(ParticipantManager) || !ParticipantManager->IsActiveParticipant(this)
+        || ParticipantManager->IsMatchOver())
     {
         UE_LOG(LogTemp, Warning,
             TEXT("ConnectIt_PlayerController: Board change request "
-                 "rejected — not this participant's turn"));
+                 "rejected — not this participant's turn, or match "
+                 "already over"));
         ClientNotifyBoardChangeOutcome(Request, false);
         return;
     }
@@ -108,20 +121,23 @@ void AConnectIt_PlayerController::ServerRouteBoardChangeRequest_Implementation(
         Request.FactionID = ParticipantComponent->GetActiveParticipantSlotIndex();
     }
 
-    // Route to board manager component
-    AConnectIt_BoardManager* BoardManager =
-        UConnectIt_GameUtilityLibrary::GetBoardManager(this);
+    // Route to GameMode -- server-only, structurally unreachable from any
+    // client, so no defensive HasAuthority() check is needed here beyond
+    // what this being a Server RPC's _Implementation already guarantees.
+    AConnectIt_GameMode* GameMode = GetWorld()->GetAuthGameMode<AConnectIt_GameMode>();
 
-    if (!IsValid(BoardManager))
+    if (!IsValid(GameMode))
     {
         UE_LOG(LogTemp, Error,
             TEXT("ConnectIt_PlayerController: Cannot route board change "
-                 "— board manager component not found"));
+                 "— GameMode is not AConnectIt_GameMode"));
         ClientNotifyBoardChangeOutcome(Request, false);
         return;
     }
 
-    const bool bSucceeded = BoardManager->ProcessRequest(Request);
+    const bool bSucceeded = GameMode->ProcessBoardRequest(Request);
+
+    // return success value to client to halt player input
     ClientNotifyBoardChangeOutcome(Request, bSucceeded);
 
     UE_LOG(LogTemp, Log,

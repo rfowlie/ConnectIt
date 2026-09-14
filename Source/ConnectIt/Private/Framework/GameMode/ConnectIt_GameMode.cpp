@@ -1,23 +1,27 @@
-﻿// Fill out your copyright notice in the Description page of Project Settings.
+// Fill out your copyright notice in the Description page of Project Settings.
 
 
 #include "Framework/GameMode/ConnectIt_GameMode.h"
 #include "EngineUtils.h"
-#include "Board/ConnectIt_BoardManager.h"
+#include "Board/ConnectIt_BoardRequestMediator.h"
 #include "Board/ConnectIt_BoardStateComponent.h"
+#include "Board/Rules/ConnectIt_BoardRules.h"
 #include "ConnectIt_GameplayTags.h"
 #include "Framework/Controller/ConnectIt_AIController.h"
+#include "Framework/Data/ConnectIt_LevelConfigDataAsset.h"
 #include "Framework/GameState/ConnectIt_GameState.h"
 #include "Framework/GameState/TurnBasedGameState.h"
-#include "Framework/PlayerState/TurnBasedPlayerState.h"
+#include "Framework/PlayerState/ConnectIt_PlayerState.h"
 #include "GameEvent/GameEventTaskSubsystem.h"
-#include "Library/ConnectIt_GameUtilityLibrary.h"
+#include "Framework/Library/ConnectIt_GameUtilityLibrary.h"
+#include "Tile/GridTileRegistryBase.h"
+#include "Turn/Participant/TurnBasedParticipantManagerComponent.h"
 
 
 AConnectIt_GameMode::AConnectIt_GameMode()
 {
     GameStateClass  = AConnectIt_GameState::StaticClass();
-    PlayerStateClass = ATurnBasedPlayerState::StaticClass();
+    PlayerStateClass = AConnectIt_PlayerState::StaticClass();
 
     TurnDuration     = 90.f;
     ForfeitThreshold = 3;
@@ -55,6 +59,32 @@ void AConnectIt_GameMode::HandleMatchHasStarted()
     // Base class applies turn config to participant manager
     Super::HandleMatchHasStarted();
 
+    if (UTurnBasedParticipantManagerComponent* Manager = GetParticipantManager())
+    {
+        Manager->OnInvalidNumberOfPlayers.AddDynamic(
+            this, &AConnectIt_GameMode::HandleInvalidNumberOfPlayers);
+    }
+
+    // Construct the server-only board objects -- NewObject here (not the
+    // constructor) so Blueprint-child property overrides on this GameMode
+    // are already applied by the time these read anything from it.
+    BoardRules = NewObject<UConnectIt_BoardRules>(this);
+
+    // Level-authored rule selection, if any -- both server and client
+    // resolve the same static asset independently (see GetLevelConfig);
+    // BoardRules->Initialise() below still defaults anything left unset.
+    if (const UConnectIt_LevelConfigDataAsset* LevelConfig =
+        UConnectIt_GameUtilityLibrary::GetLevelConfig(this))
+    {
+        BoardRules->ScoringRule = LevelConfig->ScoringRule;
+        BoardRules->WinConditionRule = LevelConfig->WinConditionRule;
+        BoardRules->TilePlaceableRule = LevelConfig->TilePlaceableRule;
+    }
+    BoardRules->Initialise();
+
+    BoardRequestMediator = NewObject<UConnectIt_BoardRequestMediator>(this);
+    BoardRequestMediator->Initialise(BoardRules);
+
     // Adventure mode -- spawn and register AI
     // Tiles have registered with subsystem by this point
     // so board initialisation is safe
@@ -66,6 +96,7 @@ void AConnectIt_GameMode::HandleMatchHasStarted()
 
     // Initialise board -- reads tile positions from registry
     InitialiseBoard();
+    
 }
 
 void AConnectIt_GameMode::HandleMatchHasEnded()
@@ -76,22 +107,52 @@ void AConnectIt_GameMode::HandleMatchHasEnded()
         TEXT("ConnectIt_GameMode: Match ended"));
 }
 
+bool AConnectIt_GameMode::ProcessBoardRequest(const FTurnActionRequest& Request)
+{
+    if (!IsValid(BoardRequestMediator))
+    {
+        UE_LOG(LogTemp, Error,
+            TEXT("ConnectIt_GameMode: ProcessBoardRequest — "
+                 "BoardRequestMediator is null"));
+        return false;
+    }
+
+    return BoardRequestMediator->ProcessRequest(Request);
+}
+
 // --- Board Setup ---
 
 void AConnectIt_GameMode::InitialiseBoard()
 {
-    AConnectIt_BoardManager* Board = GetBoardActor();
-    if (!IsValid(Board))
+    AConnectIt_GameState* GS = GetGameState<AConnectIt_GameState>();
+    UConnectIt_BoardStateComponent* BoardState = IsValid(GS) ? GS->GetBoardStateComponent() : nullptr;
+
+    if (!IsValid(BoardState))
     {
         UE_LOG(LogTemp, Error,
-            TEXT("ConnectIt_GameMode: No AConnectItBoardActor found "
-                 "in level — board cannot be initialised"));
+            TEXT("ConnectIt_GameMode: InitialiseBoard — "
+                 "BoardStateComponent is null"));
+        return;
+    }
+
+    // TileRegistry lives on UConnectIt_BoardRegistrySubsystem now -- one
+    // canonical per-world instance, initialised at OnWorldBeginPlay, well
+    // before this function runs (called from HandleMatchHasStarted, off
+    // PostLogin/ready-check completion).
+    UGridTileRegistryBase* TileRegistry =
+        UConnectIt_GameUtilityLibrary::GetTileRegistry(this);
+
+    if (!IsValid(TileRegistry))
+    {
+        UE_LOG(LogTemp, Error,
+            TEXT("ConnectIt_GameMode: InitialiseBoard — "
+                 "UConnectIt_BoardRegistrySubsystem has no valid TileRegistry"));
         return;
     }
 
     // Bind game over handler to the tag subsystem rather than the board
-    // manager directly -- the binding then doesn't depend on Board having
-    // already been resolved above
+    // manager directly -- the binding then doesn't depend on anything
+    // above having resolved successfully
     if (UGameEventTaskSubsystem* GameEventSubsystem =
         GetWorld()->GetSubsystem<UGameEventTaskSubsystem>())
     {
@@ -100,8 +161,16 @@ void AConnectIt_GameMode::InitialiseBoard()
             GET_FUNCTION_NAME_CHECKED(AConnectIt_GameMode, HandleGameOver));
     }
 
-    // Initialise board state from registered tile positions
-    Board->InitialiseBoard(NumFactions);
+    const float InitialTargetScore = IsValid(BoardRules)
+        ? BoardRules->GetTargetScore()
+        : 0.f;
+
+    // PieceRegistry param is still unused inside InitialiseBoardState's body
+    // (confirmed) -- passed through anyway now that a real one is available,
+    // so this stops being an actively misleading "always null" call.
+    BoardState->InitialiseBoardState(
+        TileRegistry, UConnectIt_GameUtilityLibrary::GetPieceRegistry(this), NumFactions,
+        /*InitialMultiplier=*/1.0f, InitialTargetScore);
 
     UE_LOG(LogTemp, Log,
         TEXT("ConnectIt_GameMode: Board initialised — %d factions"),
@@ -179,14 +248,45 @@ void AConnectIt_GameMode::HandleGameOver(FGameplayTag Tag)
     EndMatch();
 }
 
-// --- Helpers ---
-
-AConnectIt_BoardManager* AConnectIt_GameMode::GetBoardActor() const
+void AConnectIt_GameMode::HandleInvalidNumberOfPlayers()
 {
-    if (!IsValid(CachedBoardActor))
+    UTurnBasedParticipantManagerComponent* Manager = GetParticipantManager();
+    if (!IsValid(Manager)) return;
+
+    // Find the one still-active participant (if any) -- they win by
+    // default. Also reads the other participant's connection/forfeit state
+    // to pick the correct existing EMatchEndReason. No "try to fix it
+    // first" path yet (e.g. waiting out a grace period before conceding) --
+    // this always ends the match immediately.
+    int32 SurvivingFactionSlot = -1;
+    EMatchEndReason Reason = EMatchEndReason::Unknown;
+
+    for (const FTurnParticipantInfo& Info : Manager->Participants)
     {
-        CachedBoardActor = UConnectIt_GameUtilityLibrary::GetBoardManager(this);
+        if (Info.IsActiveParticipant())
+        {
+            SurvivingFactionSlot = Info.SlotIndex;
+            continue;
+        }
+
+        Reason = Info.bConnected
+            ? EMatchEndReason::OpponentForfeited
+            : EMatchEndReason::OpponentDisconnected;
     }
-    
-    return CachedBoardActor;
+
+    if (AConnectIt_GameState* GS = GetGameState<AConnectIt_GameState>())
+    {
+        GS->SetMatchResult(
+            SurvivingFactionSlot,
+            Reason,
+            GetGameState<ATurnBasedGameState>()->GetActiveTurnNumber()
+        );
+    }
+
+    UE_LOG(LogTemp, Log,
+        TEXT("ConnectIt_GameMode: Invalid number of players — ending "
+             "match, faction %d wins by default (%s)"),
+        SurvivingFactionSlot, *UEnum::GetValueAsString(Reason));
+
+    EndMatch();
 }

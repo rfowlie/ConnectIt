@@ -4,7 +4,7 @@
 #include "MinMax/ConnectIt_MinMaxManager.h"
 #include "GridMechanics_GridLibrary.h"
 #include "MinMax/MinMaxUtility.h"
-#include "Library/ConnectIt_GameRulesLibrary.h"
+#include "Framework/Library/ConnectIt_GameRulesLibrary.h"
 
 
 ConnectIt::FMinMaxNode ConnectIt::ConvertNode(const FConnectItMinMaxNodeStruct& Node)

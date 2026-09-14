@@ -16,12 +16,11 @@ class UConnectIt_ScoringRule : public UInterface
 };
 
 // Pluggable board-scoring strategy -- how a just-placed piece scores, and
-// how the board mutates as a result. Assigned via UConnectIt_BoardRulesComponent::
-// ScoringRule (TScriptInterface, EditAnywhere Instanced), mirroring
-// ITurnOrderInterface/TurnOrderStrategy's precedent. UConnectIt_LineScoringRule
-// is the default implementation (N-in-a-row); other shapes (e.g. matching a
-// fixed pattern instead of a line) can be added as new implementers without
-// touching AConnectIt_BoardManager.
+// how the board mutates as a result. Assigned via UConnectIt_BoardRules::
+// ScoringRule (TObjectPtr<UObject>, EditAnywhere Instanced, MustImplement).
+// UConnectIt_LineScoringRule is the default implementation (N-in-a-row);
+// other shapes (e.g. matching a fixed pattern instead of a line) can be
+// added as new implementers without touching UConnectIt_BoardRequestMediator.
 class CONNECTIT_API IConnectIt_ScoringRule
 {
     GENERATED_BODY()

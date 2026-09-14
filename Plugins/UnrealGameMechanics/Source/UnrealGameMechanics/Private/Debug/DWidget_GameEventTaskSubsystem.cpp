@@ -5,31 +5,33 @@
 
 void UDWidget_GameEventTaskSubsystem::BindDelegates()
 {
-    ResolvedSource = GetWorld()
-        ? GetWorld()->GetSubsystem<UGameEventTaskSubsystem>()
-        : nullptr;
-
-    bSourceValid = IsValid(ResolvedSource);
-    if (!bSourceValid) return;
-
-    ResolvedSource->OnActiveManagerTagsChanged.AddDynamic(
+    if (const auto Subsystem = GetWorld()->GetSubsystem<UGameEventTaskSubsystem>())
+    {
+        Subsystem->OnActiveManagerTagsChanged.AddDynamic(
         this, &UDWidget_GameEventTaskSubsystem::HandleActiveManagerTagsChanged);
-
-    // Seed initial value through the same event future changes use.
-    OnActiveEventTagsUpdated(ResolvedSource->GetTagsInQueue());
+    }
+    else
+    {
+        UE_LOG(LogTemp, Error, TEXT(
+            "UDWidget_GameEventTaskSubsystem::BindDelegates - could not bind to subsystem!"))
+    }
 }
 
 void UDWidget_GameEventTaskSubsystem::UnbindDelegates()
 {
-    if (!IsValid(ResolvedSource)) return;
-
-    ResolvedSource->OnActiveManagerTagsChanged.RemoveDynamic(
+    if (const auto Subsystem = GetWorld()->GetSubsystem<UGameEventTaskSubsystem>())
+    {
+        Subsystem->OnActiveManagerTagsChanged.RemoveDynamic(
         this, &UDWidget_GameEventTaskSubsystem::HandleActiveManagerTagsChanged);
+    }
+    else
+    {
+        UE_LOG(LogTemp, Error, TEXT(
+            "UDWidget_GameEventTaskSubsystem::BindDelegates - could not unbind from subsystem!"))
+    }
 }
 
-void UDWidget_GameEventTaskSubsystem::HandleActiveManagerTagsChanged()
+void UDWidget_GameEventTaskSubsystem::HandleActiveManagerTagsChanged(const FGameplayTagContainer& TagContainer)
 {
-    if (!IsValid(ResolvedSource)) return;
-
-    OnActiveEventTagsUpdated(ResolvedSource->GetTagsInQueue());
+    OnActiveEventTagsUpdated(TagContainer);
 }

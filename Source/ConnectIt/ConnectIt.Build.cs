@@ -10,25 +10,27 @@ public class ConnectIt : ModuleRules
 	
 		PublicDependencyModuleNames.AddRange(new string[]
 		{
-			"Core", 
-			"CoreUObject", 
-			"Engine", 
-			"InputCore", 
+			"Core",
+			"CoreUObject",
+			"Engine",
+			"InputCore",
 			"EnhancedInput",
 			"UMG",
-			"GameplayTags", 
-			"GameplayTasks", 
+			"DeveloperSettings",
+			"GameplayTags",
+			"GameplayTasks",
 			"GameplayAbilities",
 			"AIModule",
 			//
 			"UnrealGameMechanics",
-			"UnrealGridMechanics", 
-			"UnrealGameIntelligence", 
+			"UnrealGridMechanics",
+			"UnrealGameIntelligence",
 			"UnrealTurnBasedMechanics"
 		});
 
 		PrivateDependencyModuleNames.AddRange(new string[]
 		{
+			"DeveloperSettings",
 			"AIModule",
 			"UnrealCodingUtils",
 			"UnrealGameMechanics",

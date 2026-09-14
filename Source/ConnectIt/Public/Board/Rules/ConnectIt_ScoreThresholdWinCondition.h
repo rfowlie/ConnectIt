@@ -22,4 +22,9 @@ public:
 
     virtual void CheckWinCondition_Implementation(
         FConnectItBoardState& MutableState) override;
+
+    virtual float GetTargetScore_Implementation() const override
+    {
+        return WinScoreThreshold;
+    }
 };

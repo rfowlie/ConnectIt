@@ -7,12 +7,16 @@
 #include "Board/BoardStateComponentBase.h"
 #include "ConnectIt_BoardStateComponent.generated.h"
 
+class UGridPieceRegistryBase;
+class UGridTileRegistryBase;
+
+
 // Everything a debug widget needs to know about this component's current
 // values in one call -- used to seed initial state once, right after
 // binding, through the same events used for later reactive updates (see
 // UDWidgetBase's own class comment for the convention this follows).
-// OnBoardStateChanged itself stays zero-param (shared with every board
-// interpreter, not just debug widgets) -- this just wraps the same
+// OnBoardStateChanged itself stays zero-param (shared with every bound
+// listener, not just debug widgets) -- this just wraps the same
 // GetCurrentState()/GetChangeEvent() reads a listener already does after
 // that ping.
 USTRUCT(BlueprintType)
@@ -40,25 +44,30 @@ public:
     // Only the board manager calls these
 
     // Initialises the board state from a set of registered tile positions
-    // Called once at game start after all tiles register with subsystem
+    // Called once at game start after all tiles register with subsystem.
+    // InTargetScore stamps FConnectItBoardState::TargetScore up front (see
+    // its own comment) -- CheckWinCondition only runs after a placement, so
+    // without this the pre-first-move board would read TargetScore == 0.
     void InitialiseBoardState(
-        const TArray<FGridPosition>& TilePositions,
+        UGridTileRegistryBase* TileRegistry,
+        UGridPieceRegistryBase* PieceRegistry,
         int32 NumFactions,
-        float InitialMultiplier = 1.0f);
+        float InitialMultiplier = 1.0f,
+        float InTargetScore = 0.f);
 
     // Captures current as previous, applies new state, and stores what
     // specifically changed (ChangeEvent) so it replicates atomically
     // alongside the state it describes.
     // Fires OnBoardStateChanged on server immediately
-    // Clients receive via OnRep -- AConnectIt_BoardManager reads ChangeEvent
+    // Clients receive via OnRep -- EnqueueBoardEventTags reads ChangeEvent
     // from that same signal on both machines to drive gated visual
-    // sequencing (see HandleBoardStateChanged)
+    // sequencing
     void SetBoardState(
         const FConnectItBoardState& NewState,
         const FConnectItBoardChangeEvent& ChangeEvent);
 
     // --- Read API ---
-    // Interpreters and game logic call these
+    // Bound listeners and game logic call these
 
     const FConnectItBoardStateSnapshot* GetBoardSnapshot() const;
 
@@ -98,22 +107,28 @@ public:
         return { BoardSnapshot.CurrentState, BoardSnapshot.ChangeEvent };
     }
 
-    /*
-     *  TODO: remove, let's try not repeat ourselves
-     *  unless we opt to move all the helper functions out of the struct into here
-     */
-    // // Convenience -- reads from current state
-    // UFUNCTION(BlueprintPure, Category = "Board State")
-    // bool IsTileValidForPlacement(const FGridPosition Position) const
-    // {
-    //     return BoardSnapshot.CurrentState.IsTileValidForPlacement(Position);
-    // }
-    //
-    // UFUNCTION(BlueprintPure, Category = "Board State")
-    // float GetFactionScore(int32 FactionSlot) const
-    // {
-    //     return BoardSnapshot.CurrentState.GetScore(FactionSlot);
-    // }
+    // --- Helpers ---
+
+    // get count of pieces a player has, probably a better way to track this
+    UFUNCTION(BlueprintPure, Category = "Board State")
+    int32 GetFactionPieceCount(const int32 FactionId) const;
+
+    // get all grid positions controlled by a faction
+    UFUNCTION(BlueprintPure, Category = "Board State")
+    TArray<FGridPosition> GetFactionPiecePositions(const int32 FactionId) const;
+    
+    UFUNCTION(BlueprintPure, Category = "Board State")
+    int32 GetPositionMultiplier(const FGridPosition GridPosition) const;
+
+    UFUNCTION(BlueprintPure, Category = "Board State")
+    int32 GetTileMultiplier(const AGridTileBase* GridTile) const;
+    
+    // Resolved: per-tile/per-state helper queries (IsTileOccupied, GetScore,
+    // etc.) live on UConnectIt_BoardStateLibrary, not here -- a
+    // UBlueprintFunctionLibrary taking FConnectItBoardState by const&, so it
+    // also works on GetPreviousState() and detached/hypothetical states
+    // (MinMax), not just this component's own live state. See
+    // Docs/UIValueCatalogue.md Gap 4 for the reasoning.
 
     virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 

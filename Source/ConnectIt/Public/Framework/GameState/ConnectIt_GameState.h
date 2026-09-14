@@ -8,7 +8,6 @@
 #include "TurnBasedMechanicsStructs.h"
 #include "ConnectIt_GameState.generated.h"
 
-class AConnectIt_BoardManager;
 class UConnectIt_BoardStateComponent;
 
 
@@ -90,7 +89,7 @@ public:
     // Fires on all clients when match result is updated
     UPROPERTY(BlueprintAssignable, Category = "ConnectIt|Match")
     FOnMatchResultUpdated OnMatchResultUpdated;
-    
+
     // --- Server API ---
     // Called by AConnectIt_GameMode when game over fires
 
@@ -98,6 +97,16 @@ public:
         int32 WinningFactionSlot,
         EMatchEndReason EndReason,
         int32 TotalTurns);
+
+    // --- Board State ---
+    // Owned here, not on the board actor -- board state genuinely needs to
+    // be a single source of truth, and GameState (replicated, one instance
+    // per world, exists on server and every client) is the natural home
+    // for it, same as UTurnBasedParticipantManagerComponent already living
+    // here for the same reason. See Docs/Workflows/SingleSourceOfTruth-
+    // Replication.md.
+    UFUNCTION(BlueprintPure, Category = "ConnectIt|Board")
+    UConnectIt_BoardStateComponent* GetBoardStateComponent() const { return BoardStateComponent; }
 
     // --- Board State Accessors ---
     // Convenience API for UI -- hides board actor lookup
@@ -124,6 +133,17 @@ public:
     UFUNCTION(BlueprintPure, Category = "ConnectIt|Board")
     FConnectItBoardStateSnapshot GetBoardSnapshot() const;
 
+    // Score needed to win, published by whichever win condition is active.
+    // 0 means the active win condition isn't score-based. See
+    // FConnectItBoardState::TargetScore.
+    UFUNCTION(BlueprintPure, Category = "ConnectIt|Board")
+    float GetTargetScore() const;
+
+    // FactionSlot's score over the target, 0..1. Returns 0 when the target
+    // is 0 (non-score-based win condition) rather than dividing.
+    UFUNCTION(BlueprintPure, Category = "ConnectIt|Board")
+    float GetFactionScoreProgress(int32 FactionSlot) const;
+
     // --- Turn Accessors ---
     // Convenience wrappers on top of ATurnBasedGameState
 
@@ -143,14 +163,12 @@ public:
     virtual void GetLifetimeReplicatedProps(
         TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
+protected:
+
+    UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, Category = "ConnectIt|Components")
+    TObjectPtr<UConnectIt_BoardStateComponent> BoardStateComponent = nullptr;
+
 private:
-
-    // Finds and caches board state component
-    // Searches for AConnectItBoardActor in world on first call
-    UConnectIt_BoardStateComponent* GetBoardStateComponent() const;
-
-    // Cached component reference -- found once, reused
-    mutable TObjectPtr<UConnectIt_BoardStateComponent> CachedBoardStateComponent = nullptr;
 
     UFUNCTION()
     void OnRep_MatchResult();

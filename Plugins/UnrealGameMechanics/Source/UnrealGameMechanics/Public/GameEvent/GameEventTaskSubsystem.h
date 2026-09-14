@@ -11,8 +11,7 @@
 class UGameEventTaskManager;
 class UGameEventTask_Async;
 
-DECLARE_DYNAMIC_DELEGATE_OneParam(FOnTagSequenceStepComplete, FGameplayTagContainer, CompletedStepTags);
-DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnActiveManagerTagsChanged);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnActiveManagerTagsChanged, const FGameplayTagContainer&, TagContainer);
 
 
 // Per-world registry of tag-keyed UGameEventTaskManager instances.
@@ -70,6 +69,12 @@ public:
 
     // --- Helpers ---
 
+    // UPROPERTY(BlueprintAssignable, Category = "GameEvent")
+    // FOnTagSequenceStep OnEventSetBegin;
+    //
+    // UPROPERTY(BlueprintAssignable, Category = "GameEvent")
+    // FOnTagSequenceStep OnEventSetEnd;
+    //
     UPROPERTY(BlueprintAssignable, Category = "GameEvent")
     FOnActiveManagerTagsChanged OnActiveManagerTagsChanged;
     
@@ -104,17 +109,11 @@ private:
     UPROPERTY()
     TArray<FGameplayTagContainer> ContainerQueue;
 
-    FGameplayTagContainer ActiveContainer;
-
-    // The set of tags whose managers are still outstanding for
-    // ActiveContainer -- populated in full before any of them are
-    // triggered, and drained one at a time as each completes. Precise,
-    // can inspect state (what's actually still running) rather than an
-    // opaque pending count.
     UPROPERTY()
-    TArray<FGameplayTag> ActiveManagerTags;
+    FGameplayTagContainer ActiveTagContainer;
 
     void TryExecuteNextContainer();
+    void OnActiveEventTagsChanged() const;
 
     UFUNCTION()
     void HandleOnManagerComplete(FGameplayTag Tag);

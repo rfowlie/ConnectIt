@@ -7,12 +7,12 @@
 #include "GridCursorManagerBase.generated.h"
 
 class AGridTileBase;
-class UGridWorldSubsystem;
+class UGridHoverSubsystem;
 
 // Abstract contract for a grid cursor -- an actor that tracks whichever
 // tile is currently hovered and represents it visually
 //
-// Binds to UGridWorldSubsystem::OnGridTileHoverChanged -- the same
+// Binds to UGridHoverSubsystem::OnGridTileHoverChanged -- the same
 // hover pipeline UTurnBasedAction uses for hover validation -- so any
 // cursor built on this base stays in sync with the networked turn-based
 // hover flow automatically, with no extra wiring per project
@@ -57,7 +57,7 @@ private:
     UFUNCTION()
     void HandleGridTileHoverChanged(AGridTileBase* Tile);
 
-    UGridWorldSubsystem* GetGridSubsystem() const;
+    UGridHoverSubsystem* GetGridSubsystem() const;
 
     bool bIsEnabled = true;
 };

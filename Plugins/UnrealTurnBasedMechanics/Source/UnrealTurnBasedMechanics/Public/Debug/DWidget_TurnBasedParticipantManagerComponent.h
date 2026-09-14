@@ -53,6 +53,11 @@ protected:
     UFUNCTION(BlueprintImplementableEvent, BlueprintCallable, Category = "Debug")
     void OnParticipantsUpdated(const TArray<FTurnParticipantInfo>& NewParticipants);
 
+    // See UTurnBasedParticipantManagerComponent::ReplicatedTurnStartServerTime
+    // -- -1 when no turn timer is running.
+    UFUNCTION(BlueprintImplementableEvent, BlueprintCallable, Category = "Debug")
+    void OnTurnStartServerTimeUpdated(float NewTurnStartServerTime);
+
 private:
 
     UFUNCTION()

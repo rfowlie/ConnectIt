@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "GameplayTagContainer.h"
 #include "InputTriggers.h"
+#include "Styling/SlateBrush.h"
 #include "TurnBasedMechanicsStructs.h"
 #include "Action/TurnBasedActionBase.h"
 #include "Input/InputTagBinder.h"
@@ -12,7 +13,7 @@
 
 class UTurnBasedAction;
 class AGridTileBase;
-class UGridWorldSubsystem;
+class UGridHoverSubsystem;
 class UEnhancedInputComponent;
 class UEnhancedInputLocalPlayerSubsystem;
 class UInputAction;
@@ -77,6 +78,21 @@ public:
     // InputTagBinder.
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Action|Config")
     TArray<FInputTagBinding> InputBindings;
+
+    // --- Presentation ---
+    // Purely for UI -- the action itself never reads these. Without them an
+    // action bar has nothing to label a button with (ActionTag is an
+    // identifier, not a display string).
+
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Action|Presentation")
+    FText DisplayName;
+
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Action|Presentation",
+        meta = (MultiLine = true))
+    FText Description;
+
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Action|Presentation")
+    FSlateBrush Icon;
 
     // --- Runtime State ---
 
@@ -213,7 +229,7 @@ protected:
     UPROPERTY(BlueprintReadOnly)
     TObjectPtr<AGridTileBase> CurrentHoveredTile = nullptr;
 
-    UGridWorldSubsystem* GetGridSubsystem() const;
+    UGridHoverSubsystem* GetGridSubsystem() const;
     
     // Bind/unbind grid-tile hover + optional Enhanced Input selection.
     // Called automatically from Activate_Internal_Implementation when

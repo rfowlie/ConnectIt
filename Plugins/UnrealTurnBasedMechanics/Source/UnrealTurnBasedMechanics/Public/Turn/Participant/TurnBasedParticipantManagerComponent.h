@@ -15,10 +15,20 @@ class UTurnBasedParticipantComponent;
 
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnTurnPhaseChanged, ETurnPhase, NewPhase);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnTurnChanged, const int32, Turn);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnParticipantForfeited, const FTurnParticipantInfo&, ParticipantInfo);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnActiveControllerChanged, AController*, NewActiveController);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnParticipantIndexChanged, const int32, ParticipantIndex);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnAllParticipantsReady);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnGameOver);
+
+// Broadcast when the plugin detects it can no longer validly continue (too
+// few active participants remain, or the turn-order strategy could not
+// produce a next participant) -- deliberately does NOT declare the match
+// over itself. The owning project binds this and decides: try to fix it
+// (e.g. wait for reconnect), or call EndMatch() itself. See
+// NotifyInvalidNumberOfPlayers/CheckValidNumberOfPlayers.
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnInvalidNumberOfPlayers);
 
 // Everything a debug widget needs to know about this component's current
 // values in one call -- used to seed initial state once, right after
@@ -44,6 +54,11 @@ struct FTurnBasedParticipantManagerInfo
 
     UPROPERTY(BlueprintReadOnly)
     TArray<FTurnParticipantInfo> Participants;
+
+    // See ReplicatedTurnStartServerTime's own comment -- -1 when no turn
+    // timer is running.
+    UPROPERTY(BlueprintReadOnly)
+    float TurnStartServerTime = -1.f;
 };
 
 UCLASS(ClassGroup=(TurnBased), meta=(BlueprintSpawnableComponent))
@@ -103,6 +118,18 @@ public:
     UPROPERTY(BlueprintReadOnly, Replicated, Category = "Turn Based|State")
     float ReplicatedTurnDuration = 0.f;
 
+    // Server world time (AGameStateBase's own synced clock) at which the
+    // current turn's timer started. Replicated once per turn start
+    // alongside ReplicatedTurnDuration -- every client derives remaining
+    // time locally from these two (see ATurnBasedGameState::GetTurnTimeRemaining),
+    // so there is no per-tick replication and no Client RPC needed to show
+    // a countdown for ANY participant's turn, not just the active one.
+    // -1 when no turn timer is currently running (between turns, paused,
+    // game over). Display only -- the server's own TurnTimerHandle stays
+    // the only thing that actually ends a turn.
+    UPROPERTY(BlueprintReadOnly, Replicated, Category = "Turn Based|State")
+    float ReplicatedTurnStartServerTime = -1.f;
+
     // --- Setup --- Server only ---
 
     UFUNCTION(BlueprintImplementableEvent, Category = "Turn Based|State")
@@ -128,7 +155,10 @@ public:
 
     UPROPERTY(BlueprintAssignable, Category = "Turn Based")
     FOnTurnPhaseChanged OnTurnPhaseChanged;
-
+    
+    UPROPERTY(BlueprintAssignable, Category = "Turn Based")
+    FOnTurnChanged OnTurnChanged;
+    
     UPROPERTY(BlueprintAssignable, Category = "Turn Based")
     FOnActiveControllerChanged OnActiveControllerChanged;
     
@@ -136,10 +166,16 @@ public:
     FOnParticipantForfeited OnParticipantForfeited;
 
     UPROPERTY(BlueprintAssignable, Category = "Turn Based")
+    FOnParticipantIndexChanged OnParticipantIndexChanged;
+    
+    UPROPERTY(BlueprintAssignable, Category = "Turn Based")
     FOnAllParticipantsReady OnAllParticipantsReady;
 
     UPROPERTY(BlueprintAssignable, Category = "Turn Based")
     FOnGameOver OnGameOver;
+
+    UPROPERTY(BlueprintAssignable, Category = "Turn Based")
+    FOnInvalidNumberOfPlayers OnInvalidNumberOfPlayers;
 
     // --- Helpers ---
 
@@ -158,21 +194,56 @@ public:
         return IsValid(Controller) && GetControllerAtIndex(ActiveParticipantIndex) == Controller;
     }
 
+    // True once the match has genuinely, unconditionally ended -- set only
+    // from OnGameModeWaitingPostMatch (i.e. only once the owning GameMode's
+    // EndMatch() has actually run), regardless of why. Server-authoritative
+    // callers that need to reject further updates once the match is over
+    // (e.g. a board manager's request-processing entry point) should check
+    // this rather than reaching into CurrentPhase directly.
+    UFUNCTION(BlueprintPure, Category = "Turn Based")
+    bool IsMatchOver() const
+    {
+        return CurrentPhase == ETurnPhase::GameOver;
+    }
+
+    // The participant whose turn it currently is. bOutValid is false (and
+    // the returned struct is default-constructed) when no turn is active or
+    // Participants hasn't replicated yet -- callers branch on that rather
+    // than testing SlotIndex == -1, which is also the legitimate
+    // "unassigned" value. Returned by value, not by const&: Participants
+    // can legitimately be empty and there is no safe reference to hand back
+    // in that case.
+    UFUNCTION(BlueprintPure, Category = "Turn Based")
+    FTurnParticipantInfo GetActiveParticipant(bool& bOutValid) const;
+
+    // Participant whose SlotIndex field == InSlotIndex. Deliberately
+    // searches by field rather than indexing Participants[InSlotIndex] --
+    // slot index and array index coincide today only because slots are
+    // assigned in registration order, and nothing in the type guarantees
+    // that stays true.
+    UFUNCTION(BlueprintPure, Category = "Turn Based")
+    FTurnParticipantInfo GetParticipantBySlot(int32 InSlotIndex, bool& bOutValid) const;
+
+    UFUNCTION(BlueprintPure, Category = "Turn Based")
+    TArray<FTurnParticipantInfo> GetAllParticipants() const;
+
+    
     // Everything a debug widget needs, in one call -- see
     // FTurnBasedParticipantManagerInfo's own comment.
     UFUNCTION(BlueprintPure, Category = "Turn Based|Debug")
     FTurnBasedParticipantManagerInfo GetInfo() const
     {
-        return { CurrentPhase, ActiveParticipantIndex, TurnNumber, Participants };
+        return { CurrentPhase, ActiveParticipantIndex, TurnNumber, Participants, ReplicatedTurnStartServerTime };
     }
 
     virtual void GetLifetimeReplicatedProps(
         TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
 protected:
-
     virtual void BeginPlay() override;
 
+    void OnGameModeWaitingPostMatch(FName Name);
+    
     // Tag triggered on UGameEventTaskSubsystem when a turn ends -- external
     // systems register gated async tasks against this tag (same pattern as
     // any other gated sequence step) instead of a bespoke hold API. Must be
@@ -214,7 +285,17 @@ private:
     void HandleTurnTimeout();
     void HandleReconnectTimeout();
     void CheckReadyStatus();
-    bool CheckGameOver() const;
+
+    // Renamed from CheckGameOver -- it doesn't conclusively end anything,
+    // it only checks whether enough active participants remain to keep
+    // going. Returns true (and calls NotifyInvalidNumberOfPlayers) if not.
+    bool CheckValidNumberOfPlayers() const;
+
+    // Shared by CheckValidNumberOfPlayers and AdvanceToNextParticipant's own
+    // "turn order strategy found no next participant" branch -- both are
+    // "the plugin cannot validly continue," and neither gets to decide the
+    // match is over on its own; the owning project does, via this delegate.
+    void NotifyInvalidNumberOfPlayers() const;
 
     // Broadcasts to all participant components each turn start
     // Each component ticks its own cooldowns

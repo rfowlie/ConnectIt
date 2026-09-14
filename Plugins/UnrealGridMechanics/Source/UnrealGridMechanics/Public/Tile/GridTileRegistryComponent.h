@@ -9,12 +9,14 @@
 #include "GridTileRegistryComponent.generated.h"
 
 class AGridTileBase;
-class UGridWorldSubsystem;
+class UGridHoverSubsystem;
 
 
 /*
- * responsible for interpreting the grid positions of all tiles
- * and providing responses to generic grid queries
+ * Owns the authoritative list of grid tiles in the level, discovers them
+ * (level-placed + spawned-later), registers each with UGridHoverSubsystem
+ * so hover can be relayed, and answers generic grid queries against that
+ * list.
  */
 UCLASS(ClassGroup=(Grid), meta=(BlueprintSpawnableComponent))
 class UNREALGRIDMECHANICS_API UGridTileRegistryComponent : public UActorComponent
@@ -90,14 +92,29 @@ public:
 protected:
 
     virtual void BeginPlay() override;
+    virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 
 private:
-    // Cached subsystem reference — resolved once on BeginPlay
+    // Authoritative, ordered list of every tile in the level.
     UPROPERTY()
-    UGridWorldSubsystem* GridSubsystem = nullptr;
+    TArray<TObjectPtr<AGridTileBase>> Tiles;
 
-    // Resolves and caches the subsystem reference
+    // Cached hover subsystem — resolved on BeginPlay, used only to
+    // register / unregister tiles for hover relay.
+    UPROPERTY()
+    UGridHoverSubsystem* HoverSubsystem = nullptr;
+
+    // Resolves and caches the hover subsystem reference
     bool ResolveSubsystem();
+
+    // Populates Tiles with every AGridTileBase currently in the world.
+    void DiscoverTiles();
+
+    // AddOnActorSpawnedHandler callback — picks up tiles spawned / streamed
+    // in after BeginPlay.
+    void HandleActorSpawned(AActor* SpawnedActor);
+
+    FDelegateHandle ActorSpawnedHandle;
 
     //-----------------EDITOR----------------------
 #if WITH_EDITOR

@@ -99,7 +99,7 @@ float UConnectIt_LineScoringRule::ApplyScoringLine(
         PointsScored += TileData->Multiplier;
 
         // Remove piece and increment multiplier
-        TileData->FactionPiece = -1;
+        TileData->SetFactionPiece(-1);
         TileData->Multiplier  += 1.0f;
     }
 
@@ -107,7 +107,7 @@ float UConnectIt_LineScoringRule::ApplyScoringLine(
     if (FConnectItTileData* CompletingTile =
         MutableState.GetTileDataMutable(CompletingPosition))
     {
-        CompletingTile->FactionPiece = FactionSlot;
+        CompletingTile->SetFactionPiece(FactionSlot);
     }
 
     return PointsScored;

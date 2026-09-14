@@ -2,15 +2,13 @@
 
 #include "UI/ConnectIt_DebugStateWidget.h"
 
-#include "Board/ConnectIt_BoardManager.h"
 #include "Board/ConnectIt_BoardStateComponent.h"
-#include "Framework/Subsystem/ConnectIt_BoardManagerSubsystem.h"
 #include "Action/TurnBasedActionsComponent.h"
 #include "Action/TurnBasedActionBase.h"
 #include "Action/TurnBasedAction.h"
 #include "Turn/Participant/TurnBasedParticipantManagerComponent.h"
 #include "GameEvent/GameEventTaskSubsystem.h"
-#include "Library/ConnectIt_GameUtilityLibrary.h"
+#include "Framework/Library/ConnectIt_GameUtilityLibrary.h"
 
 
 void UConnectIt_DebugStateWidget::NativeConstruct()
@@ -42,26 +40,13 @@ void UConnectIt_DebugStateWidget::BindAll()
 {
     if (bBound) return;
 
-    // Board manager -- may not have registered with the subsystem yet
-    // (level-placed actor, BeginPlay-ordering dependent). Try the direct
-    // route first; fall back to the documented ready-signal pattern instead
-    // of polling. See Workflows/BoardManagerSubsystem_Workflow.txt.
-    ResolvedBoardManagerSubsystem = GetWorld()
-        ? GetWorld()->GetSubsystem<UConnectIt_BoardManagerSubsystem>()
-        : nullptr;
-
-    if (IsValid(ResolvedBoardManagerSubsystem))
+    // Board state -- lives on AConnectIt_GameState now, reachable directly
+    // with no "wait for a level-placed actor to register" dance needed.
+    ResolvedBoardStateComponent = UConnectIt_GameUtilityLibrary::GetBoardStateComponent(this);
+    if (IsValid(ResolvedBoardStateComponent))
     {
-        if (AConnectIt_BoardManager* BoardManager =
-            ResolvedBoardManagerSubsystem->GetBoardManager())
-        {
-            BindBoardManager(BoardManager);
-        }
-        else
-        {
-            ResolvedBoardManagerSubsystem->OnBoardManagerReady.AddDynamic(
-                this, &UConnectIt_DebugStateWidget::HandleBoardManagerReady);
-        }
+        ResolvedBoardStateComponent->OnBoardStateChanged.AddDynamic(
+            this, &UConnectIt_DebugStateWidget::HandleBoardStateChanged);
     }
 
     // Game state / participant manager -- both exist from very early
@@ -126,29 +111,9 @@ void UConnectIt_DebugStateWidget::BindAll()
     bBound = true;
 }
 
-void UConnectIt_DebugStateWidget::BindBoardManager(AConnectIt_BoardManager* InBoardManager)
-{
-    if (!IsValid(InBoardManager)) return;
-
-    ResolvedBoardManager = InBoardManager;
-    ResolvedBoardStateComponent = ResolvedBoardManager->GetBoardStateComponent();
-
-    if (IsValid(ResolvedBoardStateComponent))
-    {
-        ResolvedBoardStateComponent->OnBoardStateChanged.AddDynamic(
-            this, &UConnectIt_DebugStateWidget::HandleBoardStateChanged);
-    }
-}
-
 void UConnectIt_DebugStateWidget::UnbindAll()
 {
     if (!bBound) return;
-
-    if (IsValid(ResolvedBoardManagerSubsystem))
-    {
-        ResolvedBoardManagerSubsystem->OnBoardManagerReady.RemoveDynamic(
-            this, &UConnectIt_DebugStateWidget::HandleBoardManagerReady);
-    }
 
     if (IsValid(ResolvedBoardStateComponent))
     {
@@ -279,12 +244,6 @@ void UConnectIt_DebugStateWidget::RefreshEventQueueState()
 // no category can go silently stale behind a delegate that doesn't fire
 // reliably.
 
-void UConnectIt_DebugStateWidget::HandleBoardManagerReady(AConnectIt_BoardManager* InBoardManager)
-{
-    BindBoardManager(InBoardManager);
-    ForceRefreshAll();
-}
-
 void UConnectIt_DebugStateWidget::HandleBoardStateChanged()
 {
     ForceRefreshAll();
@@ -340,7 +299,7 @@ void UConnectIt_DebugStateWidget::HandleBoardChangeRequested(const FTurnActionRe
     ForceRefreshAll();
 }
 
-void UConnectIt_DebugStateWidget::HandleActiveManagerTagsChanged()
+void UConnectIt_DebugStateWidget::HandleActiveManagerTagsChanged(const FGameplayTagContainer& TagContainer)
 {
     ForceRefreshAll();
 }

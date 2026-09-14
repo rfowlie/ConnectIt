@@ -1,0 +1,59 @@
+# _schema/_tasks.md
+
+A `_tasks/` folder tracks the open and closed work that has entered a domain (or the
+vault). It is a set of **status tables**, not one note per task — every task is a row.
+
+## Structure
+
+```
+_tasks/
+  active.md       the working list — tasks currently in play
+  suspended.md    parked tasks, kept for when they resume
+  complete.md     finished tasks (archive)
+  dropped.md      abandoned tasks (created only if used)
+```
+
+Each file is a single markdown table with the same columns.
+
+## What a row holds
+
+| Column | Meaning |
+|---|---|
+| `Task` | One line — what needs doing. |
+| `Created` | `YYYY-MM-DD` the task entered the folder. |
+| `Target` | `YYYY-MM-DD` due / aim date, or `—`. |
+| `Status` | `active` \| `suspended` \| `complete` \| `dropped`. |
+| `Notes` | Context, blockers, `[[links]]`. |
+
+Archive files (`suspended` / `complete` / `dropped`) add a `Moved` column — the date the
+row was relocated. A domain may add columns (`Priority`, `Source`, …); keep `Task` /
+`Created` / `Status` as the first three.
+
+## Rules
+
+- **The user enters and prioritises tasks by hand.** Claude does not invent tasks or
+  reorder them.
+- **To retire a task:** set its `Status` cell in `active.md` to `suspended` / `complete`
+  / `dropped`, then run `/process-tasks` — the skill moves the row to the matching
+  archive file and stamps `Moved`. Nothing leaves `active.md` until the skill runs.
+- `active.md` should contain only `Status: active` rows after a process run.
+- Archive files are append-only in spirit — a resumed task is moved back to `active.md`
+  by hand today. Reviving a task is planned as part of a future sprint-planning skill,
+  not `/process-tasks` (which is one-directional by design) — see `ABOUT.md` → Open
+  questions.
+- Created on first use.
+
+## Mounts
+
+Either: `_core/_tasks/` for vault-level work, `<domain>/_tasks/` for a domain's own.
+`/process-tasks` sweeps every `_tasks/` folder in the vault.
+
+## Template
+
+[[TSchemaTasks]]
+
+## Deviations
+
+Add `_tasks/__README.md` starting `Extends _schema/_tasks.md. Differences:` for extra
+columns, extra statuses, or (later) an Obsidian Bases view in place of the markdown
+tables.

@@ -2,7 +2,7 @@
 
 
 #include "Framework/Data/ConnectIt_GameFacade.h"
-#include "Library/ConnectIt_GridRulesLibrary.h"
+#include "Framework/Library/ConnectIt_GridRulesLibrary.h"
 #include "GridMechanics_GridLibrary.h"
 #include "GridMechanics_ShapeLibrary.h"
 #include "Tile/GridTileBase.h"

@@ -2,9 +2,8 @@
 
 
 #include "Action/ConnectIt_DefaultViewerAction.h"
-#include "Board/ConnectIt_BoardManager.h"
 #include "Board/ConnectIt_BoardStateComponent.h"
-#include "Library/ConnectIt_GameUtilityLibrary.h"
+#include "Framework/Library/ConnectIt_GameUtilityLibrary.h"
 
 
 void UConnectIt_DefaultViewerAction::PostInitialiseAction_Implementation()

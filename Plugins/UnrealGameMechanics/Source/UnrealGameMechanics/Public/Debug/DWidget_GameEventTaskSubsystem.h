@@ -38,12 +38,12 @@ protected:
     virtual void UnbindDelegates() override;
 
     UFUNCTION(BlueprintImplementableEvent, BlueprintCallable, Category = "Debug")
-    void OnActiveEventTagsUpdated(const TArray<FGameplayTag>& ActiveEventTags);
+    void OnActiveEventTagsUpdated(FGameplayTagContainer TagContainer);
 
 private:
 
     UFUNCTION()
-    void HandleActiveManagerTagsChanged();
+    void HandleActiveManagerTagsChanged(const FGameplayTagContainer& TagContainer);
 
     UPROPERTY()
     TObjectPtr<UGameEventTaskSubsystem> ResolvedSource = nullptr;

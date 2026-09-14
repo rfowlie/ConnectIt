@@ -11,7 +11,6 @@ UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_Game_Post);
 UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_Game_SelectTile);
 UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_Game_PlacePiece);
 UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_Game_UpdateBoard);
-UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_Game_Shift);
 
 // RequestType tags for actions added alongside the generic UStackedState/
 // UStackedStateMachine port -- see Docs (Action classes) for which action
@@ -34,7 +33,6 @@ UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_Tile_Default);
 UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_Event_PiecePlaced);
 UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_Event_LineScored);
 UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_Event_PlayerWin);
-UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_Event_Shift);
 UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_Event_TurnEnd);
 
 // Board event tags for the new mutation types -- ForcePlacePiece

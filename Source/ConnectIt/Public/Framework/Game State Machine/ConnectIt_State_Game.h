@@ -10,7 +10,6 @@
 #include "GameplayTagContainer.h"
 #include "ConnectIt_State_Game.generated.h"
 
-class AConnectIt_BoardManager;
 class UActorPool;
 class UGameTurnTracker;
 class UConnectIt_State_UpdateGameBoard;
@@ -52,8 +51,8 @@ public:
 	UPROPERTY(BlueprintReadOnly)
 	UConnectIt_State_UpdateGameBoard* StateUpdateBoard = nullptr;
 
-	UPROPERTY(BlueprintReadWrite, meta=(ExposeOnSpawn = "true"))
-	AConnectIt_BoardManager* BoardManager = nullptr;
+	// UPROPERTY(BlueprintReadWrite, meta=(ExposeOnSpawn = "true"))
+	// AConnectIt_BoardManager* BoardManager = nullptr;
 	
 	UPROPERTY(BlueprintReadWrite, meta=(ExposeOnSpawn = "true"))
 	TArray<UConnectIt_PlayerData*> AllPlayerData;

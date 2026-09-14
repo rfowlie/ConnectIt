@@ -1,9 +1,11 @@
-﻿// Fill out your copyright notice in the Description page of Project Settings.
+// Fill out your copyright notice in the Description page of Project Settings.
 
 
 #include "Tile/GridTileRegistryComponent.h"
 #include "Tile/GridTileBase.h"
-#include "Subsystem/GridWorldSubsystem.h"
+#include "Subsystem/GridHoverSubsystem.h"
+#include "Algo/Sort.h"
+#include "EngineUtils.h"
 
 
 UGridTileRegistryComponent::UGridTileRegistryComponent()
@@ -15,11 +17,26 @@ void UGridTileRegistryComponent::BeginPlay()
 {
     Super::BeginPlay();
 
-    if (!ResolveSubsystem())
+    ResolveSubsystem();
+    DiscoverTiles();
+
+    if (IsValid(HoverSubsystem))
     {
-        UE_LOG(LogTemp, Error,
-            TEXT("GridRegistryComponent: Failed to resolve UGridWorldSubsystem"));
-        return;
+        for (const TObjectPtr<AGridTileBase>& Tile : Tiles)
+        {
+            HoverSubsystem->RegisterTile(Tile);
+        }
+    }
+    else
+    {
+        UE_LOG(LogTemp, Warning,
+            TEXT("GridTileRegistryComponent: no UGridHoverSubsystem - hover relay disabled, queries still work"));
+    }
+
+    if (UWorld* World = GetWorld())
+    {
+        ActorSpawnedHandle = World->AddOnActorSpawnedHandler(
+            FOnActorSpawned::FDelegate::CreateUObject(this, &UGridTileRegistryComponent::HandleActorSpawned));
     }
 
 #if WITH_EDITOR
@@ -27,10 +44,69 @@ void UGridTileRegistryComponent::BeginPlay()
 #endif
 }
 
+void UGridTileRegistryComponent::EndPlay(const EEndPlayReason::Type EndPlayReason)
+{
+    if (UWorld* World = GetWorld(); World && ActorSpawnedHandle.IsValid())
+    {
+        World->RemoveOnActorSpawnedHandler(ActorSpawnedHandle);
+        ActorSpawnedHandle.Reset();
+    }
+
+    if (IsValid(HoverSubsystem))
+    {
+        for (const TObjectPtr<AGridTileBase>& Tile : Tiles)
+        {
+            if (IsValid(Tile))
+            {
+                HoverSubsystem->UnregisterTile(Tile);
+            }
+        }
+    }
+    Tiles.Reset();
+
+    Super::EndPlay(EndPlayReason);
+}
+
 bool UGridTileRegistryComponent::ResolveSubsystem()
 {
-    GridSubsystem = GetWorld()->GetSubsystem<UGridWorldSubsystem>();
-    return IsValid(GridSubsystem);
+    HoverSubsystem = GetWorld() ? GetWorld()->GetSubsystem<UGridHoverSubsystem>() : nullptr;
+    return IsValid(HoverSubsystem);
+}
+
+void UGridTileRegistryComponent::DiscoverTiles()
+{
+    Tiles.Reset();
+
+    const UWorld* World = GetWorld();
+    if (!World) return;
+
+    for (TActorIterator<AGridTileBase> It(World); It; ++It)
+    {
+        if (IsValid(*It))
+        {
+            Tiles.AddUnique(*It);
+        }
+    }
+
+    // Deterministic order so InitialiseBoardState / row & column queries are
+    // stable across runs.
+    Algo::Sort(Tiles, [](const TObjectPtr<AGridTileBase>& A, const TObjectPtr<AGridTileBase>& B)
+    {
+        return GetNameSafe(A.Get()) < GetNameSafe(B.Get());
+    });
+}
+
+void UGridTileRegistryComponent::HandleActorSpawned(AActor* SpawnedActor)
+{
+    AGridTileBase* Tile = Cast<AGridTileBase>(SpawnedActor);
+    if (!IsValid(Tile)) return;
+    if (Tiles.Contains(Tile)) return;
+
+    Tiles.Add(Tile);
+    if (IsValid(HoverSubsystem))
+    {
+        HoverSubsystem->RegisterTile(Tile);
+    }
 }
 
 // --- Position Conversion ---
@@ -56,15 +132,14 @@ FGridPosition UGridTileRegistryComponent::WorldToGridPosition(const FVector& Wor
 
 AGridTileBase* UGridTileRegistryComponent::GetTileAtPosition(const FGridPosition Position) const
 {
-    if (!IsValid(GridSubsystem)) return nullptr;
-    for (const auto Tile : GridSubsystem->GetAllTiles())
+    for (const TObjectPtr<AGridTileBase>& Tile : Tiles)
     {
-        if (Position == WorldToGridPosition(Tile->GetActorLocation()))
+        if (IsValid(Tile) && Position == WorldToGridPosition(Tile->GetActorLocation()))
         {
             return Tile;
         }
     }
-    
+
     return nullptr;
 }
 
@@ -76,7 +151,6 @@ FGridPosition UGridTileRegistryComponent::GetPositionOfTile(const AGridTileBase*
 TArray<AGridTileBase*> UGridTileRegistryComponent::GetRow(const int32 RowIndex) const
 {
     TArray<AGridTileBase*> OutTiles;
-    if (!IsValid(GridSubsystem)) return OutTiles;
 
     for (const FGridPosition& Position : GetRowPositions(RowIndex))
     {
@@ -92,7 +166,6 @@ TArray<AGridTileBase*> UGridTileRegistryComponent::GetRow(const int32 RowIndex) 
 TArray<AGridTileBase*> UGridTileRegistryComponent::GetColumn(const int32 ColumnIndex) const
 {
     TArray<AGridTileBase*> OutTiles;
-    if (!IsValid(GridSubsystem)) return OutTiles;
 
     for (const FGridPosition& Position : GetColumnPositions(ColumnIndex))
     {
@@ -108,18 +181,28 @@ TArray<AGridTileBase*> UGridTileRegistryComponent::GetColumn(const int32 ColumnI
 TArray<FGridPosition> UGridTileRegistryComponent::GetAllTilePositions() const
 {
     TArray<FGridPosition> OutPositions;
-    if (!IsValid(GridSubsystem)) return OutPositions;
-    for (const auto Tile : GridSubsystem->GetAllTiles())
+    for (const TObjectPtr<AGridTileBase>& Tile : Tiles)
     {
-        OutPositions.Add(GetPositionOfTile(Tile));
+        if (IsValid(Tile))
+        {
+            OutPositions.Add(GetPositionOfTile(Tile));
+        }
     }
     return OutPositions;
 }
 
 TArray<AGridTileBase*> UGridTileRegistryComponent::GetAllTiles() const
 {
-    if (!IsValid(GridSubsystem)) return TArray<AGridTileBase*>();
-    return GridSubsystem->GetAllTiles();
+    TArray<AGridTileBase*> Out;
+    Out.Reserve(Tiles.Num());
+    for (const TObjectPtr<AGridTileBase>& Tile : Tiles)
+    {
+        if (IsValid(Tile))
+        {
+            Out.Add(Tile);
+        }
+    }
+    return Out;
 }
 
 // --- Board Dimension Queries ---
@@ -222,13 +305,8 @@ void UGridTileRegistryComponent::ValidateTileAlignment() const
     /*
      * TODO: this relies on tile actors to be given a GridPosition in editor
      * this is currently not happening so always misaligned
-     */ 
-    // if (!IsValid(GridSubsystem)) return;
-    //
-    // TArray<AGridTileBase*> AllTiles = GridSubsystem->GetAllTiles();
-    // int32 MisalignedCount = 0;
-    //
-    // for (AGridTileBase* Tile : AllTiles)
+     */
+    // for (const TObjectPtr<AGridTileBase>& Tile : Tiles)
     // {
     //     if (!IsValid(Tile)) continue;
     //
@@ -247,23 +325,7 @@ void UGridTileRegistryComponent::ValidateTileAlignment() const
     //             Actual.X, Actual.Y,
     //             Expected.X, Expected.Y,
     //             GridSize);
-    //
-    //         MisalignedCount++;
     //     }
-    // }
-    //
-    // if (MisalignedCount == 0)
-    // {
-    //     UE_LOG(LogTemp, Log,
-    //         TEXT("GridRegistryComponent: All %d tiles validated successfully"),
-    //         AllTiles.Num());
-    // }
-    // else
-    // {
-    //     UE_LOG(LogTemp, Warning,
-    //         TEXT("GridRegistryComponent: %d misaligned tile(s) found — "
-    //              "check GridSize (%d) matches tile placement"),
-    //         MisalignedCount, GridSize);
     // }
 }
 #endif

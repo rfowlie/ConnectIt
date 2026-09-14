@@ -60,6 +60,29 @@ public:
     UFUNCTION(BlueprintPure, Category = "Turn Based")
     float GetTurnDuration() const;
 
+    // Passthroughs to ParticipantManager's own queries of the same name --
+    // see their doc comments there.
+    UFUNCTION(BlueprintPure, Category = "Turn Based")
+    FTurnParticipantInfo GetActiveParticipant(bool& bOutValid) const;
+
+    UFUNCTION(BlueprintPure, Category = "Turn Based")
+    FTurnParticipantInfo GetParticipantBySlot(int32 InSlotIndex, bool& bOutValid) const;
+
+    // Seconds left on the active participant's turn, derived locally from
+    // ParticipantManager's replicated turn-start server timestamp + turn
+    // duration -- no per-tick replication and no Client RPC. Unlike
+    // FTurnNotification::TurnDuration (which only reaches the active
+    // participant via ClientReceiveTurnNotification), any client can call
+    // this for the active participant's turn. bOutTimerRunning is false
+    // (return 0) when no timer is currently active (between turns, paused,
+    // game over).
+    UFUNCTION(BlueprintPure, Category = "Turn Based")
+    float GetTurnTimeRemaining(bool& bOutTimerRunning) const;
+
+    // 0..1 for a radial/bar widget. 0 when no timer is running.
+    UFUNCTION(BlueprintPure, Category = "Turn Based")
+    float GetTurnTimeRemainingFraction() const;
+
     virtual void GetLifetimeReplicatedProps(
         TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 

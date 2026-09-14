@@ -32,6 +32,8 @@ void UDWidget_TurnBasedParticipantManagerComponent::BindDelegates()
         this, &UDWidget_TurnBasedParticipantManagerComponent::HandleActiveControllerChanged);
     ResolvedSource->OnParticipantForfeited.AddDynamic(
         this, &UDWidget_TurnBasedParticipantManagerComponent::HandleParticipantForfeited);
+    ResolvedSource->OnParticipantIndexChanged.AddDynamic(
+        this, &UDWidget_TurnBasedParticipantManagerComponent::OnActiveParticipantIndexUpdated);
     ResolvedSource->OnAllParticipantsReady.AddDynamic(
         this, &UDWidget_TurnBasedParticipantManagerComponent::HandleAllParticipantsReady);
     ResolvedSource->OnGameOver.AddDynamic(
@@ -55,6 +57,8 @@ void UDWidget_TurnBasedParticipantManagerComponent::UnbindDelegates()
         this, &UDWidget_TurnBasedParticipantManagerComponent::HandleActiveControllerChanged);
     ResolvedSource->OnParticipantForfeited.RemoveDynamic(
         this, &UDWidget_TurnBasedParticipantManagerComponent::HandleParticipantForfeited);
+    ResolvedSource->OnParticipantIndexChanged.RemoveDynamic(
+        this, &UDWidget_TurnBasedParticipantManagerComponent::OnActiveParticipantIndexUpdated);
     ResolvedSource->OnAllParticipantsReady.RemoveDynamic(
         this, &UDWidget_TurnBasedParticipantManagerComponent::HandleAllParticipantsReady);
     ResolvedSource->OnGameOver.RemoveDynamic(
@@ -72,6 +76,7 @@ void UDWidget_TurnBasedParticipantManagerComponent::HandleActiveControllerChange
 
     OnActiveParticipantIndexUpdated(ResolvedSource->ActiveParticipantIndex);
     OnTurnNumberUpdated(ResolvedSource->TurnNumber);
+    OnTurnStartServerTimeUpdated(ResolvedSource->ReplicatedTurnStartServerTime);
 }
 
 void UDWidget_TurnBasedParticipantManagerComponent::HandleParticipantForfeited(const FTurnParticipantInfo& ParticipantInfo)
@@ -105,4 +110,5 @@ void UDWidget_TurnBasedParticipantManagerComponent::PushCurrentInfo()
     OnActiveParticipantIndexUpdated(Info.ActiveParticipantIndex);
     OnTurnNumberUpdated(Info.TurnNumber);
     OnParticipantsUpdated(Info.Participants);
+    OnTurnStartServerTimeUpdated(Info.TurnStartServerTime);
 }

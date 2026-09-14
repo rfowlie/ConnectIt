@@ -20,8 +20,20 @@ public:
 	TArray<AActor*> GetObjects(TSubclassOf<AActor> ActorClass, int32 Amount = 1, int32 InitialPoolSize = 1);
 
 	// Return an actor to its pool. Actor must have originated from GetObjects.
+	// Does NOT deactivate it -- call DeactivateObject explicitly.
 	UFUNCTION(BlueprintCallable, Category = "Actor Pool")
 	void ReleaseObject(AActor* Actor);
+
+	// Triggers Actor's pooled-activation/deactivation side effect via its
+	// owning UActorPool (resolved the same way ReleaseObject is -- Actor
+	// must have originated from GetObjects). See UActorPool::ActivateObject/
+	// DeactivateObject's own comment for why this is a separate, explicit
+	// call rather than something GetObjects/ReleaseObject do automatically.
+	UFUNCTION(BlueprintCallable, Category = "Actor Pool")
+	void ActivateObject(AActor* Actor) const;
+
+	UFUNCTION(BlueprintCallable, Category = "Actor Pool")
+	void DeactivateObject(AActor* Actor) const;
 
 	// Returns the pool for a class if one has been created, otherwise nullptr
 	UFUNCTION(BlueprintCallable, Category = "Actor Pool")

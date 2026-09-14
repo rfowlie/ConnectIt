@@ -16,12 +16,11 @@ class UConnectIt_WinCondition : public UInterface
 
 // Pluggable win-condition strategy -- whether the game has been won after
 // the current move's scoring has been applied. Assigned via
-// UConnectIt_BoardRulesComponent::WinConditionRule (TScriptInterface,
-// EditAnywhere Instanced), mirroring ITurnOrderInterface/TurnOrderStrategy's
-// precedent. UConnectIt_ScoreThresholdWinCondition is the default
-// implementation; other conditions (e.g. occupying a set of tiles instead
-// of a score threshold) can be added as new implementers without touching
-// AConnectIt_BoardManager.
+// UConnectIt_BoardRules::WinConditionRule (TObjectPtr<UObject>, EditAnywhere
+// Instanced, MustImplement). UConnectIt_ScoreThresholdWinCondition is the
+// default implementation; other conditions (e.g. occupying a set of tiles
+// instead of a score threshold) can be added as new implementers without
+// touching UConnectIt_BoardRequestMediator.
 class CONNECTIT_API IConnectIt_WinCondition
 {
     GENERATED_BODY()
@@ -33,4 +32,12 @@ public:
     // their condition is met.
     UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "ConnectIt|WinCondition")
     void CheckWinCondition(UPARAM(ref) FConnectItBoardState& MutableState);
+
+    // Score needed to win under this condition, for UI progress display
+    // (see FConnectItBoardState::TargetScore, which this feeds). Returns 0
+    // for conditions that aren't score-based (e.g. occupying a set of
+    // tiles) -- UI treats 0 as "no meaningful progress bar." Default
+    // implementation returns 0; score-based conditions override it.
+    UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "ConnectIt|WinCondition")
+    float GetTargetScore() const;
 };

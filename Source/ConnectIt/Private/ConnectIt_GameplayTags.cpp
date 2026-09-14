@@ -9,7 +9,6 @@ UE_DEFINE_GAMEPLAY_TAG_COMMENT(ConnectIt_Game_Post, "ConnectIt.Game.Pre", "");
 UE_DEFINE_GAMEPLAY_TAG_COMMENT(ConnectIt_Game_SelectTile, "ConnectIt.Game.State.SelectTile", "");
 UE_DEFINE_GAMEPLAY_TAG_COMMENT(ConnectIt_Game_PlacePiece, "ConnectIt.Game.State.PlacePiece", "");
 UE_DEFINE_GAMEPLAY_TAG_COMMENT(ConnectIt_Game_UpdateBoard, "ConnectIt.Game.State.UpdateBoard", "");
-UE_DEFINE_GAMEPLAY_TAG_COMMENT(ConnectIt_Game_Shift, "ConnectIt.Game.State.Shift", "");
 
 UE_DEFINE_GAMEPLAY_TAG_COMMENT(ConnectIt_Game_DestroyTileMultiplier, "ConnectIt.Game.State.DestroyTileMultiplier", "");
 UE_DEFINE_GAMEPLAY_TAG_COMMENT(ConnectIt_Game_RemovePiece, "ConnectIt.Game.State.RemovePiece", "");
@@ -26,7 +25,6 @@ UE_DEFINE_GAMEPLAY_TAG_COMMENT(ConnectIt_Tile_Default, "ConnectIt.Tile.Default",
 UE_DEFINE_GAMEPLAY_TAG_COMMENT(ConnectIt_Event_PiecePlaced, "ConnectIt.Event.PiecePlaced", "");
 UE_DEFINE_GAMEPLAY_TAG_COMMENT(ConnectIt_Event_LineScored, "ConnectIt.Event.LineScored", "");
 UE_DEFINE_GAMEPLAY_TAG_COMMENT(ConnectIt_Event_PlayerWin, "ConnectIt.Event.PlayerWin", "");
-UE_DEFINE_GAMEPLAY_TAG_COMMENT(ConnectIt_Event_Shift, "ConnectIt.Event.Shift", "");
 UE_DEFINE_GAMEPLAY_TAG_COMMENT(ConnectIt_Event_TurnEnd, "ConnectIt.Event.TurnEnd", "");
 
 UE_DEFINE_GAMEPLAY_TAG_COMMENT(ConnectIt_Event_TileMultiplierDestroyed, "ConnectIt.Event.TileMultiplierDestroyed", "");

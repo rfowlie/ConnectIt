@@ -3,7 +3,7 @@
 
 #include "Cursor/GridCursorManagerBase.h"
 #include "Tile/GridTileBase.h"
-#include "Subsystem/GridWorldSubsystem.h"
+#include "Subsystem/GridHoverSubsystem.h"
 
 
 AGridCursorManagerBase::AGridCursorManagerBase()
@@ -15,7 +15,7 @@ void AGridCursorManagerBase::BeginPlay()
 {
     Super::BeginPlay();
 
-    if (UGridWorldSubsystem* GridSubsystem = GetGridSubsystem())
+    if (UGridHoverSubsystem* GridSubsystem = GetGridSubsystem())
     {
         GridSubsystem->OnGridTileHoverChanged.AddDynamic(
             this, &AGridCursorManagerBase::HandleGridTileHoverChanged);
@@ -24,7 +24,7 @@ void AGridCursorManagerBase::BeginPlay()
 
 void AGridCursorManagerBase::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
-    if (UGridWorldSubsystem* GridSubsystem = GetGridSubsystem())
+    if (UGridHoverSubsystem* GridSubsystem = GetGridSubsystem())
     {
         GridSubsystem->OnGridTileHoverChanged.RemoveDynamic(
             this, &AGridCursorManagerBase::HandleGridTileHoverChanged);
@@ -55,8 +55,8 @@ void AGridCursorManagerBase::UpdateCursor_Implementation(AGridTileBase* Tile)
     // Base is a pure contract -- subclasses provide the visual
 }
 
-UGridWorldSubsystem* AGridCursorManagerBase::GetGridSubsystem() const
+UGridHoverSubsystem* AGridCursorManagerBase::GetGridSubsystem() const
 {
     const UWorld* World = GetWorld();
-    return IsValid(World) ? World->GetSubsystem<UGridWorldSubsystem>() : nullptr;
+    return IsValid(World) ? World->GetSubsystem<UGridHoverSubsystem>() : nullptr;
 }

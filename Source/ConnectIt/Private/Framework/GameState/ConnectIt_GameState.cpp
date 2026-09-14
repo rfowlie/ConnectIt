@@ -3,15 +3,18 @@
 #include "Framework/GameState/ConnectIt_GameState.h"
 #include "Net/UnrealNetwork.h"
 #include "TurnBasedMechanicsStructs.h"
-#include "Board/ConnectIt_BoardManager.h"
 #include "Board/ConnectIt_BoardStateComponent.h"
-#include "Library/ConnectIt_GameUtilityLibrary.h"
+#include "Framework/Library/ConnectIt_GameUtilityLibrary.h"
 #include "Turn/Participant/TurnBasedParticipantManagerComponent.h"
 
 
 AConnectIt_GameState::AConnectIt_GameState()
 {
     bReplicates = true;
+
+    BoardStateComponent =
+        CreateDefaultSubobject<UConnectIt_BoardStateComponent>(
+            TEXT("BoardState"));
 }
 
 void AConnectIt_GameState::GetLifetimeReplicatedProps(
@@ -63,27 +66,29 @@ void AConnectIt_GameState::SetMatchResult(
 
 float AConnectIt_GameState::GetFactionScore(int32 FactionSlot) const
 {
-    UConnectIt_BoardStateComponent* BSC = GetBoardStateComponent();
-    check(BSC != nullptr);
-    
-    // Read final scores from board state at time of game over
-
-    if (const FConnectItBoardState* Current  = BSC->GetBoardSnapShotCurrent())
+    // BlueprintPure -- a widget can call this before the board manager has
+    // spawned/registered on this client, so this must degrade gracefully
+    // like its sibling accessors below, not check()-crash.
+    if (UConnectIt_BoardStateComponent* BSC = GetBoardStateComponent())
     {
-        return Current->GetScore(FactionSlot);
-    } 
+        if (const FConnectItBoardState* Current = BSC->GetBoardSnapShotCurrent())
+        {
+            return Current->GetScore(FactionSlot);
+        }
+    }
 
     return 0.f;
 }
 
 TArray<float> AConnectIt_GameState::GetAllScores() const
 {
-    UConnectIt_BoardStateComponent* BSC = GetBoardStateComponent();
-    check(BSC != nullptr);
-
-    if (const FConnectItBoardState* Current = BSC->GetBoardSnapShotCurrent())
+    // See GetFactionScore -- same null-safety rationale.
+    if (UConnectIt_BoardStateComponent* BSC = GetBoardStateComponent())
     {
-        return Current->ScoreBoard;
+        if (const FConnectItBoardState* Current = BSC->GetBoardSnapShotCurrent())
+        {
+            return Current->ScoreBoard;
+        }
     }
 
     return TArray<float>();
@@ -117,6 +122,27 @@ FConnectItBoardStateSnapshot AConnectIt_GameState::GetBoardSnapshot() const
     return FConnectItBoardStateSnapshot();
 }
 
+float AConnectIt_GameState::GetTargetScore() const
+{
+    if (UConnectIt_BoardStateComponent* BSC = GetBoardStateComponent())
+    {
+        if (const FConnectItBoardState* Current = BSC->GetBoardSnapShotCurrent())
+        {
+            return Current->TargetScore;
+        }
+    }
+
+    return 0.f;
+}
+
+float AConnectIt_GameState::GetFactionScoreProgress(int32 FactionSlot) const
+{
+    const float Target = GetTargetScore();
+    if (Target <= 0.f) return 0.f;
+
+    return FMath::Clamp(GetFactionScore(FactionSlot) / Target, 0.f, 1.f);
+}
+
 // --- Turn Accessors ---
 
 FString AConnectIt_GameState::GetActiveParticipantName() const
@@ -136,15 +162,14 @@ FString AConnectIt_GameState::GetActiveParticipantName() const
 
 bool AConnectIt_GameState::IsLocalPlayerTurn() const
 {
-    if (!IsValid(ParticipantManager)) return false;
-
-    // Find the local player controller and check its slot
-    APlayerController* LocalPC =
-        GetWorld()->GetFirstPlayerController();
-    if (!IsValid(LocalPC)) return false;
-
-    return ParticipantManager->GetControllerAtIndex(
-        ParticipantManager->ActiveParticipantIndex) == LocalPC;
+    // Was: ParticipantManager->GetControllerAtIndex(...) == LocalPC.
+    // GetControllerAtIndex reads ServerControllers, which is server-only
+    // and never replicated (see its own doc comment) -- that made this
+    // return false on every remote client, always. Route through the
+    // slot-index-based utility instead, which is the correct
+    // implementation and already used elsewhere for the same question --
+    // single implementation, not two disagreeing ones.
+    return UConnectIt_GameUtilityLibrary::IsLocalPlayerTurn(this);
 }
 
 // --- RepNotify ---
@@ -157,16 +182,4 @@ void AConnectIt_GameState::OnRep_MatchResult()
         TEXT("ConnectIt_GameState: Match result replicated — "
              "faction %d wins"),
         MatchResult.WinningFactionSlot);
-}
-
-// --- Helpers ---
-
-UConnectIt_BoardStateComponent* AConnectIt_GameState::GetBoardStateComponent() const
-{
-    if (!IsValid(CachedBoardStateComponent))
-    {
-        CachedBoardStateComponent = UConnectIt_GameUtilityLibrary::GetBoardStateComponent(this);
-    }
-
-    return CachedBoardStateComponent;
 }
