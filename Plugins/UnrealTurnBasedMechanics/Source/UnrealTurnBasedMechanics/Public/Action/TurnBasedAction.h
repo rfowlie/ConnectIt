@@ -4,7 +4,6 @@
 
 #include "CoreMinimal.h"
 #include "GameplayTagContainer.h"
-#include "InputTriggers.h"
 #include "Styling/SlateBrush.h"
 #include "TurnBasedMechanicsStructs.h"
 #include "Action/TurnBasedActionBase.h"
@@ -54,44 +53,25 @@ public:
 
     // Maximum completions per turn -- 0 = unlimited
     // Checked against CompletionsThisTurn on CanActivate
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Action|Config",
-        meta = (ClampMin = 0))
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Action|Config", meta = (ClampMin = 0))
     int32 MaxCompletionsPerTurn = 1;
 
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Action|Config",
-        meta = (ClampMin = 0))
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Action|Config", meta = (ClampMin = 0))
     int32 CooldownTurns = 0;
-
-    // TODO: no need for a default input action, each action will be super customized and actions will be set
-    // UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Action|Config")
-    // TObjectPtr<UInputAction> SelectionInputAction = nullptr;
-    //
-    // // Key mapped to SelectionInputAction on InputTagBinder's mapping
-    // // context (see InitialiseAction) -- SelectionInputAction has no
-    // // InputBindings entry of its own, so it needs its own key here.
-    // UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Action|Config")
-    // FKey SelectionInputKey;
-
-    // Additional named input triggers beyond SelectionInputAction -- see
-    // FInputTagBinding (UnrealGameMechanics/Input). Bound/unbound alongside
-    // SelectionInputAction by BindInput/UnbindInput, dispatched through
-    // InputTagBinder.
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Action|Config")
-    TArray<FInputTagBinding> InputBindings;
 
     // --- Presentation ---
     // Purely for UI -- the action itself never reads these. Without them an
     // action bar has nothing to label a button with (ActionTag is an
     // identifier, not a display string).
 
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Action|Presentation")
+    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Action|Presentation")
     FText DisplayName;
 
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Action|Presentation",
+    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Action|Presentation",
         meta = (MultiLine = true))
     FText Description;
 
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Action|Presentation")
+    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Action|Presentation")
     FSlateBrush Icon;
 
     // --- Runtime State ---
@@ -180,9 +160,22 @@ protected:
     UFUNCTION(BlueprintNativeEvent, Category = "Action")
     void OnCompleted();
 
+    // --- Input ---
+
+    // Populated by ConstructInputBindings() -- each entry's InputActionDelegate
+    // is bound directly to whatever this action wants that input to do, no
+    // shared tag-switch consumer needed. Bound/unbound alongside selection
+    // input by BindInput/UnbindInput, dispatched through InputTagBinder.
+    UPROPERTY(BlueprintReadWrite, Category = "Action|Config")
+    TArray<FInputTagBinding> InputBindings;
+
+    // Set the values in InputBindings
+    UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "Action|Config")
+    void ConstructInputBindings();
+    
     // --- Selection Hooks ---
 
-    UFUNCTION(BlueprintNativeEvent, Category = "Action|Selection")
+    UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "Action|Selection")
     bool IsValidHoverTile(AGridTileBase* Tile) const;
     virtual bool IsValidHoverTile_Implementation(AGridTileBase* Tile) const;
 
@@ -205,17 +198,6 @@ protected:
     UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "Action|Selection")
     void ClearSelectionState();
     virtual void ClearSelectionState_Implementation();
-
-    // --- Bound Input ---
-
-    // Fires when any InputBindings entry triggers, carrying that entry's
-    // BindingTag. Default implementation is a no-op -- subclasses (usually
-    // in Blueprint) switch on BindingTag to route to actual behaviour.
-    // SelectionInputAction/OnSelectionInputTriggered stays separate since
-    // it's tied to CurrentHoveredTile, not a generic named trigger.
-    UFUNCTION(BlueprintNativeEvent, Category = "Action|Input")
-    void OnBoundInputTriggered(FGameplayTag BindingTag);
-    virtual void OnBoundInputTriggered_Implementation(FGameplayTag BindingTag);
 
     // --- Cooldown Hook ---
 
@@ -257,10 +239,8 @@ private:
     UPROPERTY()
     TObjectPtr<UEnhancedInputLocalPlayerSubsystem> LocalPlayerSubsystem = nullptr;
 
-    // Owns InputBindings' mapping context + dispatch -- see
-    // UnrealGameMechanics/Input/InputTagBinder.h. SelectionInputAction
-    // piggybacks one extra key mapping onto this same context (see
-    // InitialiseAction) rather than standing up a second one.
+    // Owns InputBindings' mapping context + per-binding dispatch -- see
+    // UnrealGameMechanics/Input/InputTagBinder.h.
     UPROPERTY()
     TObjectPtr<UInputTagBinder> InputTagBinder = nullptr;
 
@@ -270,9 +250,4 @@ private:
 
     UFUNCTION()
     void OnGridTileHoverChanged(AGridTileBase* NewTile);
-
-    // Bound to InputTagBinder->OnInputTagTriggered -- forwards to the
-    // BlueprintNativeEvent hook
-    UFUNCTION()
-    void HandleInputTagTriggered(const FInputActionInstance& InputActionInstance, FGameplayTag BindingTag);
 };

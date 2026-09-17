@@ -8,6 +8,31 @@ in `<domain>/_logs/`, not here.
 
 Newest first:
 
+- [2026-09-17-1511](2026-09-17-1511.md) — session — retired `improve-system` (never once
+  run — confirmed via `_logs/`, no entry anywhere has `source: improve-system`); cleaned
+  up every reference (`_core/_skills/__INDEX.md`, `Development/CLAUDE.md`'s routing table
+  and log-row, `Development/board-of-advisors/CLAUDE.md`'s `_logs/` row), `ABOUT.md`
+  updated
+- [2026-09-17-1502](2026-09-17-1502.md) — session — `/session-close` extended with a
+  "route decisions, questions, and discussions" step (decisions written directly,
+  questions/discussions offered as candidates) — closes the gap where neither
+  `/session-close` nor `/improve-system` actually populated a game domain's `_decisions/`/
+  `_questions/`/`_discussions/` on their own
+
+- [2026-09-16-1610](2026-09-16-1610.md) — session — wired `_data/` → `_atomic/`
+  extraction: `process-atomic` gained a Pass 2 that sweeps un-swept `_data/wiki/` notes
+  into `_core/_atomic/`; new `TSchemaWiki` template with `atomic-summary` tracking;
+  `process-data`-before-`process-atomic` made an explicit dependency; atomic word cap
+  500 → 1000
+- [2026-09-16-1609](2026-09-16-1609.md) — session — `/session-open`'s map output rewritten
+  to bullet-list-per-block (owner preference) — 5 blocks + the session-note template +
+  `.claude/skills/` mirror updated; `/session-close` intentionally left untouched pending
+  the owner confirming whether the same preference extends there
+- [2026-09-16-1557](2026-09-16-1557.md) — session — removed 6 stale repo-root
+  `.claude/skills/` mirrors (staged, uncommitted); added a permanent guardrail to
+  `ConnectIt/CLAUDE.md` against ever re-adding a "Current state" section; rewrote
+  `session-open`/`session-close` (+ mirrors) to source state from `_tasks/active.md` +
+  `_meetings/` + `_decisions/` instead of `CLAUDE.md` fields
 - [2026-09-14-0204](2026-09-14-0204.md) — meeting-closed — closed the first
   `Development/optimal-co-developer/_meetings/` note (2026-09-14 check-in); filed 3
   `ConnectIt/_decisions/` notes (action-state-on-PlayerState/ActionsComponent-as-builder,

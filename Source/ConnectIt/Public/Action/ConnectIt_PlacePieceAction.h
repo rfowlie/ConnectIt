@@ -27,21 +27,22 @@ class CONNECTIT_API UConnectIt_PlacePieceAction : public UTurnBasedAction
     UConnectIt_PlacePieceAction();
 
 public:
+    
+    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Action|Tags")
+    FGameplayTag TagActionGridState;
 
     // GameplayTags sent to tiles to drive their visual state
     // Set in editor -- tile Blueprint responds to these tags
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Action|Tags")
-    FGameplayTag Tag_ValidHover;
+    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Action|Tags")
+    FGameplayTag TagActionMouseHover;
 
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Action|Tags")
-    FGameplayTag Tag_InvalidHover;
+    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Action|Tags")
+    FGameplayTag TagActionMouseHoverInvalid;
 
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Action|Tags")
-    FGameplayTag Tag_Default;
-
+    // TODO: what is this for?
     // Request type tag sent to board manager
     // Must match ConnectItRequestTags::PlacePiece in board manager
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Action|Tags")
+    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Action|Tags")
     FGameplayTag Tag_RequestType;
 
 protected:

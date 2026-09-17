@@ -23,8 +23,8 @@ bool UConnectIt_TurnBasedActionsComponent::CanAutoEndTurn_Implementation() const
 
         // PlacePiece/SWAP are an alternate pair -- either one completing
         // satisfies the pair, and neither is individually mandatory below.
-        if (Action->ActionTag == RequiredActionTagA ||
-            Action->ActionTag == RequiredActionTagB)
+        if (Action->GetActionTag() == RequiredActionTagA ||
+            Action->GetActionTag() == RequiredActionTagB)
         {
             if (Action->IsComplete())
             {

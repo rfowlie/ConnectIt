@@ -25,6 +25,21 @@ UConnectIt_SwapPieceAction::UConnectIt_SwapPieceAction()
     CooldownTurns = 0;
 }
 
+void UConnectIt_SwapPieceAction::Deactivate_Internal_Implementation()
+{
+    Super::Deactivate_Internal_Implementation();
+
+    if (!IsValid(TileRegistry))
+    {
+        UE_LOG(LogTemp, Error,
+               TEXT("PieceSwapperAction: OnCompleted_Implementation -- "
+                   "OwningController has no valid TileRegistry"));
+    }
+
+    bHasSelectionFirst = false;
+    PositionFirst = FGridPosition();
+}
+
 void UConnectIt_SwapPieceAction::PostInitialiseAction_Implementation()
 {
     if (!IsValid(OwningController))
@@ -45,16 +60,6 @@ void UConnectIt_SwapPieceAction::PostInitialiseAction_Implementation()
             TEXT("PieceSwapperAction: PostInitialiseAction -- "
                  "OwningController has no valid TileRegistry"));
     }
-}
-
-void UConnectIt_SwapPieceAction::OnCancelled_Implementation()
-{
-    ResetAction();
-}
-
-void UConnectIt_SwapPieceAction::OnCompleted_Implementation()
-{
-    ResetAction();
 }
 
 bool UConnectIt_SwapPieceAction::IsValidHoverTile_Implementation(AGridTileBase* Tile) const
@@ -93,9 +98,8 @@ bool UConnectIt_SwapPieceAction::IsValidSelectionTile_Implementation(AGridTileBa
 void UConnectIt_SwapPieceAction::HandleValidHover_Implementation(AGridTileBase* Tile)
 {
     if (!IsValid(Tile)) return;
-    if (!Tag_ValidHover.IsValid()) return;
-
-    Tile->SendGameplayTag(Tag_ValidHover);
+    if (!TagActionMouseHover.IsValid()) return;
+    Tile->SendGameplayTag(TagActionMouseHover);
 }
 
 void UConnectIt_SwapPieceAction::HandleHoverCleared_Implementation(
@@ -109,21 +113,21 @@ void UConnectIt_SwapPieceAction::HandleHoverCleared_Implementation(
     if (bHasSelectionFirst && IsValid(TileRegistry) &&
         TileRegistry->GetPositionOfTile(PreviousTile) == PositionFirst)
     {
-        if (Tag_FirstSelected.IsValid())
+        if (TagFirstSelection.IsValid())
         {
-            PreviousTile->SendGameplayTag(Tag_FirstSelected);
+            PreviousTile->SendGameplayTag(TagFirstSelection);
         }
         return;
     }
 
-    if (!Tag_Default.IsValid()) return;
-    PreviousTile->SendGameplayTag(Tag_Default);
+    if (!TagActionGridState.IsValid()) return;
+    PreviousTile->SendGameplayTag(TagActionGridState);
 }
 
 void UConnectIt_SwapPieceAction::HandleValidSelection_Implementation(AGridTileBase* Tile)
 {
-    if (!IsValid(TileRegistry)) return;
     if (!IsValid(Tile)) return;
+    if (!IsValid(TileRegistry)) return;    
 
     const FGridPosition Position = TileRegistry->GetPositionOfTile(Tile);
 
@@ -132,9 +136,9 @@ void UConnectIt_SwapPieceAction::HandleValidSelection_Implementation(AGridTileBa
         PositionFirst = Position;
         bHasSelectionFirst = true;
 
-        if (Tag_FirstSelected.IsValid())
+        if (TagFirstSelection.IsValid())
         {
-            Tile->SendGameplayTag(Tag_FirstSelected);
+            Tile->SendGameplayTag(TagFirstSelection);
         }
 
         UE_LOG(LogTemp, Log,
@@ -167,6 +171,7 @@ void UConnectIt_SwapPieceAction::HandleValidSelection_Implementation(AGridTileBa
 
     // Route to action component which sends to server. Complete() is not
     // called here -- UTurnBasedActionsComponent pushes an
+    
     // awaiting-confirmation state and calls Complete() itself once the
     // server's answer arrives (NotifyBoardChangeOutcome), same as
     // UConnectIt_PlacePieceAction.
@@ -178,18 +183,18 @@ void UConnectIt_SwapPieceAction::ClearSelectionState_Implementation()
     // Clear hover state on currently hovered tile
     if (AGridTileBase* Hovered = CurrentHoveredTile.Get())
     {
-        if (Tag_Default.IsValid())
+        if (TagActionGridState.IsValid())
         {
-            Hovered->SendGameplayTag(Tag_Default);
+            Hovered->SendGameplayTag(TagActionGridState);
         }
     }
 
     // Also clear the first-picked tile's distinct highlight, if any
-    if (bHasSelectionFirst && IsValid(TileRegistry) && Tag_Default.IsValid())
+    if (bHasSelectionFirst && IsValid(TileRegistry) && TagActionGridState.IsValid())
     {
         if (AGridTileBase* FirstTile = TileRegistry->GetTileAtPosition(PositionFirst))
         {
-            FirstTile->SendGameplayTag(Tag_Default);
+            FirstTile->SendGameplayTag(TagActionGridState);
         }
     }
 
@@ -213,22 +218,4 @@ int32 UConnectIt_SwapPieceAction::GetOwningControllerFactionID() const
     }
 
     return FactionId;
-}
-
-
-bool UConnectIt_SwapPieceAction::ResetAction()
-{
-    Super::OnCompleted_Implementation();
-
-    if (!IsValid(TileRegistry))
-    {
-        UE_LOG(LogTemp, Error,
-               TEXT("PieceSwapperAction: OnCompleted_Implementation -- "
-                   "OwningController has no valid TileRegistry"));
-        return true;
-    }
-
-    bHasSelectionFirst = false;
-    PositionFirst = FGridPosition();
-    return false;
 }

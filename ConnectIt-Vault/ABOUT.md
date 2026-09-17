@@ -48,7 +48,8 @@ vault; see [`_core/CLAUDE.md`](_core/CLAUDE.md).
 | `discussions` | One dated note per discussion; topics link to their most recent prior mention instead of a folder hierarchy | schema defined, no note yet (`ConnectIt/_discussions/` empty) |
 | `daily` | One free-form note per day | `optimal-co-developer/_daily/` |
 | `ask-vault` `attachments` | Vault-level instances | `_core/_*/` |
-| `data` `user` `people` `maps` | Available, not yet used | — |
+| `data` | `raw/` (verbatim, still templateless) + `wiki/` (`[[TSchemaWiki]]`, tracks `atomic-summary`); `/process-atomic` sweeps `wiki/` into `atomic` | not yet used — no `_data/` folder exists yet |
+| `user` `people` `maps` | Available, not yet used | — |
 
 Full rulebook per section: `_core/_schema/_<section>.md`.
 
@@ -117,6 +118,38 @@ Full rulebook per section: `_core/_schema/_<section>.md`.
 
 ## Changelog
 
+- **2026-09-17** — Retired `improve-system` (vault-wide skill, `_core/_skills/` +
+  `.claude/skills/` mirror both deleted): confirmed via `_logs/` (no entry anywhere has
+  `source: improve-system`) that it had never actually run once in this vault's history.
+  Its one genuinely unique capability — routing session output into
+  `Development/board-of-advisors/` — targeted a sub-project that's stayed dormant; its
+  link-checking duplicated `/fix-links`; its game-domain routing table never covered
+  `_decisions/`/`_questions/`/`_discussions/` at all, a gap `/session-close`'s new routing
+  step (see the `2026-09-17-1502` entry below it) now actually closes for the domain in
+  active use. `Development/CLAUDE.md`'s "Where new information goes" table kept as plain
+  manual-reference documentation, reworded to drop the "used by `improve-system`" framing;
+  `Development/board-of-advisors/CLAUDE.md`'s `_logs/` row reworded to match (folder still
+  empty, still created-on-first-use, no longer attributed to a skill that never wrote
+  there). `_core/_skills/__INDEX.md` entry removed.
+- **2026-09-16** — Wired `_data/` → `_atomic/` extraction (previously nothing did this —
+  atomic notes were purely manual):
+  - New `TSchemaWiki` template for `_data/wiki/<slug>.md` — `source:`, `updated:`, and
+    `atomic-summary` (`true`/`false`, default `false`), plus a `## Atomic notes swept`
+    section. `_schema/_data.md` and `_schema/__README.md` updated to reference it (`raw/`
+    stays templateless).
+  - `process-atomic.md` gained a Pass 2: sweep every `_data/wiki/` note not yet marked
+    `atomic-summary: true`, extract genuinely atomic-note-worthy ideas, link to / update
+    an existing `_core/_atomic/` note or create a new one, then mark the wiki note swept.
+    Pass 1 (duplicate-folder consolidation) unchanged. Re-mirrored.
+  - `process.md` now states `process-data`-before-`process-atomic` as a fixed dependency
+    (Pass 2 reads `atomic-summary`, which needs `process-data` to have run first) rather
+    than incidental list order.
+  - Atomic-note word cap raised 500 → 1000 words (`_schema/_atomic.md`,
+    `TSchemaAtomic.md`, `_atomic/how this vault writes atomic notes.md`).
+  - No `_data/` folder exists in the vault yet, so this is new plumbing, not a backfill —
+    see `_core/_logs/2026-09-16-1610.md` for the full rationale and flags (including that
+    `Development/board-of-advisors/_knowledge/raw+wiki`'s separate, older schema is
+    explicitly out of scope here).
 - **2026-09-12** — Reconciled the repo-root `.claude/skills/` open question (removed the
   "vault-wide skill needs no authored mirror" exception entirely — every skill now gets
   both an authored copy and a `.claude/skills/` mirror, no exceptions):

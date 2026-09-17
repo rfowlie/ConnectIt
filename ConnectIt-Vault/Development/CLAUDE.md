@@ -116,7 +116,11 @@ wins on state and routing.
 
 ## Where new information goes
 
-_(Used by the `improve-system` skill to route a session's output.)_
+_(Reference for filing new material by hand — where a fact, decision, or transcript
+belongs. Removed 2026-09-17 as `improve-system`'s own input: that skill never actually
+ran in this vault's history and was retired; `/session-close` now handles the equivalent
+routing for a game domain's own `_decisions/`/`_questions/`/`_discussions/`, but nothing
+automates the rows below — they're manual.)_
 
 | What you learned | Where it goes |
 |---|---|
@@ -128,7 +132,7 @@ _(Used by the `improve-system` skill to route a session's output.)_
 | A board consultation | `board-of-advisors/_questions/<date>-<slug>.md` |
 | Progress, a next action, a scope decision on a game | that game domain's `CLAUDE.md` (e.g. [`ConnectIt/CLAUDE.md`](../ConnectIt/CLAUDE.md)) |
 | A new reusable procedure | **always both**: an authored copy — `<sub-project>/_skills/<name>.md` (sub-project-scoped), `Development/_skills/<name>.md` (Development-wide, not tied to a sub-project), or `_core/_skills/<name>.md` (vault-wide) — **and** its `.claude/skills/<name>/SKILL.md` mirror. No skill is ever mirror-only or authored-only. |
-| A record of what a maintenance pass changed | one `_core/_logs/<timestamp>.md` note, scope `vault` (written by `/improve-system`, not by hand) |
+| A record of what a maintenance pass changed | one `_core/_logs/<timestamp>.md` note, scope `vault` — written by whichever skill made the change (`/process`, `/session-close`, or by hand for anything else) |
 
 ---
 

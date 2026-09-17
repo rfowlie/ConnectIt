@@ -37,29 +37,34 @@ class CONNECTIT_API UConnectIt_SwapPieceAction : public UTurnBasedAction
 
 public:
 
+    // TODO: is this even needed? Wouldn't there just be some default state
+    // unless we want a unique default state for this action, which we would
+    // read when the action fires are set all tiles and pieces too. Then this would
+    // ensure that we return to this unique state when removing hover state
+    // return to default state for tiles and pieces
+    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Action|Tags")
+    FGameplayTag TagActionGridState;
+    
     // GameplayTags sent to tiles to drive their visual state -- same
     // pattern as UConnectIt_PlacePieceAction, plus Tag_FirstSelected for
     // the two-step pick.
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Action|Tags")
-    FGameplayTag Tag_ValidHover;
-
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Action|Tags")
-    FGameplayTag Tag_Default;
+    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Action|Tags")
+    FGameplayTag TagActionMouseHover;
 
     // Sent to the tile chosen as the first (acting player's own) selection
     // while awaiting the second pick -- distinct from Tag_ValidHover so the
     // "already picked" tile stays visually marked even once hover moves on
     // to the second tile.
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Action|Tags")
-    FGameplayTag Tag_FirstSelected;
+    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Action|Tags")
+    FGameplayTag TagFirstSelection;
 
 protected:
 
+    virtual void Deactivate_Internal_Implementation() override;
+    
     // Resolves and caches TileRegistry -- same pattern as
     // UConnectIt_PlacePieceAction.
     virtual void PostInitialiseAction_Implementation() override;
-    virtual void OnCancelled_Implementation() override;
-    virtual void OnCompleted_Implementation() override;
 
     virtual bool IsValidHoverTile_Implementation(AGridTileBase* Tile) const override;
     virtual bool IsValidSelectionTile_Implementation(AGridTileBase* Tile) const override;

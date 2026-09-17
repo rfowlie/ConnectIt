@@ -7,6 +7,17 @@
 #include "InputMappingContext.h"
 
 
+void UInputTagBinder::CreateInputMappingContext()
+{
+    InputMappingContext = NewObject<UInputMappingContext>(this);
+
+    for (const FInputTagBinding& Binding : Bindings)
+    {
+        if (!IsValid(Binding.InputAction)) continue;
+        InputMappingContext->MapKey(Binding.InputAction, Binding.Key);
+    }
+}
+
 void UInputTagBinder::Initialise(
     UEnhancedInputComponent* InInputComponent,
     UEnhancedInputLocalPlayerSubsystem* InLocalPlayerSubsystem,
@@ -20,13 +31,7 @@ void UInputTagBinder::Initialise(
 
     if (IsValid(InputMappingContext)) return;
 
-    InputMappingContext = NewObject<UInputMappingContext>(this);
-
-    for (const FInputTagBinding& Binding : Bindings)
-    {
-        if (!IsValid(Binding.InputAction)) continue;
-        InputMappingContext->MapKey(Binding.InputAction, Binding.Key);
-    }
+    CreateInputMappingContext();
 }
 
 void UInputTagBinder::BindAll()
@@ -42,12 +47,12 @@ void UInputTagBinder::BindAll()
         for (const FInputTagBinding& Binding : Bindings)
         {
             if (!IsValid(Binding.InputAction)) continue;
+
             EnhancedInputComponent->BindAction(
                 Binding.InputAction,
                 Binding.TriggerEvent,
                 this,
-                &UInputTagBinder::HandleInputTriggered,
-                Binding.BindingTag);
+                &UInputTagBinder::HandleInputTriggeredExecuteDelegate);
         }
     }
 
@@ -70,7 +75,32 @@ void UInputTagBinder::UnbindAll()
     }
 }
 
-void UInputTagBinder::HandleInputTriggered(const FInputActionInstance& Instance, const FGameplayTag BindingTag)
+UInputMappingContext* UInputTagBinder::GetMappingContext()
 {
-    OnInputTagTriggered.Broadcast(Instance, BindingTag);
+    if (!IsValid(InputMappingContext))
+    {
+        CreateInputMappingContext();
+    }
+
+    return InputMappingContext;
+}
+
+
+void UInputTagBinder::HandleInputTriggeredExecuteDelegate(const FInputActionInstance& Instance)
+{
+    // find the action in the list
+    for (const auto Binding : Bindings)
+    {
+        if (Binding.InputAction == Instance.GetSourceAction())
+        {
+            const bool bSuccess = Binding.InputActionDelegate.ExecuteIfBound();
+            if (!bSuccess)
+            {
+                UE_LOG(LogTemp, Warning,
+                    TEXT("InputTagBinder - HandleInputTriggeredExecuteDelegate : "
+                         "InputActionDelegate not bound for '%s'"),
+                    *Binding.InputAction->GetName());
+            }
+        }
+    }
 }

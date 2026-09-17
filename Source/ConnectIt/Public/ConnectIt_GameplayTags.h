@@ -21,6 +21,7 @@ UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_Game_SwapPieces);
 UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_Game_ForcePlacePiece);
 UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_Game_ToggleTileActive);
 UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_Game_CapturePiece);
+UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_Game_Shift);
 
 UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_Tile_ValidHover);
 UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_Tile_InvalidHover);
@@ -43,3 +44,4 @@ UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_Event_PieceRemoved);
 UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_Event_PiecesSwapped);
 UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_Event_TileActiveToggled);
 UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_Event_PieceCaptured);
+UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_Event_BoardShifted);

@@ -38,6 +38,15 @@ FGridDirectionVector UGridMechanics_GridLibrary::GetGridDirectionVector(EGridDir
 	return GridDirectionVectors.FindRef(Direction);
 }
 
+EGridDirection UGridMechanics_GridLibrary::RotateGridDirection(
+	const EGridDirection InDirection, const int32 RotationAmount)
+{
+	// Wrap around the 8-way compass rather than letting the sum overflow past EGridDirection::UpLeft.
+	constexpr int32 NumDirections = 8;
+	const int32 Rotated = (static_cast<int32>(InDirection) + RotationAmount) % NumDirections;
+	return static_cast<EGridDirection>(Rotated);
+}
+
 EGridDirection UGridMechanics_GridLibrary::GetGridDirectionFromDegrees(float InDegrees)
 {
 	// Normalize into [0, 360) then bucket into 8 45-degree segments.

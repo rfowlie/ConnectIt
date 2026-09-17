@@ -6,6 +6,23 @@ Vault-wide passes go in `_core/_logs/`.
 
 Newest first:
 
+- [2026-09-17-1455](2026-09-17-1455.md) — session — backfilled the 09-16 session note's
+  `## Close` and wrote a new 09-17 session note, reconstructed from `_logs/` entries and
+  real file-modification timestamps (not conversational memory) since `/session-close` and
+  `/session-open` were both skipped
+- [2026-09-17-1443](2026-09-17-1443.md) — session — started `ConnectIt/design/`
+  (deliberately schema-less): notes for Place Piece, SWAP, Board Shift, and a general
+  "tiles with powers" feature idea with 5 example powers; `CLAUDE.md` updated to point at
+  it
+- [2026-09-17-1203](2026-09-17-1203.md) — session — updated `action-gameplay-tags`'s
+  `## Current thinking` with the root cause of the `ActionTag` instancing bug (Instanced
+  `Loadout.Actions[]` + plain-`EditAnywhere` `ActionTag`, not `DefaultToInstanced`) and two
+  candidate fixes, neither applied — owner wants to mull it over
+- [2026-09-16-1550](2026-09-16-1550.md) — session — first `/session-open` run; opened
+  `ConnectIt/_sessions/` (didn't exist yet) and wrote its first map note; flagged the
+  repo-root `.claude/skills/` mirrors as stale/generic (diverged from the vault's authored
+  skills) and `CLAUDE.md`'s missing single-next-action field since the 2026-09-14 "Current
+  state" removal
 - [2026-09-14-0207](2026-09-14-0207.md) — session — applied the 2026-09-14 check-in's task
   candidates to `_tasks/`: 2 rows completed, 1 rewritten (root-action task → HUD-owned-UI
   confirmation), 4 added (Board Shift, turn-end AND/OR groups, blocker prototype,

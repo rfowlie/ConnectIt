@@ -135,6 +135,7 @@ void AConnectIt_PlayerController::ServerRouteBoardChangeRequest_Implementation(
         return;
     }
 
+    // process
     const bool bSucceeded = GameMode->ProcessBoardRequest(Request);
 
     // return success value to client to halt player input

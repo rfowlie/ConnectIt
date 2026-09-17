@@ -199,7 +199,11 @@ void UConnectIt_BoardStateComponent::EnqueueBoardEventTags() const
     if (ChangeEvent.bTileMultiplierDestroyed)
     {
         GameEventSubsystem->QueueTagContainer(FGameplayTagContainer(ConnectIt_Event_TileMultiplierDestroyed));
-    }   
+    }
+    if (ChangeEvent.bBoardShifted)
+    {
+        GameEventSubsystem->QueueTagContainer(FGameplayTagContainer(ConnectIt_Event_BoardShifted));
+    }
 
     // knock on board changes from rules
     if (ChangeEvent.bLineScored)

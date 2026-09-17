@@ -16,6 +16,7 @@ UE_DEFINE_GAMEPLAY_TAG_COMMENT(ConnectIt_Game_SwapPieces, "ConnectIt.Game.State.
 UE_DEFINE_GAMEPLAY_TAG_COMMENT(ConnectIt_Game_ForcePlacePiece, "ConnectIt.Game.State.ForcePlacePiece", "");
 UE_DEFINE_GAMEPLAY_TAG_COMMENT(ConnectIt_Game_ToggleTileActive, "ConnectIt.Game.State.ToggleTileActive", "");
 UE_DEFINE_GAMEPLAY_TAG_COMMENT(ConnectIt_Game_CapturePiece, "ConnectIt.Game.State.CapturePiece", "");
+UE_DEFINE_GAMEPLAY_TAG_COMMENT(ConnectIt_Game_Shift, "ConnectIt.Game.State.Shift", "");
 
 UE_DEFINE_GAMEPLAY_TAG_COMMENT(ConnectIt_Tile_ValidHover, "ConnectIt.Tile.ValidHover", "");
 UE_DEFINE_GAMEPLAY_TAG_COMMENT(ConnectIt_Tile_InvalidHover, "ConnectIt.Tile.InvalidHover", "");
@@ -32,3 +33,4 @@ UE_DEFINE_GAMEPLAY_TAG_COMMENT(ConnectIt_Event_PieceRemoved, "ConnectIt.Event.Pi
 UE_DEFINE_GAMEPLAY_TAG_COMMENT(ConnectIt_Event_PiecesSwapped, "ConnectIt.Event.PiecesSwapped", "");
 UE_DEFINE_GAMEPLAY_TAG_COMMENT(ConnectIt_Event_TileActiveToggled, "ConnectIt.Event.TileActiveToggled", "");
 UE_DEFINE_GAMEPLAY_TAG_COMMENT(ConnectIt_Event_PieceCaptured, "ConnectIt.Event.PieceCaptured", "");
+UE_DEFINE_GAMEPLAY_TAG_COMMENT(ConnectIt_Event_BoardShifted, "ConnectIt.Event.BoardShifted", "");

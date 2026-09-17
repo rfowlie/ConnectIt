@@ -49,15 +49,15 @@ void UTurnBasedActionsComponent::InitialiseFromLoadout(UActionLoadoutDataAsset* 
         *InLoadout->LoadoutName,
         RuntimeActions.Num(),
         IsValid(RootAction)
-            ? *RootAction->ActionTag.ToString() : TEXT("none"),
+            ? *RootAction->GetActionTag().ToString() : TEXT("none"),
         IsValid(IdleViewerAction)
-            ? *IdleViewerAction->ActionTag.ToString() : TEXT("none"),
+            ? *IdleViewerAction->GetActionTag().ToString() : TEXT("none"),
         IsValid(SpectatorViewerAction)
-            ? *SpectatorViewerAction->ActionTag.ToString() : TEXT("none"),
+            ? *SpectatorViewerAction->GetActionTag().ToString() : TEXT("none"),
         IsValid(PauseViewerAction)
-            ? *PauseViewerAction->ActionTag.ToString() : TEXT("none"),
+            ? *PauseViewerAction->GetActionTag().ToString() : TEXT("none"),
         IsValid(AwaitingConfirmationAction)
-            ? *AwaitingConfirmationAction->ActionTag.ToString() : TEXT("none"));
+            ? *AwaitingConfirmationAction->GetActionTag().ToString() : TEXT("none"));
 }
 
 void UTurnBasedActionsComponent::CloneActionsFromLoadout()
@@ -95,7 +95,7 @@ void UTurnBasedActionsComponent::CloneActionsFromLoadout()
             TEXT("TurnBasedActionsComponent: Cloned '%s' "
                  "(Required: %s, Cancellable: %s, "
                  "AllowsOptionalInterrupt: %s)"),
-            *Clone->ActionTag.ToString(),
+            *Clone->GetActionTag().ToString(),
             Clone->bIsRequired ? TEXT("Yes") : TEXT("No"),
             Clone->bIsCancellable ? TEXT("Yes") : TEXT("No"),
             Clone->bAllowsOptionalInterrupt ? TEXT("Yes") : TEXT("No"));
@@ -321,7 +321,7 @@ void UTurnBasedActionsComponent::NotifyUnpaused()
         TEXT("TurnBasedActionsComponent: Unpaused on %s "
              "— popped '%s', stack depth: %d"),
         *GetOwner()->GetName(),
-        IsValid(Popped) ? *Popped->ActionTag.ToString() : TEXT("null"),
+        IsValid(Popped) ? *Popped->GetActionTag().ToString() : TEXT("null"),
         ActionStack.Num());
 }
 
@@ -383,12 +383,12 @@ void UTurnBasedActionsComponent::PushAction(UTurnBasedActionBase* Action)
     ActionStack.Add(Action);
     Action->Activate(GetOwningController());
     OnActionPushed.Broadcast(Action);
-    OnActionPushedSafe.Broadcast(FTurnActionSnapshot{ Action->ActionTag });
+    OnActionPushedSafe.Broadcast(FTurnActionSnapshot{ Action->GetActionTag() });
 
     UE_LOG(LogTurnBasedMechanics, Log,
         TEXT("TurnBasedActionsComponent: Pushed '%s' "
              "— stack depth: %d"),
-        *Action->ActionTag.ToString(),
+        *Action->GetActionTag().ToString(),
         ActionStack.Num());
 }
 
@@ -421,7 +421,7 @@ UTurnBasedActionBase* UTurnBasedActionsComponent::SafePopAction()
 
     OnActionPopped.Broadcast(Popped);
     OnActionPoppedSafe.Broadcast(
-        FTurnActionSnapshot{ IsValid(Popped) ? Popped->ActionTag : FGameplayTag() });
+        FTurnActionSnapshot{ IsValid(Popped) ? Popped->GetActionTag() : FGameplayTag() });
 
     // Reactivate new top
     if (ActionStack.Num() > 0 && IsValid(ActionStack.Last()))
@@ -432,10 +432,10 @@ UTurnBasedActionBase* UTurnBasedActionsComponent::SafePopAction()
     UE_LOG(LogTurnBasedMechanics, Log,
         TEXT("TurnBasedActionsComponent: Popped '%s' "
              "— stack depth: %d, new top: '%s'"),
-        IsValid(Popped) ? *Popped->ActionTag.ToString() : TEXT("null"),
+        IsValid(Popped) ? *Popped->GetActionTag().ToString() : TEXT("null"),
         ActionStack.Num(),
         (ActionStack.Num() > 0 && IsValid(ActionStack.Last()))
-            ? *ActionStack.Last()->ActionTag.ToString()
+            ? *ActionStack.Last()->GetActionTag().ToString()
             : TEXT("none"));
 
     return Popped;
@@ -481,12 +481,12 @@ void UTurnBasedActionsComponent::ClearAndPush(UTurnBasedActionBase* NewRoot)
     ActionStack.Add(NewRoot);
     NewRoot->Activate(GetOwningController());
     OnActionPushed.Broadcast(NewRoot);
-    OnActionPushedSafe.Broadcast(FTurnActionSnapshot{ NewRoot->ActionTag });
+    OnActionPushedSafe.Broadcast(FTurnActionSnapshot{ NewRoot->GetActionTag() });
     
     UE_LOG(LogTurnBasedMechanics, Log,
         TEXT("TurnBasedActionsComponent: Stack cleared and '%s' pushed "
              "as new root on %s"),
-        *NewRoot->ActionTag.ToString(),
+        *NewRoot->GetActionTag().ToString(),
         *GetOwner()->GetName());
 }
 
@@ -536,7 +536,7 @@ bool UTurnBasedActionsComponent::TryPushActionByRef(UTurnBasedAction* Action)
         UE_LOG(LogTurnBasedMechanics, Log,
             TEXT("TurnBasedActionsComponent: '%s' cannot activate "
                  "— completions: %d/%d, cooldown: %d"),
-            *Action->ActionTag.ToString(),
+            *Action->GetActionTag().ToString(),
             Action->CompletionsThisTurn,
             Action->MaxCompletionsPerTurn,
             Action->TurnsUntilAvailable);
@@ -557,8 +557,8 @@ bool UTurnBasedActionsComponent::TryPushActionByRef(UTurnBasedAction* Action)
                     TEXT("TurnBasedActionsComponent: Optional '%s' "
                          "cannot interrupt required '%s' — "
                          "bAllowsOptionalInterrupt is false"),
-                    *Action->ActionTag.ToString(),
-                    *TopAction->ActionTag.ToString());
+                    *Action->GetActionTag().ToString(),
+                    *TopAction->GetActionTag().ToString());
                 return false;
             }
         }
@@ -586,7 +586,7 @@ void UTurnBasedActionsComponent::CancelTopAction()
         UE_LOG(LogTurnBasedMechanics, Warning,
             TEXT("TurnBasedActionsComponent: CancelTopAction — "
                  "'%s' is not cancellable"),
-            *TopAction->ActionTag.ToString());
+            *TopAction->GetActionTag().ToString());
         return;
     }
 
@@ -639,12 +639,12 @@ FTurnBasedActionsComponentInfo UTurnBasedActionsComponent::GetInfo() const
 
     if (UTurnBasedActionBase* Top = GetTopAction())
     {
-        Info.TopActionTag = Top->ActionTag;
+        Info.TopActionTag = Top->GetActionTag();
     }
 
     if (UTurnBasedActionBase* Root = GetRootAction())
     {
-        Info.RootActionTag = Root->ActionTag;
+        Info.RootActionTag = Root->GetActionTag();
     }
 
     Info.StackDepth = GetStackDepth();
@@ -678,13 +678,13 @@ UTurnBasedAction* UTurnBasedActionsComponent::FindActionByTag(FGameplayTag Tag) 
     UTurnBasedAction* const* Found = RuntimeActions.FindByPredicate(
         [Tag](const UTurnBasedAction* A)
         {
-            return IsValid(A) && A->ActionTag == Tag;
+            return IsValid(A) && A->GetActionTag() == Tag;
         });
 
     if (Found) return *Found;
 
     // Check root action
-    if (IsValid(RootAction) && RootAction->ActionTag == Tag)
+    if (IsValid(RootAction) && RootAction->GetActionTag() == Tag)
         return RootAction;
 
     return nullptr;
@@ -747,7 +747,7 @@ void UTurnBasedActionsComponent::HandleActionCompleted(UTurnBasedAction* Action)
     SafePopAction();
     OnActionCompleted.Broadcast(Action);
     OnActionCompletedSafe.Broadcast(
-        FTurnActionSnapshot{ IsValid(Action) ? Action->ActionTag : FGameplayTag() });
+        FTurnActionSnapshot{ IsValid(Action) ? Action->GetActionTag() : FGameplayTag() });
     CheckAutoEndTurn();
 }
 
@@ -757,7 +757,7 @@ void UTurnBasedActionsComponent::HandleActionCancelled(UTurnBasedAction* Action)
     SafePopAction();
     OnActionCancelled.Broadcast(Action);
     OnActionCancelledSafe.Broadcast(
-        FTurnActionSnapshot{ IsValid(Action) ? Action->ActionTag : FGameplayTag() });
+        FTurnActionSnapshot{ IsValid(Action) ? Action->GetActionTag() : FGameplayTag() });
 }
 
 void UTurnBasedActionsComponent::HandleBoardChangeRequested(const FTurnActionRequest& Request)
@@ -834,7 +834,7 @@ void UTurnBasedActionsComponent::LogActionRecord(UTurnBasedAction* Action, FStri
     if (!IsValid(Action)) return;
 
     FTurnBasedActionRecord Record;
-    Record.ActionTag    = Action->ActionTag;
+    Record.ActionTag    = Action->GetActionTag();
     Record.TurnNumber   = CurrentTurnNumber;
     Record.DebugNote    = Note;
     Record.Timestamp    = GetWorld()

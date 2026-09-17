@@ -45,7 +45,7 @@ its children) instead of a full router.
 | Section | Purpose | Template | Mounts at |
 |---|---|---|---|
 | `_clippings` | Unprocessed capture dump (Web Clipper output); empty is the goal state | — (folder layout) | either |
-| `_data` | Reference: `raw/` (verbatim text sources) + `wiki/` (synthesis) | — (folder layout) | either |
+| `_data` | Reference: `raw/` (verbatim text sources) + `wiki/` (synthesis) | `[[TSchemaWiki]]` (`wiki/` only — `raw/` still has none) | either |
 | `_attachments` | Non-note files (images, PDFs, audio) — immutable, like `raw/` | — (folder layout) | either |
 | `_user` | Everything about the owner | `[[TSchemaUser]]` | either |
 | `_decisions` | One dated note per non-obvious settled call | `[[TSchemaDecisions]]` | either |
@@ -68,8 +68,9 @@ inside each domain, or both, is an open question in `ABOUT.md`. `_atomic` is the
 exception: **single-instance**, only ever `_core/_atomic/` (a second `atomic/` anywhere
 is an error).
 
-`_clippings`, `_data`, `_attachments`, and `_core` have no `TSchema*` file — they
-define a folder layout, not a note of fixed shape.
+`_clippings`, `_attachments`, and `_core` have no `TSchema*` file — they define a folder
+layout, not a note of fixed shape. `_data` is a partial exception: `raw/` is still
+shapeless (verbatim ingest), but `wiki/` now has a fixed shape, `[[TSchemaWiki]]`.
 
 `_code` is **code-derived**: its pages are generated from source under version control
 and carry a `commit:` provenance anchor (the last commit to touch the page's `source:`

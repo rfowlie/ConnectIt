@@ -195,11 +195,11 @@ void UConnectIt_DebugStateWidget::RefreshActionState()
     CachedActionState.bValid = IsValid(ResolvedActionsComponent);
     if (!CachedActionState.bValid) return;
 
-    // ActionTag lives on UTurnBasedActionBase itself -- no cast needed.
+    // GetActionTag() lives on UTurnBasedActionBase itself -- no cast needed.
     // Cache the tag only, never the returned pointer (see header comment).
     if (UTurnBasedActionBase* Top = ResolvedActionsComponent->GetTopAction())
     {
-        CachedActionState.TopActionTag = Top->ActionTag;
+        CachedActionState.TopActionTag = Top->GetActionTag();
     }
     else
     {
@@ -208,7 +208,7 @@ void UConnectIt_DebugStateWidget::RefreshActionState()
 
     if (UTurnBasedActionBase* Root = ResolvedActionsComponent->GetRootAction())
     {
-        CachedActionState.RootActionTag = Root->ActionTag;
+        CachedActionState.RootActionTag = Root->GetActionTag();
     }
     else
     {

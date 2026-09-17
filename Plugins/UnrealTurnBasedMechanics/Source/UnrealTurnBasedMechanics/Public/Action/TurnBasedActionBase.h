@@ -21,9 +21,8 @@ class UNREALTURNBASEDMECHANICS_API UTurnBasedActionBase : public UObject
 
 public:
 
-    // Tag identifying this action -- for debugging and logging
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Action")
-    FGameplayTag ActionTag;
+    UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "Action")
+    FGameplayTag GetActionTag() const;
 
     // --- Lifecycle ---
 
@@ -63,7 +62,7 @@ public:
     APlayerController* GetPlayerController() const;
 
 protected:
-
+    
     void SetIsActive(const bool InActive) { bIsActive = InActive; }
     
     // Override to implement activation behaviour
@@ -95,5 +94,10 @@ protected:
 
 private:
 
+    // TODO: this is causing issues by being exposed on load outs when it should only be on the BP
+    // Tag identifying this action -- for debugging and logging
+    // UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Action")
+    // FGameplayTag ActionTag;
+    
     bool bIsActive = false;
 };

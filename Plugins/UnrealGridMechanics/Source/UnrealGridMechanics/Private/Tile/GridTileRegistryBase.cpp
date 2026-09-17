@@ -172,6 +172,55 @@ TArray<AGridTileBase*> UGridTileRegistryBase::GetColumn(int32 ColumnIndex) const
     return OutTiles;
 }
 
+TArray<AGridTileBase*> UGridTileRegistryBase::GetTilesByDirection(
+    FGridPosition StartPosition,
+    EGridDirection GridDirection) const
+{
+    TArray<AGridTileBase*> OutTiles;
+
+    for (const TObjectPtr<AGridTileBase>& Tile : Tiles)
+    {
+        if (!IsValid(Tile)) continue;
+
+        const FGridPosition TilePosition = GetPositionOfTile(Tile);
+        bool bOnLine = false;
+
+        switch (GridDirection)
+        {
+        case EGridDirection::Up:
+        case EGridDirection::Down:
+            // Vertical line through StartPosition: same column (Y), any row.
+            bOnLine = (TilePosition.Y == StartPosition.Y);
+            break;
+        case EGridDirection::Left:
+        case EGridDirection::Right:
+            // Horizontal line through StartPosition: same row (X), any column.
+            bOnLine = (TilePosition.X == StartPosition.X);
+            break;
+        case EGridDirection::UpRight:
+        case EGridDirection::DownLeft:
+            // "/" diagonal through StartPosition: X - Y constant.
+            bOnLine = (TilePosition.X - TilePosition.Y == StartPosition.X - StartPosition.Y);
+            break;
+        case EGridDirection::UpLeft:
+        case EGridDirection::DownRight:
+            // "\" diagonal through StartPosition: X + Y constant.
+            bOnLine = (TilePosition.X + TilePosition.Y == StartPosition.X + StartPosition.Y);
+            break;
+        case EGridDirection::Max:
+        default:
+            break;
+        }
+
+        if (bOnLine)
+        {
+            OutTiles.Add(Tile);
+        }
+    }
+
+    return OutTiles;
+}
+
 TArray<FGridPosition> UGridTileRegistryBase::GetAllTilePositions() const
 {
     TArray<FGridPosition> OutPositions;

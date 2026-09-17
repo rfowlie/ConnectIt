@@ -40,7 +40,7 @@ public:
 
     // Called once by AConnectIt_GameMode right after construction.
     void Initialise(UConnectIt_BoardRules* InBoardRules);
-
+    
     // Entry point for all board change requests -- see
     // AConnectIt_GameMode::ProcessBoardRequest, the only intended caller.
     // Dispatches by RequestType, unwrapping Request.Payload into whichever
@@ -110,6 +110,8 @@ private:
     // line scores like any other turn-ending move.
     bool HandleSwapPiecesRequest(const FConnectItRequestSwapPieces& Request, int32 FactionID) const;
 
+    bool HandleBoardShiftRequest(const FConnectItRequestBoardShift& Request, int32 FactionID) const;
+    
     bool HandleToggleTileActiveRequest(const FConnectItRequestToggleTileActive& Request) const;
 
     // Unlike HandleSwapPiecesRequest, scoring IS re-run here -- exactly one

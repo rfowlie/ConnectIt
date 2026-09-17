@@ -33,6 +33,12 @@ Every `_core/_skills/process-*.md` file **except this one** (`process.md`) — c
 Discover the list by globbing `_core/_skills/process-*.md` rather than hard-coding it —
 the list above is current as of this file's writing, not a fixed set.
 
+**Fixed dependency: `process-data` before `process-atomic`.** `process-atomic`'s `_data/`
+sweep pass reads `_data/wiki/` notes and their `atomic-summary` field, which only exists
+(or is current) once `process-data` has run. This isn't incidental list order — if
+discovery ever changes (alphabetical, parallel, etc.), `process-data` must still be
+sequenced before `process-atomic` in the run.
+
 ## Arguments
 
 - None. If the user names one schema ("just process data"), run that one skill directly

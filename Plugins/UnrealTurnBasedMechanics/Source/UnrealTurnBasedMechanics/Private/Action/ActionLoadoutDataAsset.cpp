@@ -43,7 +43,7 @@ TArray<UTurnBasedAction*> UActionLoadoutDataAsset::GetPermittedActions() const
     for (UTurnBasedAction* Action : Actions)
     {
         if (!IsValid(Action)) continue;
-        if (BannedActionTags.HasTag(Action->ActionTag)) continue;
+        if (BannedActionTags.HasTag(Action->GetActionTag())) continue;
         Permitted.Add(Action);
     }
 
@@ -82,7 +82,7 @@ bool UActionLoadoutDataAsset::IsActionPermitted(FGameplayTag ActionTag) const
     return Actions.ContainsByPredicate(
         [ActionTag](const UTurnBasedAction* Action)
         {
-            return IsValid(Action) && Action->ActionTag == ActionTag;
+            return IsValid(Action) && Action->GetActionTag() == ActionTag;
         });
 }
 
@@ -117,7 +117,7 @@ EDataValidationResult UActionLoadoutDataAsset::IsDataValid(
     {
         if (!IsValid(Action)) continue;
 
-        if (!Action->ActionTag.IsValid())
+        if (!Action->GetActionTag().IsValid())
         {
             Context.AddWarning(FText::FromString(FString::Printf(
                 TEXT("ActionLoadoutDataAsset '%s': "
@@ -126,16 +126,16 @@ EDataValidationResult UActionLoadoutDataAsset::IsDataValid(
             continue;
         }
 
-        if (SeenTags.Contains(Action->ActionTag))
+        if (SeenTags.Contains(Action->GetActionTag()))
         {
             Context.AddWarning(FText::FromString(FString::Printf(
                 TEXT("ActionLoadoutDataAsset '%s': "
                      "Duplicate ActionTag '%s' found."),
                 *LoadoutName,
-                *Action->ActionTag.ToString())));
+                *Action->GetActionTag().ToString())));
         }
 
-        SeenTags.Add(Action->ActionTag);
+        SeenTags.Add(Action->GetActionTag());
     }
 
     return Result;

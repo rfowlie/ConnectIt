@@ -57,8 +57,9 @@ Blueprint).
   `Cancel`. `ResetTurnState()` clears it at turn start.
 - An action that defers selection to a later internal state should leave
   `bRequiresSelection = false` and call `BindInput()` itself when ready.
-- Presentation fields are UI-only — the action never reads them; `ActionTag` is an
-  identifier, not a display string.
+- Presentation fields are UI-only — the action never reads them; `GetActionTag()` (a
+  `BlueprintNativeEvent` on `UTurnBasedActionBase`, implemented per-action rather than a
+  settable data field) is an identifier, not a display string.
 - Board change goes `RequestBoardChange` → `OnChangeRequested` → the component's
   `HandleBoardChangeRequested` (freezes the stack) — see
   [[UnrealTurnBasedMechanics/code/systems/action-stack-lifecycle|action-stack-lifecycle]].

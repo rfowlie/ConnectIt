@@ -17,6 +17,27 @@ logic — everything reusable lives in a plugin.
 - **Config:** `../Config/` — `DefaultGameplayTags.ini` is the tag vocabulary the
   phase-barrier and turn systems key off.
 
+## Current state lives elsewhere, not here
+
+This file **never carries a "Current state" or single-next-action section.** One existed
+here through 2026-09-14 and was deliberately removed — it always drifted from reality
+between sessions and became actively misleading. It will not come back; don't
+reintroduce one, and don't let `/session-close` or any other skill write one back in.
+
+For what's actually happening right now, read (newest first):
+
+- **[`_tasks/active.md`](_tasks/active.md)** — the real open-work list.
+- **The newest note in [`_sessions/`](_sessions/)** — the last session's reckoning, if one
+  ran.
+- **The newest note in
+  [`Development/optimal-co-developer/_meetings/`](../Development/optimal-co-developer/_meetings/__README.md)**
+  — the last check-in's summary and `## Next`.
+- **[`_decisions/`](_decisions/)** — recent settled calls, including explicit deferrals
+  ("captured as next step after X ships").
+
+`/session-open` reconstructs the map from exactly these on demand, every time — that's the
+intended shape, not a workaround for this section's absence.
+
 ## How it consumes the suite
 
 - **Turn-based framework** — GameMode / GameState / PlayerState / controllers derive from
@@ -52,10 +73,16 @@ The full suite dependency graph and layering is the **Map** section of
   [`/session-open`](../Development/_skills/session-open.md) and
   [`/session-close`](../Development/_skills/session-close.md) (authored under
   `Development/_skills/` since the procedure is generic; the session notes themselves live
-  here, scoped to this domain). Governed by
+  here, scoped to this domain). `/session-close` fills this note's own `## Close`, never
+  this file's own "current state" — see above. Governed by
   [`_core/_schema/_sessions.md`](../_core/_schema/_sessions.md).
 - **`_questions/`** — one note per open, unresolved ConnectIt-scoped question, living
   until it closes. Governed by [`_core/_schema/_questions.md`](../_core/_schema/_questions.md).
+- **`design/`** — game design notes: how each action is meant to work and its gameplay
+  ramifications, feature sketches, open design questions. **No schema yet** — started
+  2026-09-17, deliberately unstructured while it's still just "start writing notes down";
+  a shape (or a real `_design` schema) can get imposed once there's enough here to need
+  one. Not `_`-prefixed for exactly that reason.
 
 ## Start here
 

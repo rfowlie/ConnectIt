@@ -117,3 +117,16 @@ TArray<FTileShiftInstruction> UGridMechanics_GridShiftLibrary::BuildShiftInstruc
 
     return Instructions;
 }
+
+TArray<FVector> UGridMechanics_GridShiftLibrary::BuildRaisedShiftPath(
+    const FVector& Start, const FVector& End, float RaiseHeight)
+{
+    const FVector Up(0.f, 0.f, RaiseHeight);
+    return
+    {
+        Start,
+        Start + Up,
+        End + Up,
+        End
+    };
+}

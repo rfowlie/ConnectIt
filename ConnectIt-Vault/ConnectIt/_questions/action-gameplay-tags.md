@@ -45,4 +45,51 @@ source instead of being separately, manually kept in sync.
 
 ## Current thinking
 
-Not started — flagged during SWAP debugging, not yet designed.
+**2026-09-17 — root cause found for one of the four places (the instance `ActionTag`).**
+
+`Loadout->Actions[]` ([`ActionLoadoutDataAsset.h`](../../Plugins/UnrealTurnBasedMechanics/Source/UnrealTurnBasedMechanics/Public/Action/ActionLoadoutDataAsset.h))
+is `UPROPERTY(EditAnywhere, Instanced, ...)` — every entry placed into it becomes its own
+fully-serialized sub-object, a deep copy, not a reference. That's correct and wanted for
+this array (same mechanism that gives each controller its own independent runtime clone
+later). The bug is that `ActionTag`, declared on `UTurnBasedActionBase`
+([`TurnBasedActionBase.h`](../../Plugins/UnrealTurnBasedMechanics/Source/UnrealTurnBasedMechanics/Public/Action/TurnBasedActionBase.h)),
+is plain `EditAnywhere` — so it rides along as just another per-instance-editable field.
+The moment an action is placed into `Loadout.Actions[]`, that placement gets its own
+independent copy of `ActionTag`, seeded from the class's CDO at that moment; changing the
+class's own defaults afterward doesn't propagate to the already-placed instance. That's the
+"set it in two places" experience — the class defaults' `ActionTag` and the specific
+loadout placement's `ActionTag` are two independently-editable copies with nothing keeping
+them in sync.
+
+**Not caused by `DefaultToInstanced`** on the action classes, and removing it wouldn't fix
+this — `Actions[]` already says `Instanced` explicitly regardless of the class specifier,
+and `DefaultToInstanced` is what correctly makes an *unmarked* future `UObject*` property of
+this type default to owned/duplicated behavior (the same mechanism the per-controller
+runtime-clone pattern already depends on elsewhere). Removing it would only remove a safety
+net, not touch this bug.
+
+**Candidate fix, not yet applied (holding off per owner):** change `ActionTag` from
+`EditAnywhere` to `EditDefaultsOnly` — still settable at the class level (C++ constructor,
+or a Blueprint child's Class Defaults), but no longer offered as a per-placement override
+inside `Loadout.Actions[]`'s inline instanced-object editor, so every instance just
+inherits the one value the class defines. Plain C++ `protected`/`private` was considered
+and ruled out as the mechanism — access level doesn't control editor exposure in UE's
+reflection system, the UPROPERTY specifier does. A stronger version worth weighing
+alongside it: drop `ActionTag` as a `UPROPERTY` entirely and derive it in code (a
+`virtual FGameplayTag GetActionTag() const` each concrete action class hardcodes) — closes
+the loop completely, no data field left to diverge at all.
+
+**Still separate, not addressed by the above:**
+`UConnectIt_TurnBasedActionsComponent::RequiredActionTagA`/`RequiredActionTagB` — a plain
+`FGameplayTag` on a different object entirely (the ActionsComponent, not the action), hand-
+typed to match SWAP/PlacePiece's `ActionTag` by a human reading two places. No Instanced-
+object mechanics involved, so the fix above won't touch it. Candidate direction floated:
+move "does completing this action satisfy the OR-group" onto the action instance itself
+(e.g. a `bSatisfiesAutoEndTurn` bool next to `bIsRequired`) so `CanAutoEndTurn_Implementation`
+checks a flag on each action instead of tag-matching against a separately-typed pair on the
+component — would also double as a natural stepping stone toward the AND/OR-groups
+generalization already deferred in
+[`_decisions/2026-09-14-turn-end-requirements-need-and-or-groups.md`](../_decisions/2026-09-14-turn-end-requirements-need-and-or-groups.md).
+
+Owner wants to mull over both candidate directions before committing — nothing implemented
+yet.

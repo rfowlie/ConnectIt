@@ -156,6 +156,20 @@ bool UConnectIt_BoardRequestMediator::ProcessRequest(const FTurnActionRequest& R
         return false;
     }
 
+    if (Request.RequestType == ConnectIt_Game_Shift)
+    {
+        if (const FConnectItRequestBoardShift* Payload =
+            Request.Payload.GetPtr<FConnectItRequestBoardShift>())
+        {
+            return HandleBoardShiftRequest(*Payload, Request.FactionID);
+        }
+
+        UE_LOG(LogTemp, Error,
+            TEXT("ConnectIt_BoardRequestMediator: BoardShift request payload "
+                 "missing or wrong type"));
+        return false;
+    }
+
     if (Request.RequestType == ConnectIt_Game_ToggleTileActive)
     {
         if (const FConnectItRequestToggleTileActive* Payload =
@@ -497,6 +511,162 @@ bool UConnectIt_BoardRequestMediator::HandleSwapPiecesRequest(
     // on a request that got rejected above.
     PlayerState->ConsumeSwapUse();
 
+    return true;
+}
+
+bool UConnectIt_BoardRequestMediator::HandleBoardShiftRequest(
+    const FConnectItRequestBoardShift& Request, int32 FactionID) const
+{
+    // Unrestricted -- no faction-ownership check on the shifted line and no
+    // use-budget, unlike SWAP. Turn order (whether this faction was even
+    // allowed to submit a request right now) is the only gate, same as
+    // PlacePiece. FactionID is only used below for logging.
+    if (Request.Positions.Num() < 2)
+    {
+        UE_LOG(LogTemp, Warning,
+            TEXT("ConnectIt_BoardRequestMediator: BoardShift rejected -- "
+                 "need at least 2 positions to shift, got %d"),
+            Request.Positions.Num());
+        return false;
+    }
+
+    // UConnectIt_BoardStateComponent* BoardState = GetBoardState();
+    UConnectIt_BoardStateComponent* BoardState = UConnectIt_GameUtilityLibrary::GetBoardStateComponent(this);
+    const FConnectItBoardState& Current = BoardState->GetCurrentState();
+
+    // Re-validate every position against the server's own board state --
+    // Request.Positions is client-computed (UGridTileRegistryBase::
+    // GetTilesByDirection, sorted into line order); never trust it blindly.
+    // Snapshot each position's CURRENT data in Request order before mutating
+    // anything, since the rotation below reads every entry before writing
+    // any of them.
+    TArray<FConnectItTileData> OldDataInOrder;
+    OldDataInOrder.Reserve(Request.Positions.Num());
+    for (const FGridPosition& Pos : Request.Positions)
+    {
+        const FConnectItTileData* Data = Current.GetTileData(Pos);
+        if (!Data)
+        {
+            UE_LOG(LogTemp, Warning,
+                TEXT("ConnectIt_BoardRequestMediator: BoardShift rejected -- "
+                     "position (%d,%d) is not a registered tile"),
+                Pos.X, Pos.Y);
+            return false;
+        }
+        OldDataInOrder.Add(*Data);
+    }
+
+    // A tile with bCanShift false is skipped -- it keeps its own data
+    // untouched and takes no part in the rotation; the shiftable tiles
+    // around it rotate among themselves as if it weren't in the line at
+    // all. Filter down to just the shiftable subset (still in line order)
+    // before rotating.
+    TArray<FGridPosition> ShiftablePositions;
+    TArray<FConnectItTileData> ShiftableOldData;
+    for (int32 Index = 0; Index < Request.Positions.Num(); Index++)
+    {
+        if (OldDataInOrder[Index].bCanShift)
+        {
+            ShiftablePositions.Add(Request.Positions[Index]);
+            ShiftableOldData.Add(OldDataInOrder[Index]);
+        }
+    }
+
+    if (ShiftablePositions.Num() < 2)
+    {
+        UE_LOG(LogTemp, Warning,
+            TEXT("ConnectIt_BoardRequestMediator: BoardShift rejected -- "
+                 "fewer than 2 shiftable tiles in the line (%d of %d "
+                 "positions can shift)"),
+            ShiftablePositions.Num(), Request.Positions.Num());
+        return false;
+    }
+
+    FConnectItBoardState NewState = Current;
+
+    // Rotate whole tile data (FactionPiece, Multiplier, bIsActive, bCanShift
+    // -- the tile itself, not just the piece on it) one step along the
+    // shiftable subset, in its original line order: each shiftable position
+    // takes on the PREVIOUS shiftable position's old data, with the last
+    // one's data wrapping around to the first. Since Request.Positions is
+    // sorted by increasing distance along Request.Direction from the
+    // selected tile, this moves every shiftable tile exactly one step
+    // further in that direction, wrapping the far end around to the near
+    // end -- skipped (unshiftable) positions are left out of both the read
+    // and the write entirely, and nothing outside Request.Positions is ever
+    // touched. ShiftStartPositions/ShiftEndPositions record the same pairing
+    // the rotation itself uses, for visual listeners.
+    const int32 ShiftableNum = ShiftablePositions.Num();
+    TArray<FGridPosition> ShiftStartPositions;
+    TArray<FGridPosition> ShiftEndPositions;
+    ShiftStartPositions.Reserve(ShiftableNum);
+    ShiftEndPositions.Reserve(ShiftableNum);
+    for (int32 Index = 0; Index < ShiftableNum; Index++)
+    {
+        const FGridPosition& FromPosition = ShiftablePositions[(Index - 1 + ShiftableNum) % ShiftableNum];
+        const FGridPosition& ToPosition = ShiftablePositions[Index];
+        const FConnectItTileData& IncomingData = ShiftableOldData[(Index - 1 + ShiftableNum) % ShiftableNum];
+
+        NewState.SetTileData(ToPosition, IncomingData);
+        ShiftStartPositions.Add(FromPosition);
+        ShiftEndPositions.Add(ToPosition);
+    }
+
+    // Re-run scoring for every position that now holds a piece as a result
+    // of the shift -- only occupied destinations can complete a line.
+    // ApplyScoring appends to ScoringPositions across calls, same pattern
+    // as HandleSwapPiecesRequest.
+    TArray<FGridPosition> ScoringPositions;
+    float TotalPointsScored = 0.f;
+    int32 ScoringFactionSlot = -1;
+    for (const FGridPosition& Pos : Request.Positions)
+    {
+        const FConnectItTileData* NewData = NewState.GetTileData(Pos);
+        if (!NewData || !NewData->bIsOccupied) continue;
+
+        const float PointsScored = BoardRules->ApplyScoring(
+            NewState, Pos, NewData->FactionPiece, ScoringPositions);
+        if (PointsScored > 0.f)
+        {
+            TotalPointsScored += PointsScored;
+            // Known simplification, same as HandleSwapPiecesRequest:
+            // ChangeEvent only carries one ScoringFactionSlot, so if more
+            // than one faction scores from the same shift, only the last
+            // one found is named in the event -- ScoreBoard itself (mutated
+            // inside ApplyScoring) is correct for all of them regardless.
+            ScoringFactionSlot = NewData->FactionPiece;
+        }
+    }
+
+    BoardRules->CheckWinCondition(NewState);
+
+    FConnectItBoardChangeEvent ChangeEvent;
+    ChangeEvent.bBoardShifted       = true;
+    ChangeEvent.ShiftDirection      = Request.Direction;
+    ChangeEvent.ShiftAnchorPosition = Request.Positions[0];
+    ChangeEvent.ShiftStartPositions = ShiftStartPositions;
+    ChangeEvent.ShiftEndPositions   = ShiftEndPositions;
+    ChangeEvent.bLineScored         = TotalPointsScored > 0.f;
+    ChangeEvent.ScoringFactionSlot  = ScoringFactionSlot;
+    ChangeEvent.PointsScored        = TotalPointsScored;
+    ChangeEvent.ScoringLinePositions = ScoringPositions;
+    ChangeEvent.bGameWon            = NewState.bGameOver && !Current.bGameOver;
+    ChangeEvent.WinningFactionSlot  = NewState.WinningFactionSlot;
+
+    if (ChangeEvent.bLineScored)
+    {
+        UE_LOG(LogTemp, Log,
+            TEXT("ConnectIt_BoardRequestMediator: Faction %d's shift scored "
+                 "%.0f points"),
+            ScoringFactionSlot, TotalPointsScored);
+    }
+
+    UE_LOG(LogTemp, Log,
+        TEXT("ConnectIt_BoardRequestMediator: Faction %d shifted %d tile(s) "
+             "starting at (%d,%d)"),
+        FactionID, ChangeEvent.ShiftEndPositions.Num(), Request.Positions[0].X, Request.Positions[0].Y);
+
+    BoardState->SetBoardState(NewState, ChangeEvent);
     return true;
 }
 

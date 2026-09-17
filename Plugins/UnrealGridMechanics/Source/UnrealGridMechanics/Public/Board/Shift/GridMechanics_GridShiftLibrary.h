@@ -50,4 +50,16 @@ public:
 		const FShiftResult& Result,
 		const TMap<FGridPosition, AGridTileBase*>& TileActors,
 		const TMap<FGridPosition, FVector>& WorldPositions);
+
+	// Builds the 4-point raise/cross/descend path used to move a tile from
+	// Start to End without visually overlapping other tiles mid-shift (tiles
+	// are square -- a straight line through occupied space would clip).
+	// Returns { Start, Start+Up*RaiseHeight, End+Up*RaiseHeight, End },
+	// intended as the Locations array for an FActorLerpInfo
+	// (UnrealGameMechanics/Animation/ActorLerpComponent.h).
+	UFUNCTION(BlueprintPure, Category = "Grid|Shift")
+	static TArray<FVector> BuildRaisedShiftPath(
+		const FVector& Start,
+		const FVector& End,
+		float RaiseHeight);
 };

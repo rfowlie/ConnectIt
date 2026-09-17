@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "GridMechanicsBaseEnums.h"
 #include "GridMechanicsBaseStructs.h"
 #include "ConnectIt_Structs.generated.h"
 
@@ -31,7 +32,15 @@ struct FConnectItTileData
     // (non player piece occupying)
     UPROPERTY(BlueprintReadOnly)
     bool bIsOccupied = true;
-    
+
+    // Whether a board shift is allowed to move this tile's data. An
+    // unshiftable tile is skipped -- it stays exactly where it is, and the
+    // shiftable tiles around it rotate among themselves as if it weren't
+    // part of the line at all. See
+    // UConnectIt_BoardRequestMediator::HandleBoardShiftRequest.
+    UPROPERTY(BlueprintReadOnly)
+    bool bCanShift = true;
+
     void SetFactionPiece(const int32 InFactionPiece)
     {
         FactionPiece = InFactionPiece;
@@ -262,6 +271,35 @@ struct FConnectItBoardChangeEvent
 
     UPROPERTY(BlueprintReadOnly)
     int32 PreviousFactionSlot = -1;
+
+    // --- Board Shifted --- (UConnectIt_BoardShiftAction)
+
+    UPROPERTY(BlueprintReadOnly)
+    bool bBoardShifted = false;
+
+    UPROPERTY(BlueprintReadOnly)
+    EGridDirection ShiftDirection = EGridDirection::Max;
+
+    UPROPERTY(BlueprintReadOnly)
+    FGridPosition ShiftAnchorPosition;
+
+    // Where each shifted tile's data came from and went to -- parallel arrays,
+    // index-aligned (ShiftStartPositions[i] -> ShiftEndPositions[i]), not a
+    // TMap: this struct rides inside BoardSnapshot, which replicates via
+    // standard UPROPERTY(ReplicatedUsing=...) property replication, and TMap
+    // isn't net-serializable through that path (same reason
+    // FConnectItBoardState uses TilePositions/TileDataArray instead of a
+    // TMap -- a TMap field here would populate on the server and silently
+    // stay empty on every client). Build a local TMap from these two arrays
+    // client-side if a lookup-by-start-position is actually needed; don't
+    // replicate one. Only the tiles that actually moved appear here -- a
+    // subset of the full selected line when any tile in it has bCanShift
+    // false (those are skipped, keep their own data, and are left out).
+    UPROPERTY(BlueprintReadOnly)
+    TArray<FGridPosition> ShiftStartPositions;
+
+    UPROPERTY(BlueprintReadOnly)
+    TArray<FGridPosition> ShiftEndPositions;
 };
 
 // Snapshot -- the ONE replicated property on UConnectItBoardStateComponent
@@ -377,4 +415,22 @@ struct FConnectItRequestForcePlacePiece
 
     UPROPERTY(BlueprintReadWrite)
     FGridPosition Position;
+};
+
+// FTurnActionRequest payload -- UConnectIt_BoardShiftAction. Positions is the
+// full line to be shifted (see UGridTileRegistryBase::GetTilesByDirection),
+// in line order from the selected tile outward, so the Mediator doesn't have
+// to re-walk the line itself; Direction says which way it shifts. Still
+// re-validated server-side against the actual board state before use, same
+// as every other request payload -- never trusted blindly.
+USTRUCT(BlueprintType)
+struct FConnectItRequestBoardShift
+{
+    GENERATED_BODY()
+
+    UPROPERTY(BlueprintReadWrite)
+    TArray<FGridPosition> Positions;
+
+    UPROPERTY(BlueprintReadWrite)
+    EGridDirection Direction = EGridDirection::Max;
 };

@@ -89,18 +89,17 @@ bool UConnectIt_PlacePieceAction::IsValidSelectionTile_Implementation(AGridTileB
 void UConnectIt_PlacePieceAction::HandleValidHover_Implementation(AGridTileBase* Tile)
 {
     if (!IsValid(Tile)) return;
-    if (!Tag_ValidHover.IsValid()) return;
+    if (!TagActionMouseHover.IsValid()) return;
 
-    Tile->SendGameplayTag(Tag_ValidHover);
+    Tile->SendGameplayTag(TagActionMouseHover);
 }
 
-void UConnectIt_PlacePieceAction::HandleHoverCleared_Implementation(
-    AGridTileBase* PreviousTile)
+void UConnectIt_PlacePieceAction::HandleHoverCleared_Implementation(AGridTileBase* PreviousTile)
 {
     if (!IsValid(PreviousTile)) return;
-    if (!Tag_Default.IsValid()) return;
+    if (!TagActionGridState.IsValid()) return;
 
-    PreviousTile->SendGameplayTag(Tag_Default);
+    PreviousTile->SendGameplayTag(TagActionGridState);
 }
 
 void UConnectIt_PlacePieceAction::HandleValidSelection_Implementation(AGridTileBase* Tile)
@@ -120,7 +119,7 @@ void UConnectIt_PlacePieceAction::HandleValidSelection_Implementation(AGridTileB
     // Build the request -- board manager handles all mutation
     // Action has no knowledge of pools, piece actors, or state changes
     FTurnActionRequest Request;
-    Request.RequestType = ActionTag;
+    Request.RequestType = GetActionTag();
     Request.FactionID = GetOwningControllerFactionID();
     Request.Payload.InitializeAs<FConnectItRequestPlacePiece>(
         FConnectItRequestPlacePiece{ .Positions = { Position } });
@@ -145,9 +144,9 @@ void UConnectIt_PlacePieceAction::ClearSelectionState_Implementation()
     // Clear hover state on currently hovered tile
     if (AGridTileBase* Hovered = CurrentHoveredTile.Get())
     {
-        if (Tag_Default.IsValid())
+        if (TagActionGridState.IsValid())
         {
-            Hovered->SendGameplayTag(Tag_Default);
+            Hovered->SendGameplayTag(TagActionGridState);
         }
     }
 }

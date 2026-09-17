@@ -19,9 +19,9 @@ class UEnhancedInputLocalPlayerSubsystem;
 // activates/deactivates repeatedly), where a single always-on mapping
 // context per input isn't the right model.
 //
-// Every InputAction fires through the same OnInputTagTriggered delegate,
-// carrying whichever entry's BindingTag matched -- the consumer switches
-// on BindingTag rather than needing one bound function per input.
+// Every InputAction dispatches straight to its own FInputTagBinding's
+// InputActionDelegate -- no shared consumer switching on anything, each
+// binding just names what it should do.
 //
 // Plain UObject, not an ActorComponent or subsystem: both EnhancedInput
 // dependencies are injected via Initialise rather than resolved internally
@@ -33,7 +33,7 @@ class UNREALGAMEMECHANICS_API UInputTagBinder : public UObject
     GENERATED_BODY()
 
 public:
-
+    
     // Call once after construction. Builds the mapping context from
     // InBindings immediately -- GetMappingContext() is valid to call right
     // after this returns, before the first BindAll().
@@ -56,10 +56,7 @@ public:
     // can add one more key mapping onto the same context instead of
     // standing up a second mapping context of its own.
     UFUNCTION(BlueprintPure, Category = "Input")
-    UInputMappingContext* GetMappingContext() const { return InputMappingContext; }
-
-    UPROPERTY(BlueprintAssignable, Category = "Input")
-    FOnInputTagTriggered OnInputTagTriggered;
+    UInputMappingContext* GetMappingContext();
 
 private:
 
@@ -75,5 +72,7 @@ private:
     TArray<FInputTagBinding> Bindings;
     int32 MappingContextPriority = 1;
 
-    void HandleInputTriggered(const FInputActionInstance& Instance, FGameplayTag BindingTag);
+    void HandleInputTriggeredExecuteDelegate(const FInputActionInstance& Instance);
+
+    void CreateInputMappingContext();
 };

@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "GridMechanicsBaseEnums.h"
 #include "GridMechanicsBaseStructs.h"
 #include "UObject/Object.h"
 #include "GridTileRegistryBase.generated.h"
@@ -70,6 +71,9 @@ public:
 
     UFUNCTION(BlueprintPure, Category = "Grid|Registry")
     TArray<AGridTileBase*> GetColumn(int32 ColumnIndex) const;
+
+    UFUNCTION(BlueprintPure, Category = "Grid|Registry")
+    TArray<AGridTileBase*> GetTilesByDirection(FGridPosition StartPosition, EGridDirection GridDirection) const;
 
     UFUNCTION(BlueprintPure, Category = "Grid|Registry")
     TArray<FGridPosition> GetAllTilePositions() const;
