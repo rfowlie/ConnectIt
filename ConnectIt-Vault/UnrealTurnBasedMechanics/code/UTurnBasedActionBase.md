@@ -5,8 +5,8 @@ role: primary
 source:
   - Plugins/UnrealTurnBasedMechanics/Source/UnrealTurnBasedMechanics/Public/Action/TurnBasedActionBase.h
   - Plugins/UnrealTurnBasedMechanics/Source/UnrealTurnBasedMechanics/Private/Action/TurnBasedActionBase.cpp
-reconciled: 2026-09-10
-commit: e28339c
+reconciled: 2026-09-18
+commit: 9187568
 ---
 
 # UTurnBasedActionBase
@@ -24,6 +24,11 @@ changing the lifecycle contract itself, or `PostInitialiseAction` dependency-cac
 
 ## Entry points
 
+- **`GetActionTag()`** (`BlueprintNativeEvent`) — this action's identity tag. Replaced a
+  plain `EditAnywhere` `ActionTag` `UPROPERTY` — that field let a loadout placement's
+  `Instanced` copy diverge from the class's own defaults (two independently-editable
+  copies, nothing kept them in sync). Each concrete action now hardcodes its own tag in
+  code (or a Blueprint override); no data field left to diverge.
 - **Called by the component:** `Activate(AController*)`, `ForceDeactivate()`.
 - **Override (BlueprintNativeEvent):** `Activate_Internal`, `Deactivate_Internal`,
   `ForceDeactivate_Internal` (defaults to `Deactivate_Internal`), `PostInitialiseAction`
@@ -58,6 +63,10 @@ Change the lifecycle hook set and also update: `UTurnBasedAction` and
 
 ## Changes
 
+- 2026-09-18 — **`ActionTag` `UPROPERTY` replaced with `GetActionTag()`** (see Entry
+  points) — fixes the `Instanced`-placement-copy-divergence bug behind
+  `ConnectIt/_questions/action-gameplay-tags`'s first root cause. (`process-code` sweep —
+  commit `9187568`.)
 - 2026-09-10 — re-ingested to the `_code` schema; provenance re-anchored.
 
 ## See also

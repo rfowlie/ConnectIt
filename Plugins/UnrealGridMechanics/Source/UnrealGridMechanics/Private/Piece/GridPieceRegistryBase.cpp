@@ -4,12 +4,14 @@
 #include "Piece/GridPieceRegistryBase.h"
 #include "Piece/GridPieceBase.h"
 #include "Pooling/ActorPoolSubsystem.h"
+#include "Registry/GridDefinition.h"
 #include "Subsystem/GridHoverSubsystem.h"
 #include "Tile/GridTileBase.h"
 
 
 void UGridPieceRegistryBase::InitialiseRegistry_Implementation()
 {
+    DiscoverExisting();
 }
 
 void UGridPieceRegistryBase::ShutdownRegistry_Implementation()
@@ -30,6 +32,24 @@ void UGridPieceRegistryBase::ShutdownRegistry_Implementation()
 
 void UGridPieceRegistryBase::DiscoverExisting_Implementation()
 {
+}
+
+void UGridPieceRegistryBase::UpdateMappings()
+{
+    if (!IsValid(GridDefinition))
+    {
+        UE_LOG(LogTemp, Error,
+            TEXT("GridPieceRegistryBase: UpdateMappings — no GridDefinition assigned"));
+        return;
+    }
+
+    TArray<TObjectPtr<AGridPieceBase>> Pieces;
+    PieceMap.GenerateValueArray(Pieces);
+    PieceMap.Reset();
+    for (auto Piece : Pieces)
+    {
+        PieceMap.Add(GridDefinition->WorldToGridPosition(Piece->GetActorLocation()), Piece);
+    }
 }
 
 UGridHoverSubsystem* UGridPieceRegistryBase::ResolveHoverSubsystem() const

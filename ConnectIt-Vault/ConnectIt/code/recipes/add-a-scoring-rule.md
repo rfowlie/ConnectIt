@@ -5,8 +5,8 @@ touches:
   - a new UObject implementing IConnectIt_ScoringRule
   - Source/ConnectIt/Public/Board/Rules/ConnectIt_BoardRules.h (assign the strategy, or leave default)
   - FConnectItBoardChangeEvent fields (only if the rule produces new per-move result data)
-reconciled: 2026-09-10
-commit: 668872e
+reconciled: 2026-09-18
+commit: 5047e21
 ---
 
 # Recipe: add a scoring rule

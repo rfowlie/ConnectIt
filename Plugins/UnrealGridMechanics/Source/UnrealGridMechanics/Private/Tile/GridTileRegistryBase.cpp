@@ -5,6 +5,7 @@
 
 #include "Tile/GridTileBase.h"
 #include "Subsystem/GridHoverSubsystem.h"
+#include "Registry/GridDefinition.h"
 #include "Algo/Sort.h"
 #include "EngineUtils.h"
 
@@ -74,12 +75,23 @@ void UGridTileRegistryBase::DiscoverExisting_Implementation()
     const UWorld* World = GetWorld();
     if (!World) return;
 
+    const bool bHasGridDefinition = IsValid(GridDefinition);
+    if (!bHasGridDefinition)
+    {
+        UE_LOG(LogTemp, Warning,
+            TEXT("GridTileRegistryBase: DiscoverExisting -- no GridDefinition assigned, "
+                 "tiles are discovered but TileMap will not be populated"));
+    }
+
     for (TActorIterator<AGridTileBase> It(World); It; ++It)
     {
         if (IsValid(*It))
         {
             Tiles.AddUnique(*It);
-            TileMap.Add(WorldToGridPosition(It->GetActorLocation()), *It);
+            if (bHasGridDefinition)
+            {
+                TileMap.Add(GridDefinition->WorldToGridPosition(It->GetActorLocation()), *It);
+            }
         }
     }
     
@@ -87,6 +99,15 @@ void UGridTileRegistryBase::DiscoverExisting_Implementation()
     {
         return GetNameSafe(A.Get()) < GetNameSafe(B.Get());
     });
+}
+
+void UGridTileRegistryBase::UpdateMappings()
+{
+    TileMap.Reset();
+    for (const auto& Tile : Tiles)
+    {
+        TileMap.Add(GetPositionOfTile(Tile), Tile);
+    }
 }
 
 void UGridTileRegistryBase::HandleActorSpawned(AActor* SpawnedActor)
@@ -100,28 +121,6 @@ void UGridTileRegistryBase::HandleActorSpawned(AActor* SpawnedActor)
     {
         HoverSubsystem->RegisterTile(Tile);
     }
-}
-
-// --- Position Conversion ---
-
-FVector UGridTileRegistryBase::GridPositionToWorld_Implementation(FGridPosition Position) const
-{
-    // The ActorComponent version anchors Z to GetOwner()->GetActorLocation().Z --
-    // a plain UObject has no equivalent without an explicit owner reference
-    // threaded through, which this prototype deliberately doesn't add (see class
-    // comment). Flat Z=0 here; a concrete subclass with real owner/board-plane
-    // knowledge can override this whole function to restore that behavior.
-    return FVector(
-        Position.X * GridSize,
-        Position.Y * GridSize,
-        0.f);
-}
-
-FGridPosition UGridTileRegistryBase::WorldToGridPosition_Implementation(const FVector& WorldLocation) const
-{
-    return FGridPosition(
-        FMath::RoundToInt32(WorldLocation.X / GridSize),
-        FMath::RoundToInt32(WorldLocation.Y / GridSize));
 }
 
 // --- Tile Queries ---
@@ -147,11 +146,11 @@ AGridTileBase* UGridTileRegistryBase::GetTileAtPosition(FGridPosition Position) 
 
 // TODO: in general how can we alert classes when we return a null FGridPosition
 // as the default is just (0, 0) which might actually be a tile position
-// will be a annoying bug
+// will be annoying to debug
 FGridPosition UGridTileRegistryBase::GetPositionOfTile(const AGridTileBase* Tile) const
 {
-    if (!IsValid(Tile)) return FGridPosition();
-    return WorldToGridPosition(Tile->GetActorLocation());
+    if (!IsValid(Tile) || !IsValid(GridDefinition)) return FGridPosition();
+    return GridDefinition->WorldToGridPosition(Tile->GetActorLocation());
 }
 
 TArray<AGridTileBase*> UGridTileRegistryBase::GetRow(int32 RowIndex) const
@@ -164,6 +163,7 @@ TArray<AGridTileBase*> UGridTileRegistryBase::GetRow(int32 RowIndex) const
             OutTiles.Add(Tile);
         }
     }
+    
     return OutTiles;
 }
 
@@ -177,6 +177,7 @@ TArray<AGridTileBase*> UGridTileRegistryBase::GetColumn(int32 ColumnIndex) const
             OutTiles.Add(Tile);
         }
     }
+    
     return OutTiles;
 }
 

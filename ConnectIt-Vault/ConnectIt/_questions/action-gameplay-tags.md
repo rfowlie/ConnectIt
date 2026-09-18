@@ -93,3 +93,27 @@ generalization already deferred in
 
 Owner wants to mull over both candidate directions before committing — nothing implemented
 yet.
+
+**2026-09-18 — the instance-`ActionTag` root is now actually fixed, not just
+candidate-fixed.** The stronger of the two 09-17 candidates landed: `ActionTag` was
+dropped as a `UPROPERTY` entirely and replaced with `GetActionTag()`, a virtual each
+concrete action class implements. No data field left on `UTurnBasedActionBase` to diverge
+between class defaults and a loadout placement — the bug's mechanism (two independently-
+editable copies of the same field) can't happen anymore by construction. Several
+action-class parameters were also moved to `EditDefaultsOnly` in the same pass, for the
+same reason (stop exposing per-instance overrides inside `Loadout.Actions[]`'s inline
+editor that invite this class of drift).
+
+**`RequiredActionTagA`/`RequiredActionTagB` is not getting the standalone
+`bSatisfiesAutoEndTurn` fix floated above — it's being replaced entirely**, as part of a
+much larger [2026-09-18 — Generic turn-end requirement system](../_decisions/2026-09-18-generic-turn-end-requirement-system.md):
+a recursive `FTurnEndRequirementNode` tree replaces the OR-pair outright, with the
+"does this satisfy auto-end-turn" concern moving to the tree leaf rather than a bool on
+the action instance (a design correction made mid-discussion — see that decision's `##
+Why`). Once implemented, this closes the third of the four fragmented places outright,
+not just patches it.
+
+**Still open, unaddressed by anything above:** `Config/DefaultGameplayTags.ini`'s
+UI-facing tag declaration, and the native wire-level tag used for
+`FTurnActionRequest::RequestType` dispatch. Two of the four original places are now fixed
+or have a committed fix in flight; these two remain fully manual. `status` stays `open`.

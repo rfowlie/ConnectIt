@@ -4,8 +4,8 @@ kind: USTRUCT
 role: primary
 source:
   - Source/ConnectIt/Public/ConnectIt_Structs.h
-reconciled: 2026-09-10
-commit: 6477d5d
+reconciled: 2026-09-18
+commit: 9187568
 ---
 
 # ConnectItStructs
@@ -31,7 +31,10 @@ bar). Helpers: `GetTileData` / `GetTileDataMutable` / `SetTileData`, `IsTileOccu
 
 `FactionPiece` (-1 = empty), `Multiplier` (bumps when part of a scoring line), `bIsActive`
 (inactive tiles can't be selected — used by mutations like "The Rift"), `bIsOccupied`
-(active but not player-placeable). `SetFactionPiece` keeps `bIsOccupied` in sync.
+(active but not player-placeable), `bCanShift` (added for Board Shift — an unshiftable
+tile is skipped entirely during a shift rotation, keeping its own data untouched; the
+shiftable tiles around it rotate as if it weren't in the line). `SetFactionPiece` keeps
+`bIsOccupied` in sync.
 
 ### `FConnectItBoardChangeEvent` — "what changed" on the last commit
 
@@ -40,7 +43,11 @@ Rides inside the snapshot so it replicates atomically. Per-kind flag + fields:
 `ScoringFactionSlot`, `PointsScored`, `ScoringLinePositions` — union across simultaneous
 lines), `bGameWon` (**edge-triggered**; + `WinningFactionSlot`), plus
 `bTileMultiplierDestroyed`, `bPieceRemoved`, `bPiecesSwapped`, `bTileActiveToggled`,
-`bPieceCaptured` and their position/faction fields. Each corresponds to a
+`bPieceCaptured` and their position/faction fields, and (added for Board Shift)
+`bBoardShifted` + `ShiftDirection`, `ShiftAnchorPosition`, and the index-aligned parallel
+arrays `ShiftStartPositions`/`ShiftEndPositions` (a `TMap` here can't replicate, same
+reason `FConnectItBoardState` itself uses parallel arrays — only the tiles that actually
+moved appear, `bCanShift == false` tiles are left out of both). Each corresponds to a
 `UConnectIt_*Action` (named in the header comments).
 
 ### `FConnectItBoardStateSnapshot` — the ONE replicated property
@@ -53,8 +60,10 @@ lines), `bGameWon` (**edge-triggered**; + `WinningFactionSlot`), plus
 `FConnectItRequestPlacePiece` (`Positions`), `…ForcePlacePiece` (`Position`; same shape
 as place, kept separate to diverge later), `…DestroyTileMultiplier`, `…RemovePiece`
 (`Position`, `DelayTurns` — only 0 honoured), `…SwapPieces` (`PositionA`/`B`),
-`…ToggleTileActive`, `…CapturePiece`. **`FactionID` is on the `FTurnActionRequest`
-envelope**, never duplicated into a payload.
+`…ToggleTileActive`, `…CapturePiece`, `…BoardShift` (`Positions` — the full line to
+shift, client-computed via `UGridTileRegistryBase::GetTilesByDirection` in line order;
+`Direction`). **`FactionID` is on the `FTurnActionRequest` envelope**, never duplicated
+into a payload.
 
 ## Gotchas
 
@@ -71,6 +80,10 @@ envelope**, never duplicated into a payload.
 
 ## Changes
 
+- 2026-09-18 — **Board Shift fields added**: `FConnectItTileData::bCanShift`;
+  `FConnectItBoardChangeEvent::bBoardShifted` + `ShiftDirection`/`ShiftAnchorPosition`/
+  `ShiftStartPositions`/`ShiftEndPositions`; new `FConnectItRequestBoardShift` payload.
+  (`process-code` sweep — commit `9187568`, "Board Shift Backend Setup".)
 - 2026-09-10 — re-ingested to the `_code` schema; provenance re-anchored.
 
 ## See also

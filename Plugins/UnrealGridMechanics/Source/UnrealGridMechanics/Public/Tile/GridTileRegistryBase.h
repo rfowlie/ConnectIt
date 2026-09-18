@@ -10,6 +10,7 @@
 
 class AGridTileBase;
 class UGridHoverSubsystem;
+class UGridDefinition;
 
 // UObject-based prototype counterpart to UGridTileRegistryComponent -- same
 // public query surface and the same responsibilities: it owns the
@@ -23,17 +24,14 @@ class UGridHoverSubsystem;
 // class-picker with inline-editable sub-properties in the Details panel,
 // true BP-only runtime polymorphism with no C++ subclass required.
 //
-// GridPositionToWorld/WorldToGridPosition are the one genuine per-subclass
-// override point (BlueprintNativeEvent) -- a project with a non-square grid
-// (hex, isometric) would only need to override these two; every other
-// query here is derived from them plus the owned tile list, matching
-// UGridPieceRegistryComponent::InstantiatePiece's existing precedent of
-// "one clearly-marked hook, not everything virtual."
-// Not Abstract -- everything here is either fully implemented already or an
-// optional override point (GridPositionToWorld/WorldToGridPosition), so
-// this is directly usable with no subclass required, and can be defaulted
-// via CreateDefaultSubobject from an owning Actor's constructor -- the
-// standard UE idiom for giving an Instanced UObject property a
+// Grid geometry (cell size, World<->Grid conversion) lives on GridDefinition
+// now, not here -- a different concern from tracking which tile actor
+// occupies which position. Assigned by whatever constructs this registry
+// (see UConnectIt_BoardRegistrySubsystem::OnWorldBeginPlay for the project's
+// wiring); every query here that needs a position still goes through it.
+// Not Abstract -- fully usable with no subclass required, and can be
+// defaulted via CreateDefaultSubobject from an owning Actor's constructor --
+// the standard UE idiom for giving an Instanced UObject property a
 // constructor-time default that still participates correctly in CDO/
 // archetype propagation and Blueprint-child override.
 UCLASS(Blueprintable, EditInlineNew, DefaultToInstanced)
@@ -43,20 +41,11 @@ class UNREALGRIDMECHANICS_API UGridTileRegistryBase : public UObject
 
 public:
 
-    // Size of each grid cell in world units -- all default position
-    // conversions use this value.
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Grid|Registry")
-    int32 GridSize = 200;
-
-    // --- Position Conversion (override point) ---
-
-    UFUNCTION(BlueprintNativeEvent, BlueprintPure, Category = "Grid|Registry")
-    FVector GridPositionToWorld(FGridPosition Position) const;
-    virtual FVector GridPositionToWorld_Implementation(FGridPosition Position) const;
-
-    UFUNCTION(BlueprintNativeEvent, BlueprintPure, Category = "Grid|Registry")
-    FGridPosition WorldToGridPosition(const FVector& WorldLocation) const;
-    virtual FGridPosition WorldToGridPosition_Implementation(const FVector& WorldLocation) const;
+    // Grid geometry this registry's queries convert positions through.
+    // Assigned by whatever constructs this registry -- see the class
+    // comment above.
+    UPROPERTY()
+    TObjectPtr<UGridDefinition> GridDefinition;
 
     // --- Tile Queries ---
 
@@ -113,22 +102,36 @@ public:
     // Discovers every AGridTileBase in the world, takes ownership of the
     // list, and registers each with UGridHoverSubsystem for hover relay.
     // Also starts listening for tiles spawned / streamed in later.
-    UFUNCTION(BlueprintNativeEvent, Category = "GridPieceRegistry")
+    UFUNCTION(BlueprintNativeEvent, Category = "Grid|Registry")
     void InitialiseRegistry();
 
     // Unregisters every owned tile and stops listening for new spawns.
-    UFUNCTION(BlueprintNativeEvent, Category = "GridPieceRegistry")
+    UFUNCTION(BlueprintNativeEvent, Category = "Grid|Registry")
     void ShutdownRegistry();
 
 protected:
 
+    // TODO: deprecate this
     // Authoritative, ordered list of every tile in the level.
-    UPROPERTY()
+    UPROPERTY(BlueprintReadWrite)
     TArray<TObjectPtr<AGridTileBase>> Tiles;
 
-    UPROPERTY(BlueprintReadOnly)
+    UPROPERTY(BlueprintReadWrite, Category = "Grid|Registry")
     TMap<FGridPosition, TObjectPtr<AGridTileBase>> TileMap;
 
+    UFUNCTION(BlueprintCallable, Category = "Grid|Registry")
+    void UpdateMappings();
+    
+    UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "Grid|Registry")
+    void DiscoverExisting();
+    
+    void HandleActorSpawned(AActor* SpawnedActor);
+    
+    FDelegateHandle ActorSpawnedHandle;
+
+
+    // --- SubSystem ---
+    
     // Cached hover subsystem -- used only to register / unregister tiles.
     // A properly Outer'd UObject (NewObject<T>(OwningActor, ...)) gets a
     // working GetWorld() for free via the Outer chain.
@@ -137,9 +140,5 @@ protected:
     UPROPERTY()
     TObjectPtr<UGridHoverSubsystem> HoverSubsystem = nullptr;
 
-    UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "Grid|Registry")
-    void DiscoverExisting();
     
-    void HandleActorSpawned(AActor* SpawnedActor);
-    FDelegateHandle ActorSpawnedHandle;
 };

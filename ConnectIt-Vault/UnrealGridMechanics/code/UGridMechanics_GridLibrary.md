@@ -5,8 +5,8 @@ role: primary
 source:
   - Plugins/UnrealGridMechanics/Source/UnrealGridMechanics/Public/GridMechanics_GridLibrary.h
   - Plugins/UnrealGridMechanics/Source/UnrealGridMechanics/Private/GridMechanics_GridLibrary.cpp
-reconciled: 2026-09-10
-commit: ae9c1f0
+reconciled: 2026-09-18
+commit: 9187568
 ---
 
 # UGridMechanics_GridLibrary
@@ -24,8 +24,11 @@ grid-position arithmetic, 8-neighbour traversal, and **N-in-a-row connection ana
 
 - **Direction:** `GetGridDirectionVector`, `GetGridDirectionFromDegrees`,
   `GetRotationFromGridDirection`, `GetActorGridDirection`, `GetRotatedGridDirection`
-  (rotate local→absolute, wrapping), `GetNormalizedGridPositionByDirection`. Static
-  `GridDirectionVectors` map (clockwise from Up).
+  (rotate local→absolute, wrapping), `GetNormalizedGridPositionByDirection`,
+  `RotateGridDirection(EGridDirection, int32 RotationAmount)` (wraps around the 8-way
+  compass via modulus — rotate an `EGridDirection` value itself, distinct from
+  `GetRotatedGridDirection`'s local→absolute rotation). Static `GridDirectionVectors` map
+  (clockwise from Up).
 - **Position math:** `CalculateGridPositionFromSize` (world→cell; `Size` clamped ≥10),
   `GetAverageGridPosition` (centroid), `GetClosestNormalizedGridPositionFromPositions`,
   `GetClosestGridDirectionBetweenPositions` (returns `Up` + warns if P1==P2).
@@ -61,6 +64,8 @@ Self-contained (pure functions). Changing the neighbour order or the
 
 ## Changes
 
+- 2026-09-18 — **`RotateGridDirection` added** (see Entry points). (`process-code` sweep
+  — commit `9187568`.)
 - 2026-09-10 — re-ingested to the `_code` schema; provenance re-anchored.
 
 ## See also

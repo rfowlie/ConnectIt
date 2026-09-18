@@ -28,6 +28,7 @@ Domain overview: [[UnrealGridMechanics/CLAUDE|CLAUDE.md]].
 | UGridHoverSubsystem | UCLASS (UWorldSubsystem) | Subsystem | primary | `Subsystem/GridHoverSubsystem.{h,cpp}` | covered in systems/hover-relay |
 | UGridTrackerSubsystem | UCLASS (UWorldSubsystem) | Subsystem | internal (overlaps hover) | `Subsystem/GridTrackerSubsystem.h` | stub |
 | Registry bases (`UGridTileRegistryBase`, `UGridPieceRegistryBase`) | UCLASS (UObject) | Tile / Piece | primary (the variant ConnectIt subclasses) | `Tile/GridTileRegistryBase.h`, `Piece/GridPieceRegistryBase.h` | stub |
+| [[UnrealGridMechanics/code/UGridDefinition\|UGridDefinition]] | UCLASS (UObject) | Registry | primary (grid geometry, shared by both registry bases above — extracted 2026-09-18) | `Registry/GridDefinition.{h,cpp}` | stub |
 | AGridTileBase / UGridTileComponent | UCLASS | Tile | primary | `Tile/GridTileBase.h`, `Tile/GridTileComponent.h` | stub |
 | AGridPieceBase / AGridUnitBase (GAS) | UCLASS | Piece | primary | `Piece/GridPieceBase.h`, `Piece/Unit/GridUnitBase.h` | stub |
 | AGridCursorManagerBase / AGridCursorSimpleBase | UCLASS | Cursor | **unused in this project** (hover is tag-based) | `Cursor/GridCursor*.h` | stub |

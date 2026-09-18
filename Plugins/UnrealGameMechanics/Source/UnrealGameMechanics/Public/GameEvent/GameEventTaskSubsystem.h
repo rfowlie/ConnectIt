@@ -12,6 +12,7 @@ class UGameEventTaskManager;
 class UGameEventTask_Async;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnActiveManagerTagsChanged, const FGameplayTagContainer&, TagContainer);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnAnyTagComplete, const FGameplayTag, Tag);
 
 
 // Per-world registry of tag-keyed UGameEventTaskManager instances.
@@ -77,7 +78,16 @@ public:
     //
     UPROPERTY(BlueprintAssignable, Category = "GameEvent")
     FOnActiveManagerTagsChanged OnActiveManagerTagsChanged;
-    
+
+    // Fires once for every tag's completion, regardless of which tag --
+    // for a listener that reacts the same way (or dispatches internally by
+    // tag) to any event finishing, this is one bind instead of a separate
+    // BindOnTagComplete + handler per tag. BindOnTagComplete/
+    // UnbindOnTagComplete stay the right tool for a listener that only
+    // ever cares about one specific tag.
+    UPROPERTY(BlueprintAssignable, Category = "GameEvent")
+    FOnAnyTagComplete OnAnyTagComplete;
+
     // return tag array at time of calling
     UFUNCTION(BlueprintCallable, Category = "GameEvent")
     TArray<FGameplayTag> GetTagsInQueue();

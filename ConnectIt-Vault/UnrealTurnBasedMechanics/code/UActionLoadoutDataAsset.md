@@ -5,8 +5,8 @@ role: primary
 source:
   - Plugins/UnrealTurnBasedMechanics/Source/UnrealTurnBasedMechanics/Public/Action/ActionLoadoutDataAsset.h
   - Plugins/UnrealTurnBasedMechanics/Source/UnrealTurnBasedMechanics/Private/Action/ActionLoadoutDataAsset.cpp
-reconciled: 2026-09-10
-commit: e28339c
+reconciled: 2026-09-18
+commit: 9187568
 ---
 
 # UActionLoadoutDataAsset
@@ -65,6 +65,11 @@ the `Notify*` that pushes it), the loadout assets themselves, and — if surface
 
 ## Changes
 
+- 2026-09-18 — internal-only: `Action->ActionTag` field reads became
+  `Action->GetActionTag()` calls (see
+  [[UnrealTurnBasedMechanics/code/UTurnBasedActionBase|UTurnBasedActionBase]]'s own
+  Changes) — no change to this page's public surface or behavior. (`process-code` sweep
+  — commit `9187568`.)
 - 2026-09-10 — re-ingested to the `_code` schema; provenance re-anchored.
 
 ## See also

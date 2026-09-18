@@ -6,8 +6,8 @@ source:
   - Plugins/UnrealGameMechanics/Source/UnrealGameMechanics/Public/Input/InputTagBinder.h
   - Plugins/UnrealGameMechanics/Source/UnrealGameMechanics/Private/Input/InputTagBinder.cpp
   - Plugins/UnrealGameMechanics/Source/UnrealGameMechanics/Public/Input/InputTagBinding.h
-reconciled: 2026-09-10
-commit: e28339c
+reconciled: 2026-09-18
+commit: 9187568
 ---
 
 # UInputTagBinder

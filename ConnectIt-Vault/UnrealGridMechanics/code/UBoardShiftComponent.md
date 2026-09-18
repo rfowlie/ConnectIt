@@ -7,11 +7,14 @@ source:
   - Plugins/UnrealGridMechanics/Source/UnrealGridMechanics/Private/Board/Shift/BoardShiftComponent.cpp
   - Plugins/UnrealGridMechanics/Source/UnrealGridMechanics/Public/Board/Shift/GridMechanics_GridShiftLibrary.h
   - Plugins/UnrealGridMechanics/Source/UnrealGridMechanics/Public/Board/Shift/GridShiftTypes.h
-reconciled: 2026-09-10
-commit: 876ce22
+reconciled: 2026-09-18
+commit: 9187568
 ---
 
 # UBoardShiftComponent
+
+> **Not what ConnectIt's own Board Shift action uses** — no diagonal support (see
+> [[UnrealGridMechanics/code/systems/board-shift|systems/board-shift]]'s own note).
 
 `UActorComponent`. Shifts a row or column by N cells **with edge wraparound** — split
 cleanly into a **pure compute** step and a **presentational animate** step. Covers

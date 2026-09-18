@@ -8,6 +8,7 @@
 
 class UConnectIt_TileRegistry;
 class UConnectIt_PieceRegistry;
+class UGridDefinition;
 
 // The single per-world owner of the board's tile/piece registries.
 // TileRegistry/PieceRegistry are level-authored, deterministic, world-scoped
@@ -19,16 +20,20 @@ class UConnectIt_PieceRegistry;
 // (see UConnectIt_GameUtilityLibrary::GetLevelConfig).
 //
 // Since a UWorldSubsystem isn't level-placed or Blueprint-configurable the
-// way an actor is, the concrete registry subclass + tuned values (e.g.
-// GridSize) a designer picks per level live as Instanced template
-// properties on UConnectIt_LevelConfigDataAsset instead. This subsystem
-// resolves that asset once (OnWorldBeginPlay) and DuplicateObject()s its own
-// per-world runtime instance from each template -- the template itself is
-// never used live. See ConnectIt_LevelConfigDataAsset.h and this class's own
-// .cpp for why: a UDataAsset's Instanced subobjects are shared, loaded-once
-// objects, unsafe to use directly as a live per-world registry (wrong
-// GetWorld() resolution, and shared mutable state across simultaneous
-// worlds -- editor + PIE, or multiple PIE clients).
+// way an actor is, the concrete registry subclass a designer picks per
+// level -- plus the GridDefinition (grid geometry) both registries share --
+// live as Instanced template properties on UConnectIt_LevelConfigDataAsset
+// instead. This subsystem resolves that asset once (OnWorldBeginPlay) and
+// DuplicateObject()s its own per-world runtime instance from each template
+// -- the template itself is never used live. See ConnectIt_LevelConfigDataAsset.h
+// and this class's own .cpp for why: a UDataAsset's Instanced subobjects are
+// shared, loaded-once objects, unsafe to use directly as a live per-world
+// registry (wrong GetWorld() resolution, and shared mutable state across
+// simultaneous worlds -- editor + PIE, or multiple PIE clients).
+//
+// Also owns wiring PieceRegistry to UGameEventTaskSubsystem::OnAnyTagComplete
+// so its position->actor mappings stay in sync with board mutations -- see
+// UConnectIt_PieceRegistry::HandleGameEventComplete.
 UCLASS()
 class CONNECTIT_API UConnectIt_BoardRegistrySubsystem : public UWorldSubsystem
 {
@@ -45,6 +50,13 @@ public:
     UFUNCTION(BlueprintPure, Category = "ConnectIt|Board")
     UConnectIt_PieceRegistry* GetPieceRegistry() const { return PieceRegistry; }
 
+    // Grid geometry TileRegistry/PieceRegistry both share -- reachable here
+    // for anything that doesn't already hold a registry reference but
+    // needs it (e.g. GetWorld()->GetSubsystem<UConnectIt_BoardRegistrySubsystem>()
+    // ->GetGridDefinition()).
+    UFUNCTION(BlueprintPure, Category = "ConnectIt|Board")
+    UGridDefinition* GetGridDefinition() const { return GridDefinition; }
+
 private:
 
     // Runtime-only duplicates of the level config's registry templates --
@@ -54,4 +66,7 @@ private:
 
     UPROPERTY()
     TObjectPtr<UConnectIt_PieceRegistry> PieceRegistry;
+
+    UPROPERTY()
+    TObjectPtr<UGridDefinition> GridDefinition;
 };

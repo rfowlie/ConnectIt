@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "GameplayTagContainer.h"
 #include "Tile/GridTileRegistryBase.h"
 #include "ConnectIt_TileRegistry.generated.h"
 
@@ -27,5 +28,7 @@ public:
 
     UFUNCTION(BlueprintPure, Category = "ConnectIt|Board")
     UConnectIt_BoardStateComponent* GetBoardState() const;
-    
+
+    UFUNCTION(BlueprintImplementableEvent, Category = "ConnectIt|Board")
+    void HandleGameEventComplete(FGameplayTag EventTag);
 };

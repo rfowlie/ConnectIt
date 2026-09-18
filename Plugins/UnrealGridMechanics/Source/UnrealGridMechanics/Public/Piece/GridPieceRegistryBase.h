@@ -10,7 +10,7 @@
 class UGridHoverSubsystem;
 class AGridPieceBase;
 class AGridTileBase;
-class UGridTileRegistryBase;
+class UGridDefinition;
 
 // UObject-based prototype counterpart to UGridPieceRegistryComponent -- same
 // public surface (GetPiece/RetrievePiece/ActivatePieceAt/DeactivatePiece/
@@ -29,13 +29,19 @@ class UNREALGRIDMECHANICS_API UGridPieceRegistryBase : public UObject
 
 public:
 
+    // Grid geometry this registry's queries convert positions through.
+    // Assigned by whatever constructs this registry -- see the class
+    // comment above.
+    UPROPERTY()
+    TObjectPtr<UGridDefinition> GridDefinition;
+
     // Called once by whoever owns this instance (e.g. ABoardManagerBase),
-    // before any other method here is used. Currently a no-op stub -- unlike
+    // before any other method here is used. Currently, a no-op stub -- unlike
     // UGridTileRegistryBase's InitialiseRegistry, there is no bulk
     // discovery/registration to do here yet, since pieces register with
     // UGridHoverSubsystem individually as they're retrieved (see
     // RetrievePiece), not up front.
-    UFUNCTION(BlueprintNativeEvent, Category = "GridPieceRegistry")
+    UFUNCTION(BlueprintNativeEvent, Category = "Grid|Registry")
     void InitialiseRegistry();
 
     // Unregisters every piece still in PieceMap from UGridHoverSubsystem and
@@ -44,7 +50,7 @@ public:
     // register/unregister via RetrievePiece/ReleasePiece, not bulk
     // discovery), unlike UGridTileRegistryBase::ShutdownRegistry, which also
     // has an actor-spawned delegate to unhook.
-    UFUNCTION(BlueprintNativeEvent, Category = "GridPieceRegistry")
+    UFUNCTION(BlueprintNativeEvent, Category = "Grid|Registry")
     void ShutdownRegistry();
 
     // Get-or-create: returns the piece already mapped to Position, or asks
@@ -103,11 +109,11 @@ public:
 
 protected:
     
-    UPROPERTY(BlueprintReadOnly)
+    UPROPERTY(BlueprintReadWrite, Category = "Grid|Registry")
     TMap<FGridPosition, TObjectPtr<AGridPieceBase>> PieceMap;
 
-    UPROPERTY()
-    TObjectPtr<UGridTileRegistryBase> TileRegistry = nullptr;
+    UFUNCTION(BlueprintCallable, Category = "Grid|Registry")
+    void UpdateMappings();
 
     UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "Grid|Registry")
     void DiscoverExisting();

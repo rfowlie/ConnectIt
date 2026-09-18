@@ -5,8 +5,8 @@ role: primary
 source:
   - Source/ConnectIt/Public/Board/ConnectIt_BoardRequestMediator.h
   - Source/ConnectIt/Private/Board/ConnectIt_BoardRequestMediator.cpp
-reconciled: 2026-09-14
-commit: 131609f
+reconciled: 2026-09-18
+commit: 9187568
 ---
 
 # UConnectIt_BoardRequestMediator
@@ -41,7 +41,13 @@ retired `AConnectIt_BoardManager::ProcessRequest`.
   [[AConnectIt_PlayerState|AConnectIt_PlayerState]], and **does re-run scoring** now,
   once per swapped position against its new occupying faction, then one
   `CheckWinCondition`), `HandleToggleTileActiveRequest`, `HandleCapturePieceRequest`
-  (re-runs scoring — exactly one ownership change).
+  (re-runs scoring — exactly one ownership change), `HandleBoardShiftRequest(Request,
+  FactionID)` (added for Board Shift — unrestricted, no faction-ownership check on the
+  line and no use-budget, unlike SWAP; re-validates every position server-side against
+  the actual board state, rotates whole `FConnectItTileData` one step along the
+  *shiftable* subset — `bCanShift == false` tiles are skipped and keep their own data,
+  wrapping the far end to the near end — then re-runs scoring on every now-occupied
+  destination).
 - `FactionID` rides the `FTurnActionRequest` envelope, not each payload struct.
 
 ## Collaborators
@@ -82,6 +88,11 @@ and a `UTurnBasedAction` subclass that sends it.
 
 ## Changes
 
+- 2026-09-18 — **`HandleBoardShiftRequest` added** (see Entry points) — the
+  `ConnectIt_Game_Shift` dispatch branch and handler for Board Shift. Explicitly ruled
+  out `UGridMechanics_GridShiftLibrary`/`FShiftOperation` for this (orthogonal shifts
+  only, no diagonal support) in favor of a direct rotation computed here.
+  (`process-code` sweep — commit `9187568`.)
 - 2026-09-14 — `HandlePlacePieceRequest` now validates through
   `BoardRules->IsTilePlaceable` instead of the hardcoded
   `Current.IsTileValidForPlacement` (closes the TODO this page used to cite verbatim).

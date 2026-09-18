@@ -30,3 +30,11 @@ So where does this leave us with the current actions setup? It removes much of t
 - We should be able to read the actions tag instead of having to set it everywhere manually
 
 I've noticed a slight issue with the current logic regarding SWAP piece. If swapping a piece results in a scoring line for either player. The new board state that gets created and replicated has the end position. We lose the intermediary state of the pieces being swapped. This is huge disruption for the visualization side of the game. As it clouds what needs to happen? Or does it? As everything that happens gets recorded into the game event. So as long as that is setup in the correct order for visuals we should be able to interpret each intermediary step around what happened. Updating visuals chronoligcally.
+
+
+Extract Grid Definition from TileRegistry
+Add Grid Definition to LevelConfigDataAsset
+Follow same pattern on ConnectIt_BoardRegistrySubsystem (duplicate object from DataAsset, make globally available)
+*pass Grid Definition to Registries?*
+
+Rename ConnectIt_BoardRegistrySubsystem -> ConnectItSubsystem

@@ -8,6 +8,22 @@ in `<domain>/_logs/`, not here.
 
 Newest first:
 
+- [2026-09-18-0154](2026-09-18-0154.md) — process — full sweep: `process-code` refreshed
+  21 drifted pages (4+ days of undocumented Board Shift/SWAP/action-refactor drift across
+  ConnectIt + 3 plugins); `process-data`/`process-tasks`/`process-atomic`/`process-skills`
+  all clean, nothing to do. Flagged a concurrent `BlueprintImplementableEvent` conflict on
+  `ConnectIt_PieceRegistry.h` found mid-sweep.
+- [2026-09-18-0048](2026-09-18-0048.md) — process-tasks — filed 2 `complete` rows from
+  `ConnectIt/_tasks/active.md` to `complete.md` (`DefaultLevelConfig`, Actions UI HUD
+  wiring); other two `_tasks/` folders had nothing to move
+- [2026-09-18-0038](2026-09-18-0038.md) — session — filed the check-in's task candidates
+  to `ConnectIt/_tasks/active.md` (2 complete, 3 updated/rewritten, 3 added) and
+  `optimal-co-developer/_tasks/active.md` (networking outreach, its first row); updated
+  `action-gameplay-tags.md`'s Current thinking
+- [2026-09-18-0035](2026-09-18-0035.md) — meeting-closed — filed the 2026-09-18 check-in
+  (`Development/optimal-co-developer/_meetings/`) + 4 `ConnectIt/_decisions/` notes:
+  registry mapping refresh, LoadOut reference on PlayerState, the generic turn-end
+  requirement system, visual-reactions-in-Blueprint convention
 - [2026-09-17-1511](2026-09-17-1511.md) — session — retired `improve-system` (never once
   run — confirmed via `_logs/`, no entry anywhere has `source: improve-system`); cleaned
   up every reference (`_core/_skills/__INDEX.md`, `Development/CLAUDE.md`'s routing table

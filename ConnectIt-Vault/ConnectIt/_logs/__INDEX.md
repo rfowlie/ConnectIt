@@ -6,6 +6,14 @@ Vault-wide passes go in `_core/_logs/`.
 
 Newest first:
 
+- [2026-09-18-0144](2026-09-18-0144.md) — session — implemented the registry-mapping-
+  refresh fix: new `UGridDefinition` (grid geometry extracted off the tile registry),
+  new `GameEventTaskSubsystem::OnAnyTagComplete`, `PieceRegistry` re-keying `PieceMap`
+  from `FConnectItBoardChangeEvent`'s own positions on shift/swap/remove. 3 new
+  decisions, 2 code pages updated. Not yet built/PIE-verified.
+- [2026-09-17-1615](2026-09-17-1615.md) — session-close — updated the 2026-09-17 session
+  note's `## Close` in place, filed the visual-events-in-Blueprint decision, flagged
+  piece-tile-tracking as a question candidate
 - [2026-09-17-1600](2026-09-17-1600.md) — session — filed
   [`board-shift-loop-visuals`](../_questions/board-shift-loop-visuals.md) as a new open
   question (board-shift wrap-tile identification + visual treatment), per owner's request

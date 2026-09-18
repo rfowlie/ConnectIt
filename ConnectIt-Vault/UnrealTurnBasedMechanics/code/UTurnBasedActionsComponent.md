@@ -5,8 +5,8 @@ role: primary
 source:
   - Plugins/UnrealTurnBasedMechanics/Source/UnrealTurnBasedMechanics/Public/Action/TurnBasedActionsComponent.h
   - Plugins/UnrealTurnBasedMechanics/Source/UnrealTurnBasedMechanics/Private/Action/TurnBasedActionsComponent.cpp
-reconciled: 2026-09-14
-commit: 131609f
+reconciled: 2026-09-18
+commit: 9187568
 ---
 
 # UTurnBasedActionsComponent
@@ -84,6 +84,9 @@ Change the slot set or lifecycle and also update:
 
 ## Changes
 
+- 2026-09-18 — internal-only: `Action->ActionTag` field reads in log strings became
+  `Action->GetActionTag()` calls — no change to this page's public surface or behavior.
+  (`process-code` sweep — commit `9187568`.)
 - 2026-09-14 — added `TryPushActionByClass` (resolve-by-class, same shape as
   `TryPushAction`'s resolve-by-tag) — for UI code that only has a
   `TSubclassOf<UTurnBasedAction>` handy, not the action's `ActionTag`.

@@ -9,8 +9,8 @@ touches:
     (if it needs named inputs), project gameplay tags (FTurnActionRequest.RequestType)
   - project USTRUCT for FTurnActionRequest::Payload (only if the action changes the board)
   - UDWidget_TurnBasedActionsComponent (only if an action bar surfaces the new action)
-reconciled: 2026-09-10
-commit: acbfa6f
+reconciled: 2026-09-18
+commit: 9187568
 ---
 
 # Recipe: add a turn action

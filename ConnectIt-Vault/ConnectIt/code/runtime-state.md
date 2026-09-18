@@ -7,8 +7,8 @@ source:
   - Source/ConnectIt/Public/Board/ConnectIt_BoardStateComponent.h
   - Source/ConnectIt/Public/Framework/GameState/ConnectIt_GameState.h
   - Source/ConnectIt/Public/ConnectIt_Structs.h
-reconciled: 2026-09-10
-commit: 6477d5d
+reconciled: 2026-09-18
+commit: 9187568
 ---
 
 # Runtime state access — which accessor to call
@@ -80,6 +80,10 @@ convenience wrappers over reaching into a manager directly.
 
 ## Changes
 
+- 2026-09-18 — `ConnectIt_Structs.h`/`ConnectIt_BoardStateComponent.h` gained Board Shift
+  fields — see [[ConnectIt/code/ConnectItStructs|ConnectItStructs]]'s own Changes entry
+  for the specifics; nothing in this page's own accessor descriptions changed.
+  (`process-code` sweep — commit `9187568`.)
 - 2026-09-10 — page created from the in-repo `RuntimeStateAccess.md` (the module's
   by-system accessor reference), before `old/` was deleted.
 

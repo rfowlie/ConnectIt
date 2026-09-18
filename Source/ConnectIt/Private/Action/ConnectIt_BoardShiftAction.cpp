@@ -98,7 +98,7 @@ void UConnectIt_BoardShiftAction::HandleValidSelection_Implementation(AGridTileB
 		}
 	}
 
-	// sort positions (not totally necessary)
+	// this will sort the tiles in the correct grid direction
 	const FGridDirectionVector Dir = UGridMechanics_GridLibrary::GetGridDirectionVector(ShiftDirection);
 	ShiftPositions.Sort([&Position, &Dir](const FGridPosition& A, const FGridPosition& B)
 	{

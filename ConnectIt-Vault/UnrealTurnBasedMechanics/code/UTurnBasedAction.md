@@ -5,8 +5,8 @@ role: primary
 source:
   - Plugins/UnrealTurnBasedMechanics/Source/UnrealTurnBasedMechanics/Public/Action/TurnBasedAction.h
   - Plugins/UnrealTurnBasedMechanics/Source/UnrealTurnBasedMechanics/Private/Action/TurnBasedAction.cpp
-reconciled: 2026-09-14
-commit: 131609f
+reconciled: 2026-09-18
+commit: 9187568
 ---
 
 # UTurnBasedAction
@@ -33,8 +33,9 @@ Blueprint).
   `RequestNextAction(TSubclassOf<UTurnBasedAction>)`, `CanActivate()`, `IsComplete()`.
 - **Override (BlueprintNativeEvent):** `OnCompleted` / `OnCancelled`; selection hooks
   `IsValidHoverTile`, `IsValidSelectionTile`, `HandleValidHover`, `HandleHoverCleared`,
-  `HandleValidSelection`, `ClearSelectionState`; `OnBoundInputTriggered(FGameplayTag)`;
-  `ShouldTickCooldown(bool)`.
+  `HandleValidSelection`, `ClearSelectionState`; `ConstructInputBindings()` (populates
+  `InputBindings`, called once from `InitialiseAction` before the input binder is built —
+  see Collaborators); `ShouldTickCooldown(bool)`.
 - **Protected helpers:** `RequestBoardChange(FTurnActionRequest)` (call from
   `HandleValidSelection`), `BindInput()` / `UnbindInput()`, `BindGridSubsystem()` /
   `UnbindGridSubsystem()`, `CurrentHoveredTile`.
@@ -42,9 +43,10 @@ Blueprint).
 ## Collaborators
 
 - **Enhanced Input:** owns a `UInputTagBinder` (from `UnrealGameMechanics/Input`) that
-  hosts the `InputBindings` mapping context and dispatches to
-  `OnBoundInputTriggered`. `bRequiresSelection` auto-calls `BindInput()` from
-  `Activate_Internal`.
+  hosts the `InputBindings` mapping context. No shared tag-broadcast delegate to switch
+  on any more — each `FInputTagBinding` carries its own `InputActionDelegate`, dispatched
+  directly per-binding by `InputTagBinder`. `bRequiresSelection` auto-calls `BindInput()`
+  from `Activate_Internal`.
 - **Grid:** `UGridHoverSubsystem` drives `OnGridTileHoverChanged` → the hover hooks;
   `AGridTileBase` is the hover/selection unit (from `UnrealGridMechanics`).
 - **Fires:** `OnChangeRequested(+_Native)` (`const FTurnActionRequest&`),
@@ -76,6 +78,11 @@ A new subclass must be registered in
 
 ## Changes
 
+- 2026-09-18 — **Input binding rewritten**: the old shared `OnInputTagTriggered`/
+  `OnBoundInputTriggered` broadcast is gone — `ConstructInputBindings()` now populates
+  `InputBindings` up front (called from `InitialiseAction`, before `InputTagBinder` is
+  built), and each `FInputTagBinding` dispatches straight to its own
+  `InputActionDelegate`. (`process-code` sweep — commit `9187568`.)
 - 2026-09-10 — re-ingested to the `_code` schema; provenance re-anchored.
 
 ## See also

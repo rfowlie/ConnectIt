@@ -150,6 +150,14 @@ void UGameEventTaskSubsystem::HandleOnManagerComplete(const FGameplayTag Tag)
         return;
     }
 
+    // Generic "any tag just completed" signal -- see OnAnyTagComplete's own
+    // comment. Additive: doesn't touch BindOnTagComplete's per-tag
+    // OnManagerComplete delegate above, just broadcasts alongside it.
+    if (OnAnyTagComplete.IsBound())
+    {
+        OnAnyTagComplete.Broadcast(Tag);
+    }
+
     // notify interested parties of event list change
     OnActiveEventTagsChanged();
 

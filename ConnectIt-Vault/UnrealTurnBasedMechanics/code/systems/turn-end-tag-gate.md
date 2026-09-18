@@ -4,8 +4,8 @@ spans:
   - Plugins/UnrealTurnBasedMechanics/Source/UnrealTurnBasedMechanics/Public/Turn/Participant/TurnBasedParticipantManagerComponent.h
   - Plugins/UnrealTurnBasedMechanics/Source/UnrealTurnBasedMechanics/Private/Turn/Participant/TurnBasedParticipantManagerComponent.cpp
   - Plugins/UnrealTurnBasedMechanics/Source/UnrealTurnBasedMechanics/Public/Turn/Participant/TurnBasedParticipantComponent.h
-reconciled: 2026-09-10
-commit: 3086271
+reconciled: 2026-09-18
+commit: 1d1c70f
 ---
 
 # Turn-end tag gate

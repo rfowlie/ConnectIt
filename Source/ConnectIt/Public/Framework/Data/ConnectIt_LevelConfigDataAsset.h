@@ -13,6 +13,7 @@ class UActionLoadoutDataAsset;
 class AConnectIt_GridPiece;
 class UConnectIt_TileRegistry;
 class UConnectIt_PieceRegistry;
+class UGridDefinition;
 
 // Per-level board configuration -- replaces UConnectIt_ConfigComponent
 // (used to sit on the level-placed AConnectIt_BoardManager actor, one
@@ -82,12 +83,12 @@ public:
     // above but typed directly to a concrete registry base rather than an
     // interface -- a designer picks a whole UConnectIt_TileRegistry/
     // UConnectIt_PieceRegistry subclass with its own inline-editable
-    // sub-properties (e.g. GridSize), the same pattern ABoardManagerBase
-    // used to expose these with. Typed to the ConnectIt-specific subclasses
-    // (not the plugin's own UGridTileRegistryBase/UGridPieceRegistryBase)
-    // so the Details-panel class picker only offers registries that can
-    // actually resolve UConnectIt_BoardStateComponent -- see those classes'
-    // header comments. Treated purely as a template by
+    // sub-properties, the same pattern ABoardManagerBase used to expose
+    // these with. Typed to the ConnectIt-specific subclasses (not the
+    // plugin's own UGridTileRegistryBase/UGridPieceRegistryBase) so the
+    // Details-panel class picker only offers registries that can actually
+    // resolve UConnectIt_BoardStateComponent -- see those classes' header
+    // comments. Treated purely as a template by
     // UConnectIt_BoardRegistrySubsystem, which duplicates its own per-world
     // runtime instance from these rather than ever using them live -- see
     // that class's header comment.
@@ -97,6 +98,13 @@ public:
 
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Instanced, Category = "ConnectIt|Board")
     TObjectPtr<UConnectIt_PieceRegistry> PieceRegistry;
+
+    // Grid geometry (cell size, World<->Grid conversion) both registries
+    // above share -- a sibling template, same Instanced/duplicate-per-world
+    // pattern, not a sub-property of either registry. See UGridDefinition's
+    // own class comment for why this isn't just TileRegistry's business.
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Instanced, Category = "ConnectIt|Board")
+    TObjectPtr<UGridDefinition> GridDefinition;
 
 #if WITH_EDITOR
     virtual EDataValidationResult IsDataValid(

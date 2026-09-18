@@ -5,6 +5,7 @@
 #include "Board/ConnectIt_TileRegistry.h"
 #include "Grid/ConnectIt_GridPiece.h"
 #include "Misc/DataValidation.h"
+#include "Registry/GridDefinition.h"
 
 
 #if WITH_EDITOR
@@ -44,6 +45,14 @@ EDataValidationResult UConnectIt_LevelConfigDataAsset::IsDataValid(
     // PieceRegistry is intentionally not validated here -- not every level
     // needs one authored yet (UGridPieceRegistryBase::InitialiseRegistry()
     // is still a no-op stub).
+
+    if (!IsValid(GridDefinition))
+    {
+        Context.AddWarning(FText::FromString(TEXT(
+            "ConnectIt_LevelConfigDataAsset: No GridDefinition template set -- "
+            "TileRegistry/PieceRegistry position mapping will not work.")));
+        Result = EDataValidationResult::Invalid;
+    }
 
     return Result;
 }
