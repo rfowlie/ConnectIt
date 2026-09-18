@@ -35,7 +35,8 @@ public:
     // discovery/registration to do here yet, since pieces register with
     // UGridHoverSubsystem individually as they're retrieved (see
     // RetrievePiece), not up front.
-    virtual void InitialiseRegistry();
+    UFUNCTION(BlueprintNativeEvent, Category = "GridPieceRegistry")
+    void InitialiseRegistry();
 
     // Unregisters every piece still in PieceMap from UGridHoverSubsystem and
     // clears the map -- the symmetric counterpart to InitialiseRegistry,
@@ -43,7 +44,8 @@ public:
     // register/unregister via RetrievePiece/ReleasePiece, not bulk
     // discovery), unlike UGridTileRegistryBase::ShutdownRegistry, which also
     // has an actor-spawned delegate to unhook.
-    virtual void ShutdownRegistry();
+    UFUNCTION(BlueprintNativeEvent, Category = "GridPieceRegistry")
+    void ShutdownRegistry();
 
     // Get-or-create: returns the piece already mapped to Position, or asks
     // InstantiatePiece to create one and caches the result.
@@ -95,6 +97,10 @@ public:
     UFUNCTION(BlueprintCallable, Category = "Grid|Registry")
     void DespawnPieceAt(FGridPosition Position);
 
+    // --- helpers ---
+    UFUNCTION(BlueprintPure, BlueprintCallable, Category = "Grid|Registry")
+    AGridPieceBase* GetPieceAtPosition(const FGridPosition& Position);
+
 protected:
     
     UPROPERTY(BlueprintReadOnly)
@@ -103,6 +109,9 @@ protected:
     UPROPERTY()
     TObjectPtr<UGridTileRegistryBase> TileRegistry = nullptr;
 
+    UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "Grid|Registry")
+    void DiscoverExisting();
+    
 private:
 
     UGridHoverSubsystem* ResolveHoverSubsystem() const;

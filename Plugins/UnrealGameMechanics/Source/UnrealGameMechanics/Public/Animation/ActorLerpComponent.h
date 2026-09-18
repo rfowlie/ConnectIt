@@ -83,6 +83,7 @@ private:
 	};
 
 	TArray<FActiveActorLerp> ActiveLerps;
+	
 
 	// Advances one entry by DeltaTime, moving ActorToLerp via
 	// SetActorLocation. Returns true once this call is the one that

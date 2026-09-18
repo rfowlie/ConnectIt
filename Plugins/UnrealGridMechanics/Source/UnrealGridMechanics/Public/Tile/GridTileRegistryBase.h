@@ -113,16 +113,21 @@ public:
     // Discovers every AGridTileBase in the world, takes ownership of the
     // list, and registers each with UGridHoverSubsystem for hover relay.
     // Also starts listening for tiles spawned / streamed in later.
-    virtual void InitialiseRegistry();
+    UFUNCTION(BlueprintNativeEvent, Category = "GridPieceRegistry")
+    void InitialiseRegistry();
 
     // Unregisters every owned tile and stops listening for new spawns.
-    virtual void ShutdownRegistry();
+    UFUNCTION(BlueprintNativeEvent, Category = "GridPieceRegistry")
+    void ShutdownRegistry();
 
 protected:
 
     // Authoritative, ordered list of every tile in the level.
     UPROPERTY()
     TArray<TObjectPtr<AGridTileBase>> Tiles;
+
+    UPROPERTY(BlueprintReadOnly)
+    TMap<FGridPosition, TObjectPtr<AGridTileBase>> TileMap;
 
     // Cached hover subsystem -- used only to register / unregister tiles.
     // A properly Outer'd UObject (NewObject<T>(OwningActor, ...)) gets a
@@ -132,7 +137,9 @@ protected:
     UPROPERTY()
     TObjectPtr<UGridHoverSubsystem> HoverSubsystem = nullptr;
 
-    void DiscoverTiles();
+    UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "Grid|Registry")
+    void DiscoverExisting();
+    
     void HandleActorSpawned(AActor* SpawnedActor);
     FDelegateHandle ActorSpawnedHandle;
 };

@@ -45,6 +45,7 @@ void UConnectIt_BoardRegistrySubsystem::OnWorldBeginPlay(UWorld& InWorld)
             "OnWorldBeginPlay — level config has no TileRegistry template set"));
     }
 
+    // NOTE pieces register after as it will likely need info from piece registry
     if (IsValid(LevelConfig->PieceRegistry))
     {
         PieceRegistry = DuplicateObject<UConnectIt_PieceRegistry>(LevelConfig->PieceRegistry, this);

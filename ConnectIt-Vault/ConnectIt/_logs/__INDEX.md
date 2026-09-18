@@ -6,6 +6,9 @@ Vault-wide passes go in `_core/_logs/`.
 
 Newest first:
 
+- [2026-09-17-1600](2026-09-17-1600.md) — session — filed
+  [`board-shift-loop-visuals`](../_questions/board-shift-loop-visuals.md) as a new open
+  question (board-shift wrap-tile identification + visual treatment), per owner's request
 - [2026-09-17-1455](2026-09-17-1455.md) — session — backfilled the 09-16 session note's
   `## Close` and wrote a new 09-17 session note, reconstructed from `_logs/` entries and
   real file-modification timestamps (not conversational memory) since `/session-close` and

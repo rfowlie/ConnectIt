@@ -20,9 +20,9 @@ UGridHoverSubsystem* UGridTileRegistryBase::ResolveHoverSubsystem()
 
 // --- Lifecycle ---
 
-void UGridTileRegistryBase::InitialiseRegistry()
+void UGridTileRegistryBase::InitialiseRegistry_Implementation()
 {
-    DiscoverTiles();
+    DiscoverExisting();
 
     if (UGridHoverSubsystem* Hover = ResolveHoverSubsystem())
     {
@@ -44,7 +44,7 @@ void UGridTileRegistryBase::InitialiseRegistry()
     }
 }
 
-void UGridTileRegistryBase::ShutdownRegistry()
+void UGridTileRegistryBase::ShutdownRegistry_Implementation()
 {
     if (UWorld* World = GetWorld(); World && ActorSpawnedHandle.IsValid())
     {
@@ -62,10 +62,12 @@ void UGridTileRegistryBase::ShutdownRegistry()
             }
         }
     }
+    
     Tiles.Reset();
 }
 
-void UGridTileRegistryBase::DiscoverTiles()
+
+void UGridTileRegistryBase::DiscoverExisting_Implementation()
 {
     Tiles.Reset();
 
@@ -77,10 +79,10 @@ void UGridTileRegistryBase::DiscoverTiles()
         if (IsValid(*It))
         {
             Tiles.AddUnique(*It);
+            TileMap.Add(WorldToGridPosition(It->GetActorLocation()), *It);
         }
     }
-
-    // TODO: assign current tiles to their location which is calculated using this registry?
+    
     Algo::Sort(Tiles, [](const TObjectPtr<AGridTileBase>& A, const TObjectPtr<AGridTileBase>& B)
     {
         return GetNameSafe(A.Get()) < GetNameSafe(B.Get());
@@ -126,12 +128,18 @@ FGridPosition UGridTileRegistryBase::WorldToGridPosition_Implementation(const FV
 
 AGridTileBase* UGridTileRegistryBase::GetTileAtPosition(FGridPosition Position) const
 {
-    for (const TObjectPtr<AGridTileBase>& Tile : Tiles)
+    // for (const TObjectPtr<AGridTileBase>& Tile : Tiles)
+    // {
+    //     if (IsValid(Tile) && Position == WorldToGridPosition(Tile->GetActorLocation()))
+    //     {
+    //         return Tile;
+    //     }
+    // }
+
+    // it is the registries job to keep this updated and in sync
+    if (TileMap.Contains(Position))
     {
-        if (IsValid(Tile) && Position == WorldToGridPosition(Tile->GetActorLocation()))
-        {
-            return Tile;
-        }
+        return TileMap[Position];
     }
     
     return nullptr;
@@ -341,3 +349,4 @@ TArray<FGridPosition> UGridTileRegistryBase::GetColumnPositions(int32 ColumnInde
     }
     return OutPositions;
 }
+

@@ -12,6 +12,9 @@ UActorLerpComponent::UActorLerpComponent()
 
 void UActorLerpComponent::StartLerpBatch(const TArray<FActorLerpInfo>& LerpInfos)
 {
+	// TODO: replacing feels wrong, should either support multiple batches or not replace
+	// could we potentially just make this a world subsystem that supports multiple batches
+	// each batch container would have a callback that fires when all are complete
 	if (IsLerping())
 	{
 		UE_LOG(LogTemp, Warning,
@@ -22,6 +25,7 @@ void UActorLerpComponent::StartLerpBatch(const TArray<FActorLerpInfo>& LerpInfos
 	ActiveLerps.Reset();
 	ActiveLerps.Reserve(LerpInfos.Num());
 
+	// TODO: found issue potentially, copying over might be messing with value
 	for (const FActorLerpInfo& Info : LerpInfos)
 	{
 		FActiveActorLerp& NewLerp = ActiveLerps.AddDefaulted_GetRef();

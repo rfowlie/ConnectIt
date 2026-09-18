@@ -6,15 +6,13 @@
 #include "Pooling/ActorPoolSubsystem.h"
 #include "Subsystem/GridHoverSubsystem.h"
 #include "Tile/GridTileBase.h"
-#include "Tile/GridTileRegistryBase.h"
 
 
-void UGridPieceRegistryBase::InitialiseRegistry()
+void UGridPieceRegistryBase::InitialiseRegistry_Implementation()
 {
-    // TODO
 }
 
-void UGridPieceRegistryBase::ShutdownRegistry()
+void UGridPieceRegistryBase::ShutdownRegistry_Implementation()
 {
     if (UGridHoverSubsystem* HoverSubsystem = ResolveHoverSubsystem())
     {
@@ -26,7 +24,12 @@ void UGridPieceRegistryBase::ShutdownRegistry()
             }
         }
     }
+    
     PieceMap.Reset();
+}
+
+void UGridPieceRegistryBase::DiscoverExisting_Implementation()
+{
 }
 
 UGridHoverSubsystem* UGridPieceRegistryBase::ResolveHoverSubsystem() const
@@ -203,4 +206,14 @@ void UGridPieceRegistryBase::DespawnPieceAt(FGridPosition Position)
     DeactivatePiece(Piece);
     ReleasePiece(Piece);
     PieceMap.Remove(Position);
+}
+
+AGridPieceBase* UGridPieceRegistryBase::GetPieceAtPosition(const FGridPosition& Position)
+{
+    if (PieceMap.Contains(Position))
+    {
+        return PieceMap[Position];
+    }
+
+    return nullptr;
 }
