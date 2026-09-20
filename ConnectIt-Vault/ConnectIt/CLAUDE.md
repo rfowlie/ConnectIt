@@ -12,7 +12,7 @@ logic — everything reusable lives in a plugin.
   `Framework/` (Controller / Data / Game State Machine / GameMode / GameState / Interface
   / PlayerState / Subsystem), `Board/` (+ `Board/Rules/`), `Action/`, `GameEvent/`,
   `GameIntelligence/InfluenceMap/`, `Grid/`, `Library/`, `MinMax/`, `UI/`.
-- **Status:** active — the shipping target. Branch `0.3.1-Vault-Schema-Update`.
+- **Status:** active — the shipping target. Branch `0.3.3-Action-Config-Redesign`.
 - **Content:** `../Content/_ConnectIt/`, `../Content/_ConnectItNetworked/`.
 - **Config:** `../Config/` — `DefaultGameplayTags.ini` is the tag vocabulary the
   phase-barrier and turn systems key off.

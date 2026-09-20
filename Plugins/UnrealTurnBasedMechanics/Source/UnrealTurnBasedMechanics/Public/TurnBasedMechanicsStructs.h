@@ -134,6 +134,14 @@ struct FTurnActionRequest
     UPROPERTY(BlueprintReadWrite)
     FGameplayTag RequestType;
 
+    // The action that sent this request. Stamped automatically by
+    // UTurnBasedAction::RequestBoardChange so an action can't forget it;
+    // the server uses it to find (and spend) that action's runtime state on
+    // the requester's PlayerState. Client-supplied, so handlers must still
+    // check RequestType is one this action is allowed to produce.
+    UPROPERTY(BlueprintReadWrite)
+    FGameplayTag ActionTag;
+
     // Faction making the request — from SlotIndex on participant component
     UPROPERTY(BlueprintReadWrite)
     int32 FactionID = -1;
@@ -159,6 +167,7 @@ struct FTurnActionRequest
     bool operator==(const FTurnActionRequest& Other) const
     {
         return RequestType == Other.RequestType
+            && ActionTag == Other.ActionTag
             && FactionID == Other.FactionID
             && AdditionalData == Other.AdditionalData
             && Payload == Other.Payload;

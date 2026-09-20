@@ -4,9 +4,18 @@
 #include "UnrealTurnBasedMechanics.h"
 #include "EnhancedInputComponent.h"
 #include "GameFramework/Controller.h"
+#include "Framework/PlayerState/TurnBasedPlayerState.h"
 #include "Subsystem/GridHoverSubsystem.h"
 #include "Tile/GridTileBase.h"
 
+
+FGameplayTag UTurnBasedAction::GetTagForClass(TSubclassOf<UTurnBasedAction> ActionClass)
+{
+    if (!ActionClass) return FGameplayTag();
+
+    const UTurnBasedAction* DefaultAction = ActionClass->GetDefaultObject<UTurnBasedAction>();
+    return IsValid(DefaultAction) ? DefaultAction->GetActionTag() : FGameplayTag();
+}
 
 void UTurnBasedAction::InitialiseAction(
     AController* InOwningController,
@@ -41,14 +50,6 @@ void UTurnBasedAction::Complete()
     UnbindGridSubsystem();
     ClearSelectionState();
 
-    // Increment completions -- only Complete() does this
-    CompletionsThisTurn++;
-
-    if (CooldownTurns > 0)
-    {
-        TurnsUntilAvailable = CooldownTurns;
-    }
-
     OnCompleted();
     OnActionCompleted.Broadcast(this);
     OnActionCompleted_Native.Broadcast(this);
@@ -56,10 +57,8 @@ void UTurnBasedAction::Complete()
     FinishAction();
 
     UE_LOG(LogTurnBasedMechanics, Log,
-        TEXT("TurnBasedAction: '%s' completed "
-             "(%d completions this turn)"),
-        *GetActionTag().ToString(),
-        CompletionsThisTurn);
+        TEXT("TurnBasedAction: '%s' completed"),
+        *GetActionTag().ToString());
 }
 
 void UTurnBasedAction::Cancel()
@@ -77,8 +76,6 @@ void UTurnBasedAction::Cancel()
     UnbindInput();
     UnbindGridSubsystem();
     ClearSelectionState();
-
-    // No CompletionsThisTurn increment on cancel
 
     OnCancelled();
     OnActionCancelled.Broadcast(this);
@@ -102,30 +99,23 @@ void UTurnBasedAction::FinishAction()
 bool UTurnBasedAction::CanActivate() const
 {
     if (IsActive()) return false;
-    if (TurnsUntilAvailable > 0) return false;
-    if (MaxCompletionsPerTurn > 0
-        && CompletionsThisTurn >= MaxCompletionsPerTurn) return false;
-    return true;
-}
 
-void UTurnBasedAction::TickCooldown(const bool bIsMyTurn)
-{
-    if (!ShouldTickCooldown(bIsMyTurn)) return;
-    if (TurnsUntilAvailable <= 0) return;
-
-    TurnsUntilAvailable--;
-
-    if (TurnsUntilAvailable <= 0)
+    // The player's authoritative runtime state decides (uses left, per-turn
+    // cap, cooldown). If it isn't available yet (e.g. a client before the
+    // PlayerState has replicated) don't block here -- this is only a
+    // convenience; the server gate is the real check.
+    if (const AController* Controller = OwningController)
     {
-        UE_LOG(LogTurnBasedMechanics, Log,
-            TEXT("TurnBasedAction: '%s' cooldown expired"),
-            *GetActionTag().ToString());
+        if (const ATurnBasedPlayerState* PS = Controller->GetPlayerState<ATurnBasedPlayerState>())
+        {
+            if (PS->HasActionConfig())
+            {
+                return PS->CanUseAction(GetClass());
+            }
+        }
     }
-}
 
-void UTurnBasedAction::ResetTurnState()
-{
-    CompletionsThisTurn = 0;
+    return true;
 }
 
 void UTurnBasedAction::RequestBoardChange(const FTurnActionRequest& Request)
@@ -138,8 +128,13 @@ void UTurnBasedAction::RequestBoardChange(const FTurnActionRequest& Request)
         return;
     }
 
-    OnChangeRequested.Broadcast(Request);
-    OnChangeRequested_Native.Broadcast(Request);
+    // Stamp the sending action's identity so the server can resolve which
+    // config/runtime-state entry this request belongs to.
+    FTurnActionRequest StampedRequest = Request;
+    StampedRequest.ActionTag = GetActionTag();
+
+    OnChangeRequested.Broadcast(StampedRequest);
+    OnChangeRequested_Native.Broadcast(StampedRequest);
 }
 
 UGridHoverSubsystem* UTurnBasedAction::GetGridSubsystem() const
@@ -279,4 +274,3 @@ void UTurnBasedAction::HandleValidHover_Implementation(AGridTileBase*) {}
 void UTurnBasedAction::HandleHoverCleared_Implementation(AGridTileBase*) {}
 void UTurnBasedAction::HandleValidSelection_Implementation(AGridTileBase*) {}
 void UTurnBasedAction::ClearSelectionState_Implementation() {}
-bool UTurnBasedAction::ShouldTickCooldown_Implementation(bool bIsMyTurn) const { return bIsMyTurn; }

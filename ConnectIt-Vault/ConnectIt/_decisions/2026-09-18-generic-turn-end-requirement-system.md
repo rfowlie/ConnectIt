@@ -1,7 +1,7 @@
 ---
 Date: 2026-09-18
 status: Active
-superseded by:
+superseded by: partially — node representation, see [2026-09-18-turn-end-tree-as-instanced-uobject-nodes](2026-09-18-turn-end-tree-as-instanced-uobject-nodes.md); runtime-state struct and `StartingMatchUses`, see [2026-09-18-numbered-actions-are-grantable-and-runtime-state-split](2026-09-18-numbered-actions-are-grantable-and-runtime-state-split.md); tag-keyed config/leaf, see [2026-09-18-action-config-keyed-by-class-not-tag](2026-09-18-action-config-keyed-by-class-not-tag.md)
 tags:
   - action-state
   - turn-end

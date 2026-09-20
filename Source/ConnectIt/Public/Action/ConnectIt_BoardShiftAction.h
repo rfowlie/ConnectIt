@@ -31,6 +31,9 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Action|Tags")
 	FGameplayTag TagActionMouseHover;
 
+	// Server-side check that a request's ActionTag matches its RequestType
+	virtual bool ProducesRequestType_Implementation(FGameplayTag RequestType) const override;
+
 
 protected:
 

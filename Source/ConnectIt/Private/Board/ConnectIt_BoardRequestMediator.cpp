@@ -5,6 +5,7 @@
 #include "GameplayTagContainer.h"
 #include "StructUtils/InstancedStruct.h"
 #include "TurnBasedMechanicsStructs.h"
+#include "Action/TurnBasedAction.h"
 #include "Board/ConnectIt_BoardStateComponent.h"
 #include "Board/Rules/ConnectIt_BoardRules.h"
 #include "Framework/GameState/ConnectIt_GameState.h"
@@ -56,6 +57,80 @@ void UConnectIt_BoardRequestMediator::ExecuteGameEvents()
 // --- Request Processing ---
 
 bool UConnectIt_BoardRequestMediator::ProcessRequest(const FTurnActionRequest& Request)
+{
+    // Every board-change request is spent against an action in the requester's
+    // loadout, and the requester's PlayerState holds the authoritative
+    // per-action state. There is no ungated path: a player with no action
+    // state (e.g. the PlayerState was never seeded) can do nothing.
+    AConnectIt_PlayerState* PlayerState = Request.FactionID >= 0
+        ? UConnectIt_GameUtilityLibrary::GetPlayerStateForFaction(this, Request.FactionID)
+        : nullptr;
+
+    if (!IsValid(PlayerState) || !PlayerState->HasActionConfig())
+    {
+        UE_LOG(LogTemp, Error,
+            TEXT("ConnectIt_BoardRequestMediator: request '%s' rejected -- "
+                 "faction %d has no action state (PlayerState missing, or not "
+                 "seeded from a loadout with PermanentActions/NumberedActions)"),
+            *Request.RequestType.ToString(), Request.FactionID);
+        return false;
+    }
+
+    // ActionTag is client-supplied: it must name an action in this player's
+    // loadout, that action must be allowed to produce this RequestType, and
+    // the player must currently be able to use it.
+    const TSubclassOf<UTurnBasedAction> ActionClass =
+        PlayerState->FindActionClassByTag(Request.ActionTag);
+    if (!ActionClass)
+    {
+        UE_LOG(LogTemp, Warning,
+            TEXT("ConnectIt_BoardRequestMediator: request '%s' rejected -- "
+                 "ActionTag '%s' is not in faction %d's loadout"),
+            *Request.RequestType.ToString(),
+            *Request.ActionTag.ToString(), Request.FactionID);
+        return false;
+    }
+
+    const UTurnBasedAction* DefaultAction = ActionClass->GetDefaultObject<UTurnBasedAction>();
+    if (!IsValid(DefaultAction) || !DefaultAction->ProducesRequestType(Request.RequestType))
+    {
+        UE_LOG(LogTemp, Warning,
+            TEXT("ConnectIt_BoardRequestMediator: request '%s' rejected -- "
+                 "action '%s' does not produce that request type"),
+            *Request.RequestType.ToString(), *ActionClass->GetName());
+        return false;
+    }
+
+    if (!PlayerState->CanUseAction(ActionClass))
+    {
+        UE_LOG(LogTemp, Warning,
+            TEXT("ConnectIt_BoardRequestMediator: request '%s' rejected -- "
+                 "faction %d cannot use '%s' right now (no uses left, "
+                 "per-turn cap reached, or on cooldown)"),
+            *Request.RequestType.ToString(), Request.FactionID,
+            *ActionClass->GetName());
+        return false;
+    }
+
+    const bool bSucceeded = DispatchRequest(Request);
+
+    // Spend the use only once the change has actually been committed --
+    // never burn one on a request rejected above or by its handler.
+    if (bSucceeded)
+    {
+        if (!PlayerState->ConsumeActionUse(ActionClass))
+        {
+            UE_LOG(LogTemp, Error,
+                TEXT("ConnectIt_BoardRequestMediator: '%s' committed but its "
+                     "use could not be consumed on faction %d"),
+                *ActionClass->GetName(), Request.FactionID);
+        }
+    }
+
+    return bSucceeded;
+}
+
+bool UConnectIt_BoardRequestMediator::DispatchRequest(const FTurnActionRequest& Request)
 {
     // UConnectIt_BoardStateComponent* BoardState = GetBoardState();
     const UConnectIt_BoardStateComponent* BoardState = UConnectIt_GameUtilityLibrary::GetBoardStateComponent(this);
@@ -415,20 +490,9 @@ bool UConnectIt_BoardRequestMediator::HandleRemovePieceRequest(
 bool UConnectIt_BoardRequestMediator::HandleSwapPiecesRequest(
     const FConnectItRequestSwapPieces& Request, const int32 FactionID) const
 {
-    // Server-authoritative use-budget check -- the client-side action's own
-    // pre-check (CanActivate-equivalent) is cosmetic only, this is the real
-    // gate. Never trust a client to have already enforced this.
-    AConnectIt_PlayerState* PlayerState =
-        UConnectIt_GameUtilityLibrary::GetPlayerStateForFaction(this, FactionID);
-    if (!IsValid(PlayerState) || PlayerState->GetSwapActionUsesRemaining() <= 0)
-    {
-        UE_LOG(LogTemp, Warning,
-            TEXT("ConnectIt_BoardRequestMediator: SwapPieces rejected -- "
-                 "faction %d has no SWAP uses remaining"),
-            FactionID);
-        return false;
-    }
-    
+    // The SWAP use budget is a NumberedActions entry: ProcessRequest has
+    // already checked it (CanUseAction) and spends it once this returns true.
+
     // UConnectIt_BoardStateComponent* BoardState = GetBoardState();
     UConnectIt_BoardStateComponent* BoardState = UConnectIt_GameUtilityLibrary::GetBoardStateComponent(this);
     const FConnectItBoardState& Current = BoardState->GetCurrentState();
@@ -506,11 +570,6 @@ bool UConnectIt_BoardRequestMediator::HandleSwapPiecesRequest(
     }
 
     BoardState->SetBoardState(NewState, ChangeEvent);
-
-    // Decrement only after the swap has been committed -- never burn a use
-    // on a request that got rejected above.
-    PlayerState->ConsumeSwapUse();
-
     return true;
 }
 
@@ -593,7 +652,7 @@ bool UConnectIt_BoardRequestMediator::HandleBoardShiftRequest(
     // selected tile, this moves every shiftable tile exactly one step
     // further in that direction, wrapping the far end around to the near
     // end -- skipped (unshiftable) positions are left out of both the read
-    // and the write entirely, and nothing outside Request.Positions is ever
+    // and to write entirely, and nothing outside Request.Positions is ever
     // touched. ShiftStartPositions/ShiftEndPositions record the same pairing
     // the rotation itself uses, for visual listeners.
     const int32 ShiftableNum = ShiftablePositions.Num();

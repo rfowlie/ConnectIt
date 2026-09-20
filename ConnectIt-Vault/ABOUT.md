@@ -21,7 +21,7 @@ vault; see [`_core/CLAUDE.md`](_core/CLAUDE.md).
 
 - **`_core/`** is the one non-domain folder — everything structural.
 - Every other top-level folder is a **domain**: one area of work, its own stand-alone
-  `CLAUDE.md` router, opting into the sections it uses. The 7 `Unreal*` plugins and
+  `CLAUDE.md` router, opting into the sections it uses. The 8 `Unreal*` plugins and
   `ConnectIt` (the game module) are **flat sibling domains** — each is independently
   reusable / extractable, so none nests under another.
 - A **section** is a bare-named subfolder (`code/`, `logs/`, `decisions/`) governed by
@@ -35,7 +35,7 @@ vault; see [`_core/CLAUDE.md`](_core/CLAUDE.md).
 | Section | Purpose | Instances in this vault |
 |---|---|---|
 | `_core` | Spec, templates, vault-wide section instances | `_core/` (fixed) |
-| `code` | Per-type pages + `systems/` flows + `recipes/` tasks + an index/map; git-anchored provenance, no `raw/`; `## Changes` history per page | every domain (8) |
+| `code` | Per-type pages + `systems/` flows + `recipes/` tasks + an index/map; git-anchored provenance, no `raw/`; `## Changes` history per page | every domain (9) |
 | `logs` | Append-only machine-written maintenance history, one dated note per run | `_core/_logs/` (vault) · `ConnectIt/_logs/` |
 | `decisions` | One dated note per non-obvious settled call | `ConnectIt/_decisions/` · `optimal-co-developer/_decisions/` |
 | `skills` | Reusable procedures, authored here, mirrored to `.claude/skills/` — **every skill gets both, no exceptions** | `_core/_skills/` (vault) · `Development/_skills/` (Development-wide) · `board-of-advisors/_skills/` · `optimal-co-developer/_skills/` |
@@ -117,6 +117,16 @@ Full rulebook per section: `_core/_schema/_<section>.md`.
   if full consistency across every section kind is wanted.
 
 ## Changelog
+
+- **2026-09-18** — New plugin domain **`UnrealSkinMechanics`** (player-selectable skin
+  system, slice 1: scaffold + `USkinSettings` + row/selection types + `USkinDataAsset`
+  base; no subsystem yet). Registered in the root `CLAUDE.md` Domains table; `code`
+  section instance count 8 → 9. Design + decisions under `ConnectIt/design/skin-system.md`
+  and `ConnectIt/_decisions/2026-09-18-skin-*`.
+- **2026-09-18** — `/process` gained a step-0 branch check: compares the current git branch
+  to the `Status:` line in the game domain's `CLAUDE.md` and corrects it on mismatch (the
+  label had drifted to a branch two names back). Authored copy and mirror updated. Log:
+  `_core/_logs/2026-09-18-1305.md`.
 
 - **2026-09-17** — Retired `improve-system` (vault-wide skill, `_core/_skills/` +
   `.claude/skills/` mirror both deleted): confirmed via `_logs/` (no entry anywhere has

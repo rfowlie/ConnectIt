@@ -38,26 +38,16 @@ class UNREALTURNBASEDMECHANICS_API UTurnBasedAction : public UTurnBasedActionBas
 public:
 
     // --- Designer Config ---
-
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Action|Config")
-    bool bIsRequired = false;
+    // Budgets, per-turn caps, cooldowns and turn-end contribution are NOT
+    // configured here -- they live in the loadout's PermanentActions /
+    // NumberedActions (FPermanentActionConfig / FNumberedActionConfig) and its
+    // TurnEndRequirements tree, and their live state on ATurnBasedPlayerState.
 
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Action|Config")
     bool bIsCancellable = true;
 
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Action|Config")
     bool bRequiresSelection = false;
-
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Action|Config")
-    bool bAllowsOptionalInterrupt = true;
-
-    // Maximum completions per turn -- 0 = unlimited
-    // Checked against CompletionsThisTurn on CanActivate
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Action|Config", meta = (ClampMin = 0))
-    int32 MaxCompletionsPerTurn = 1;
-
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Action|Config", meta = (ClampMin = 0))
-    int32 CooldownTurns = 0;
 
     // --- Presentation ---
     // Purely for UI -- the action itself never reads these. Without them an
@@ -74,15 +64,19 @@ public:
     UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Action|Presentation")
     FSlateBrush Icon;
 
-    // --- Runtime State ---
+    // The tag an action class identifies itself with, read from its default
+    // object -- lets config reference an action by class alone instead of a
+    // separately typed tag. Invalid tag if the class is null or its
+    // GetActionTag isn't implemented.
+    static FGameplayTag GetTagForClass(TSubclassOf<UTurnBasedAction> ActionClass);
 
-    // Only incremented on Complete() -- not on Activate or Cancel
-    // Reset at start of each turn
-    UPROPERTY(BlueprintReadOnly, Category = "Action|State")
-    int32 CompletionsThisTurn = 0;
-
-    UPROPERTY(BlueprintReadOnly, Category = "Action|State")
-    int32 TurnsUntilAvailable = 0;
+    // Whether this action is allowed to produce a request of this type.
+    // The server checks it against a request's client-supplied ActionTag so
+    // one action can't spend its budget while sending another action's
+    // request. Default true (unrestricted); project actions override it.
+    UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "Action")
+    bool ProducesRequestType(FGameplayTag RequestType) const;
+    virtual bool ProducesRequestType_Implementation(FGameplayTag RequestType) const { return true; }
 
     // --- Lifecycle ---
 
@@ -91,30 +85,23 @@ public:
         UEnhancedInputComponent* InInputComponent,
         UEnhancedInputLocalPlayerSubsystem* InLocalPlayerSubsystem);
 
-    // Natural completion -- increments CompletionsThisTurn
+    // Natural completion. Uses are counted by the server on the player's
+    // PlayerState when the request commits, not here.
     UFUNCTION(BlueprintCallable, Category = "Action")
     void Complete();
 
-    // Player cancel -- no CompletionsThisTurn increment
+    // Player cancel
     UFUNCTION(BlueprintCallable, Category = "Action")
     void Cancel();
 
-    // System interrupt -- inherited from base, no increment
+    // System interrupt -- inherited from base
     // ForceDeactivate() also unbinds selection input
 
+    // Client-side convenience for UI/selection: asks the owner's PlayerState
+    // whether this action's uses, per-turn cap and cooldown allow it. The
+    // server re-checks every request regardless (see the Mediator gate).
     UFUNCTION(BlueprintPure, Category = "Action")
     bool CanActivate() const;
-
-    UFUNCTION(BlueprintPure, Category = "Action")
-    bool IsComplete() const
-    {
-        return CompletionsThisTurn > 0;
-    }
-
-    void TickCooldown(bool bIsMyTurn);
-
-    // Resets CompletionsThisTurn -- called at turn start
-    void ResetTurnState();
 
     // --- Board Change ---
 
@@ -198,12 +185,6 @@ protected:
     UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "Action|Selection")
     void ClearSelectionState();
     virtual void ClearSelectionState_Implementation();
-
-    // --- Cooldown Hook ---
-
-    UFUNCTION(BlueprintNativeEvent, Category = "Action|Cooldown")
-    bool ShouldTickCooldown(bool bIsMyTurn) const;
-    virtual bool ShouldTickCooldown_Implementation(bool bIsMyTurn) const;
 
     // Fires OnChangeRequested -- subclasses call from HandleValidSelection
     void RequestBoardChange(const FTurnActionRequest& Request);

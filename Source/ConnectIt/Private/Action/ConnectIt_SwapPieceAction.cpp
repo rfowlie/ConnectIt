@@ -12,17 +12,18 @@
 #include "Tile/GridTileRegistryBase.h"
 
 
+bool UConnectIt_SwapPieceAction::ProducesRequestType_Implementation(FGameplayTag RequestType) const
+{
+    return RequestType == ConnectIt_Game_SwapPieces;
+}
+
 UConnectIt_SwapPieceAction::UConnectIt_SwapPieceAction()
 {
-    // Alternate-mandatory with PlacePiece -- required (so it counts toward
-    // turn-end via UConnectIt_TurnBasedActionsComponent's OR'd pair), but
-    // completing it satisfies the turn on its own; no PlacePiece needed
-    // afterward that turn. See that class's header comment.
-    bIsRequired = true;
+    // Its use budget (a NumberedActions entry) and whether completing it
+    // ends the turn (a leaf in the loadout's TurnEndRequirements tree, e.g.
+    // an Any group with PlacePiece) are configured in the loadout, not here.
     bIsCancellable = true;
     bRequiresSelection = true;
-    MaxCompletionsPerTurn = 1;
-    CooldownTurns = 0;
 }
 
 void UConnectIt_SwapPieceAction::Deactivate_Internal_Implementation()

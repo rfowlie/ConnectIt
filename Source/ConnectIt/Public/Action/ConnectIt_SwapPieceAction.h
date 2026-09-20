@@ -10,10 +10,9 @@
 class UGridTileRegistryBase;
 
 // ConnectIt concrete action -- SWAP: trades one of the acting player's own
-// pieces for one of the opponent's. bIsRequired = true, but paired with
-// PlacePiece as an alternate (not an addition) via
-// UConnectIt_TurnBasedActionsComponent's CanAutoEndTurn override -- either
-// one completing ends the turn, not both.
+// pieces for one of the opponent's. Its use budget and whether it ends the
+// turn (alone, or as an alternative to PlacePiece) are configured in the
+// loadout -- a NumberedActions entry and the TurnEndRequirements tree.
 //
 // Needs two tiles, which UTurnBasedAction's selection hooks don't natively
 // support (built around one CurrentHoveredTile / one HandleValidSelection
@@ -57,6 +56,9 @@ public:
     // to the second tile.
     UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Action|Tags")
     FGameplayTag TagFirstSelection;
+
+    // Server-side check that a request's ActionTag matches its RequestType
+    virtual bool ProducesRequestType_Implementation(FGameplayTag RequestType) const override;
 
 protected:
 

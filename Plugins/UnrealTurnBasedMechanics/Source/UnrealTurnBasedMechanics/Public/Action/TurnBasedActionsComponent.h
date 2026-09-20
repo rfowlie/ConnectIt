@@ -4,12 +4,15 @@
 
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
+#include "Engine/TimerHandle.h"
 #include "Action/TurnBasedActionBase.h"
 #include "Action/TurnBasedAction.h"
 #include "Action/TurnBasedSpectatorAction.h"
 #include "Action/ActionLoadoutDataAsset.h"
 #include "TurnBasedMechanicsStructs.h"
 #include "TurnBasedActionsComponent.generated.h"
+
+class ATurnBasedPlayerState;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnBoardChangeRequested, const FTurnActionRequest&, Request);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnTurnEndReady);
@@ -110,6 +113,16 @@ public:
     UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Turn Based|Behaviour")
     bool bAutoEndTurnOnAllRequiredActionsCompleted = false;
 
+    // How long to wait in post-completion limbo for the PlayerState update
+    // before giving up and checking turn end anyway (a lost update must not
+    // freeze the turn)
+    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly,
+        Category = "Turn Based|Behaviour", meta = (ClampMin = 0.1))
+    float StateSyncTimeoutSeconds = 3.f;
+
+    UFUNCTION(BlueprintPure, Category = "Turn Based|Actions")
+    bool IsAwaitingRuntimeState() const { return bAwaitingRuntimeState; }
+
     // --- Setup ---
 
     UFUNCTION(BlueprintCallable, Category = "Turn Based|Actions")
@@ -149,11 +162,6 @@ public:
     // Clears stack and pushes IdleViewerAction as safe end state
     UFUNCTION(BlueprintCallable, Category = "Turn Based|Actions")
     void NotifyMatchEnded();
-
-    // Tick cooldowns on all runtime actions
-    // Called internally by NotifyTurnStarted and NotifyOpponentTurnStarted
-    // bIsMyTurn drives ShouldTickCooldown per action
-    void TickCooldowns(bool bIsMyTurn);
 
     // --- Stack Control ---
 
@@ -221,13 +229,16 @@ public:
     TArray<UTurnBasedAction*> GetAllRuntimeActions() const;
 
     UFUNCTION(BlueprintPure, Category = "Turn Based|Actions")
-    TArray<UTurnBasedAction*> GetRequiredActions() const;
-
-    UFUNCTION(BlueprintPure, Category = "Turn Based|Actions")
     UTurnBasedAction* FindActionByTag(FGameplayTag Tag) const;
 
     UFUNCTION(BlueprintPure, Category = "Turn Based|Actions")
     bool IsInitialised() const { return bIsInitialised; }
+
+    // True if the current loadout defines a turn-end requirement tree.
+    // Subclass CanAutoEndTurn overrides should defer to Super when this is
+    // true so a configured tree always wins over legacy hardcoded logic.
+    UFUNCTION(BlueprintPure, Category = "Turn Based|Actions")
+    bool HasTurnEndRequirementTree() const;
 
     // --- Board Change Confirmation ---
 
@@ -321,8 +332,10 @@ protected:
     UFUNCTION(BlueprintNativeEvent, Category = "Turn Based|Actions")
     void OnOpponentTurnStarted(const FTurnStartContext& Context);
 
-    // Override to customise turn end condition
-    // Default: all bIsRequired actions have CompletionsThisTurn > 0
+    // Whether the turn can end. Default: evaluate the loadout's turn-end
+    // requirement tree, each leaf comparing its action's uses this turn (read
+    // from the owner's PlayerState) against its own required count. With no
+    // tree set nothing is required and this returns true.
     UFUNCTION(BlueprintNativeEvent, Category = "Turn Based|Actions")
     bool CanAutoEndTurn() const;
 
@@ -367,6 +380,39 @@ private:
     // ClearAndPush all refuse to run -- see each for the guard.
     bool bAwaitingRequestConfirmation = false;
     FTurnActionRequest PendingRequest;
+
+    // --- Post-completion limbo (new action system) ---
+    // After the server confirms a request the action completes as normal, then
+    // the component waits here -- refusing player-initiated action pushes --
+    // until the owner's PlayerState reports the updated runtime state, and
+    // only then checks turn end. That state is what turn end reads, and it
+    // replicates independently of the outcome RPC.
+    // bPendingStateSync: set around Action->Complete() so HandleActionCompleted
+    // knows this completion came from a confirmed request.
+    bool bPendingStateSync = false;
+    bool bAwaitingRuntimeState = false;
+    int32 RevisionAtRequest = 0;
+    FTimerHandle StateSyncTimeoutHandle;
+
+    ATurnBasedPlayerState* GetOwnerPlayerState() const;
+
+    // Binds HandleActionRuntimeStateUpdated to the owner's PlayerState. The
+    // binding is permanent (the handler ignores updates unless limbo is
+    // active), but the PlayerState may not exist yet when this component is
+    // initialised -- on clients it replicates in afterwards -- so this is
+    // called both from InitialiseFromLoadout and from NotifyTurnStarted,
+    // where it is certain to. Idempotent (AddUniqueDynamic); no-op if there
+    // is no PlayerState yet.
+    void EnsureBoundToPlayerState();
+
+    void EnterStateSyncLimbo();
+    void ExitStateSyncLimbo(bool bCheckTurnEnd);
+    void HandleStateSyncTimeout();
+
+    // Bound permanently by EnsureBoundToPlayerState; does nothing unless
+    // limbo is active and the update has landed.
+    UFUNCTION()
+    void HandleActionRuntimeStateUpdated();
 
     // Force deactivates and empties the action stack without pushing
     // a replacement -- shared by ClearAndPush and NotifyMatchEnded

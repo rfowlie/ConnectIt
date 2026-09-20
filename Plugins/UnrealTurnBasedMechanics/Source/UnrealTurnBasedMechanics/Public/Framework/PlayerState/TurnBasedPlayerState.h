@@ -5,9 +5,17 @@
 #include "CoreMinimal.h"
 #include "GameFramework/PlayerState.h"
 #include "TurnBasedMechanicsEnums.h"
+#include "GameplayTagContainer.h"
+#include "Action/ActionConfig.h"
 #include "TurnBasedPlayerState.generated.h"
 
+class UActionLoadoutDataAsset;
+class UTurnBasedAction;
 
+// Fires whenever any per-action runtime state changes -- on the server as it
+// happens, on clients from the replication notify. The actions component
+// waits on this to leave its post-completion limbo and check turn end.
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnActionRuntimeStateUpdated);
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnTurnsMissedChanged, int32, NewCount);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnForfeited);
@@ -42,7 +50,76 @@ public:
     UFUNCTION(BlueprintPure, Category = "Turn Based")
     EParticipantType GetParticipantType() const { return ParticipantType; }
 
+    // --- Action State (authoritative) ---
+    // Per-action budgets/cooldowns for this player, seeded from the loadout's
+    // config arrays. Mutated only on the server; clients read the replicated
+    // copy. The one source of truth for uses -- see the 2026-09-18 decisions.
+
+    UFUNCTION(BlueprintPure, Category = "Turn Based|Actions")
+    UActionLoadoutDataAsset* GetLoadout() const { return Loadout; }
+
+    // True when the loadout uses the config arrays (the new action system).
+    // A loadout still on the legacy Instanced Actions array returns false,
+    // and every new-system code path stays out of its way.
+    UFUNCTION(BlueprintPure, Category = "Turn Based|Actions")
+    bool HasActionConfig() const;
+
+    // The config class whose GetActionTag matches (null if none)
+    UFUNCTION(BlueprintPure, Category = "Turn Based|Actions")
+    TSubclassOf<UTurnBasedAction> FindActionClassByTag(FGameplayTag ActionTag) const;
+
+    // Bumped on every state mutation. Lets a waiting component tell "the
+    // update I'm waiting for has landed" from "nothing has changed yet",
+    // regardless of whether it arrived before or after its outcome RPC.
+    UFUNCTION(BlueprintPure, Category = "Turn Based|Actions")
+    int32 GetActionStateRevision() const { return ActionStateRevision; }
+
+    UFUNCTION(BlueprintPure, Category = "Turn Based|Actions")
+    TArray<FPermanentActionRuntimeEntry> GetPermanentActionState() const { return PermanentActionState; }
+
+    UFUNCTION(BlueprintPure, Category = "Turn Based|Actions")
+    TArray<FNumberedActionRuntimeEntry> GetNumberedActionState() const { return NumberedActionState; }
+
+    // How many times this action has been used this turn (0 if unknown)
+    UFUNCTION(BlueprintPure, Category = "Turn Based|Actions")
+    int32 GetActionUsesThisTurn(TSubclassOf<UTurnBasedAction> ActionClass) const;
+
+    // The action's current effective per-turn cap (0 = unlimited, or unknown
+    // action) -- read from runtime state, so it reflects temporary changes.
+    UFUNCTION(BlueprintPure, Category = "Turn Based|Actions")
+    int32 GetActionMaxUsesPerTurn(TSubclassOf<UTurnBasedAction> ActionClass) const;
+
+    UFUNCTION(BlueprintPure, Category = "Turn Based|Actions")
+    int32 GetActionUsesThisTurnByTag(FGameplayTag ActionTag) const;
+
+    // Uses left in the match for a numbered action (0 if unknown/permanent)
+    UFUNCTION(BlueprintPure, Category = "Turn Based|Actions")
+    int32 GetNumberedActionUsesRemaining(TSubclassOf<UTurnBasedAction> ActionClass) const;
+
+    // Cooldown clear, per-turn cap not reached, and (numbered) uses left
+    UFUNCTION(BlueprintPure, Category = "Turn Based|Actions")
+    bool CanUseAction(TSubclassOf<UTurnBasedAction> ActionClass) const;
+
+    // Server only. Sets the loadout and seeds every entry from its config
+    // arrays (numbered actions start at StartingMatchUses).
+    void InitialiseActionState(UActionLoadoutDataAsset* InLoadout);
+
+    // Server only. Spends one use: per-turn count up, cooldown started,
+    // numbered uses down. False (and no change) if CanUseAction fails.
+    bool ConsumeActionUse(TSubclassOf<UTurnBasedAction> ActionClass);
+
+    // Server only. Adds uses to a numbered action, clamped to its
+    // MaxHeldUses. Returns how many were actually added.
+    int32 GrantActionUses(TSubclassOf<UTurnBasedAction> ActionClass, int32 Amount);
+
+    // Server only. Turn boundary hooks.
+    void ResetActionTurnCounters();
+    void TickActionCooldowns();
+
     // --- Delegates ---
+
+    UPROPERTY(BlueprintAssignable, Category = "Turn Based|Actions")
+    FOnActionRuntimeStateUpdated OnActionRuntimeStateUpdated;
 
     UPROPERTY(BlueprintAssignable, Category = "Turn Based")
     FOnTurnsMissedChanged OnTurnsMissedChanged;
@@ -84,6 +161,25 @@ private:
 
     UPROPERTY(ReplicatedUsing = OnRep_Ready)
     bool bIsReady = false;
+
+    // Static data asset -- replicates as an asset reference
+    UPROPERTY(Replicated)
+    TObjectPtr<UActionLoadoutDataAsset> Loadout = nullptr;
+
+    UPROPERTY(ReplicatedUsing = OnRep_ActionState)
+    TArray<FPermanentActionRuntimeEntry> PermanentActionState;
+
+    UPROPERTY(ReplicatedUsing = OnRep_ActionState)
+    TArray<FNumberedActionRuntimeEntry> NumberedActionState;
+
+    UPROPERTY(ReplicatedUsing = OnRep_ActionState)
+    int32 ActionStateRevision = 0;
+
+    UFUNCTION()
+    void OnRep_ActionState();
+
+    // Server: bump the revision, then notify
+    void MarkActionStateChanged();
 
     // --- RepNotify ---
     

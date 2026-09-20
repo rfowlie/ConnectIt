@@ -48,3 +48,31 @@ requirement.
 - Because whole tile data (not just the piece) travels with a shift, a multiplier tile
   physically relocates when its line is shifted — see [tile-powers.md](tile-powers.md) for
   why that matters once tiles can carry activatable powers, not just a scoring bonus.
+
+## Wishlist — maps with holes (added 2026-09-18, not scheduled)
+
+Some planned maps will have gaps or holes in the grid. A hole is not one thing, and Board
+Shift will need to tell two kinds apart:
+
+- **Fillable holes** — a shift can carry tile data across or into the gap (the line
+  effectively closes over it, or the gap travels with the rotation).
+- **Fixed holes** — a shift can't move anything into, out of, or across the gap. Closest
+  existing analogue is `bCanShift = false`, but that's a property of a *tile that exists*;
+  a hole has no tile at all, so it needs its own representation.
+
+What it would touch when picked up:
+
+- **Line collection** (`GetTilesByDirection`) currently tolerates gaps in the walk but
+  treats every registered tile as rotatable; it would need to distinguish the two hole
+  kinds while collecting.
+- **The Mediator's rotation** (`HandleBoardShiftRequest`) rotates the whole ordered
+  `Positions` array with wrap-around. A fixed hole mid-line has to split or skip the
+  rotation (like `bCanShift = false` does today), and a fillable hole has to define
+  whether the gap itself moves.
+- **The "nothing is ever destroyed" invariant** above must survive either hole kind.
+- **Clarity**: same open question as `bCanShift = false` — the board should show a player
+  which holes a shift can and can't use before they commit.
+
+Open: how holes are represented in `FConnectItBoardState` (absent tile vs. a tile flagged
+as a hole), and whether fillability is per-hole or per-map. Wishlist only — no design
+decision made.

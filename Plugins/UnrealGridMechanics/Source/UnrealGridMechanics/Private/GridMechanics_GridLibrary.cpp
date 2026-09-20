@@ -8,6 +8,10 @@
 
 DEFINE_LOG_CATEGORY_STATIC(LogGridMechanics, Log, All);
 
+// Grid convention: X runs left-right and Y runs up-down (a plain Cartesian
+// picture: Right = +X, Up = +Y). The vector's first field ("Row") is the X
+// step and its second ("Column") is the Y step -- every consumer applies them
+// that way. The 8 entries run clockwise from Up.
 const TMap<EGridDirection, FGridDirectionVector> UGridMechanics_GridLibrary::GridDirectionVectors =
 {
 	{ EGridDirection::Up,        {  0,  1 } },

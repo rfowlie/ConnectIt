@@ -45,6 +45,10 @@ public:
     UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Action|Tags")
     FGameplayTag Tag_RequestType;
 
+    // The server checks a request's ActionTag against this so a PlacePiece
+    // budget can only be spent by a PlacePiece request
+    virtual bool ProducesRequestType_Implementation(FGameplayTag RequestType) const override;
+
 protected:
 
     // base internal

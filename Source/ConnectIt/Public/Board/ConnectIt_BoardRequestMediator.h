@@ -70,6 +70,11 @@ protected:
 
 private:
 
+    // The RequestType dispatch itself -- ProcessRequest wraps it with the
+    // per-action gate (can this player use this action right now?) and the
+    // spend of that use once the change has been committed.
+    bool DispatchRequest(const FTurnActionRequest& Request);
+
     // Board state lives on AConnectIt_GameState -- resolved through here
     // rather than repeating GetWorld()->GetGameState<>() at each call site.
     // UConnectIt_BoardStateComponent* GetBoardState() const;

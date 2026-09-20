@@ -46,6 +46,13 @@ sequenced before `process-atomic` in the run.
 
 ## Steps
 
+0. **Branch check.** Run `git branch --show-current` and compare it to the branch named on
+   the `**Status:**` line of the game domain's `CLAUDE.md` (today
+   `ConnectIt/CLAUDE.md`, "Branch `…`"). If they differ, rewrite that line to the actual
+   current branch and record the old → new values under the log's `## Changed`. Skip
+   quietly if git reports a detached HEAD (nothing to compare), and flag it if the
+   `Status:` line names no branch at all. This runs first so the sub-skills' own
+   `commit:` provenance checks aren't reasoning against a stale branch label.
 1. Run each discovered skill's own **Steps** in full, in the order listed above.
 2. Collect each one's **Output format** sections, but skip each sub-skill's own **Log**
    step — this skill writes one combined log at the end instead of one per sub-skill.
@@ -57,6 +64,9 @@ sequenced before `process-atomic` in the run.
 One section per sub-skill, in the order run, each headed with the skill's name (e.g.
 `### process-data`) and containing that skill's own output sections verbatim (minus its
 Log step). Close with:
+
+### Branch check
+One line: branch label matched, or old → new if it was corrected.
 
 ### Summary
 One line per sub-skill: what it found / changed, or "nothing to do."

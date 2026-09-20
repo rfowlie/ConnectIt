@@ -22,6 +22,11 @@ of another occupied tile. The disruptive, resource-gated alternative to Place Pi
 - Scoring is re-checked for **both** resulting positions independently, since they now
   belong to two different factions. Either side, or both, can complete a line off the
   same swap.
+- The scoring-line **visual** update must be given both swap positions *and* the position
+  of the piece that completed the line. Missing the completing piece made it vanish
+  visually while board state kept it (unplaceable tile, phantom 3-in-a-row score) — fixed
+  2026-09-18, see
+  [the decision](../_decisions/2026-09-18-scoring-line-visuals-must-cover-all-mutated-positions.md).
 
 ## Gameplay ramifications
 

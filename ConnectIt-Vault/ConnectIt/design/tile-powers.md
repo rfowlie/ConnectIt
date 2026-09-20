@@ -106,6 +106,18 @@ threshold/target/effect shape above.
   deliberately avoid completing lines through a tile they can see is close to crumbling —
   the first power sketch here that gives a player an incentive to *not* score somewhere.
 
+**Visual idea (2026-09-18) — cracks, explosion, lava.** The tile telegraphs its charge: it
+gains progressively more **cracks** as its multiplier climbs toward the threshold (a
+continuous, board-legible warning, which answers the "Consent / telegraphing" question above
+for this power). At the threshold it **explodes** and becomes **lava** — the deactivated,
+unplaceable end state (`bIsActive = false`) given a visible identity instead of just
+vanishing. Could apply to *every* tile at the max multiplier rather than being an opt-in
+power, if the multiplier ceiling turns out to be a universal rule; undecided.
+Per the [Blueprint-visuals convention](../_decisions/2026-09-18-visual-reactions-in-blueprint-convention.md),
+the crack stages and explosion live in Blueprint reacting to the multiplier / active-state
+change; C++ only exposes the data (multiplier, threshold/progress). Open: is lava purely
+cosmetic, or can something later reactivate it (Crumble already leaves that open)?
+
 ### Siphon
 
 - **Trigger:** Multiplier 3+.

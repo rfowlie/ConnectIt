@@ -3,6 +3,7 @@
 
 #include "Action/ConnectIt_PlacePieceAction.h"
 #include "Board/ConnectIt_BoardStateComponent.h"
+#include "ConnectIt_GameplayTags.h"
 #include "ConnectIt_Structs.h"
 #include "Interface/GridFactionInterface.h"
 #include "Framework/Library/ConnectIt_GameUtilityLibrary.h"
@@ -13,18 +14,21 @@
 #include "Turn/Participant/TurnBasedParticipantComponent.h"
 
 
+bool UConnectIt_PlacePieceAction::ProducesRequestType_Implementation(FGameplayTag RequestType) const
+{
+    return RequestType == ConnectIt_Game_PlacePiece;
+}
+
 UConnectIt_PlacePieceAction::UConnectIt_PlacePieceAction()
 {
-    // Required -- turn cannot end without placing a piece
-    bIsRequired = true;
+    // Uses, per-turn cap and turn-end contribution live in the loadout's
+    // PermanentActions entry and TurnEndRequirements tree, not here.
 
     // Cancellable -- shard or power activation cancels this,
     // and it reactivates after the optional action completes
     bIsCancellable = true;
 
     bRequiresSelection = true;
-    MaxCompletionsPerTurn = 1;
-    CooldownTurns = 0;
 }
 
 void UConnectIt_PlacePieceAction::PostInitialiseAction_Implementation()

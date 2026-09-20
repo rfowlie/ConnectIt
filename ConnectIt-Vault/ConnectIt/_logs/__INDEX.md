@@ -6,6 +6,67 @@ Vault-wide passes go in `_core/_logs/`.
 
 Newest first:
 
+- [2026-09-20-1449](2026-09-20-1449.md) — process-discussion — `action-state-authority-and-limbo` filed from compiled excerpts of this
+  conversation; 5 topics (1 continuing `action-state-architecture`, 4 first mentions).
+
+- [2026-09-20-1447](2026-09-20-1447.md) — session-close — closed the 2026-09-18-1251 session note (09-18 to 09-20 loadout/turn-end
+  system, Board Shift direction fix); filed the effective-per-turn-cap decision.
+
+- [2026-09-20-1340](2026-09-20-1340.md) — session — the per-turn cap is now runtime state on both action state structs
+  (seeded once, not reset each turn), read by `CanUseAction`, exposed via `GetActionMaxUsesPerTurn` for the Actions UI;
+  groundwork for temporary max-uses changes. Builds; no modifier API yet.
+
+- [2026-09-20-1250](2026-09-20-1250.md) — session — Step 2 Stage 3 (remove): legacy `Actions`,
+  `bIsRequired`, per-action caps/cooldowns, `RequiredActionTagA/B` and the SWAP budget deleted; Mediator
+  gate now mandatory, seeding logged. C++ builds; Blueprint fallout and PIE outstanding.
+
+- [2026-09-20-1240](2026-09-20-1240.md) — session — Board Shift direction inversion root-caused
+  (`GetTilesByDirection` grouped Up/Down by the wrong coordinate, so the sort key was 0); fixed
+  for X = left-right, Y = up-down. First attempt (table rewrite) superseded same session. Not compiled.
+
+- [2026-09-18-1445](2026-09-18-1445.md) — session — Step 2 Stage 2 (switch): Mediator gates and
+  spends per-action uses from PlayerState, server turn-boundary reset/cooldown hooks, limbo in the
+  actions component, tree reads PlayerState, `ProducesRequestType` on Place/Swap/BoardShift. Written,
+  NOT compiled (editor open).
+
+- [2026-09-18-1510](2026-09-18-1510.md) — session — skin plugin slice 3: generic code-built
+  debug panel (`SkinMechanics.ToggleDebug`), `GetSkinResolution` + `GetConfigurationIssues`
+  on the subsystem (catalog validation delivered). Decision filed. Not compiled.
+
+- [2026-09-18-1425](2026-09-18-1425.md) — session — Step 2 Stage 1 (additive): replicated
+  per-action state + server API + `OnActionRuntimeStateUpdated` on `ATurnBasedPlayerState`,
+  `ActionTag` on `FTurnActionRequest`, component builds from config arrays (legacy fallback
+  kept), loadout validator. Builds clean; Stages 2 (switch) and 3 (remove) open.
+
+- [2026-09-18-1422](2026-09-18-1422.md) — session — skin plugin slice 2: trimmed to a
+  project-agnostic core (deleted the skin/catalog types, kept only `FSkinPresetRowBase`),
+  added `USkinSubsystem` + `USkinSaveGame` (precedence resolution, `OnSkinChanged`, runtime-only
+  level-forced, save/reload). Decision filed. Not compiled.
+
+- [2026-09-18-1358](2026-09-18-1358.md) — session — skin system slice 1: new plugin
+  `UnrealSkinMechanics` (scaffold, `USkinSettings` with DataTable-array catalogs, row/
+  selection structs, `USkinDataAsset` base), enabled in the uproject, registered as a vault
+  domain; naming/DataTable decision filed. Not built yet (new plugin, editor restart).
+
+- [2026-09-18-1400](2026-09-18-1400.md) — session — action config and turn-end leaves now
+  reference `TSubclassOf<UTurnBasedAction>` (tag derived from the class default object via
+  `GetTagForClass`) instead of a typed tag; builds clean. Decision filed; Step 2 open.
+
+- [2026-09-18-1350](2026-09-18-1350.md) — session — recorded the owner's `ActionConfig.h`
+  changes (numbered actions grantable + `MaxHeldUses`, runtime state split) as a decision;
+  fixed stale comments; editor-side test steps for the turn-end tree. Not rebuilt (editor open).
+
+- [2026-09-18-1337](2026-09-18-1337.md) — session — skin-system design recorded (no code):
+  4 decision notes (layered data/flow, local-only + fixed-class data, new plugin +
+  explicit lists, faction visuals as a curated skin group) + `design/skin-system.md`;
+  marked the retired faction-visuals decision partially superseded
+
+- [2026-09-18-1320](2026-09-18-1320.md) — session — loadout/turn-end task slice 1: new
+  turn-end requirement tree (Instanced UObject Leaf/Group nodes — the recursive struct
+  failed UHT), action-config + runtime-state structs, base `CanAutoEndTurn` evaluates the
+  tree when a loadout sets one. Builds clean; not yet PIE-tested, validator and PlayerState
+  wiring still open.
+
 - [2026-09-18-0144](2026-09-18-0144.md) — session — implemented the registry-mapping-
   refresh fix: new `UGridDefinition` (grid geometry extracted off the tile registry),
   new `GameEventTaskSubsystem::OnAnyTagComplete`, `PieceRegistry` re-keying `PieceMap`

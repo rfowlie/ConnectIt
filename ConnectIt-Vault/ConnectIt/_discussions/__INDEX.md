@@ -7,6 +7,11 @@ most recent prior note that also covered it. Governed by
 
 Newest first:
 
+- [2026-09-20-action-state-authority-and-limbo](2026-09-20-action-state-authority-and-limbo.md) — where
+  the new turn-end system counts uses (one authoritative `PlayerState` counter), the post-completion
+  limbo that waits for the state update, request-to-action identity, and why the limbo's delegate
+  bind moved out of the request path. 5 topics, 1 continuing `action-state-architecture`, 4 first mentions.
+
 - [2026-09-14-swap-implementation-qa](2026-09-14-swap-implementation-qa.md) — five
   implementation Q&A exchanges from SWAP work: BP UI local-controller gating, a
   local-player-index-vs-faction-slot bug in `GetLocalConnectItPlayerState`, activating an

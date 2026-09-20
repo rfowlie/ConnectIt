@@ -11,22 +11,22 @@
 #include "Tile/GridTileBase.h"
 
 
+bool UConnectIt_BoardShiftAction::ProducesRequestType_Implementation(FGameplayTag RequestType) const
+{
+	return RequestType == ConnectIt_Game_Shift;
+}
+
 UConnectIt_BoardShiftAction::UConnectIt_BoardShiftAction()
 {
-	// Not yet part of the OR/AND turn-end requirement set -- see
-	// _decisions/2026-09-14-turn-end-requirements-need-and-or-groups.md.
-	// Setting this true now would make BoardShift silently mandatory every
-	// turn under the current OR-pair CanAutoEndTurn override, which isn't
-	// the intended behaviour yet.
-	bIsRequired = false;
+	// Uses, per-turn cap and turn-end contribution (e.g. "ends the turn after
+	// two shifts") live in the loadout's PermanentActions entry and
+	// TurnEndRequirements tree, not here.
 	bIsCancellable = true;
 
 	// The actual fix that makes this action reachable at all -- without
 	// this, Activate_Internal_Implementation never binds hover/selection
 	// input in the first place.
 	bRequiresSelection = true;
-	MaxCompletionsPerTurn = 1;
-	CooldownTurns = 0;
 }
 
 void UConnectIt_BoardShiftAction::PostInitialiseAction_Implementation()

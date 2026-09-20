@@ -1,7 +1,7 @@
 ---
 Date: 2026-09-09
 status: Active
-superseded by:
+superseded by: partially — faction visuals become a curated skin group, see [2026-09-18-faction-visuals-are-a-curated-skin-group](2026-09-18-faction-visuals-are-a-curated-skin-group.md)
 tags:
   - ui
   - scope

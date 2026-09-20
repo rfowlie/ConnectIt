@@ -8,6 +8,10 @@ in `<domain>/_logs/`, not here.
 
 Newest first:
 
+- [2026-09-18-1305](2026-09-18-1305.md) — by hand — corrected the stale branch label in
+  `ConnectIt/CLAUDE.md`; `/process` gained a step-0 branch check; documented the Board Shift
+  holes wishlist and the swap scoring-line visual bug (new decision + recipe pitfall).
+
 - [2026-09-18-0154](2026-09-18-0154.md) — process — full sweep: `process-code` refreshed
   21 drifted pages (4+ days of undocumented Board Shift/SWAP/action-refactor drift across
   ConnectIt + 3 plugins); `process-data`/`process-tasks`/`process-atomic`/`process-skills`
