@@ -8,20 +8,20 @@
 
 DEFINE_LOG_CATEGORY_STATIC(LogGridMechanics, Log, All);
 
-// Grid convention: X runs left-right and Y runs up-down (a plain Cartesian
-// picture: Right = +X, Up = +Y). The vector's first field ("Row") is the X
-// step and its second ("Column") is the Y step -- every consumer applies them
-// that way. The 8 entries run clockwise from Up.
+// Grid convention follows Unreal's world axes: +X is forward (Up) and +Y is
+// right (Right). The vector's first field ("Row") is the X step and its second
+// ("Column") is the Y step -- every consumer applies them that way. The 8
+// entries run clockwise from Up.
 const TMap<EGridDirection, FGridDirectionVector> UGridMechanics_GridLibrary::GridDirectionVectors =
 {
-	{ EGridDirection::Up,        {  0,  1 } },
+	{ EGridDirection::Up,        {  1,  0 } },
 	{ EGridDirection::UpRight,   {  1,  1 } },
-	{ EGridDirection::Right,     {  1,  0 } },
-	{ EGridDirection::DownRight, {  1, -1 } },
-	{ EGridDirection::Down,      {  0, -1 } },
+	{ EGridDirection::Right,     {  0,  1 } },
+	{ EGridDirection::DownRight, {  -1, 1 } },
+	{ EGridDirection::Down,      {  -1, 0 } },
 	{ EGridDirection::DownLeft,  { -1, -1 } },
-	{ EGridDirection::Left,      { -1,  0 } },
-	{ EGridDirection::UpLeft,    { -1,  1 } }
+	{ EGridDirection::Left,      { 0,  -1 } },
+	{ EGridDirection::UpLeft,    { 1,  -1 } }
 };
 
 // ============================================================

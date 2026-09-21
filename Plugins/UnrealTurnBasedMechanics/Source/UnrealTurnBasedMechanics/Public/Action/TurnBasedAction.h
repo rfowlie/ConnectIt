@@ -8,9 +8,11 @@
 #include "TurnBasedMechanicsStructs.h"
 #include "Action/TurnBasedActionBase.h"
 #include "Input/InputTagBinder.h"
+#include "Action/ActionConfig.h"
 #include "TurnBasedAction.generated.h"
 
 class UTurnBasedAction;
+class ATurnBasedPlayerState;
 class AGridTileBase;
 class UGridHoverSubsystem;
 class UEnhancedInputComponent;
@@ -103,6 +105,31 @@ public:
     UFUNCTION(BlueprintPure, Category = "Action")
     bool CanActivate() const;
 
+    // --- Runtime state (read-only) ---
+    // The action instance holds NO budget/cap/cooldown state of its own -- it
+    // lives on the owner's PlayerState and is read from there on every call, so
+    // it can never disagree with the authoritative copy. Each returns 0/false
+    // if the owner has no PlayerState or no entry for this action's class.
+
+    // Copy of this action's state if it is a permanent action
+    UFUNCTION(BlueprintPure, Category = "Action|State")
+    bool GetPermanentRuntimeState(FPermanentActionRuntimeState& OutState) const;
+
+    // Copy of this action's state if it is a numbered action
+    UFUNCTION(BlueprintPure, Category = "Action|State")
+    bool GetNumberedRuntimeState(FNumberedActionRuntimeState& OutState) const;
+
+    UFUNCTION(BlueprintPure, Category = "Action|State")
+    int32 GetUsesThisTurn() const;
+
+    // Current effective per-turn cap (0 = unlimited or unknown)
+    UFUNCTION(BlueprintPure, Category = "Action|State")
+    int32 GetMaxUsesPerTurn() const;
+
+    // Uses left in the match -- numbered actions only (0 otherwise)
+    UFUNCTION(BlueprintPure, Category = "Action|State")
+    int32 GetUsesRemaining() const;
+
     // --- Board Change ---
 
     UPROPERTY(BlueprintAssignable, Category = "Action|Delegates")
@@ -134,6 +161,9 @@ public:
     void RequestNextAction(TSubclassOf<UTurnBasedAction> NextActionClass);
     
 protected:
+
+    // The owner's PlayerState (null if there is no owner/PlayerState yet)
+    ATurnBasedPlayerState* GetOwnerPlayerState() const;
 
     // --- Virtual Lifecycle Hooks ---
 

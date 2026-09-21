@@ -32,6 +32,9 @@ UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_Tile_Default);
 // UGameEventTaskManager registry, used to gate visual sequencing so piece
 // placement, scoring, and win visuals run fully in order instead of at once
 UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_Event_PiecePlaced);
+// Fired once when the board is initialised from the level -- react to it to
+// create visuals for any designer-placed starting pieces
+UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_Event_BoardSeeded);
 UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_Event_LineScored);
 UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_Event_PlayerWin);
 UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_Event_TurnEnd);

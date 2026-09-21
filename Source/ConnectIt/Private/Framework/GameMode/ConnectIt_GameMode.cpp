@@ -8,6 +8,7 @@
 #include "Board/Rules/ConnectIt_BoardRules.h"
 #include "ConnectIt_GameplayTags.h"
 #include "Framework/Controller/ConnectIt_AIController.h"
+#include "Action/ActionLoadoutDataAsset.h"
 #include "Framework/Data/ConnectIt_LevelConfigDataAsset.h"
 #include "Framework/GameState/ConnectIt_GameState.h"
 #include "Framework/GameState/TurnBasedGameState.h"
@@ -35,6 +36,8 @@ void AConnectIt_GameMode::PostLogin(APlayerController* NewPlayer)
     // Let base class handle reconnect detection and registration
     Super::PostLogin(NewPlayer);
 
+    SeedActionStateForPlayer(NewPlayer);
+
     ConnectedHumanCount++;
 
     UE_LOG(LogTemp, Log,
@@ -52,6 +55,51 @@ void AConnectIt_GameMode::PostLogin(APlayerController* NewPlayer)
             StartReadyCheck();
         }
     }
+}
+
+void AConnectIt_GameMode::SeedActionStateForPlayer(APlayerController* NewPlayer)
+{
+    // The server owns each player's action state (uses, per-turn cap,
+    // cooldowns) on their PlayerState. It must be seeded HERE, on the server:
+    // AConnectIt_PlayerController::BeginPlay only runs its loadout setup for
+    // the owning client, so nothing else ever seeds a remote human's state --
+    // and without it every board request is rejected for having no action
+    // state. AI controllers seed themselves (they run with authority).
+    if (!IsValid(NewPlayer)) return;
+
+    ATurnBasedPlayerState* PS = NewPlayer->GetPlayerState<ATurnBasedPlayerState>();
+    if (!IsValid(PS))
+    {
+        UE_LOG(LogTemp, Error,
+            TEXT("ConnectIt_GameMode: cannot seed action state -- %s has no "
+                 "ATurnBasedPlayerState"),
+            *GetNameSafe(NewPlayer));
+        return;
+    }
+
+    // Already seeded (a reconnecting player keeps their state, and a
+    // listen-server host may already have been seeded via its own controller)
+    if (PS->HasActionConfig()) return;
+
+    const UConnectIt_LevelConfigDataAsset* LevelConfig =
+        UConnectIt_GameUtilityLibrary::GetLevelConfig(this);
+    if (!IsValid(LevelConfig) || !IsValid(LevelConfig->PlayerLoadout))
+    {
+        UE_LOG(LogTemp, Error,
+            TEXT("ConnectIt_GameMode: cannot seed action state for %s -- no "
+                 "level config, or it has no PlayerLoadout"),
+            *PS->GetPlayerName());
+        return;
+    }
+
+    PS->InitialiseActionState(LevelConfig->PlayerLoadout);
+
+    UE_LOG(LogTemp, Log,
+        TEXT("ConnectIt_GameMode: seeded action state for %s from loadout "
+             "'%s' (%d permanent, %d numbered) (server, PostLogin)"),
+        *PS->GetPlayerName(), *LevelConfig->PlayerLoadout->LoadoutName,
+        LevelConfig->PlayerLoadout->PermanentActions.Num(),
+        LevelConfig->PlayerLoadout->NumberedActions.Num());
 }
 
 void AConnectIt_GameMode::HandleMatchHasStarted()

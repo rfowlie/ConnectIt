@@ -570,9 +570,10 @@ bool UTurnBasedActionsComponent::TryPushActionByClass(TSubclassOf<UTurnBasedActi
         });
 
     if (!Found) return false;
-   
-    TryPushActionByRef(*Found);
-    return true;
+
+    // Report whether the push actually happened -- it can be refused (limbo,
+    // awaiting confirmation, CanActivate) and the caller needs to know.
+    return TryPushActionByRef(*Found);
 }
 
 bool UTurnBasedActionsComponent::TryPushActionByRef(UTurnBasedAction* Action)

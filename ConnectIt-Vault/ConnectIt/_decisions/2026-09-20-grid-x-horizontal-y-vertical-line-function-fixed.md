@@ -1,7 +1,7 @@
 ---
 Date: 2026-09-20
 status: Active
-superseded by:
+superseded by: [2026-09-20-grid-axes-follow-ue-x-forward-y-right](2026-09-20-grid-axes-follow-ue-x-forward-y-right.md) — the owner realised X is forward/Up and Y is right (UE's axes); the table and `GetTilesByDirection` were flipped accordingly
 tags:
   - grid
   - board-shift

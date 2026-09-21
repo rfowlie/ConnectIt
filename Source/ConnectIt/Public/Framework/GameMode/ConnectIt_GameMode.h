@@ -72,6 +72,12 @@ public:
 
 protected:
 
+    // Seeds a joining human's PlayerState action state (uses/caps/cooldowns)
+    // from the level config's PlayerLoadout. Server-side, called from
+    // PostLogin; a no-op if the state is already seeded. See the definition
+    // for why this can't live on the player controller.
+    void SeedActionStateForPlayer(APlayerController* NewPlayer);
+
     // Spawns and registers the AI controller (Adventure mode only)
     void SpawnAndRegisterAI();
 

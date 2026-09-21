@@ -118,6 +118,11 @@ the crack stages and explosion live in Blueprint reacting to the multiplier / ac
 change; C++ only exposes the data (multiplier, threshold/progress). Open: is lava purely
 cosmetic, or can something later reactivate it (Crumble already leaves that open)?
 
+**Modular per level, not tile-carried (2026-09-20).** Crumble is a board mechanic a level turns on
+or off, not something individual tiles carry: a level lists it in a `BoardReactions` array. Where
+it lives, how it runs after scoring, and how the client gets the threshold for the cracks are in
+[board-request-objects](board-request-objects.md).
+
 ### Siphon
 
 - **Trigger:** Multiplier 3+.

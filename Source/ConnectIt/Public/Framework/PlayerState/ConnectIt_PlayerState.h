@@ -18,4 +18,8 @@ UCLASS()
 class CONNECTIT_API AConnectIt_PlayerState : public ATurnBasedPlayerState
 {
     GENERATED_BODY()
+
+public:
+    AConnectIt_PlayerState();
+    
 };

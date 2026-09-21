@@ -184,6 +184,12 @@ struct FConnectItBoardChangeEvent
 {
     GENERATED_BODY()
 
+    // The board was just initialised from the level (see InitialiseBoardState):
+    // there may be starting pieces on tiles that need their visuals created.
+    // Set only on the initial snapshot.
+    UPROPERTY(BlueprintReadOnly)
+    bool bBoardSeeded = false;
+
     UPROPERTY(BlueprintReadOnly)
     bool bPiecePlaced = false;
 

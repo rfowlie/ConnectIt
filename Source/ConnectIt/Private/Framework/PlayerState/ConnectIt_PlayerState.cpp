@@ -3,4 +3,7 @@
 
 #include "Framework/PlayerState/ConnectIt_PlayerState.h"
 
-// Intentionally empty -- see the header.
+
+AConnectIt_PlayerState::AConnectIt_PlayerState()
+{
+}

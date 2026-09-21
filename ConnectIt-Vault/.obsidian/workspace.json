@@ -10,15 +10,17 @@
           {
             "id": "9529f203626984cd",
             "type": "leaf",
+            "pinned": true,
             "state": {
               "type": "markdown",
               "state": {
-                "file": "BRAIN DUMP.md",
+                "file": "ConnectIt/_tasks/active.md",
                 "mode": "source",
                 "source": false
               },
+              "pinned": true,
               "icon": "lucide-file",
-              "title": "BRAIN DUMP"
+              "title": "active"
             }
           }
         ]
@@ -188,6 +190,20 @@
   },
   "active": "9529f203626984cd",
   "lastOpenFiles": [
+    "ConnectIt/design/board-request-objects.md",
+    "ConnectIt/_logs/2026-09-20-2352.md",
+    "ConnectIt/_logs/2026-09-20-2345.md",
+    "ConnectIt/_decisions/2026-09-20-grid-axes-follow-ue-x-forward-y-right.md",
+    "ConnectIt/_logs/2026-09-20-2320.md",
+    "ConnectIt/_decisions/2026-09-20-designer-tile-data-via-blueprint-interface.md",
+    "ConnectIt/_logs/2026-09-20-2228.md",
+    "ConnectIt/_logs/2026-09-20-2120.md",
+    "BRAIN DUMP.md",
+    "ConnectIt/_logs/2026-09-20-1510.md",
+    "ConnectIt/_decisions/2026-09-20-crumble-threshold-stamped-on-replicated-board-state.md",
+    "ConnectIt/_decisions/2026-09-20-board-change-event-is-an-ordered-step-list.md",
+    "ConnectIt/_decisions/2026-09-20-board-changes-layered-primitives-requests-reactions.md",
+    "ConnectIt/design/board-request-objects.md.tmp.13320.508987edec00",
     "ConnectIt/_logs/2026-09-20-1449.md",
     "ConnectIt/_discussions/2026-09-20-action-state-authority-and-limbo.md",
     "ConnectIt/_logs/2026-09-20-1447.md",
@@ -200,30 +216,16 @@
     "ConnectIt/_decisions/2026-09-20-grid-x-is-row-y-is-column-direction-table.md.tmp.25520.5a6f6a72b51b",
     "ConnectIt/_logs/2026-09-20-1240.md",
     "ConnectIt/_decisions/2026-09-20-grid-x-is-row-y-is-column-direction-table.md",
-    "BRAIN DUMP.md",
     "ConnectIt/_logs/2026-09-18-1445.md",
     "ConnectIt/_decisions/2026-09-18-server-gate-in-mediator-and-state-revision.md",
-    "ConnectIt/_logs/2026-09-18-1510.md",
-    "ConnectIt/_decisions/2026-09-18-skin-plugin-ships-a-generic-debug-panel.md",
-    "ConnectIt/_logs/2026-09-18-1425.md",
-    "ConnectIt/_decisions/2026-09-18-action-state-single-authoritative-counter-with-limbo.md",
-    "ConnectIt/_logs/2026-09-18-1422.md",
     "ConnectIt/_decisions/__INDEX.md.tmp.12852.6f9129db2898",
-    "ConnectIt/_decisions/2026-09-18-skin-plugin-defines-no-row-shapes-project-owns-them.md",
-    "ConnectIt/_logs/2026-09-18-1358.md",
-    "ConnectIt/_decisions/2026-09-18-skin-catalogs-as-datatable-arrays-and-plugin-name.md",
-    "UnrealSkinMechanics/code/__INDEX.md",
     "UnrealSkinMechanics/code",
-    "UnrealSkinMechanics/CLAUDE.md",
     "UnrealSkinMechanics",
-    "ConnectIt/_logs/2026-09-18-1400.md",
-    "ConnectIt/_decisions/2026-09-18-action-config-keyed-by-class-not-tag.md",
     "ConnectIt/code/systems/place-piece-request.md.tmp.29352.2ef52135528e",
     "ConnectIt/code/runtime-state.md.tmp.29352.1d281e57dc8f",
     "ConnectIt/_logs/2026-09-18-0144.md.tmp.29352.2750c885f937",
     "_core/_logs/__INDEX.md.tmp.14064.ad955d8adc90",
     "ConnectIt/_questions/action-gameplay-tags.md.tmp.14064.93e0a7ab3319",
-    "ConnectIt/_decisions/2026-09-17-visual-events-live-in-blueprint-not-cpp.md.tmp.16940.569e6a948245",
     "Untitled.canvas"
   ]
 }

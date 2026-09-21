@@ -104,18 +104,51 @@ bool UTurnBasedAction::CanActivate() const
     // cap, cooldown). If it isn't available yet (e.g. a client before the
     // PlayerState has replicated) don't block here -- this is only a
     // convenience; the server gate is the real check.
-    if (const AController* Controller = OwningController)
+    if (const ATurnBasedPlayerState* PS = GetOwnerPlayerState())
     {
-        if (const ATurnBasedPlayerState* PS = Controller->GetPlayerState<ATurnBasedPlayerState>())
+        if (PS->HasActionConfig())
         {
-            if (PS->HasActionConfig())
-            {
-                return PS->CanUseAction(GetClass());
-            }
+            return PS->CanUseAction(GetClass());
         }
     }
 
     return true;
+}
+
+ATurnBasedPlayerState* UTurnBasedAction::GetOwnerPlayerState() const
+{
+    const AController* Controller = OwningController;
+    return IsValid(Controller) ? Controller->GetPlayerState<ATurnBasedPlayerState>() : nullptr;
+}
+
+bool UTurnBasedAction::GetPermanentRuntimeState(FPermanentActionRuntimeState& OutState) const
+{
+    const ATurnBasedPlayerState* PS = GetOwnerPlayerState();
+    return IsValid(PS) && PS->GetPermanentRuntimeState(GetClass(), OutState);
+}
+
+bool UTurnBasedAction::GetNumberedRuntimeState(FNumberedActionRuntimeState& OutState) const
+{
+    const ATurnBasedPlayerState* PS = GetOwnerPlayerState();
+    return IsValid(PS) && PS->GetNumberedRuntimeState(GetClass(), OutState);
+}
+
+int32 UTurnBasedAction::GetUsesThisTurn() const
+{
+    const ATurnBasedPlayerState* PS = GetOwnerPlayerState();
+    return IsValid(PS) ? PS->GetActionUsesThisTurn(GetClass()) : 0;
+}
+
+int32 UTurnBasedAction::GetMaxUsesPerTurn() const
+{
+    const ATurnBasedPlayerState* PS = GetOwnerPlayerState();
+    return IsValid(PS) ? PS->GetActionMaxUsesPerTurn(GetClass()) : 0;
+}
+
+int32 UTurnBasedAction::GetUsesRemaining() const
+{
+    const ATurnBasedPlayerState* PS = GetOwnerPlayerState();
+    return IsValid(PS) ? PS->GetNumberedActionUsesRemaining(GetClass()) : 0;
 }
 
 void UTurnBasedAction::RequestBoardChange(const FTurnActionRequest& Request)

@@ -6,6 +6,27 @@ Vault-wide passes go in `_core/_logs/`.
 
 Newest first:
 
+- [2026-09-20-2352](2026-09-20-2352.md) — session — task added for editor visualisation of starting-piece tiles; reported "can't score lines" resolved
+  by an editor restart (scoring rule is axis-independent, no code change).
+
+- [2026-09-20-2345](2026-09-20-2345.md) — session — grid axes now follow UE (+X forward/Up, +Y right): checked
+  the swapped direction table, fixed `GetTilesByDirection` (still on the old convention) and noted the
+  `UpLeft` duplicate the owner corrected. Decision filed. Not compiled.
+
+- [2026-09-20-2320](2026-09-20-2320.md) — session — designer-set tile values (multiplier, active, shiftable, starting piece) now reach the board
+  state via `IConnectIt_TileDataProvider`; `BoardSeeded` event for starting-piece visuals. Written, NOT compiled.
+
+- [2026-09-20-2228](2026-09-20-2228.md) — session — root cause of empty PlayerState action arrays: humans were never seeded on the
+  server (controller setup is local-only). `AConnectIt_GameMode::SeedActionStateForPlayer` now seeds in `PostLogin`.
+  Builds; not PIE-tested.
+
+- [2026-09-20-2120](2026-09-20-2120.md) — session — `TryPushActionByClass` now returns whether the push happened; actions gained read-only
+  accessors that read their runtime state from the PlayerState (no copy stored). Builds; not PIE-tested.
+
+- [2026-09-20-1510](2026-09-20-1510.md) — session — design talk (no code): board changes layered as
+  primitives / 1:1 request objects / shared pipeline / per-level `BoardReactions`, `ChangeEvent`
+  as an ordered step list, Crumble threshold on replicated state. Design note + 3 decisions filed.
+
 - [2026-09-20-1449](2026-09-20-1449.md) — process-discussion — `action-state-authority-and-limbo` filed from compiled excerpts of this
   conversation; 5 topics (1 continuing `action-state-architecture`, 4 first mentions).
 

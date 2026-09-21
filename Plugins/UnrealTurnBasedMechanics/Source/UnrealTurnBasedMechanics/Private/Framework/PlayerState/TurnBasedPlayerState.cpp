@@ -94,6 +94,28 @@ int32 ATurnBasedPlayerState::GetActionUsesThisTurnByTag(FGameplayTag ActionTag) 
 	return 0;
 }
 
+bool ATurnBasedPlayerState::GetPermanentRuntimeState(
+	TSubclassOf<UTurnBasedAction> ActionClass, FPermanentActionRuntimeState& OutState) const
+{
+	if (const FPermanentActionRuntimeEntry* P = FindEntry(PermanentActionState, ActionClass))
+	{
+		OutState = P->State;
+		return true;
+	}
+	return false;
+}
+
+bool ATurnBasedPlayerState::GetNumberedRuntimeState(
+	TSubclassOf<UTurnBasedAction> ActionClass, FNumberedActionRuntimeState& OutState) const
+{
+	if (const FNumberedActionRuntimeEntry* N = FindEntry(NumberedActionState, ActionClass))
+	{
+		OutState = N->State;
+		return true;
+	}
+	return false;
+}
+
 int32 ATurnBasedPlayerState::GetNumberedActionUsesRemaining(TSubclassOf<UTurnBasedAction> ActionClass) const
 {
 	const FNumberedActionRuntimeEntry* N = FindEntry(NumberedActionState, ActionClass);

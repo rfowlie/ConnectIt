@@ -189,7 +189,11 @@ public:
     UFUNCTION(BlueprintCallable, Category = "Turn Based|Actions")
     bool TryPushAction(FGameplayTag ActionTag);
 
-    // Push a specific runtime action instance onto the stack
+    // Push the runtime action instance built from this class (exact class
+    // match; one per loadout entry, reused every turn -- nothing is created
+    // here). Returns true only if it was actually pushed: false if there is no
+    // such action, or the push was refused (post-completion limbo, awaiting a
+    // request confirmation, or CanActivate() false).
     UFUNCTION(BlueprintCallable, Category = "Turn Based|Actions")
     bool TryPushActionByClass(TSubclassOf<UTurnBasedAction> ActionClass);
     

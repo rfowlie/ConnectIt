@@ -92,6 +92,16 @@ public:
     UFUNCTION(BlueprintPure, Category = "Turn Based|Actions")
     int32 GetActionUsesThisTurnByTag(FGameplayTag ActionTag) const;
 
+    // Copies of one action's whole runtime state. Return false (and leave Out
+    // untouched) if the action has no entry of that kind on this player.
+    UFUNCTION(BlueprintPure, Category = "Turn Based|Actions")
+    bool GetPermanentRuntimeState(TSubclassOf<UTurnBasedAction> ActionClass,
+        FPermanentActionRuntimeState& OutState) const;
+
+    UFUNCTION(BlueprintPure, Category = "Turn Based|Actions")
+    bool GetNumberedRuntimeState(TSubclassOf<UTurnBasedAction> ActionClass,
+        FNumberedActionRuntimeState& OutState) const;
+
     // Uses left in the match for a numbered action (0 if unknown/permanent)
     UFUNCTION(BlueprintPure, Category = "Turn Based|Actions")
     int32 GetNumberedActionUsesRemaining(TSubclassOf<UTurnBasedAction> ActionClass) const;

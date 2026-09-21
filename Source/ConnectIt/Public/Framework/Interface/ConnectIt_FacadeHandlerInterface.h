@@ -7,6 +7,7 @@
 #include "ConnectIt_FacadeHandlerInterface.generated.h"
 
 class UConnectIt_GameFacade;
+
 // This class does not need to be modified.
 UINTERFACE()
 class UConnectIt_FacadeHandlerInterface : public UInterface

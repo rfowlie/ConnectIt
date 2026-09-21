@@ -7,7 +7,7 @@
 #include "UIMechanics_SelectionHandler.generated.h"
 
 // This class does not need to be modified.
-UINTERFACE()
+UINTERFACE(BlueprintType)
 class UUIMechanics_SelectionHandler : public UInterface
 {
 	GENERATED_BODY()

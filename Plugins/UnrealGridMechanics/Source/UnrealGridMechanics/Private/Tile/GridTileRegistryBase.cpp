@@ -194,21 +194,21 @@ TArray<AGridTileBase*> UGridTileRegistryBase::GetTilesByDirection(
         const FGridPosition TilePosition = GetPositionOfTile(Tile);
         bool bOnLine = false;
 
-        // Grid convention: X runs left-right and Y runs up-down, matching
-        // UGridMechanics_GridLibrary's direction vectors (Up = +Y, Right = +X).
-        // A vertical line therefore holds X fixed and varies Y; a horizontal
-        // line holds Y fixed and varies X.
+        // Grid convention follows Unreal's world axes, matching
+        // UGridMechanics_GridLibrary's direction vectors (Up = +X forward,
+        // Right = +Y). A vertical line therefore holds Y fixed and varies X;
+        // a horizontal line holds X fixed and varies Y.
         switch (GridDirection)
         {
         case EGridDirection::Up:
         case EGridDirection::Down:
-            // Vertical line through StartPosition: same X, any Y.
-            bOnLine = (TilePosition.X == StartPosition.X);
+            // Vertical line through StartPosition: same Y, any X.
+            bOnLine = (TilePosition.Y == StartPosition.Y);
             break;
         case EGridDirection::Left:
         case EGridDirection::Right:
-            // Horizontal line through StartPosition: same Y, any X.
-            bOnLine = (TilePosition.Y == StartPosition.Y);
+            // Horizontal line through StartPosition: same X, any Y.
+            bOnLine = (TilePosition.X == StartPosition.X);
             break;
         case EGridDirection::UpRight:
         case EGridDirection::DownLeft:
