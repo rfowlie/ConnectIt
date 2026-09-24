@@ -5,8 +5,8 @@ role: primary
 source:
   - Source/ConnectIt/Public/Board/ConnectIt_BoardRequestMediator.h
   - Source/ConnectIt/Private/Board/ConnectIt_BoardRequestMediator.cpp
-reconciled: 2026-09-18
-commit: 9187568
+reconciled: 2026-09-21
+commit: 19d1772
 ---
 
 # UConnectIt_BoardRequestMediator
@@ -25,8 +25,14 @@ retired `AConnectIt_BoardManager::ProcessRequest`.
 ## Entry points
 
 - `Initialise(UConnectIt_BoardRules*)` — once, from `AConnectIt_GameMode`.
-- `ProcessRequest(const FTurnActionRequest&) → bool` — dispatch by `RequestType`; returns
-  success. `AConnectIt_PlayerController` relays the result to the requesting client via
+- `ProcessRequest(const FTurnActionRequest&) → bool` — **the mandatory per-action gate**, then
+  `DispatchRequest` (the `RequestType` switch). The gate: the requester's PlayerState (via
+  `GetPlayerStateForFaction`) must exist and `HasActionConfig()`; `Request.ActionTag` (client-supplied,
+  stamped by `UTurnBasedAction::RequestBoardChange`) must resolve via `FindActionClassByTag` to an action
+  in *that player's* loadout; that class's CDO must `ProducesRequestType(RequestType)`; and
+  `CanUseAction` must pass. Only after `DispatchRequest` succeeds does it `ConsumeActionUse` — a
+  rejected request never burns a use. There is no ungated path: an unseeded player can do nothing.
+  `AConnectIt_PlayerController` relays the result to the requesting client via
   `ClientNotifyBoardChangeOutcome` so `UTurnBasedActionsComponent` can clear its
   awaiting-confirmation state.
 - **Private handlers:** `HandlePlacePieceRequest` (validates via
@@ -37,13 +43,12 @@ retired `AConnectIt_BoardManager::ProcessRequest`.
   `HandleRemovePieceRequest` (rejects `DelayTurns > 0` — no per-turn ticking yet),
   `HandleSwapPiecesRequest(Request, FactionID)` (requires exactly one of the two
   positions to belong to `FactionID` — a trade, not an arbitrary reposition — checks and
-  consumes the acting player's `SwapUsesRemaining` via
-  [[AConnectIt_PlayerState|AConnectIt_PlayerState]], and **does re-run scoring** now,
+  and **does re-run scoring** now,
   once per swapped position against its new occupying faction, then one
   `CheckWinCondition`), `HandleToggleTileActiveRequest`, `HandleCapturePieceRequest`
   (re-runs scoring — exactly one ownership change), `HandleBoardShiftRequest(Request,
   FactionID)` (added for Board Shift — unrestricted, no faction-ownership check on the
-  line and no use-budget, unlike SWAP; re-validates every position server-side against
+  line; re-validates every position server-side against
   the actual board state, rotates whole `FConnectItTileData` one step along the
   *shiftable* subset — `bCanShift == false` tiles are skipped and keep their own data,
   wrapping the far end to the near end — then re-runs scoring on every now-occupied
@@ -57,10 +62,9 @@ retired `AConnectIt_BoardManager::ProcessRequest`.
   [[UConnectIt_BoardRules|UConnectIt_BoardRules]] (`IsTilePlaceable` / `ApplyScoring` /
   `CheckWinCondition`) on it, then commit via `SetBoardState(NewState, ChangeEvent)`.
 - `BoardRules` (injected via `Initialise`).
-- `HandleSwapPiecesRequest` resolves the acting player's
-  [[AConnectIt_PlayerState|AConnectIt_PlayerState]] via
-  `UConnectIt_GameUtilityLibrary::GetPlayerStateForFaction` — the server-authoritative
-  budget check/decrement; the client-side action's own pre-check is cosmetic only.
+- The use budget is no longer handler-local: SWAP's budget is a `NumberedActions` entry in the loadout,
+  checked and spent by the gate in `ProcessRequest` (the client-side action's own pre-check is cosmetic
+  only).
 
 ## Gotchas
 
@@ -70,10 +74,8 @@ retired `AConnectIt_BoardManager::ProcessRequest`.
   ported from `AConnectIt_BoardManager`) is unfinished. **Nothing is reactively driven
   from board-state changes today** beyond `EnqueueBoardEventTags`' tag firing.
 - No `HasAuthority()` guard — there is no client path to reach this object at all.
-- **Order matters in `HandleSwapPiecesRequest`**: occupied-check → faction-ownership →
-  budget-check, all *before* touching `NewState`; the `SwapUsesRemaining` decrement only
-  happens after `SetBoardState` succeeds — never burn a use on a request that gets
-  rejected.
+- **Order matters in `HandleSwapPiecesRequest`**: occupied-check → faction-ownership, both
+  *before* touching `NewState`. The use is spent by `ProcessRequest` only after the handler returns true.
 - `HandleSwapPiecesRequest`'s per-position scoring calls mean the rare case of *both*
   swapped positions completing a line for their (different) factions in one swap can only
   name one of them in `ChangeEvent.ScoringFactionSlot` (a single-value field) — `ScoreBoard`
@@ -88,6 +90,10 @@ and a `UTurnBasedAction` subclass that sends it.
 
 ## Changes
 
+- 2026-09-21 — **Mandatory action gate added** in `ProcessRequest` (PlayerState action config, `ActionTag` in loadout,
+  `ProducesRequestType`, `CanUseAction`, then `ConsumeActionUse`); dispatch moved to `DispatchRequest`; the
+  swap handler's own `SwapUsesRemaining` check/consume removed. See
+  [legacy action system removed](../_decisions/2026-09-20-legacy-action-system-removed-stage-3.md).
 - 2026-09-18 — **`HandleBoardShiftRequest` added** (see Entry points) — the
   `ConnectIt_Game_Shift` dispatch branch and handler for Board Shift. Explicitly ruled
   out `UGridMechanics_GridShiftLibrary`/`FShiftOperation` for this (orthogonal shifts

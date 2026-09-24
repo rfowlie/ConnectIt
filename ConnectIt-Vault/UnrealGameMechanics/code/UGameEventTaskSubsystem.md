@@ -5,8 +5,8 @@ role: primary
 source:
   - Plugins/UnrealGameMechanics/Source/UnrealGameMechanics/Public/GameEvent/GameEventTaskSubsystem.h
   - Plugins/UnrealGameMechanics/Source/UnrealGameMechanics/Private/GameEvent/GameEventTaskSubsystem.cpp
-reconciled: 2026-09-10
-commit: ec992a2
+reconciled: 2026-09-21
+commit: 6abda4a
 ---
 
 # UGameEventTaskSubsystem

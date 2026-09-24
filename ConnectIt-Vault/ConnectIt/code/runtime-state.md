@@ -7,8 +7,8 @@ source:
   - Source/ConnectIt/Public/Board/ConnectIt_BoardStateComponent.h
   - Source/ConnectIt/Public/Framework/GameState/ConnectIt_GameState.h
   - Source/ConnectIt/Public/ConnectIt_Structs.h
-reconciled: 2026-09-18
-commit: 9187568
+reconciled: 2026-09-21
+commit: aa8373e
 ---
 
 # Runtime state access — which accessor to call

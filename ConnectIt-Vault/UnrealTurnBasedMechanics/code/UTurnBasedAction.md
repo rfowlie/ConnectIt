@@ -5,8 +5,8 @@ role: primary
 source:
   - Plugins/UnrealTurnBasedMechanics/Source/UnrealTurnBasedMechanics/Public/Action/TurnBasedAction.h
   - Plugins/UnrealTurnBasedMechanics/Source/UnrealTurnBasedMechanics/Private/Action/TurnBasedAction.cpp
-reconciled: 2026-09-18
-commit: 9187568
+reconciled: 2026-09-21
+commit: aa8373e
 ---
 
 # UTurnBasedAction
@@ -25,19 +25,26 @@ Blueprint).
 
 ## Entry points
 
-- **Config (`EditAnywhere`):** `bIsRequired`, `bIsCancellable`, `bRequiresSelection`,
-  `bAllowsOptionalInterrupt`, `MaxCompletionsPerTurn` (0 = unlimited), `CooldownTurns`,
-  `InputBindings` (`TArray<FInputTagBinding>`), presentation `DisplayName` / `Description`
+- **Config (`EditAnywhere`):** `bIsCancellable`, `bRequiresSelection`, `InputBindings` (`TArray<FInputTagBinding>`), presentation `DisplayName` / `Description`
   / `Icon`.
-- **Call:** `Complete()` (increments `CompletionsThisTurn`), `Cancel()` (no increment),
-  `RequestNextAction(TSubclassOf<UTurnBasedAction>)`, `CanActivate()`, `IsComplete()`.
-- **Override (BlueprintNativeEvent):** `OnCompleted` / `OnCancelled`; selection hooks
+- **No budget state on the action.** Uses, per-turn caps, cooldowns and turn-end contribution live in the
+  loadout (`PermanentActions` / `NumberedActions` / `TurnEndRequirements`) and, live, on the owner's
+  `ATurnBasedPlayerState`; the action only *reads* it.
+- **Call:** `Complete()`, `Cancel()`, `RequestNextAction(TSubclassOf<UTurnBasedAction>)`, `CanActivate()`
+  (client-side convenience — asks the PlayerState whether uses/cap/cooldown allow it; the server re-checks).
+- **Pull accessors (read the PlayerState on every call, return 0/false if none):**
+  `GetPermanentRuntimeState(out)`, `GetNumberedRuntimeState(out)`, `GetUsesThisTurn()`,
+  `GetMaxUsesPerTurn()` (effective cap, 0 = unlimited/unknown), `GetUsesRemaining()` (numbered only),
+  `GetOwnerPlayerState()`. Static `GetTagForClass(TSubclassOf)` reads the tag off the class default object.
+- **Override (BlueprintNativeEvent):** `OnCompleted` / `OnCancelled`; `ProducesRequestType(FGameplayTag)` (default true; the Mediator gate checks a request's type against the
+  action named by its `ActionTag`, so one action can't spend its budget sending another's request);
+  selection hooks
   `IsValidHoverTile`, `IsValidSelectionTile`, `HandleValidHover`, `HandleHoverCleared`,
   `HandleValidSelection`, `ClearSelectionState`; `ConstructInputBindings()` (populates
   `InputBindings`, called once from `InitialiseAction` before the input binder is built —
-  see Collaborators); `ShouldTickCooldown(bool)`.
+  see Collaborators).
 - **Protected helpers:** `RequestBoardChange(FTurnActionRequest)` (call from
-  `HandleValidSelection`), `BindInput()` / `UnbindInput()`, `BindGridSubsystem()` /
+  `HandleValidSelection`; **stamps `Request.ActionTag`** with this action's tag), `BindInput()` / `UnbindInput()`, `BindGridSubsystem()` /
   `UnbindGridSubsystem()`, `CurrentHoveredTile`.
 
 ## Collaborators
@@ -55,8 +62,11 @@ Blueprint).
 
 ## Gotchas
 
-- `CompletionsThisTurn` increments **only** on `Complete()` — never on `Activate` or
-  `Cancel`. `ResetTurnState()` clears it at turn start.
+- Uses are counted **by the server**, when the request commits (`ConsumeActionUse` in the Mediator gate) —
+  not by `Complete()`. Per-turn counters and cooldowns are ticked/reset server-side in
+  `UTurnBasedParticipantManagerComponent::StartTurn`. The old `CompletionsThisTurn`, `TurnsUntilAvailable`,
+  `ResetTurnState`, `TickCooldown`, `IsComplete`, `bIsRequired`, `bAllowsOptionalInterrupt`,
+  `MaxCompletionsPerTurn`, `CooldownTurns` and `ShouldTickCooldown` are removed.
 - An action that defers selection to a later internal state should leave
   `bRequiresSelection = false` and call `BindInput()` itself when ready.
 - Presentation fields are UI-only — the action never reads them; `GetActionTag()` (a
@@ -72,12 +82,16 @@ Blueprint).
 
 A new subclass must be registered in
 [[UnrealTurnBasedMechanics/code/UActionLoadoutDataAsset|UActionLoadoutDataAsset]]
-(`Actions` array or a system slot). Adding `InputBindings` needs matching
+(a `PermanentActions` / `NumberedActions` entry keyed by class, or a system slot), and, if it should gate
+turn end, referenced from a `TurnEndRequirements` leaf. Adding `InputBindings` needs matching
 `FInputTagBinding` entries; new gameplay-tag request types need a project `USTRUCT` for
 `FTurnActionRequest::Payload`.
 
 ## Changes
 
+- 2026-09-21 — **budget/cap/cooldown state removed from the action** (moved to loadout config + PlayerState);
+  added `GetTagForClass`, `ProducesRequestType`, the pull accessors, `GetOwnerPlayerState`; `RequestBoardChange`
+  stamps `ActionTag`. See [legacy removal](../../ConnectIt/_decisions/2026-09-20-legacy-action-system-removed-stage-3.md).
 - 2026-09-18 — **Input binding rewritten**: the old shared `OnInputTagTriggered`/
   `OnBoundInputTriggered` broadcast is gone — `ConstructInputBindings()` now populates
   `InputBindings` up front (called from `InitialiseAction`, before `InputTagBinder` is

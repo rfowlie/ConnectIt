@@ -8,6 +8,7 @@ Newest first:
 
 | Date | Decision | Status |
 |---|---|---|
+| [2026-09-24-minmax-scoped-to-classic-adventure-gets-bespoke-ai](2026-09-24-minmax-scoped-to-classic-adventure-gets-bespoke-ai.md) | MinMax stays scoped to Classic ConnectIt (place-piece-only); Adventure-mode levels get bespoke, per-level AI controllers aiming for an interesting fight, not optimal play | Active |
 | [2026-09-20-designer-tile-data-via-blueprint-interface](2026-09-20-designer-tile-data-via-blueprint-interface.md) | Designer-set tile values (multiplier, active, shiftable, starting piece) reach board state through an interface the tile Blueprint implements; starting pieces get visuals from a one-shot `BoardSeeded` event | Active |
 | [2026-09-20-crumble-threshold-stamped-on-replicated-board-state](2026-09-20-crumble-threshold-stamped-on-replicated-board-state.md) | Crumble threshold is stamped onto replicated board state (`TargetScore` precedent) so client crack visuals are state-driven; Crumble itself is a per-level board reaction | Active |
 | [2026-09-20-board-change-event-is-an-ordered-step-list](2026-09-20-board-change-event-is-an-ordered-step-list.md) | `ChangeEvent` becomes an ordered list of semantic, flat steps; the game-event queue carries a step index; steps describe every position they touched | Active |

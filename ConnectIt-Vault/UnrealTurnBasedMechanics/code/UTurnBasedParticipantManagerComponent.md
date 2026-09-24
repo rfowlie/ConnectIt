@@ -5,8 +5,8 @@ role: primary
 source:
   - Plugins/UnrealTurnBasedMechanics/Source/UnrealTurnBasedMechanics/Public/Turn/Participant/TurnBasedParticipantManagerComponent.h
   - Plugins/UnrealTurnBasedMechanics/Source/UnrealTurnBasedMechanics/Private/Turn/Participant/TurnBasedParticipantManagerComponent.cpp
-reconciled: 2026-09-14
-commit: 1d1c70f
+reconciled: 2026-09-21
+commit: 19d1772
 ---
 
 # UTurnBasedParticipantManagerComponent
@@ -38,7 +38,8 @@ turn advancement. Server-authoritative; a handful of fields replicate to clients
 - **Fires:** `OnTurnPhaseChanged`, `OnTurnChanged`, `OnActiveControllerChanged`,
   `OnParticipantForfeited`, `OnParticipantIndexChanged`, `OnAllParticipantsReady`,
   `OnGameOver`, `OnInvalidNumberOfPlayers`.
-- **Private state-machine core:** `SetPhase`, `StartTurn`, `EndTurn(ETurnEndReason)`,
+- **Private state-machine core:** `SetPhase`, `StartTurn` (server: before notifying anyone, ticks the active player's action cooldowns and zeroes per-turn
+  use counters via `ATurnBasedPlayerState::TickActionCooldowns` / `ResetActionTurnCounters`), `EndTurn(ETurnEndReason)`,
   `AdvanceToNextParticipant(FGameplayTag)`.
 
 ## Collaborators
@@ -81,6 +82,8 @@ Change the phase set / lifecycle and also update: `ETurnPhase` / `EMatchPhase` /
 
 ## Changes
 
+- 2026-09-21 — `StartTurn` now ticks cooldowns and resets per-turn action counters on the active
+  participant's `ATurnBasedPlayerState` (turn-end/loadout redesign).
 - 2026-09-14 — added `GetAllParticipants()`, a plain accessor for the full `Participants`
   array.
 - 2026-09-10 — re-ingested to the `_code` schema; provenance re-anchored.

@@ -23,6 +23,7 @@ void AConnectIt_AIController::BeginPlay()
     InitialiseFromLevelConfig();
 }
 
+// TODO: GI won't initiate actions the same way but will want to still read from the loadout
 void AConnectIt_AIController::InitialiseFromLevelConfig()
 {
     const UConnectIt_LevelConfigDataAsset* LevelConfig =

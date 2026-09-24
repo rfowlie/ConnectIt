@@ -4,8 +4,6 @@
 
 #include "CoreMinimal.h"
 #include "Framework/Controller/TurnBasedAIController.h"
-#include "GridMechanicsBaseStructs.h"
-#include "TurnBasedMechanicsStructs.h"
 #include "ConnectIt_AIController.generated.h"
 
 

@@ -5,8 +5,8 @@ role: primary
 source:
   - Plugins/UnrealTurnBasedMechanics/Source/UnrealTurnBasedMechanics/Public/Action/TurnBasedActionsComponent.h
   - Plugins/UnrealTurnBasedMechanics/Source/UnrealTurnBasedMechanics/Private/Action/TurnBasedActionsComponent.cpp
-reconciled: 2026-09-18
-commit: 9187568
+reconciled: 2026-09-21
+commit: aa8373e
 ---
 
 # UTurnBasedActionsComponent
@@ -35,10 +35,21 @@ the plugin (~25 UPROPERTY / ~32 UFUNCTION).
   (refuses to empty the stack), `ClearAndPush` (tear down + new sole root),
   `TryPushAction(FGameplayTag)` / `TryPushActionByRef` / `TryPushActionByClass(TSubclassOf<UTurnBasedAction>)`
   (added 2026-09-14 — resolves to the already-cloned `RuntimeActions` instance of that
-  class, same as `TryPushAction` does by tag; **does not** construct a new instance),
+  class, same as `TryPushAction` does by tag; **does not** construct a new instance; returns `TryPushActionByRef`'s
+  result — true only if actually pushed, false if no such action or the push was refused by limbo /
+  awaiting-confirmation / `CanActivate()`),
   `CancelTopAction`.
-- **Turn end:** `CanEndTurn()` → `CanAutoEndTurn()` (BlueprintNativeEvent designer
-  override); `RequestTurnEnd()` broadcasts `OnTurnEndRequested`.
+- **Turn end:** `CanEndTurn()` → `CanAutoEndTurn()` (BlueprintNativeEvent) — default evaluates the loadout's
+  `TurnEndRequirements` tree, each leaf comparing its action's uses this turn (read from the owner's
+  `ATurnBasedPlayerState`) to its required count; **no tree ⇒ true**. `HasTurnEndRequirementTree()`;
+  overrides should defer to `Super` when a tree exists. `RequestTurnEnd()` broadcasts `OnTurnEndRequested`.
+  (`GetRequiredActions()` and the `bIsRequired`-based logic are gone.)
+- **Post-completion limbo:** `IsAwaitingRuntimeState()`, `StateSyncTimeoutSeconds` (default 3s). After the
+  server confirms a request the action completes as normal, *then* the component enters limbo — refusing
+  player-initiated pushes — until the PlayerState's `OnActionRuntimeStateUpdated` fires (revision check),
+  then checks turn end. A timeout exits limbo anyway so a lost update can't freeze the turn.
+  `EnsureBoundToPlayerState()` binds the handler (`AddUniqueDynamic`) from `InitialiseFromLoadout` and
+  `NotifyTurnStarted`, since a client's PlayerState may replicate in after init.
 - **Board change:** `NotifyBoardChangeOutcome(FTurnActionRequest, bSucceeded)` — the one
   call project glue makes once the server answers.
 - **Designer overrides:** `OnTurnStarted`, `OnOpponentTurnStarted`, `CanAutoEndTurn`.
@@ -46,7 +57,11 @@ the plugin (~25 UPROPERTY / ~32 UFUNCTION).
 
 ## Collaborators
 
-- **Loadout:** `UActionLoadoutDataAsset` — clones `Actions`, vends the 5 system actions.
+- **Loadout:** `UActionLoadoutDataAsset` — one runtime action instance is built per `PermanentActions` /
+  `NumberedActions` entry (reused every turn), plus the 5 system actions.
+- **PlayerState:** `ATurnBasedPlayerState` holds the authoritative per-action state the component reads (turn
+  end) and signals via `OnActionRuntimeStateUpdated`. Cooldown ticking (`TickCooldowns`) moved off the
+  component to the server's `StartTurn`.
 - **Actions:** creates & owns `UTurnBasedAction` runtime instances +
   `UTurnBasedSpectatorAction` system instances; binds each action's
   `OnChangeRequested` / `OnActionCompleted` / `OnActionCancelled` / `OnNextActionRequested`.
@@ -71,6 +86,8 @@ the plugin (~25 UPROPERTY / ~32 UFUNCTION).
 - **Observers bind the `…Safe` delegates**, which carry a copied `FTurnActionSnapshot`.
   The raw-pointer `OnAction*` delegates hand out the live action with callable
   `Complete()` / `Cancel()`.
+- **Limbo is after completion, not instead of it.** The action finishes first (so a player can't fire
+  repeated requests), then the component waits on the PlayerState; don't check turn end before the update lands.
 - `NotifyBoardChangeOutcome` no-ops unless `Request` matches the pending one
   (`FTurnActionRequest::operator==`).
 
@@ -84,6 +101,10 @@ Change the slot set or lifecycle and also update:
 
 ## Changes
 
+- 2026-09-21 — **turn-end and state moved to the loadout/PlayerState model**: tree-based `CanAutoEndTurn`,
+  post-completion limbo + `EnsureBoundToPlayerState`, `TryPushActionByClass` returns the real result,
+  `TickCooldowns`/`GetRequiredActions` removed. See
+  [legacy removal](../../ConnectIt/_decisions/2026-09-20-legacy-action-system-removed-stage-3.md).
 - 2026-09-18 — internal-only: `Action->ActionTag` field reads in log strings became
   `Action->GetActionTag()` calls — no change to this page's public surface or behavior.
   (`process-code` sweep — commit `9187568`.)

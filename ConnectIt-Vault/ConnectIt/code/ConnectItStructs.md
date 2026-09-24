@@ -4,8 +4,8 @@ kind: USTRUCT
 role: primary
 source:
   - Source/ConnectIt/Public/ConnectIt_Structs.h
-reconciled: 2026-09-18
-commit: 9187568
+reconciled: 2026-09-21
+commit: aa8373e
 ---
 
 # ConnectItStructs
@@ -39,7 +39,7 @@ shiftable tiles around it rotate as if it weren't in the line). `SetFactionPiece
 ### `FConnectItBoardChangeEvent` — "what changed" on the last commit
 
 Rides inside the snapshot so it replicates atomically. Per-kind flag + fields:
-`bPiecePlaced` (+ `PlacedPosition`, `PlacingFactionSlot`), `bLineScored` (+
+`bBoardSeeded` (set only on the initial snapshot from `InitialiseBoardState`, so Blueprint can spawn visuals for designer-placed starting pieces), `bPiecePlaced` (+ `PlacedPosition`, `PlacingFactionSlot`), `bLineScored` (+
 `ScoringFactionSlot`, `PointsScored`, `ScoringLinePositions` — union across simultaneous
 lines), `bGameWon` (**edge-triggered**; + `WinningFactionSlot`), plus
 `bTileMultiplierDestroyed`, `bPieceRemoved`, `bPiecesSwapped`, `bTileActiveToggled`,

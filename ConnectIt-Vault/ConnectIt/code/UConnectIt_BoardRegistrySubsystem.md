@@ -7,8 +7,8 @@ source:
   - Source/ConnectIt/Private/Framework/Subsystem/ConnectIt_BoardRegistrySubsystem.cpp
   - Source/ConnectIt/Public/Board/ConnectIt_TileRegistry.h
   - Source/ConnectIt/Public/Board/ConnectIt_PieceRegistry.h
-reconciled: 2026-09-10
-commit: 6477d5d
+reconciled: 2026-09-21
+commit: 6abda4a
 ---
 
 # UConnectIt_BoardRegistrySubsystem (+ UConnectIt_TileRegistry / UConnectIt_PieceRegistry)
@@ -37,10 +37,10 @@ data. Replaces the previous home of these registries: per-machine properties on
   and `DuplicateObject()`s its own per-world runtime copy of each `Instanced` template —
   **`GridDefinition` first**, then `TileRegistry`/`PieceRegistry`, each wired with a
   reference to the duplicated `GridDefinition` before its own `InitialiseRegistry()` runs
-  (`DiscoverExisting` needs it already assigned). Also binds `PieceRegistry` to
+  (`DiscoverExisting` needs it already assigned). Also binds **both** `TileRegistry` and `PieceRegistry` to
   [[UnrealGameMechanics/code/UGameEventTaskSubsystem\|UGameEventTaskSubsystem]]`::OnAnyTagComplete`
-  here, once, so `PieceMap` stays in sync with board mutations.
-- `Deinitialize()` — unbinds `PieceRegistry` from `OnAnyTagComplete`, then calls
+  here, once. Missing template → logged error per registry.
+- `Deinitialize()` — unbinds both registries from `OnAnyTagComplete`, then calls
   `ShutdownRegistry()` on both.
 - `GetTileRegistry()` / `GetPieceRegistry()` / `GetGridDefinition()` (`BlueprintPure`) —
   the runtime duplicates, never the templates.
@@ -48,11 +48,13 @@ data. Replaces the previous home of these registries: per-machine properties on
   (`BlueprintPure`) — on-demand `UConnectIt_BoardStateComponent*` resolution. Lives on
   the ConnectIt subclass, not the plugin's `UGridTileRegistryBase` /
   `UGridPieceRegistryBase`, which stay project-agnostic.
-- `UConnectIt_PieceRegistry::HandleGameEventComplete(FGameplayTag)` — the
-  `OnAnyTagComplete` handler; dispatches internally to the shift/swap/remove re-key on
-  `PieceMap`. **Public**, not protected — `AddDynamic`/`RemoveDynamic` need compile-time
-  access to `&UConnectIt_PieceRegistry::HandleGameEventComplete` from this (unrelated)
-  subsystem class.
+- `UConnectIt_TileRegistry::HandleGameEventComplete(FGameplayTag)` and
+  `UConnectIt_PieceRegistry::HandleGameEventComplete(FGameplayTag)` — the `OnAnyTagComplete`
+  handlers, both **`BlueprintImplementableEvent`s** (public, so `AddDynamic`/`RemoveDynamic` can name
+  them from this unrelated subsystem class). The re-key of the position→actor maps on
+  shift/swap/remove is therefore authored in Blueprint per the project's visuals-in-Blueprint
+  convention; `PieceRegistry` keeps protected C++ `HandleBoardShifted`/`HandleBoardPiecesSwapped`/
+  `HandleBoardPieceRemoved` stubs (marked TODO — undecided whether they're useful).
 
 ## Collaborators
 
@@ -72,7 +74,7 @@ data. Replaces the previous home of these registries: per-machine properties on
   guarantees. Also needs `GridDefinition` already assigned (see Entry points) — otherwise
   discovery still populates `Tiles` but `TileMap` stays empty (logged as a warning).
 - [[UnrealGameMechanics/code/UGameEventTaskSubsystem|UGameEventTaskSubsystem]]`::OnAnyTagComplete`
-  — `PieceRegistry` is the only current listener; see
+  — both registries listen (Blueprint-implemented handlers); see
   [[ConnectIt/_decisions/2026-09-18-piece-registry-mapping-fix-re-keys-not-rebuilds|decisions/2026-09-18-piece-registry-mapping-fix-re-keys-not-rebuilds]]
   for why the handler re-keys from `FConnectItBoardChangeEvent` rather than rebuilding
   from actor transforms.
@@ -112,6 +114,8 @@ Adding a new registry field: the `Instanced` template property on
 
 ## Changes
 
+- 2026-09-21 — `TileRegistry` now also bound to `OnAnyTagComplete`; both registries' `HandleGameEventComplete`
+  are `BlueprintImplementableEvent`s (the C++ re-key dispatch was replaced by Blueprint handlers).
 - 2026-09-18 — **`GridDefinition` construction/wiring added** (duplicated before either
   registry, assigned to both); **`PieceRegistry` bound to `OnAnyTagComplete`** so its
   `PieceMap` stays in sync with shift/swap/remove (previously stale after enough board

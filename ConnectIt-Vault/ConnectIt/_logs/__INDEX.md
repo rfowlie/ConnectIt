@@ -6,6 +6,8 @@ Vault-wide passes go in `_core/_logs/`.
 
 Newest first:
 
+- [2026-09-21-0001](2026-09-21-0001.md) — session — task added to rework the MinMax AI (existing code messy and pre-dates the loadout/gate changes); design discussion first, no code changed.
+
 - [2026-09-20-2352](2026-09-20-2352.md) — session — task added for editor visualisation of starting-piece tiles; reported "can't score lines" resolved
   by an editor restart (scoring rule is axis-independent, no code change).
 

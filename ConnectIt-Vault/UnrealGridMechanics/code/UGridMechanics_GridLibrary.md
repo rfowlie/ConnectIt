@@ -5,8 +5,8 @@ role: primary
 source:
   - Plugins/UnrealGridMechanics/Source/UnrealGridMechanics/Public/GridMechanics_GridLibrary.h
   - Plugins/UnrealGridMechanics/Source/UnrealGridMechanics/Private/GridMechanics_GridLibrary.cpp
-reconciled: 2026-09-18
-commit: 9187568
+reconciled: 2026-09-21
+commit: aa8373e
 ---
 
 # UGridMechanics_GridLibrary
@@ -28,7 +28,10 @@ grid-position arithmetic, 8-neighbour traversal, and **N-in-a-row connection ana
   `RotateGridDirection(EGridDirection, int32 RotationAmount)` (wraps around the 8-way
   compass via modulus — rotate an `EGridDirection` value itself, distinct from
   `GetRotatedGridDirection`'s local→absolute rotation). Static `GridDirectionVectors` map
-  (clockwise from Up).
+  (clockwise from Up). **Convention follows Unreal's axes:** +X is forward/`Up`, +Y is right/`Right`;
+  `FGridDirectionVector(Row, Column)` is the (X step, Y step) — `Up {1,0}`, `Right {0,1}`, `Down {-1,0}`,
+  `Left {0,-1}`, diagonals combine them. See
+  [decision](../../ConnectIt/_decisions/2026-09-20-grid-axes-follow-ue-x-forward-y-right.md).
 - **Position math:** `CalculateGridPositionFromSize` (world→cell; `Size` clamped ≥10),
   `GetAverageGridPosition` (centroid), `GetClosestNormalizedGridPositionFromPositions`,
   `GetClosestGridDirectionBetweenPositions` (returns `Up` + warns if P1==P2).
@@ -64,6 +67,7 @@ Self-contained (pure functions). Changing the neighbour order or the
 
 ## Changes
 
+- 2026-09-21 — `GridDirectionVectors` table flipped to UE axes (X forward); previously `Up {0,1}` etc.
 - 2026-09-18 — **`RotateGridDirection` added** (see Entry points). (`process-code` sweep
   — commit `9187568`.)
 - 2026-09-10 — re-ingested to the `_code` schema; provenance re-anchored.

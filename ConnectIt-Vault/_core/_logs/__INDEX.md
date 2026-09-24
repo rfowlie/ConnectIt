@@ -8,6 +8,14 @@ in `<domain>/_logs/`, not here.
 
 Newest first:
 
+- [2026-09-24-1530](2026-09-24-1530.md) — meeting-open + meeting-closed — 2026-09-24 ConnectIt
+  check-in: bugs/redesign confirmed landed, `Priority` column added to `ConnectIt/_tasks/`,
+  MinMax/AI split decided (Classic keeps MinMax, Adventure gets bespoke controllers). Ended early
+  into `/session-open` + plan mode.
+
+- [2026-09-21-0230](2026-09-21-0230.md) — /process — 5 complete tasks filed; 12 drifted code pages refreshed
+  (action loadout/turn-end redesign, mediator gate, tile data, UE-axis grid); stale recipe/system pages flagged.
+
 - [2026-09-18-1305](2026-09-18-1305.md) — by hand — corrected the stale branch label in
   `ConnectIt/CLAUDE.md`; `/process` gained a step-0 branch check; documented the Board Shift
   holes wishlist and the swap scoring-line visual bug (new decision + recipe pitfall).
