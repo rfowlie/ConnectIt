@@ -19,8 +19,7 @@ class CONNECTIT_API UConnectIt_LineScoringRule : public UObject, public IConnect
 public:
 
     // How many tiles in a line are required to score
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "ConnectIt|Scoring",
-        meta = (ClampMin = 3))
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "ConnectIt|Scoring", meta = (ClampMin = 3))
     int32 ConnectLength = 4;
 
     virtual float ApplyScoring_Implementation(
@@ -29,18 +28,48 @@ public:
         int32 FactionSlot,
         TArray<FGridPosition>& OutScoringPositions) override;
 
+    // Server-only -- 0 for a Blueprint override that doesn't implement this
+    // (the default 0 return on IConnectIt_ScoringRule::GetMinimumConnectLength
+    // means "unknown," not "no minimum"). Mirrors GetTargetScore's role on
+    // the win-condition interface: lets non-search code (the Classic MinMax
+    // AI) read this rule's config polymorphically, without knowing it's the
+    // concrete C++ class.
+    virtual int32 GetMinimumConnectLength_Implementation() const override
+    {
+        return ConnectLength;
+    }
+
+    // Same algorithm ApplyScoring_Implementation wraps, as a plain static
+    // function -- no UObject, no BlueprintNativeEvent dispatch. For search
+    // code (Classic MinMax) that must not touch this UObject or run Blueprint
+    // VM code off the game thread; see FConnectItMinMaxRules' class
+    // comment. Takes ConnectLength explicitly instead of reading the
+    // instance member, so a caller can pass whichever level's config
+    // resolved (read once, on the game thread, via GetMinimumConnectLength).
+    static float ApplyLineScoring(
+        FConnectItBoardState& MutableState,
+        FGridPosition Position,
+        int32 FactionSlot,
+        int32 ConnectLength,
+        TArray<FGridPosition>& OutScoringPositions);
+
+    // The four line axes scoring checks (each walked both ways). Public so the
+    // Classic MinMax evaluator measures line potential along exactly the same
+    // axes the real rule scores on.
+    static const TArray<FGridDirectionVector>& GetScoringDirections();
+
 private:
 
-    TArray<TArray<FGridPosition>> FindScoringLines(
+    static TArray<TArray<FGridPosition>> FindScoringLines(
         const FConnectItBoardState& State,
         FGridPosition Position,
-        int32 FactionSlot) const;
+        int32 FactionSlot,
+        int32 ConnectLength);
 
-    float ApplyScoringLine(
+    static float ApplyScoringLine(
         FConnectItBoardState& MutableState,
         const TArray<FGridPosition>& Line,
         FGridPosition CompletingPosition,
-        int32 FactionSlot) const;
+        int32 FactionSlot);
 
-    static const TArray<FGridDirectionVector>& GetScoringDirections();
 };

@@ -83,6 +83,13 @@ float UConnectIt_BoardRules::GetTargetScore() const
     return IConnectIt_WinCondition::Execute_GetTargetScore(WinConditionRule);
 }
 
+int32 UConnectIt_BoardRules::GetMinimumConnectLength() const
+{
+    if (!ScoringRule) return 0;
+
+    return IConnectIt_ScoringRule::Execute_GetMinimumConnectLength(ScoringRule);
+}
+
 bool UConnectIt_BoardRules::IsTilePlaceable(
     const FConnectItBoardState& State, FGridPosition Position) const
 {

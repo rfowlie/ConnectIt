@@ -7,7 +7,9 @@ source:
   - Plugins/UnrealGameIntelligence/Source/UnrealGameIntelligence/Public/MinMax/MinMaxABPruning.h
   - Plugins/UnrealGameIntelligence/Source/UnrealGameIntelligence/Public/MinMax/MinMaxABMoveOrder.h
   - Plugins/UnrealGameIntelligence/Source/UnrealGameIntelligence/Public/MinMax/MinMaxUtility.h
-reconciled: 2026-09-10
+  - Plugins/UnrealGameIntelligence/Source/UnrealGameIntelligence/Public/Search/GI_SearchAsync.h
+  - Plugins/UnrealGameIntelligence/Source/UnrealGameIntelligence/Public/Search/MinMax/GI_MinMaxAlphaBeta.h
+reconciled: 2026-10-02
 commit: 1cb84bd
 ---
 
@@ -18,9 +20,23 @@ Header-only, C++20-concept-constrained templates for game-tree search. A progres
 (alpha-beta + move ordering). `MinMaxUtility.h` holds the node concepts and threaded
 tree-building helpers.
 
-> **Status:** the `ConnectIt` game module does **not** use these — it carries its own
-> parallel MinMax implementation. Treat this as a library that exists but is currently
-> unwired (a known suite-level tension — converge or delete one copy).
+> **Status (2026-10-02):** the game uses the newer **`Search/`** headers, not these.
+> - `Search/MinMax/GI_MinMaxAlphaBeta.h` — `GameIntelligence::Search::MinMax::TAlphaBeta<TGame>`: negamax + alpha-beta
+>   over a **const rules instance** (`c_game`: `TGame::FState`, `TGame::FMove`, const members `GenerateMoves` /
+>   `ApplyMove` / `IsTerminal` / `Evaluate` (side to move) / `OrderScore`), children generated on demand, move ordering,
+>   iterative deepening, time budget, cancel flag; root moves get exact (full-window) scores. `Run(Game, Root, FParams)`
+>   → `TResult` (`TScoredMove` list best-first, depth, nodes, time).
+> - `Search/GI_SearchAsync.h` — `GameIntelligence::Search`: `FCancelFlag` / `MakeCancelFlag`, searcher-agnostic
+>   `LaunchAsync(Work, OnGameThread)`.
+> - `MinMax::LaunchAlphaBetaAsync<TGame>(SharedRules, Root, Params, Cancel, OnComplete)` — in `GI_MinMaxAlphaBeta.h`
+>   (merged in by the owner; that header now includes the async plumbing).
+> - Consumer: ConnectIt's `FConnectItMinMaxRules` (built per decision by `UConnectIt_AIStrategy_MinMax` from its
+>   editor term lists) — see [the decision](../../ConnectIt/_decisions/2026-10-02-minmax-evaluation-as-editor-terms.md).
+> - Score windows (root window / PVS / aspiration) are an open task, not built.
+>
+> The `MinMax/` templates below are **kept for reference, unused** (owner's call). They build and store a whole tree
+> before solving it. Known bug: `MinMaxABMoveOrder::GetOrderedChildren` calls `Ordered.Reserve()` where it means to
+> reverse the order for the minimiser (never instantiated, so it has never failed to compile).
 
 ## When you touch this
 
@@ -62,6 +78,12 @@ Isolated. Converging the game module onto these means providing a `TNode` that s
 
 ## Changes
 
+- 2026-10-02 (latest) — owner merged `LaunchAlphaBetaAsync` into `GI_MinMaxAlphaBeta.h` (`GI_MinMaxAsync.h` removed);
+  ConnectIt consumer renamed to `FConnectItMinMaxRules`.
+- 2026-10-02 (later) — search moved to `GameIntelligence::Search::MinMax` (`GI_MinMaxAlphaBeta.h`), takes a const
+  rules instance; async split into searcher-agnostic `GI_SearchAsync.h` + `GI_MinMaxAsync.h`; old `Search/` file names removed.
+- 2026-10-02 — added `Search/GI_AlphaBetaSearch.h` + `Search/GI_AsyncSearch.h` (the search ConnectIt actually
+  uses); `MinMax/` templates left as unused reference.
 - 2026-09-10 — re-ingested to the `_code` schema; provenance re-anchored.
 
 ## See also

@@ -6,6 +6,24 @@ Vault-wide passes go in `_core/_logs/`.
 
 Newest first:
 
+- [2026-10-02-1255](2026-10-02-1255.md) — session — wishlist task added: explore MinMax moves beyond PlacePiece (Swap).
+
+- [2026-10-02-1250](2026-10-02-1250.md) — session — wishlist task added: curve-based mapping of MinMax heuristic scores into the non-win band.
+
+- [2026-10-02-1235](2026-10-02-1235.md) — session — MinMax evaluation/ordering became editor term lists on the strategy;
+  rules renamed `FConnectItMinMaxRules` (internal, fixed); 7/7 tests pass.
+
+- [2026-10-02-1123](2026-10-02-1123.md) — session — pluggable `UConnectIt_AIStrategy` (MinMax subclass) on the level
+  config; MinMax search → `GameIntelligence::Search::MinMax` with const rules instances; 7/7 tests pass.
+
+- [2026-10-02-0952](2026-10-02-0952.md) — session — Classic MinMax search redesigned: on-demand negamax + alpha-beta in
+  UnrealGameIntelligence, line-potential evaluator, per-level difficulty, controller rework. Built; 6/6 tests pass.
+
+- [2026-09-24-1730](2026-09-24-1730.md) — session — Classic MinMax rebuilt end to end: real
+  board state + thread-safe static scoring calls, decision-to-request bridge, turn-end
+  loop. Deleted the older node model + dead example file. Design note + 2 decisions filed.
+  Not compiled.
+
 - [2026-09-21-0001](2026-09-21-0001.md) — session — task added to rework the MinMax AI (existing code messy and pre-dates the loadout/gate changes); design discussion first, no code changed.
 
 - [2026-09-20-2352](2026-09-20-2352.md) — session — task added for editor visualisation of starting-piece tiles; reported "can't score lines" resolved

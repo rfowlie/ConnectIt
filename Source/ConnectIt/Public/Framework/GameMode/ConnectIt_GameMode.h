@@ -70,6 +70,15 @@ public:
     UFUNCTION(BlueprintCallable, Category = "ConnectIt|Board")
     bool ProcessBoardRequest(const FTurnActionRequest& Request);
 
+    // Read access to the resolved rule strategies (scoring/win-condition/
+    // placeable) -- the same object HandleMatchHasStarted already built from
+    // LevelConfig, defaults included. Lets a server-only reader (the Classic
+    // MinMax AI) query e.g. GetTargetScore()/GetMinimumConnectLength() without
+    // re-resolving LevelConfig and duplicating BoardRules::Initialise()'s
+    // defaulting logic itself.
+    UFUNCTION(BlueprintPure, Category = "ConnectIt|Board")
+    UConnectIt_BoardRules* GetBoardRules() const { return BoardRules; }
+
 protected:
 
     // Seeds a joining human's PlayerState action state (uses/caps/cooldowns)

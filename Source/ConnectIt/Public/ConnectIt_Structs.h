@@ -50,6 +50,11 @@ struct FConnectItTileData
 
 // Full board state -- the single source of truth
 // This struct is what replicates -- one property drives all visual systems
+//
+// Also copied wholesale into the AI's background MinMax search
+// (FConnectItMinMaxRules), which is only thread-safe because this is
+// plain data: keep it free of UObject references (TObjectPtr, UObject*, weak
+// object pointers) -- a background thread can't safely hold or follow them.
 USTRUCT(BlueprintType)
 struct FConnectItBoardState
 {

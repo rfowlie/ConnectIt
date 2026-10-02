@@ -72,6 +72,14 @@ public:
     UFUNCTION(BlueprintPure, Category = "ConnectIt|Rules")
     float GetTargetScore() const;
 
+    // Wraps IConnectIt_ScoringRule::Execute_GetMinimumConnectLength -- 0 if
+    // unset or the rule doesn't report one. Game-thread only (like
+    // GetTargetScore) -- callers that need this on a background thread (the
+    // Classic MinMax AI) must read it once here and capture the plain int32,
+    // never call this from the search itself.
+    UFUNCTION(BlueprintPure, Category = "ConnectIt|Rules")
+    int32 GetMinimumConnectLength() const;
+
     // Wraps IConnectIt_TilePlaceableRule::Execute_IsTilePlaceable --
     // Error-logs and returns false if TilePlaceableRule is unset (should
     // not happen post-Initialise).

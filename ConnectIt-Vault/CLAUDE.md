@@ -20,7 +20,8 @@ Vault root = [`_core/`](_core/CLAUDE.md) (the operating system) + these domains,
 stand-alone folder with its own `CLAUDE.md`. The 8 plugins and `ConnectIt` are the
 game-side domains (the plugins game-agnostic and independently extractable, `ConnectIt`
 the only game-specific one); `Development` is the owner's personal operating-system
-domain, unrelated to the game's own code.
+domain, unrelated to the game's own code; `Portfolio` is the owner's career-presentation domain (turning ConnectIt into
+portfolio evidence), also unrelated to the game's code.
 
 | Domain | What it is |
 | --- | --- |
@@ -34,6 +35,7 @@ domain, unrelated to the game's own code.
 | [UnrealUIMechanics](UnrealUIMechanics/CLAUDE.md) | UI widgets plugin. **Stub** — empty module skeleton, not enabled. |
 | [UnrealSkinMechanics](UnrealSkinMechanics/CLAUDE.md) | Player-selectable skin system: tag categories, DataTable skin/preset catalogs, `UDeveloperSettings` entry point. **Slice 1** — scaffold + settings + data types; subsystem/save not built yet. |
 | [Development](Development/CLAUDE.md) | The owner's personal knowledge vault: the virtual advisory board, career/owner knowledge, and the game-projects group (its own nested `CLAUDE.md` tree, self-contained). |
+| [Portfolio](Portfolio/CLAUDE.md) | Career-presentation work: the plan and tasks for showcasing ConnectIt (case studies, footage, public showcase repo, write-ups, outreach) for the technical-artist → gameplay-programmer pivot. **Active** — plan approved 2026-09-30. |
 
 `../Plugins/AdvancedSessions-5-5/` is third-party (vendored) — no domain here. `Unsorted/`
 is a top-level folder with no `CLAUDE.md` yet — not a domain under the model until it gets

@@ -8,6 +8,9 @@ in `<domain>/_logs/`, not here.
 
 Newest first:
 
+- [2026-09-30-1200](2026-09-30-1200.md) — by hand — new `Portfolio` domain (router, plan moved in from
+  `~/.claude/plans/`, seeded `_tasks/`); flagged the public repo containing `Development/`.
+
 - [2026-09-24-1530](2026-09-24-1530.md) — meeting-open + meeting-closed — 2026-09-24 ConnectIt
   check-in: bugs/redesign confirmed landed, `Priority` column added to `ConnectIt/_tasks/`,
   MinMax/AI split decided (Classic keeps MinMax, Adventure gets bespoke controllers). Ended early

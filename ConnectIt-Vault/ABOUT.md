@@ -42,7 +42,7 @@ vault; see [`_core/CLAUDE.md`](_core/CLAUDE.md).
 | `sessions` | One dated note per work session, Open/Close halves | `ConnectIt/_sessions/` (schema defined, no note yet) |
 | `atomic` | Single-idea Zettelkasten pool — **single instance, `_core/_atomic/` only** | `_core/_atomic/` |
 | `clippings` | Unprocessed capture dump; empty is the goal | `_core/_clippings/` |
-| `tasks` | Status tables (`active`/`suspended`/`complete`) | `_core/_tasks/` (vault) · `optimal-co-developer/_tasks/` |
+| `tasks` | Status tables (`active`/`suspended`/`complete`) | `_core/_tasks/` (vault) · `optimal-co-developer/_tasks/` · `Portfolio/_tasks/` |
 | `questions` | One note per open, unresolved question | `_core/_questions/` (vault) · `optimal-co-developer/_questions/` · `ConnectIt/_questions/` |
 | `meetings` | One dated note per meeting or session | `optimal-co-developer/_meetings/` |
 | `discussions` | One dated note per discussion; topics link to their most recent prior mention instead of a folder hierarchy | schema defined, no note yet (`ConnectIt/_discussions/` empty) |
@@ -118,6 +118,13 @@ Full rulebook per section: `_core/_schema/_<section>.md`.
 
 ## Changelog
 
+- **2026-09-30** — New non-code domain **`Portfolio`** (career presentation for the
+  technical-artist → gameplay-programmer pivot): `Portfolio/CLAUDE.md` router,
+  `portfolio-plan.md` (moved in from `~/.claude/plans/` — plans now live in the repo, not the
+  user-level plans folder), and a seeded `_tasks/` (`active` / `suspended` / `complete`).
+  Registered in the vault `CLAUDE.md` Domains table. `tasks` section instances gain
+  `Portfolio/_tasks/`. Flagged: the main repo is public and contains `Development/` (see the
+  domain's first task). Log: `_core/_logs/2026-09-30-1200.md`.
 - **2026-09-18** — New plugin domain **`UnrealSkinMechanics`** (player-selectable skin
   system, slice 1: scaffold + `USkinSettings` + row/selection types + `USkinDataAsset`
   base; no subsystem yet). Registered in the root `CLAUDE.md` Domains table; `code`

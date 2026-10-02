@@ -24,7 +24,14 @@ class UNREALTURNBASEDMECHANICS_API ATurnBasedAIController : public AAIController
 
 public:
 
-    ATurnBasedAIController();
+    // Takes FObjectInitializer (default-valued, so every existing no-arg call
+    // site is unaffected) so a project-specific subclass can override
+    // ActionsComponent's concrete class via
+    // ObjectInitializer.SetDefaultSubobjectClass<T>(TEXT("ActionsComponent"))
+    // before calling Super(ObjectInitializer) -- same technique, same reason,
+    // as ATurnBasedPlayerControllerBase's own constructor.
+    explicit ATurnBasedAIController(
+        const FObjectInitializer& ObjectInitializer = FObjectInitializer::Get());
 
     UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly,
         Category = "Turn Based|Components")

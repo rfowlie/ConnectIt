@@ -10,8 +10,19 @@ float UConnectIt_LineScoringRule::ApplyScoring_Implementation(
     int32 FactionSlot,
     TArray<FGridPosition>& OutScoringPositions)
 {
+    return ApplyLineScoring(
+        MutableState, Position, FactionSlot, ConnectLength, OutScoringPositions);
+}
+
+float UConnectIt_LineScoringRule::ApplyLineScoring(
+    FConnectItBoardState& MutableState,
+    FGridPosition Position,
+    int32 FactionSlot,
+    int32 ConnectLength,
+    TArray<FGridPosition>& OutScoringPositions)
+{
     TArray<TArray<FGridPosition>> ScoringLines =
-        FindScoringLines(MutableState, Position, FactionSlot);
+        FindScoringLines(MutableState, Position, FactionSlot, ConnectLength);
 
     if (ScoringLines.IsEmpty()) return 0.f;
 
@@ -41,7 +52,8 @@ float UConnectIt_LineScoringRule::ApplyScoring_Implementation(
 TArray<TArray<FGridPosition>> UConnectIt_LineScoringRule::FindScoringLines(
     const FConnectItBoardState& State,
     FGridPosition Position,
-    int32 FactionSlot) const
+    int32 FactionSlot,
+    int32 ConnectLength)
 {
     TArray<TArray<FGridPosition>> ScoringLines;
 
@@ -87,7 +99,7 @@ float UConnectIt_LineScoringRule::ApplyScoringLine(
     FConnectItBoardState& MutableState,
     const TArray<FGridPosition>& Line,
     FGridPosition CompletingPosition,
-    int32 FactionSlot) const
+    int32 FactionSlot)
 {
     float PointsScored = 0.f;
 

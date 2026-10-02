@@ -40,4 +40,13 @@ public:
         FGridPosition Position,
         int32 FactionSlot,
         UPARAM(ref) TArray<FGridPosition>& OutScoringPositions);
+
+    // Minimum tiles-in-a-line this rule needs to score, for callers that must
+    // know it without applying a real move -- e.g. the Classic MinMax AI's
+    // search, which needs the same length the real rule uses. 0 means "not
+    // line-based, or this rule doesn't report one." Mirrors GetTargetScore's
+    // role on IConnectIt_WinCondition. Default implementation returns 0;
+    // line-based rules override it.
+    UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "ConnectIt|Scoring")
+    int32 GetMinimumConnectLength() const;
 };

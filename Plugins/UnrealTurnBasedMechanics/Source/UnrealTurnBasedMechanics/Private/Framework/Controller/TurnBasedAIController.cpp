@@ -8,7 +8,9 @@
 #include "Framework/Controller/TurnBasedControllerCoordinatorComponent.h"
 
 
-ATurnBasedAIController::ATurnBasedAIController()
+ATurnBasedAIController::ATurnBasedAIController(
+    const FObjectInitializer& ObjectInitializer)
+    : Super(ObjectInitializer)
 {
     ParticipantComponent =
         CreateDefaultSubobject<UTurnBasedParticipantComponent>(

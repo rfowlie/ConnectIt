@@ -10,6 +10,7 @@
 #include "ConnectIt_LevelConfigDataAsset.generated.h"
 
 class UActionLoadoutDataAsset;
+class UConnectIt_AIStrategy;
 class AConnectIt_GridPiece;
 class UConnectIt_TileRegistry;
 class UConnectIt_PieceRegistry;
@@ -41,11 +42,12 @@ public:
 
     // --- AI ---
 
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "ConnectIt|Config")
-    int32 AISearchDepth = 3;
-
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "ConnectIt|Config")
-    int32 AIThreadDepth = 1;
+    // How the AI opponent picks its moves on this level -- e.g. "MinMax
+    // (Classic)" with its depth / time / mistake / weight settings, or a
+    // bespoke strategy. A template: AConnectIt_AIController duplicates it per
+    // controller. Unset = a default MinMax strategy (with a warning).
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Instanced, Category = "ConnectIt|AI")
+    TObjectPtr<UConnectIt_AIStrategy> AIStrategy = nullptr;
 
     // --- Piece Pool ---
 
