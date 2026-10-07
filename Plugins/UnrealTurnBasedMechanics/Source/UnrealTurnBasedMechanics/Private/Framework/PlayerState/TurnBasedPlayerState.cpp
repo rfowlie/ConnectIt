@@ -204,6 +204,12 @@ void ATurnBasedPlayerState::InitialiseActionState(UActionLoadoutDataAsset* InLoa
 	}
 
 	MarkActionStateChanged();
+	OnLoadoutChanged.Broadcast();
+}
+
+void ATurnBasedPlayerState::OnRep_Loadout()
+{
+	OnLoadoutChanged.Broadcast();
 }
 
 bool ATurnBasedPlayerState::ConsumeActionUse(TSubclassOf<UTurnBasedAction> ActionClass)

@@ -50,10 +50,12 @@ protected:
 
 private:
 
-    void InitialiseFromLevelConfig();
+    // Takes its profile (loadout + strategy) from the GameMode's live match
+    // setup and seeds its PlayerState.
+    void InitialiseFromMatchSetup();
 
-    // Which AI profile this match uses: the main-menu match setup's choice
-    // for this level if there is one, otherwise the level config's default.
+    // The AI profile this match uses, as resolved by the GameMode (the main
+    // menu's choice if there is one, otherwise the level's default).
     const UConnectIt_AIProfile* ResolveAIProfile() const;
 
     // Seeds the PlayerState's action state (uses, caps, turn-end tree) from

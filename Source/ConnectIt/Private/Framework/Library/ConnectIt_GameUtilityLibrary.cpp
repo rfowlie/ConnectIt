@@ -6,6 +6,10 @@
 #include "Subsystem/GridHoverSubsystem.h"
 #include "Framework/Data/ConnectIt_LevelConfigSettings.h"
 #include "Framework/Data/ConnectIt_LevelConfigDataAsset.h"
+#include "AI/ConnectIt_AIProfile.h"
+#include "Action/ActionLoadoutDataAsset.h"
+#include "Board/Rules/ConnectIt_RuleSet.h"
+#include "Grid/ConnectIt_GridPiece.h"
 #include "Framework/Subsystem/ConnectIt_BlackboardSubsystem.h"
 #include "Framework/Subsystem/ConnectIt_BoardRegistrySubsystem.h"
 #include "Framework/GameState/ConnectIt_GameState.h"
@@ -186,48 +190,41 @@ bool UConnectIt_GameUtilityLibrary::HasFactionWon(
     return CurrentState.bGameOver && CurrentState.WinningFactionSlot == FactionSlot;
 }
 
-UConnectIt_LevelConfigDataAsset* UConnectIt_GameUtilityLibrary::GetLevelConfig(
+bool UConnectIt_GameUtilityLibrary::GetMatchRules(
+    const UObject* WorldContextObject, FConnectItRuleSet& OutRules)
+{
+    const AConnectIt_GameState* GameState = GetConnectItGameState(WorldContextObject);
+    if (!IsValid(GameState)) return false;
+
+    OutRules = GameState->GetMatchRules();
+    return true;
+}
+
+UConnectIt_AIProfile* UConnectIt_GameUtilityLibrary::GetOpponentProfile(const UObject* WorldContextObject)
+{
+    const AConnectIt_GameState* GameState = GetConnectItGameState(WorldContextObject);
+    return IsValid(GameState) ? GameState->GetOpponentProfile() : nullptr;
+}
+
+UActionLoadoutDataAsset* UConnectIt_GameUtilityLibrary::GetLocalPlayerLoadout(const UObject* WorldContextObject)
+{
+    const AConnectIt_PlayerState* PlayerState = GetLocalConnectItPlayerState(WorldContextObject);
+    return IsValid(PlayerState) ? PlayerState->GetLoadout() : nullptr;
+}
+
+TSubclassOf<AConnectIt_GridPiece> UConnectIt_GameUtilityLibrary::GetPieceActorClass(
     const UObject* WorldContextObject)
 {
-    if (!IsValid(WorldContextObject)) return nullptr;
+    const UConnectIt_LevelConfigDataAsset* LevelConfig =
+        UConnectIt_LevelConfigSettings::FindLevelConfig(WorldContextObject);
+    return IsValid(LevelConfig) ? LevelConfig->PieceActorClass : nullptr;
+}
 
-    const UConnectIt_LevelConfigSettings* Settings = GetDefault<UConnectIt_LevelConfigSettings>();
-    if (!IsValid(Settings)) return nullptr;
-
-    const FName LevelName(*UGameplayStatics::GetCurrentLevelName(WorldContextObject, /*bRemovePrefixString=*/true));
-
-    const TSoftObjectPtr<UConnectIt_LevelConfigDataAsset>* Entry = Settings->LevelConfigs.Find(LevelName);
-    if (!Entry)
-    {
-        // Missing per-level registration is expected to happen (a new/
-        // duplicated level nobody's added to ConnectIt_LevelConfigSettings
-        // yet) -- fall back to DefaultLevelConfig with a loud Warning
-        // instead of silently returning null. A null return here used to
-        // cascade into every level-config-dependent system (tile registry,
-        // action loadout) being silently unset, with nothing pointing back
-        // at "you forgot to register this level" -- see
-        // ConnectIt/_decisions/2026-09-14-level-config-default-fallback.md.
-        UE_LOG(LogTemp, Warning,
-            TEXT("ConnectIt_GameUtilityLibrary: No ConnectIt_LevelConfigDataAsset "
-                 "registered for level '%s' in ConnectIt_LevelConfigSettings -- "
-                 "falling back to DefaultLevelConfig. Add an entry for this level "
-                 "to silence this and use level-specific rules/loadouts."),
-            *LevelName.ToString());
-
-        if (Settings->DefaultLevelConfig.IsNull())
-        {
-            UE_LOG(LogTemp, Error,
-                TEXT("ConnectIt_GameUtilityLibrary: ...and DefaultLevelConfig is "
-                     "also unset in ConnectIt_LevelConfigSettings -- no config "
-                     "available for level '%s'"),
-                *LevelName.ToString());
-            return nullptr;
-        }
-
-        return Settings->DefaultLevelConfig.LoadSynchronous();
-    }
-
-    return Entry->LoadSynchronous();
+int32 UConnectIt_GameUtilityLibrary::GetPiecePoolInitialSize(const UObject* WorldContextObject)
+{
+    const UConnectIt_LevelConfigDataAsset* LevelConfig =
+        UConnectIt_LevelConfigSettings::FindLevelConfig(WorldContextObject);
+    return IsValid(LevelConfig) ? LevelConfig->PiecePoolInitialSize : 0;
 }
 
 AConnectIt_GameState* UConnectIt_GameUtilityLibrary::GetConnectItGameState(

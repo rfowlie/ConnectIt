@@ -16,6 +16,7 @@ class UTurnBasedAction;
 // happens, on clients from the replication notify. The actions component
 // waits on this to leave its post-completion limbo and check turn end.
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnActionRuntimeStateUpdated);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnLoadoutChanged);
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnTurnsMissedChanged, int32, NewCount);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnForfeited);
@@ -142,6 +143,14 @@ public:
     UPROPERTY(BlueprintAssignable, Category = "Turn Based|Actions")
     FOnActionRuntimeStateUpdated OnActionRuntimeStateUpdated;
 
+    // This player's loadout was set or replaced -- fires on the server when
+    // InitialiseActionState runs and on clients when the loadout replicates.
+    // The owning client's controller builds its action stack from GetLoadout()
+    // in response, so a player's actions always come from here, never from
+    // static level data.
+    UPROPERTY(BlueprintAssignable, Category = "Turn Based|Actions")
+    FOnLoadoutChanged OnLoadoutChanged;
+
     UPROPERTY(BlueprintAssignable, Category = "Turn Based")
     FOnTurnsMissedChanged OnTurnsMissedChanged;
 
@@ -184,8 +193,11 @@ private:
     bool bIsReady = false;
 
     // Static data asset -- replicates as an asset reference
-    UPROPERTY(Replicated)
+    UPROPERTY(ReplicatedUsing = OnRep_Loadout)
     TObjectPtr<UActionLoadoutDataAsset> Loadout = nullptr;
+
+    UFUNCTION()
+    void OnRep_Loadout();
 
     UPROPERTY(ReplicatedUsing = OnRep_ActionState)
     TArray<FPermanentActionRuntimeEntry> PermanentActionState;

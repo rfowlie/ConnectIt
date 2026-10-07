@@ -60,3 +60,11 @@ push a **read-only copy of the rule set to the GameState, replicated to clients*
   drift, and it breaks the "no mutable state" contract that lets the background search share rule code.
 
 Related task: "Support rules that change mid-level" in [`_tasks/active.md`](../_tasks/active.md).
+
+## Update (2026-10-07): the mirror and the entry point now exist
+
+Built as part of [live match setup](live-match-setup.md): `AConnectIt_GameState` has the replicated read-only
+`MatchRules` (+ `OnMatchRulesChanged`), and `AConnectIt_GameMode::ModifyRules` is the one entry point that changes the
+rules and refreshes the mirror. What remains for this scenario: the allowed-axes setting on
+`FConnectItScoringRule_Lines`, the turn-start trigger, the AI evaluation respecting allowed axes, and the open
+telegraphed-vs-hidden question.

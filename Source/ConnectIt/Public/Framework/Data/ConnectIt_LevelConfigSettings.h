@@ -14,9 +14,9 @@ class UConnectIt_LevelCatalog;
 // to extend (confirmed during design) -- UDeveloperSettings is the
 // standard, lower-ceremony way to hold a single project-wide lookup table
 // like this without inventing a bootstrapping problem of its own (i.e.
-// "which asset holds the mapping"). Both AConnectIt_GameMode (server) and
-// AConnectIt_PlayerController (client) resolve the same entry
-// independently -- see UConnectIt_GameUtilityLibrary::GetLevelConfig.
+// "which asset holds the mapping"). The asset is only a level's STARTING
+// TEMPLATE -- see FindLevelConfig below for who may read it and where live
+// match data is read instead.
 UCLASS(Config = Game, DefaultConfig, meta = (DisplayName = "ConnectIt Level Config"))
 class CONNECTIT_API UConnectIt_LevelConfigSettings : public UDeveloperSettings
 {
@@ -24,8 +24,24 @@ class CONNECTIT_API UConnectIt_LevelConfigSettings : public UDeveloperSettings
 
 public:
 
+    // The level config asset registered for the level WorldContextObject is in
+    // (DefaultLevelConfig, with a warning, if the level has no entry; null,
+    // with an error, if there is none at all).
+    //
+    // This is the level's STARTING TEMPLATE, not the live match: rules, the
+    // player's loadout and the AI opponent can all differ once a match is
+    // running. C++ only, and meant for exactly two readers --
+    //   * AConnectIt_GameMode, which resolves the match setup from it once
+    //     and publishes the live values (GameState / PlayerStates), and
+    //   * world bootstrap that needs fixed level setup before anything has
+    //     replicated (UConnectIt_BoardRegistrySubsystem).
+    // Everything else reads live data: UConnectIt_GameUtilityLibrary's
+    // GetMatchRules / GetLocalPlayerLoadout / GetOpponentProfile, or its
+    // fixed-setup accessors (GetPieceActorClass, ...).
+    static UConnectIt_LevelConfigDataAsset* FindLevelConfig(const UObject* WorldContextObject);
 
-    // Used by GetLevelConfig when the current level's name has no entry above
+
+    // Used by FindLevelConfig when the current level's name has no entry above
     // -- e.g. a newly duplicated/created level nobody's registered yet.
     // Logged as a Warning when this fallback is taken (register the level
     // properly to silence it) rather than the previous hard Error-and-null,

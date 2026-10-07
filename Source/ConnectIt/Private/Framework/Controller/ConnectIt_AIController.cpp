@@ -11,10 +11,8 @@
 #include "Action/TurnBasedAction.h"
 #include "Turn/Participant/TurnBasedParticipantComponent.h"
 #include "AI/ConnectIt_AIProfile.h"
-#include "Framework/Subsystem/ConnectIt_MatchSetupSubsystem.h"
 #include "AI/ConnectIt_AIStrategy_MinMax.h"
 #include "ConnectIt_Structs.h"
-#include "Framework/Data/ConnectIt_LevelConfigDataAsset.h"
 #include "TurnBasedMechanicsEnums.h"
 #include "TurnBasedMechanicsStructs.h"
 #include "Engine/World.h"
@@ -35,7 +33,7 @@ void AConnectIt_AIController::BeginPlay()
 
     if (!HasAuthority()) return;
 
-    InitialiseFromLevelConfig();
+    InitialiseFromMatchSetup();
 
     // Turn start/end reach an AI through its participant component: the
     // manager's "client" notification runs locally on the server for a
@@ -170,25 +168,15 @@ bool AConnectIt_AIController::IsMyTurnNow() const
     return bValid && Active.PlayerState == GetPlayerState<ATurnBasedPlayerState>();
 }
 
-void AConnectIt_AIController::InitialiseFromLevelConfig()
+void AConnectIt_AIController::InitialiseFromMatchSetup()
 {
-    const UConnectIt_LevelConfigDataAsset* LevelConfig =
-        UConnectIt_GameUtilityLibrary::GetLevelConfig(this);
-
-    if (!IsValid(LevelConfig))
-    {
-        UE_LOG(LogTemp, Error,
-            TEXT("ConnectIt_AIController: No ConnectIt_LevelConfigDataAsset "
-                 "found for the current level"));
-        return;
-    }
-
     const UConnectIt_AIProfile* Profile = ResolveAIProfile();
     if (!IsValid(Profile))
     {
         UE_LOG(LogTemp, Error,
             TEXT("ConnectIt_AIController: no AI profile (set AIProfile on the "
-                 "level config) -- no loadout, so every move will be rejected"));
+                 "level config, or pick one in the match setup) -- no loadout, "
+                 "so every move will be rejected"));
     }
     else
     {
@@ -226,17 +214,12 @@ void AConnectIt_AIController::InitialiseFromLevelConfig()
 
 const UConnectIt_AIProfile* AConnectIt_AIController::ResolveAIProfile() const
 {
-    // Main-menu choice first, then the level's default
-    FConnectItMatchSettings MatchSettings;
-    if (UConnectIt_MatchSetupSubsystem::GetSettingsForCurrentLevel(this, MatchSettings)
-        && IsValid(MatchSettings.AIProfile))
-    {
-        return MatchSettings.AIProfile;
-    }
-
-    const UConnectIt_LevelConfigDataAsset* LevelConfig =
-        UConnectIt_GameUtilityLibrary::GetLevelConfig(this);
-    return IsValid(LevelConfig) ? LevelConfig->AIProfile.Get() : nullptr;
+    // The GameMode owns the live match setup (menu choice, else the level's
+    // default) -- this controller only ever exists on the server, next to it.
+    const UWorld* World = GetWorld();
+    const AConnectIt_GameMode* GameMode =
+        World ? Cast<AConnectIt_GameMode>(World->GetAuthGameMode()) : nullptr;
+    return IsValid(GameMode) ? GameMode->GetAIProfile() : nullptr;
 }
 
 bool AConnectIt_AIController::CheckAndApplyForcedMove()

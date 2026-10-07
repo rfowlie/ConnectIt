@@ -44,36 +44,10 @@ void UTurnBasedActionsComponent::InitialiseFromLoadout(UActionLoadoutDataAsset* 
     CreateSystemActions();
     bIsInitialised = true;
 
-    // Server seeds the authoritative per-action state on the owner's
-    // PlayerState (numbered actions start at StartingMatchUses). Clients get
-    // it by replication -- they never seed it themselves.
-    if (const AController* Controller = GetOwningController())
-    {
-        if (Controller->HasAuthority())
-        {
-            if (ATurnBasedPlayerState* PS = Controller->GetPlayerState<ATurnBasedPlayerState>())
-            {
-                PS->InitialiseActionState(InLoadout);
-
-                UE_LOG(LogTurnBasedMechanics, Log,
-                    TEXT("TurnBasedActionsComponent: seeded action state on %s "
-                         "from loadout '%s' (%d permanent, %d numbered)"),
-                    *GetOwner()->GetName(), *InLoadout->LoadoutName,
-                    InLoadout->PermanentActions.Num(), InLoadout->NumberedActions.Num());
-            }
-            else
-            {
-                // Without this the player can take no action -- the server
-                // rejects every request from a player with no action state.
-                UE_LOG(LogTurnBasedMechanics, Error,
-                    TEXT("TurnBasedActionsComponent: %s has authority but its "
-                         "controller has no ATurnBasedPlayerState yet -- action "
-                         "state was NOT seeded and this player's requests will "
-                         "be rejected"),
-                    *GetOwner()->GetName());
-            }
-        }
-    }
+    // This component never seeds the PlayerState's action state: the game's
+    // server-side setup does (the GameMode for humans), and a controller
+    // builds this component FROM its PlayerState's loadout -- seeding here
+    // would loop.
 
     // Bind now if the PlayerState is already here; otherwise NotifyTurnStarted will
     EnsureBoundToPlayerState();

@@ -8,6 +8,7 @@ Newest first:
 
 | Date | Decision | Status |
 |---|---|---|
+| [2026-10-07-gamemode-owns-live-match-setup](2026-10-07-gamemode-owns-live-match-setup.md) | The level config is only a starting template; the GameMode resolves and owns the live match setup and publishes it (rules + AI profile → replicated GameState mirror, loadouts → PlayerStates); clients build actions from their PlayerState; `GetLevelConfig` removed in favour of narrow accessors | Active |
 | [2026-10-06-rules-are-thread-safe-structs](2026-10-06-rules-are-thread-safe-structs.md) | The match's rules are plain thread-safe C++ structs in one `FConnectItRuleSet` (level config template → per-match copy on the GameMode → Mediator and AI search run the same code); rule interfaces, `UConnectIt_BoardRules` and the search-only bridges removed; no Blueprint-authored rule logic | Active |
 | [2026-10-04-minmax-win-detection-from-win-condition](2026-10-04-minmax-win-detection-from-win-condition.md) | The MinMax search learns when the game is over from the level's own win condition (a thread-safe `FConnectItWinCheck` it provides); `EvaluateTerminalState` scores finished games, `EvaluateState` only unfinished ones | Superseded (mechanism) |
 | [2026-10-02-main-menu-match-setup-subsystem](2026-10-02-main-menu-match-setup-subsystem.md) | Main-menu choices (level, AI profile, target score) travel in a GameInstance subsystem, offered by a level catalog asset, applied only to the matching level; rules now duplicated per match | Active |

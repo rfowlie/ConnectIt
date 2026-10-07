@@ -10,6 +10,8 @@
 #include "ConnectIt_GameMode.generated.h"
 
 class AConnectIt_AIController;
+class UActionLoadoutDataAsset;
+class UConnectIt_AIProfile;
 class UTurnBasedParticipantManagerComponent;
 class UConnectIt_BoardRequestMediator;
 
@@ -70,17 +72,46 @@ public:
     UFUNCTION(BlueprintCallable, Category = "ConnectIt|Board")
     bool ProcessBoardRequest(const FTurnActionRequest& Request);
 
-    // This match's rules: the level config's rule set, copied when the match
-    // started, plus any per-match changes (e.g. the main menu's target
-    // score). Server-only, like this GameMode.
+    // --- Live match setup ---
+    // This GameMode is the authority for what the match is actually using.
+    // It reads the level's config (the starting template) once, applies the
+    // main menu's choices, and from then on owns the live values -- the only
+    // reader of the config's rules / loadout / AI profile. Clients can't reach
+    // a GameMode, so the values are published: rules and the AI profile to
+    // the GameState (replicated), each player's loadout to their PlayerState.
+    // Server code may read them here; everything else reads those mirrors
+    // (see UConnectIt_GameUtilityLibrary's "Match setup" accessors).
+
+    // The match's rules, including per-match and mid-level changes
     const FConnectItRuleSet& GetRules() const { return Rules; }
+
+    // The loadout human players are seeded with
+    UActionLoadoutDataAsset* GetPlayerLoadout() const { return PlayerLoadout; }
+
+    // The AI opponent for this match (menu choice, else the level's default)
+    const UConnectIt_AIProfile* GetAIProfile() const { return AIProfile; }
+
+    // The one way to change the match's rules after setup: Change edits this
+    // GameMode's rule set, then the GameState mirror is refreshed (clients and
+    // UI are notified). The Mediator and the AI read the same rule set, so the
+    // change applies from the next move.
+    void ModifyRules(const TFunctionRef<void(FConnectItRuleSet&)>& Change);
 
 protected:
 
+    // Resolves the live match setup from the level config + main-menu
+    // choices, once (players log in before the match starts, so both
+    // PostLogin and HandleMatchHasStarted call it), and publishes it.
+    void EnsureMatchSetupResolved();
+
+    // Pushes the match-wide setup to the GameState's replicated mirror
+    void PublishMatchSetup();
+
     // Seeds a joining human's PlayerState action state (uses/caps/cooldowns)
-    // from the level config's PlayerLoadout. Server-side, called from
-    // PostLogin; a no-op if the state is already seeded. See the definition
-    // for why this can't live on the player controller.
+    // from GetPlayerLoadout(). Server-side, called from PostLogin; a no-op if
+    // the state is already seeded. This is the only place a human's action
+    // state is seeded -- their controller then builds its actions from the
+    // PlayerState's loadout.
     void SeedActionStateForPlayer(APlayerController* NewPlayer);
 
     // Spawns and registers the AI controller (Adventure mode only)
@@ -122,6 +153,14 @@ private:
 
     UPROPERTY()
     FConnectItRuleSet Rules;
+
+    UPROPERTY()
+    TObjectPtr<UActionLoadoutDataAsset> PlayerLoadout = nullptr;
+
+    UPROPERTY()
+    TObjectPtr<UConnectIt_AIProfile> AIProfile = nullptr;
+
+    bool bMatchSetupResolved = false;
 
     // Tracks how many human players have connected
     // Used in Online mode to know when to start ready check

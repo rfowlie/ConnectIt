@@ -6,6 +6,9 @@ Vault-wide passes go in `_core/_logs/`.
 
 Newest first:
 
+- [2026-10-07-0010](2026-10-07-0010.md) — session — GameMode owns the live match setup; rules + AI profile mirrored on the GameState,
+  clients build actions from their PlayerState; `GetLevelConfig` removed. Build clean; replication needs a 2-player PIE pass.
+
 - [2026-10-06-2300](2026-10-06-2300.md) — session — design note, question and task for rules that change mid-level (rotating
   scoring axis); no code.
 

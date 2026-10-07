@@ -6,6 +6,7 @@
 #include "Board/ConnectIt_PieceRegistry.h"
 #include "Board/ConnectIt_TileRegistry.h"
 #include "Framework/Data/ConnectIt_LevelConfigDataAsset.h"
+#include "Framework/Data/ConnectIt_LevelConfigSettings.h"
 #include "Framework/Library/ConnectIt_GameUtilityLibrary.h"
 #include "GameEvent/GameEventTaskSubsystem.h"
 #include "Piece/GridPieceRegistryBase.h"
@@ -18,8 +19,10 @@ void UConnectIt_BoardRegistrySubsystem::OnWorldBeginPlay(UWorld& InWorld)
 {
     Super::OnWorldBeginPlay(InWorld);
 
+    // Fixed level setup, needed here before anything has replicated -- one of
+    // the two intended readers of the level's template asset.
     const UConnectIt_LevelConfigDataAsset* LevelConfig =
-        UConnectIt_GameUtilityLibrary::GetLevelConfig(this);
+        UConnectIt_LevelConfigSettings::FindLevelConfig(this);
 
     if (!IsValid(LevelConfig))
     {

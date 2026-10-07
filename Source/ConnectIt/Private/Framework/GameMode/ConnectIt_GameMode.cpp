@@ -9,6 +9,8 @@
 #include "Framework/Controller/ConnectIt_AIController.h"
 #include "Action/ActionLoadoutDataAsset.h"
 #include "Framework/Data/ConnectIt_LevelConfigDataAsset.h"
+#include "Framework/Data/ConnectIt_LevelConfigSettings.h"
+#include "AI/ConnectIt_AIProfile.h"
 #include "Framework/Subsystem/ConnectIt_MatchSetupSubsystem.h"
 #include "Framework/GameState/ConnectIt_GameState.h"
 #include "Framework/GameState/TurnBasedGameState.h"
@@ -36,6 +38,7 @@ void AConnectIt_GameMode::PostLogin(APlayerController* NewPlayer)
     // Let base class handle reconnect detection and registration
     Super::PostLogin(NewPlayer);
 
+    EnsureMatchSetupResolved();
     SeedActionStateForPlayer(NewPlayer);
 
     ConnectedHumanCount++;
@@ -60,11 +63,11 @@ void AConnectIt_GameMode::PostLogin(APlayerController* NewPlayer)
 void AConnectIt_GameMode::SeedActionStateForPlayer(APlayerController* NewPlayer)
 {
     // The server owns each player's action state (uses, per-turn cap,
-    // cooldowns) on their PlayerState. It must be seeded HERE, on the server:
-    // AConnectIt_PlayerController::BeginPlay only runs its loadout setup for
-    // the owning client, so nothing else ever seeds a remote human's state --
-    // and without it every board request is rejected for having no action
-    // state. AI controllers seed themselves (they run with authority).
+    // cooldowns) and loadout on their PlayerState, and this is the only
+    // place a human's is seeded. Their own controller then builds its action
+    // stack from the PlayerState's (replicated) loadout -- so without this
+    // the player has no actions and every board request is rejected. AI
+    // controllers seed themselves (they run with authority).
     if (!IsValid(NewPlayer)) return;
 
     ATurnBasedPlayerState* PS = NewPlayer->GetPlayerState<ATurnBasedPlayerState>();
@@ -77,13 +80,10 @@ void AConnectIt_GameMode::SeedActionStateForPlayer(APlayerController* NewPlayer)
         return;
     }
 
-    // Already seeded (a reconnecting player keeps their state, and a
-    // listen-server host may already have been seeded via its own controller)
+    // Already seeded (a reconnecting player keeps their state)
     if (PS->HasActionConfig()) return;
 
-    const UConnectIt_LevelConfigDataAsset* LevelConfig =
-        UConnectIt_GameUtilityLibrary::GetLevelConfig(this);
-    if (!IsValid(LevelConfig) || !IsValid(LevelConfig->PlayerLoadout))
+    if (!IsValid(PlayerLoadout))
     {
         UE_LOG(LogTemp, Error,
             TEXT("ConnectIt_GameMode: cannot seed action state for %s -- no "
@@ -92,14 +92,92 @@ void AConnectIt_GameMode::SeedActionStateForPlayer(APlayerController* NewPlayer)
         return;
     }
 
-    PS->InitialiseActionState(LevelConfig->PlayerLoadout);
+    PS->InitialiseActionState(PlayerLoadout);
 
     UE_LOG(LogTemp, Log,
         TEXT("ConnectIt_GameMode: seeded action state for %s from loadout "
              "'%s' (%d permanent, %d numbered) (server, PostLogin)"),
-        *PS->GetPlayerName(), *LevelConfig->PlayerLoadout->LoadoutName,
-        LevelConfig->PlayerLoadout->PermanentActions.Num(),
-        LevelConfig->PlayerLoadout->NumberedActions.Num());
+        *PS->GetPlayerName(), *PlayerLoadout->LoadoutName,
+        PlayerLoadout->PermanentActions.Num(),
+        PlayerLoadout->NumberedActions.Num());
+}
+
+void AConnectIt_GameMode::EnsureMatchSetupResolved()
+{
+    if (bMatchSetupResolved) return;
+    bMatchSetupResolved = true;
+
+    // The level's starting template -- read here, once, and nowhere else for
+    // these values.
+    const UConnectIt_LevelConfigDataAsset* LevelConfig =
+        UConnectIt_LevelConfigSettings::FindLevelConfig(this);
+
+    // Rules: a value copy (so changes never touch the asset), or the classic
+    // defaults if there is no level config.
+    Rules = IsValid(LevelConfig) ? LevelConfig->Rules : FConnectItRuleSet();
+    PlayerLoadout = IsValid(LevelConfig) ? LevelConfig->PlayerLoadout : nullptr;
+    AIProfile = IsValid(LevelConfig) ? LevelConfig->AIProfile : nullptr;
+
+    // Main-menu match setup for this level, if any
+    FConnectItMatchSettings MatchSettings;
+    if (UConnectIt_MatchSetupSubsystem::GetSettingsForCurrentLevel(this, MatchSettings))
+    {
+        if (IsValid(MatchSettings.AIProfile))
+        {
+            AIProfile = MatchSettings.AIProfile;
+        }
+
+        if (MatchSettings.TargetScore > 0.f)
+        {
+            if (Rules.SetTargetScore(MatchSettings.TargetScore))
+            {
+                UE_LOG(LogTemp, Log,
+                    TEXT("ConnectIt_GameMode: target score %.0f from match setup"),
+                    MatchSettings.TargetScore);
+            }
+            else
+            {
+                UE_LOG(LogTemp, Warning,
+                    TEXT("ConnectIt_GameMode: match setup asked for target score "
+                         "%.0f, but this level's win condition isn't score-based "
+                         "-- ignored"),
+                    MatchSettings.TargetScore);
+            }
+        }
+    }
+
+    UE_LOG(LogTemp, Log,
+        TEXT("ConnectIt_GameMode: match setup resolved -- player loadout '%s', "
+             "AI profile '%s', target score %.0f"),
+        IsValid(PlayerLoadout) ? *PlayerLoadout->LoadoutName : TEXT("none"),
+        *GetNameSafe(AIProfile), Rules.GetTargetScore());
+
+    PublishMatchSetup();
+}
+
+void AConnectIt_GameMode::PublishMatchSetup()
+{
+    AConnectIt_GameState* GS = GetGameState<AConnectIt_GameState>();
+    if (!IsValid(GS))
+    {
+        UE_LOG(LogTemp, Error,
+            TEXT("ConnectIt_GameMode: PublishMatchSetup -- no AConnectIt_GameState, "
+                 "clients will not see the match's rules"));
+        return;
+    }
+
+    GS->SetMatchRules(Rules);
+
+    // Only an Adventure match has an AI opponent to show
+    GS->SetOpponentProfile(MatchType == EConnectItMatchType::Adventure ? AIProfile.Get() : nullptr);
+}
+
+void AConnectIt_GameMode::ModifyRules(const TFunctionRef<void(FConnectItRuleSet&)>& Change)
+{
+    EnsureMatchSetupResolved();
+
+    Change(Rules);
+    PublishMatchSetup();
 }
 
 void AConnectIt_GameMode::HandleMatchHasStarted()
@@ -113,34 +191,9 @@ void AConnectIt_GameMode::HandleMatchHasStarted()
             this, &AConnectIt_GameMode::HandleInvalidNumberOfPlayers);
     }
 
-    // This match's rules: a value copy of the level config's rule set (so
-    // per-match changes below never touch the asset), or the classic
-    // defaults if there is no level config.
-    const UConnectIt_LevelConfigDataAsset* RulesLevelConfig =
-        UConnectIt_GameUtilityLibrary::GetLevelConfig(this);
-    Rules = IsValid(RulesLevelConfig) ? RulesLevelConfig->Rules : FConnectItRuleSet();
-
-    // Main-menu match setup for this level, if any -- applied to the
-    // per-match copy above, so the level config asset is untouched.
-    FConnectItMatchSettings MatchSettings;
-    if (UConnectIt_MatchSetupSubsystem::GetSettingsForCurrentLevel(this, MatchSettings)
-        && MatchSettings.TargetScore > 0.f)
-    {
-        if (Rules.SetTargetScore(MatchSettings.TargetScore))
-        {
-            UE_LOG(LogTemp, Log,
-                TEXT("ConnectIt_GameMode: target score %.0f from match setup"),
-                MatchSettings.TargetScore);
-        }
-        else
-        {
-            UE_LOG(LogTemp, Warning,
-                TEXT("ConnectIt_GameMode: match setup asked for target score "
-                     "%.0f, but this level's win condition isn't score-based "
-                     "-- ignored"),
-                MatchSettings.TargetScore);
-        }
-    }
+    // Normally already done in PostLogin; a match can also start with nobody
+    // logged in yet.
+    EnsureMatchSetupResolved();
 
     BoardRequestMediator = NewObject<UConnectIt_BoardRequestMediator>(this);
     BoardRequestMediator->Initialise(&Rules);

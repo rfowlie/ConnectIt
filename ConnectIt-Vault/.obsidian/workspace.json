@@ -204,6 +204,10 @@
   },
   "active": "97e0ab6e321a7903",
   "lastOpenFiles": [
+    "ConnectIt/_logs/2026-10-07-0010.md",
+    "ConnectIt/_decisions/2026-10-07-gamemode-owns-live-match-setup.md",
+    "ConnectIt/design/sedPjFYde",
+    "ConnectIt/design/live-match-setup.md",
     "ConnectIt/_logs/2026-10-06-2300.md",
     "ConnectIt/_questions/rotating-rule-randomness.md",
     "ConnectIt/design/mid-level-rule-changes.md",
@@ -232,14 +236,10 @@
     "ConnectIt/_decisions/2026-09-20-legacy-action-system-removed-stage-3.md",
     "ConnectIt/_tasks/active.md",
     "Development/optimal-co-developer/_meetings/2026-09-18-check-in.md",
-    "ConnectIt/_logs/__INDEX.md",
-    "_core/_logs/2026-09-21-0230.md",
-    "ConnectIt/_logs/2026-09-21-0001.md",
     "ConnectIt/design/switch-and-pole-tiles.md.tmp.19016.3131aef70dfe",
     "ConnectIt/design/switch-and-pole-tiles.md.tmp.23484.3aa661ef0f1b",
     "ConnectIt/design/board-request-objects.md.tmp.13320.508987edec00",
     "ConnectIt/_decisions/2026-09-20-grid-x-is-row-y-is-column-direction-table.md.tmp.25520.5a6f6a72b51b",
-    "ConnectIt/_decisions/__INDEX.md.tmp.12852.6f9129db2898",
     "Untitled.canvas"
   ]
 }

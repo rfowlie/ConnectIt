@@ -17,7 +17,7 @@ class UGridDefinition;
 // world-placed actor. Every machine's own world (server and each client)
 // resolves its own instance of this subsystem independently, matching the
 // project's existing symmetric-resolution philosophy for level-authored data
-// (see UConnectIt_GameUtilityLibrary::GetLevelConfig).
+// (see UConnectIt_LevelConfigSettings::FindLevelConfig).
 //
 // Since a UWorldSubsystem isn't level-placed or Blueprint-configurable the
 // way an actor is, the concrete registry subclass a designer picks per

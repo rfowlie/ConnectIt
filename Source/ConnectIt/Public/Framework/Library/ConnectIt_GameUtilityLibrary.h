@@ -17,7 +17,10 @@ class UTurnBasedParticipantManagerComponent;
 class UGridHoverSubsystem;
 class UGridTileRegistryBase;
 class UGridPieceRegistryBase;
-class UConnectIt_LevelConfigDataAsset;
+class UActionLoadoutDataAsset;
+class UConnectIt_AIProfile;
+class AConnectIt_GridPiece;
+struct FConnectItRuleSet;
 
 UCLASS()
 class CONNECTIT_API UConnectIt_GameUtilityLibrary
@@ -118,16 +121,40 @@ public:
         int32 FactionSlot);
 
 
-    // Resolves the current level's ConnectIt_LevelConfigDataAsset via
-    // ConnectIt_LevelConfigSettings' level-name -> asset map. Intentionally
-    // symmetric and un-networked -- server and client both call this
-    // independently and get the same static asset, since it's authored
-    // per-level content every machine already has, not runtime server
-    // state. Returns null (logged) if the current level has no entry.
-    UFUNCTION(BlueprintPure, Category = "ConnectIt|Utility",
+    // --- Match setup (live) ---
+    // What this match is actually using. Never read the level config asset
+    // for these -- it is only the starting template, and the server's
+    // GameMode may have changed them (menu choices, rules that change
+    // mid-level, a player's actions changing). These work on every machine.
+
+    // The match's current rules (the GameState's replicated copy). False if
+    // the GameState isn't available yet.
+    UFUNCTION(BlueprintPure, Category = "ConnectIt|Match",
         meta = (WorldContext = "WorldContextObject"))
-    static UConnectIt_LevelConfigDataAsset* GetLevelConfig(
-        const UObject* WorldContextObject);
+    static bool GetMatchRules(const UObject* WorldContextObject, FConnectItRuleSet& OutRules);
+
+    // The AI opponent being played, or null (online match / not known yet)
+    UFUNCTION(BlueprintPure, Category = "ConnectIt|Match",
+        meta = (WorldContext = "WorldContextObject"))
+    static UConnectIt_AIProfile* GetOpponentProfile(const UObject* WorldContextObject);
+
+    // The local player's current loadout (from their PlayerState), or null
+    // until it has replicated
+    UFUNCTION(BlueprintPure, Category = "ConnectIt|Match",
+        meta = (WorldContext = "WorldContextObject"))
+    static UActionLoadoutDataAsset* GetLocalPlayerLoadout(const UObject* WorldContextObject);
+
+    // --- Level setup (fixed) ---
+    // Level-authored values that never change during a match, so every
+    // machine reads them straight from the level's config.
+
+    UFUNCTION(BlueprintPure, Category = "ConnectIt|Level",
+        meta = (WorldContext = "WorldContextObject"))
+    static TSubclassOf<AConnectIt_GridPiece> GetPieceActorClass(const UObject* WorldContextObject);
+
+    UFUNCTION(BlueprintPure, Category = "ConnectIt|Level",
+        meta = (WorldContext = "WorldContextObject"))
+    static int32 GetPiecePoolInitialSize(const UObject* WorldContextObject);
 
     // --- Game State ---
 
