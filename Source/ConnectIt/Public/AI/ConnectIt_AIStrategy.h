@@ -11,6 +11,7 @@
 #include "ConnectIt_AIStrategy.generated.h"
 
 class AConnectIt_AIController;
+class UActionLoadoutDataAsset;
 
 
 // Everything a strategy is given to decide one move, read from the live game
@@ -29,11 +30,22 @@ struct FConnectItAIDecisionContext
     int32 OwnSlot = INDEX_NONE;
 
     // This match's rules -- a copy of the GameMode's rule set (scoring, win
-    // condition, placement), including any per-match changes such as a
+    // condition), including any per-match changes such as a
     // menu-chosen target score. Plain thread-safe data: a strategy may hand
     // it to a background search as is.
     UPROPERTY(BlueprintReadOnly, Category = "AI")
     FConnectItRuleSet Rules;
+
+    // Each side's loadout: the actions (and so the board operations) it has.
+    // Ask UConnectIt_AIStrategy::LoadoutGrantsRequestType. Game thread only
+    // -- unlike the rest of the context these are assets, not plain data, so
+    // don't hand them to a background search. Opponent's is null if it has
+    // no PlayerState.
+    UPROPERTY(BlueprintReadOnly, Category = "AI")
+    TObjectPtr<const UActionLoadoutDataAsset> OwnLoadout;
+
+    UPROPERTY(BlueprintReadOnly, Category = "AI")
+    TObjectPtr<const UActionLoadoutDataAsset> OpponentLoadout;
 };
 
 // What a strategy decided: one board-change request, without the parts the
@@ -48,7 +60,8 @@ struct FConnectItAIDecision
     UPROPERTY(BlueprintReadWrite, Category = "AI")
     FGameplayTag RequestType;
 
-    // The request's payload struct, e.g. FConnectItRequestPlacePiece
+    // The board change itself: a FConnectItBoardOperation of that type,
+    // e.g. FConnectItBoardOperation_PlacePiece
     UPROPERTY(BlueprintReadWrite, Category = "AI")
     FInstancedStruct Payload;
 
@@ -98,6 +111,12 @@ public:
     // anything beyond the shared context, on the game thread.
     UFUNCTION(BlueprintPure, Category = "AI")
     AConnectIt_AIController* GetOwningController() const;
+
+    // Whether Loadout has an action that may send RequestType (e.g.
+    // ConnectIt_Game_PlacePiece) -- the same question the server's gate asks
+    // of a real request. Says nothing about use limits. Game thread only.
+    UFUNCTION(BlueprintPure, Category = "AI")
+    static bool LoadoutGrantsRequestType(const UActionLoadoutDataAsset* Loadout, FGameplayTag RequestType);
 
 protected:
 

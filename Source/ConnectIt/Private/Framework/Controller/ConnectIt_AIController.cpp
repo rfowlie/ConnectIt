@@ -4,6 +4,7 @@
 #include "Framework/Library/ConnectIt_GameUtilityLibrary.h"
 #include "Framework/GameMode/ConnectIt_GameMode.h"
 #include "Framework/PlayerState/TurnBasedPlayerState.h"
+#include "Framework/PlayerState/ConnectIt_PlayerState.h"
 #include "Framework/GameState/TurnBasedGameState.h"
 #include "Board/ConnectIt_BoardStateComponent.h"
 #include "Board/Rules/ConnectIt_RuleSet.h"
@@ -281,6 +282,21 @@ void AConnectIt_AIController::BeginDecision()
     Context.Board = BoardState->GetCurrentState();
     Context.OwnSlot = PS->GetSlotIndex();
     Context.Rules = GameMode->GetRules();
+
+    // Which actions each side has. Two factions -- the opponent is the
+    // other slot.
+    Context.OwnLoadout = PS->GetLoadout();
+    if (const ATurnBasedPlayerState* OpponentPS =
+        UConnectIt_GameUtilityLibrary::GetPlayerStateForFaction(this, 1 - Context.OwnSlot))
+    {
+        Context.OpponentLoadout = OpponentPS->GetLoadout();
+    }
+    else
+    {
+        UE_LOG(LogTemp, Warning,
+            TEXT("ConnectIt_AIController: no PlayerState for the opposing "
+                 "faction -- the AI will plan as if its opponent can't move"));
+    }
 
     ++CurrentDecisionId;
     DecisionTurnNumber = GameState->GetActiveTurnNumber();

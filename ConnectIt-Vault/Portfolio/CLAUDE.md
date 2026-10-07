@@ -11,6 +11,9 @@ game features; it packages, evidences, and distributes what already exists.
 - **Type:** project/work domain (no source code of its own).
 - **Plan:** [portfolio-plan.md](portfolio-plan.md) — pitch, four case studies, week-by-week
   sequence, success metrics. The plan is the source of truth for scope.
+- **Advertising strategy:** [advertising-strategy.md](advertising-strategy.md) — hub-and-spoke platform
+  roles, media placement, weekly devlog loop, rollout order (from the
+  [2026-10-07 interview](_discussions/2026-10-07-advertising-strategy-interview.md)).
 - **Source material lives elsewhere:** case-study raw material is in
   [`ConnectIt/_decisions/`](../ConnectIt/_decisions/__INDEX.md),
   [`ConnectIt/design/`](../ConnectIt/design/), and
@@ -37,6 +40,9 @@ game features; it packages, evidences, and distributes what already exists.
 
 - [`_tasks/`](_tasks/__README.md) — the plan's steps as status tables. Governed by
   [`_core/_schema/_tasks.md`](../_core/_schema/_tasks.md).
+- [`_discussions/`](_discussions/__README.md) — dated notes on how to present and advertise the
+  work (strategy interviews, brainstorms). Governed by
+  [`_core/_schema/_discussions.md`](../_core/_schema/_discussions.md).
 - `_decisions/`, `_logs/`, `_questions/` — created on first use.
 
 ## Start here

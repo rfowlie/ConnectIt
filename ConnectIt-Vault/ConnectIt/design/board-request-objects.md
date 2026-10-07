@@ -128,3 +128,24 @@ structs shared by the game and the search ([decision](../_decisions/2026-10-06-r
 - **Reactions** join `FConnectItRuleSet` as an ordered array of thread-safe structs.
 - **Phase C** (separate, exploratory -- the wishlist task): per-move-type *generation* for the AI, and a search that
   understands multi-action turns and use budgets. Phase B makes it possible; it does not solve it.
+
+## Update (2026-10-07): the first slice of Phase B exists
+
+Built as [board operations](board-operations.md) ([decision](../_decisions/2026-10-07-board-operations-own-moves.md)):
+
+- **Done:** a per-move-type struct (`FConnectItBoardOperation`: generate, validate, apply) for **Place** and **Swap**,
+  living in `FConnectItRuleSet`; a compact move value (`FConnectItBoardMove`); the shared after-move step
+  (`FConnectItRuleSet::ResolveBoardChange`, scoring only so far); one generic Mediator handler; the search's
+  `ApplyMove` runs the same two steps on a copy of the board.
+- **Still to do from this note:** Shift, Capture and Force Place as operations (Shift needs a move value wider than
+  two tiles); reactions inside the resolve step; the step-list change event (operations still fill the flat-bool
+  event through `WriteChangeEvent`).
+- **Phase C unchanged:** the search is handed Place only; Swap generates no moves until turns with several actions and
+  use limits are modelled.
+
+## Update (2026-10-07, revision 2): every request type is an operation
+
+[The operation is the request](../_decisions/2026-10-07-board-operation-is-the-request.md): Shift, Capture, Force
+Place, Remove, Destroy Multiplier and Toggle are now operations too, the request payload is the operation itself, and
+the Mediator has a single path. Still to do from this note: reactions inside the resolve step, and the step-list
+change event (operations fill the flat-bool event from `Apply`).

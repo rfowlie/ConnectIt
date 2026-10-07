@@ -2,6 +2,7 @@
 
 
 #include "Framework/Library/ConnectIt_GameUtilityLibrary.h"
+#include "Board/Operations/ConnectIt_BoardOperations.h"
 #include "TurnBasedMechanicsEnums.h"
 #include "Subsystem/GridHoverSubsystem.h"
 #include "Framework/Data/ConnectIt_LevelConfigSettings.h"
@@ -100,7 +101,7 @@ TArray<AGridTileBase*> UConnectIt_GameUtilityLibrary::GetEmptyGridTiles(
     {
         const FGridPosition Position = TileRegistry->GetPositionOfTile(Tile);
 
-        if (BoardState->GetCurrentState().IsTileValidForPlacement(Position))
+        if (FConnectItBoardOperation_PlacePiece::IsTilePlaceableAt(BoardState->GetCurrentState(), Position))
         {
             EmptyTiles.Add(Tile);
         }

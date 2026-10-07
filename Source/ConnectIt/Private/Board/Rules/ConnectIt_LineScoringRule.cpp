@@ -8,7 +8,7 @@ float FConnectItScoringRule_Lines::ApplyScoring(
     FConnectItBoardState& MutableState,
     FGridPosition Position,
     int32 FactionSlot,
-    TArray<FGridPosition>& OutScoringPositions) const
+    TArray<FConnectItScoringConfiguration>* OutConfigurations) const
 {
     TArray<TArray<FGridPosition>> ScoringLines =
         FindScoringLines(MutableState, Position, FactionSlot, ConnectLength);
@@ -19,14 +19,17 @@ float FConnectItScoringRule_Lines::ApplyScoring(
 
     for (const TArray<FGridPosition>& Line : ScoringLines)
     {
-        TotalPoints += ApplyScoringLine(
+        const float LinePoints = ApplyScoringLine(
             MutableState, Line, Position, FactionSlot);
+        TotalPoints += LinePoints;
 
-        // Union across every completed line -- AddUnique since lines always
-        // overlap at Position at minimum, and could overlap further.
-        for (const FGridPosition& LinePosition : Line)
+        // One configuration per completed line (lines always share Position)
+        if (OutConfigurations)
         {
-            OutScoringPositions.AddUnique(LinePosition);
+            FConnectItScoringConfiguration& Configuration = OutConfigurations->AddDefaulted_GetRef();
+            Configuration.FactionSlot = FactionSlot;
+            Configuration.Points      = LinePoints;
+            Configuration.Positions   = Line;
         }
     }
 

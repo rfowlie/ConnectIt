@@ -1,6 +1,7 @@
 ﻿// Fill out your copyright notice in the Description page of Project Settings.
 
 #include "Framework/GameState/ConnectIt_GameState.h"
+#include "Board/Operations/ConnectIt_BoardOperations.h"
 #include "Net/UnrealNetwork.h"
 #include "TurnBasedMechanicsStructs.h"
 #include "Board/ConnectIt_BoardStateComponent.h"
@@ -131,7 +132,7 @@ bool AConnectIt_GameState::IsTileValidForPlacement(
 {
     if (UConnectIt_BoardStateComponent* BSC = GetBoardStateComponent())
     {
-        return BSC->GetCurrentState().IsTileValidForPlacement(Position);
+        return FConnectItBoardOperation_PlacePiece::IsTilePlaceableAt(BSC->GetCurrentState(), Position);
     }
     return false;
 }

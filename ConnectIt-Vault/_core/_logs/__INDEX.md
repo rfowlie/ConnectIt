@@ -8,6 +8,11 @@ in `<domain>/_logs/`, not here.
 
 Newest first:
 
+- [2026-10-07-1330](2026-10-07-1330.md) — by hand — advertising-strategy interview + plan for `Portfolio`
+  (hub-and-spoke, weekly devlog); first `Portfolio/_discussions/` note.
+
+- [2026-10-07-1200](2026-10-07-1200.md) — by hand — `Portfolio/_discussions/` section created.
+
 - [2026-09-30-1200](2026-09-30-1200.md) — by hand — new `Portfolio` domain (router, plan moved in from
   `~/.claude/plans/`, seeded `_tasks/`); flagged the public repo containing `Development/`.
 

@@ -2,6 +2,7 @@
 
 
 #include "Action/ConnectIt_PlacePieceAction.h"
+#include "Board/Operations/ConnectIt_BoardOperations.h"
 #include "Board/ConnectIt_BoardStateComponent.h"
 #include "ConnectIt_GameplayTags.h"
 #include "ConnectIt_Structs.h"
@@ -77,9 +78,10 @@ bool UConnectIt_PlacePieceAction::IsValidHoverTile_Implementation(AGridTileBase*
     const auto TileRegistry = UConnectIt_GameUtilityLibrary::GetTileRegistry(GetPlayerController());
     const FGridPosition Position = TileRegistry->GetPositionOfTile(Tile);
 
-    // Tile must be valid for placement in current board state
-    // IsTileValidForPlacement checks both bIsActive and !IsOccupied
-    return BoardState->GetCurrentState().IsTileValidForPlacement(Position);
+    // The same check the server makes of the request (and the AI of its
+    // candidate moves)
+    return FConnectItBoardOperation_PlacePiece::IsTilePlaceableAt(
+        BoardState->GetCurrentState(), Position);   
 }
 
 bool UConnectIt_PlacePieceAction::IsValidSelectionTile_Implementation(AGridTileBase* Tile) const
@@ -122,11 +124,16 @@ void UConnectIt_PlacePieceAction::HandleValidSelection_Implementation(AGridTileB
     
     // Build the request -- board manager handles all mutation
     // Action has no knowledge of pools, piece actors, or state changes
+    // The request's payload is the board change itself (see
+    // FConnectItBoardOperation)
+    FConnectItBoardOperation_PlacePiece Operation;
+    Operation.Faction = GetOwningControllerFactionID();
+    Operation.Position = Position;
+
     FTurnActionRequest Request;
-    Request.RequestType = GetActionTag();
-    Request.FactionID = GetOwningControllerFactionID();
-    Request.Payload.InitializeAs<FConnectItRequestPlacePiece>(
-        FConnectItRequestPlacePiece{ .Positions = { Position } });
+    Request.RequestType = Operation.GetRequestType();
+    Request.FactionID = Operation.Faction;
+    Request.Payload = FInstancedStruct::Make(Operation);
 
     UE_LOG(LogTemp, Log,
         TEXT("PlacePieceAction: Selection confirmed at (%d,%d) "

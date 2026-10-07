@@ -5,13 +5,13 @@
 #include "CoreMinimal.h"
 #include "GridMechanicsBaseStructs.h"
 #include "GameEvent/TurnBasedGameEvent.h"
-#include "ConnectIt_LineScoreGameEvent.generated.h"
+#include "ConnectIt_ScoreGameEvent.generated.h"
 
 class AGridPieceBase;
 class UGridPieceRegistryComponent;
 
-// Meant to own the full ConnectIt_Event_LineScored despawn sequence: for
-// every position it's handed (the scoring line minus the completing tile),
+// Meant to own the full ConnectIt_Event_Scored despawn sequence: for
+// every position it's handed (the tiles that scored, minus the completing tile),
 // trigger that position's piece's despawn visual and wait for it to
 // actually finish before finalizing its removal from the registry --
 // fixing the eager-unregister-before-the-visual gap for this event type.
@@ -25,7 +25,7 @@ class UGridPieceRegistryComponent;
 // intended behavior once that rewiring lands, not a description of what
 // happens today.
 UCLASS()
-class CONNECTIT_API UConnectIt_LineScoreGameEvent : public UTurnBasedGameEvent
+class CONNECTIT_API UConnectIt_ScoreGameEvent : public UTurnBasedGameEvent
 {
     GENERATED_BODY()
 

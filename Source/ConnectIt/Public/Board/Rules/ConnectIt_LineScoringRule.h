@@ -10,7 +10,8 @@
 // The classic rule: a straight line of ConnectLength or more of one faction's
 // pieces through the arriving piece scores. Points = the sum of the line's
 // tile multipliers; every tile in the line then loses its piece and gains +1
-// multiplier, except the arriving piece, which stays.
+// multiplier, except the arriving piece, which stays. Each completed line is
+// one scoring configuration.
 USTRUCT(BlueprintType, meta = (DisplayName = "Lines"))
 struct CONNECTIT_API FConnectItScoringRule_Lines : public FConnectItScoringRule
 {
@@ -23,7 +24,7 @@ struct CONNECTIT_API FConnectItScoringRule_Lines : public FConnectItScoringRule
         FConnectItBoardState& Board,
         FGridPosition Position,
         int32 Faction,
-        TArray<FGridPosition>& OutScoringPositions) const override;
+        TArray<FConnectItScoringConfiguration>* OutConfigurations) const override;
 
     // The four line axes scoring checks (each walked both ways). Public so
     // the MinMax line-potential evaluation measures along exactly the same

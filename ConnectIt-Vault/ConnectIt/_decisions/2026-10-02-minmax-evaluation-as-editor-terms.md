@@ -1,7 +1,7 @@
 ---
 Date: 2026-10-02
-status: Active
-superseded by:
+status: Superseded
+superseded by: 2026-10-07-minmax-judgement-is-named-weights
 tags:
   - ai
   - minmax
@@ -34,3 +34,10 @@ rules class and probably its own strategy -- legitimately a new pair).
 Supersedes the "variants subclass the rules and override virtual functions" part of
 [2026-10-02-pluggable-ai-strategy-and-instance-rules](2026-10-02-pluggable-ai-strategy-and-instance-rules.md); the
 pluggable `UConnectIt_AIStrategy` part of that note stands.
+
+## Update (2026-10-07)
+
+Superseded by [MinMax judgement is named weights](2026-10-07-minmax-judgement-is-named-weights.md): the term structs
+and their editor lists are gone; the strategy holds named weights and the logic is handwritten in
+`FConnectItMinMaxRules`. Still true from this note: the judgement is editor data on the MinMax strategy, and
+`FConnectItMinMaxRules` is an internal fixed game model that is not subclassed.

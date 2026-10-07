@@ -6,6 +6,18 @@ Vault-wide passes go in `_core/_logs/`.
 
 Newest first:
 
+- [2026-10-07-1426](2026-10-07-1426.md) — session — MinMax judgement: term structs replaced by named weights on the strategy and handwritten
+  `EvaluateState` / `EvaluateMove` helpers. Build clean, 19/19 tests, 390k nodes/s; PIE vs AI pending.
+
+- [2026-10-07-0130](2026-10-07-0130.md) — session — board operations revision 2: the operation is the request (carries its own data, sent by actions);
+  all eight request types are operations; the Mediator has one path. Build clean, 19/19 tests; PIE pass pending.
+
+- [2026-10-07-0055](2026-10-07-0055.md) — session — board operations revision: one concrete placement check on the Place operation, change event
+  reports `ScoringConfigurations`, a move is gameplay tag + typed data. Build clean, 13/13 tests; `CI_PieceVisualHandler` needs rewiring.
+
+- [2026-10-07-0015](2026-10-07-0015.md) — session — board operations: `FConnectItBoardOperation` (Place, Swap) in the rule set, run by both
+  the Mediator and the MinMax search; scoring is a separate `ResolveBoardChange` step. Build clean, 12/12 tests; PIE pass pending.
+
 - [2026-10-07-0010](2026-10-07-0010.md) — session — GameMode owns the live match setup; rules + AI profile mirrored on the GameState,
   clients build actions from their PlayerState; `GetLevelConfig` removed. Build clean; replication needs a 2-player PIE pass.
 

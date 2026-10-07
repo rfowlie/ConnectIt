@@ -9,26 +9,38 @@ FConnectItRuleSet::FConnectItRuleSet()
 {
     ScoringRule = TInstancedStruct<FConnectItScoringRule>::Make<FConnectItScoringRule_Lines>();
     WinCondition = TInstancedStruct<FConnectItWinCondition>::Make<FConnectItWinCondition_ScoreThreshold>();
-    TilePlaceableRule = TInstancedStruct<FConnectItTilePlaceableRule>::Make<FConnectItTilePlaceableRule_Unoccupied>();
+}
+
+float FConnectItRuleSet::ResolveBoardChange(
+    FConnectItBoardState& Board,
+    TConstArrayView<FGridPosition> TouchedPositions,
+    TArray<FConnectItScoringConfiguration>* OutConfigurations) const
+{
+    const FConnectItScoringRule* Rule = GetScoringRule();
+    if (!Rule) return 0.f;
+
+    float TotalPoints = 0.f;
+    for (const FGridPosition& Position : TouchedPositions)
+    {
+        // Read now, not up front: scoring an earlier position can clear
+        // pieces. A tile holding no faction's piece (empty, or a non-faction
+        // blocker) can't score.
+        const FConnectItTileData* Tile = Board.GetTileData(Position);
+        if (!Tile || Tile->FactionPiece == INDEX_NONE) continue;
+
+        TotalPoints += Rule->ApplyScoring(Board, Position, Tile->FactionPiece, OutConfigurations);
+    }
+    return TotalPoints;
 }
 
 float FConnectItRuleSet::ApplyScoring(
     FConnectItBoardState& Board,
     FGridPosition Position,
     int32 Faction,
-    TArray<FGridPosition>& OutScoringPositions) const
+    TArray<FConnectItScoringConfiguration>* OutConfigurations) const
 {
     const FConnectItScoringRule* Rule = GetScoringRule();
-    return Rule ? Rule->ApplyScoring(Board, Position, Faction, OutScoringPositions) : 0.f;
-}
-
-bool FConnectItRuleSet::IsTilePlaceable(const FConnectItBoardState& Board, FGridPosition Position) const
-{
-    const FConnectItTilePlaceableRule* Rule = GetTilePlaceableRule();
-    if (!Rule) return false;
-
-    const int32 TileIndex = Board.TilePositions.IndexOfByKey(Position);
-    return Board.TileDataArray.IsValidIndex(TileIndex) && Rule->IsTilePlaceable(Board, TileIndex);
+    return Rule ? Rule->ApplyScoring(Board, Position, Faction, OutConfigurations) : 0.f;
 }
 
 int32 FConnectItRuleSet::GetWinningFaction(const FConnectItBoardState& Board) const

@@ -1,12 +1,12 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 
-#include "GameEvent/ConnectIt_LineScoreGameEvent.h"
+#include "GameEvent/ConnectIt_ScoreGameEvent.h"
 #include "Piece/GridPieceBase.h"
 #include "Piece/GridPieceRegistryComponent.h"
 
 
-void UConnectIt_LineScoreGameEvent::Initialise(
+void UConnectIt_ScoreGameEvent::Initialise(
     UGridPieceRegistryComponent* InPieceRegistry,
     const TArray<FGridPosition>& InPositionsToDespawn)
 {
@@ -14,12 +14,12 @@ void UConnectIt_LineScoreGameEvent::Initialise(
     PositionsToDespawn = InPositionsToDespawn;
 }
 
-void UConnectIt_LineScoreGameEvent::Execute_Implementation()
+void UConnectIt_ScoreGameEvent::Execute_Implementation()
 {
     // if (!IsValid(PieceRegistry))
     // {
     //     UE_LOG(LogTemp, Error,
-    //         TEXT("ConnectIt_LineScoreGameEvent: Execute — missing required dependency"));
+    //         TEXT("ConnectIt_ScoreGameEvent: Execute — missing required dependency"));
     //     Complete();
     //     return;
     // }
@@ -31,7 +31,7 @@ void UConnectIt_LineScoreGameEvent::Execute_Implementation()
     //     if (!IsValid(Piece))
     //     {
     //         UE_LOG(LogTemp, Warning,
-    //             TEXT("ConnectIt_LineScoreGameEvent: Execute — no piece at (%d,%d)"),
+    //             TEXT("ConnectIt_ScoreGameEvent: Execute — no piece at (%d,%d)"),
     //             Position.X, Position.Y);
     //         continue;
     //     }
@@ -45,7 +45,7 @@ void UConnectIt_LineScoreGameEvent::Execute_Implementation()
     // }
 }
 
-void UConnectIt_LineScoreGameEvent::HandlePieceDespawned(AGridPieceBase* Piece)
+void UConnectIt_ScoreGameEvent::HandlePieceDespawned(AGridPieceBase* Piece)
 {
     // // Not something this event is waiting on -- ignore. Either a stray
     // // signal, or (see UGridPieceSpawnInterpreter's own known-limitation

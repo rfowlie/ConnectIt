@@ -1,6 +1,7 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 #include "Framework/Library/ConnectIt_BoardStateLibrary.h"
+#include "Board/Operations/ConnectIt_BoardOperations.h"
 
 
 bool UConnectIt_BoardStateLibrary::GetTileData(
@@ -31,7 +32,7 @@ bool UConnectIt_BoardStateLibrary::IsTileActive(
 bool UConnectIt_BoardStateLibrary::IsTileValidForPlacement(
     const FConnectItBoardState& State, FGridPosition Position)
 {
-    return State.IsTileValidForPlacement(Position);
+    return FConnectItBoardOperation_PlacePiece::IsTilePlaceableAt(State, Position);
 }
 
 int32 UConnectIt_BoardStateLibrary::GetTileFaction(

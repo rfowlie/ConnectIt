@@ -5,13 +5,12 @@
 #include "CoreMinimal.h"
 #include "StructUtils/InstancedStruct.h"
 #include "Board/Rules/ConnectIt_ScoringRule.h"
-#include "Board/Rules/ConnectIt_TilePlaceableRule.h"
 #include "Board/Rules/ConnectIt_WinCondition.h"
 #include "ConnectIt_RuleSet.generated.h"
 
 
-// The rules of one match: how pieces score, how the match is won, where a
-// piece may be placed. Authored per level on UConnectIt_LevelConfigDataAsset
+// The rules of one match: how pieces score and how the match is won.
+// Authored per level on UConnectIt_LevelConfigDataAsset
 // (pick each rule's type and set its values in the Details panel).
 //
 // Plain data, copied by value: the level config holds the template, the
@@ -20,8 +19,9 @@
 // search takes a copy of that. Everyone runs the same rule code, on any
 // thread (see the note at the top of ConnectIt_ScoringRule.h).
 //
-// A fresh rule set is the classic game: Lines (4) / Score Threshold (100) /
-// Unoccupied.
+// A fresh rule set is the classic game: Lines (4) / Score Threshold (100).
+// (Which moves a player can make is not a rule: it is their loadout's
+// actions, each sending a FConnectItBoardOperation.)
 USTRUCT(BlueprintType)
 struct CONNECTIT_API FConnectItRuleSet
 {
@@ -31,23 +31,34 @@ struct CONNECTIT_API FConnectItRuleSet
 
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Rules", meta = (ExcludeBaseStruct))
     TInstancedStruct<FConnectItWinCondition> WinCondition;
-    
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Rules", meta = (ExcludeBaseStruct))
-    TInstancedStruct<FConnectItScoringRule> ScoringRule;
 
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Rules", meta = (ExcludeBaseStruct))
-    TInstancedStruct<FConnectItTilePlaceableRule> TilePlaceableRule;
+    TInstancedStruct<FConnectItScoringRule> ScoringRule;
 
     // --- The rules themselves (null if a slot was cleared in the editor) ---
 
     const FConnectItWinCondition* GetWinCondition() const { return WinCondition.GetPtr(); }
     const FConnectItScoringRule* GetScoringRule() const { return ScoringRule.GetPtr(); }
-    const FConnectItTilePlaceableRule* GetTilePlaceableRule() const { return TilePlaceableRule.GetPtr(); }
 
     // The scoring rule if it is a T (e.g. FConnectItScoringRule_Lines), else
     // null -- for code that only makes sense under one kind of scoring.
     template<typename T>
     const T* GetScoringRuleAs() const { return ScoringRule.template GetPtr<T>(); }
+
+    // --- After a board change ---
+
+    // The step AFTER an operation has changed the board
+    // (FConnectItBoardOperation::Apply), kept separate from the change
+    // itself: every touched position that now holds a faction's piece is
+    // scored for that faction, in order. Other
+    // follow-on effects of a board change (reactions) will run here too.
+    // Returns the points scored; OutConfigurations, if given, gets one entry
+    // per thing that scored (the AI's search passes none). Does not check for
+    // a win -- see GetWinningFaction / StampWinState.
+    float ResolveBoardChange(
+        FConnectItBoardState& Board,
+        TConstArrayView<FGridPosition> TouchedPositions,
+        TArray<FConnectItScoringConfiguration>* OutConfigurations = nullptr) const;
 
     // --- Convenience: each is a no-op / "no" when its rule is unset ---
 
@@ -55,9 +66,7 @@ struct CONNECTIT_API FConnectItRuleSet
         FConnectItBoardState& Board,
         FGridPosition Position,
         int32 Faction,
-        TArray<FGridPosition>& OutScoringPositions) const;
-
-    bool IsTilePlaceable(const FConnectItBoardState& Board, FGridPosition Position) const;
+        TArray<FConnectItScoringConfiguration>* OutConfigurations = nullptr) const;
 
     int32 GetWinningFaction(const FConnectItBoardState& Board) const;
 

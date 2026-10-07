@@ -84,3 +84,7 @@ internal `FConnectItMinMaxRules` per decision. Changing what the AI values = edi
   `Hidden` and named "(Test) Corner Owner"; unconfirmed whether the instanced-struct picker honours `Hidden` — if it
   shows up in the editor, ignore it (or ask to move it out of the shipping module).
 - Added `UConnectIt_AIStrategy::GetOwningController()`.
+
+## Update (2026-10-07): replaced
+
+The term structs described here no longer exist. See [minmax-named-weights](minmax-named-weights.md).

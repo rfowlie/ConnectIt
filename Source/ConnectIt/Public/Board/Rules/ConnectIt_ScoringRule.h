@@ -33,13 +33,13 @@ struct CONNECTIT_API FConnectItScoringRule
     // Faction now has a piece on Position (placed, swapped in, shifted in,
     // captured...). Apply any scoring to Board -- its ScoreBoard, and whatever
     // else scoring does to tiles and pieces -- and return the points scored.
-    // OutScoringPositions gets every tile that took part (for visuals); left
-    // untouched if nothing scored.
+    // OutConfigurations, if not null, gets one entry appended per thing that
+    // scored (for visuals); the AI's search passes null.
     virtual float ApplyScoring(
         FConnectItBoardState& Board,
         FGridPosition Position,
         int32 Faction,
-        TArray<FGridPosition>& OutScoringPositions) const
+        TArray<FConnectItScoringConfiguration>* OutConfigurations) const
     {
         return 0.f;
     }

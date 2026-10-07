@@ -35,7 +35,7 @@ UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_Event_PiecePlaced);
 // Fired once when the board is initialised from the level -- react to it to
 // create visuals for any designer-placed starting pieces
 UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_Event_BoardSeeded);
-UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_Event_LineScored);
+UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_Event_Scored);
 UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_Event_PlayerWin);
 UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_Event_TurnEnd);
 

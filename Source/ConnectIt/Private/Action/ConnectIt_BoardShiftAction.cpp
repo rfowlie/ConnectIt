@@ -2,6 +2,7 @@
 
 
 #include "Action/ConnectIt_BoardShiftAction.h"
+#include "Board/Operations/ConnectIt_BoardOperations.h"
 #include "ConnectIt_GameplayTags.h"
 #include "ConnectIt_Structs.h"
 #include "GridMechanics_GridLibrary.h"
@@ -113,11 +114,15 @@ void UConnectIt_BoardShiftAction::HandleValidSelection_Implementation(AGridTileB
 	// against its own board state before mutating anything; this action has
 	// no knowledge of board mutation, same division of responsibility as
 	// PlacePiece/Swap.
+	FConnectItBoardOperation_Shift Operation;
+	Operation.Faction = GetOwningControllerFactionID();
+	Operation.Positions = ShiftPositions;
+	Operation.Direction = ShiftDirection;
+
 	FTurnActionRequest Request;
-	Request.RequestType = ConnectIt_Game_Shift;
-	Request.FactionID = GetOwningControllerFactionID();
-	Request.Payload.InitializeAs<FConnectItRequestBoardShift>(
-		FConnectItRequestBoardShift{ .Positions = ShiftPositions, .Direction = ShiftDirection });
+	Request.RequestType = Operation.GetRequestType();
+	Request.FactionID = Operation.Faction;
+	Request.Payload = FInstancedStruct::Make(Operation);
 
 	UE_LOG(LogTemp, Log,
 		TEXT("BoardShiftAction: Selection confirmed at (%d,%d), direction %d, "

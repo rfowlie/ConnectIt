@@ -37,7 +37,7 @@ struct FConnectItTileData
     // unshiftable tile is skipped -- it stays exactly where it is, and the
     // shiftable tiles around it rotate among themselves as if it weren't
     // part of the line at all. See
-    // UConnectIt_BoardRequestMediator::HandleBoardShiftRequest.
+    // FConnectItBoardOperation_Shift.
     UPROPERTY(BlueprintReadOnly)
     bool bCanShift = true;
 
@@ -151,11 +151,6 @@ struct FConnectItBoardState
         return Data && Data->bIsActive;
     }
 
-    bool IsTileValidForPlacement(const FGridPosition& Position) const
-    {
-        return IsTileActive(Position) && !IsTileOccupied(Position);
-    }
-
     float GetScore(int32 FactionSlot) const
     {
         return ScoreBoard.IsValidIndex(FactionSlot)
@@ -186,6 +181,25 @@ struct FConnectItBoardState
 // and client (see HandleBoardStateChanged), instead of the old pattern of
 // firing gameplay delegates directly from server-only request handlers.
 //
+// One thing that scored: who, how much, and the tiles that took part. What
+// counts as "one thing" is up to the match's scoring rule (for the Lines
+// rule: one completed line). Tiles can appear in more than one configuration
+// of the same change (two lines crossing at the piece that completed both).
+USTRUCT(BlueprintType)
+struct FConnectItScoringConfiguration
+{
+    GENERATED_BODY()
+
+    UPROPERTY(BlueprintReadOnly)
+    int32 FactionSlot = -1;
+
+    UPROPERTY(BlueprintReadOnly)
+    float Points = 0.f;
+
+    UPROPERTY(BlueprintReadOnly)
+    TArray<FGridPosition> Positions;
+};
+
 // bGameWon is edge-triggered -- true only on the transition into game-over,
 // not "the game is currently over" (FConnectItBoardState::bGameOver stays
 // true on every snapshot after the win).
@@ -209,23 +223,24 @@ struct FConnectItBoardChangeEvent
     UPROPERTY(BlueprintReadOnly)
     int32 PlacingFactionSlot = -1;
 
+    // Everything that scored as a result of this change, in the order it
+    // was scored -- empty when nothing did. More than one entry when a move
+    // scores several ways at once (e.g. a horizontal and a diagonal line
+    // through the same piece) or for more than one faction (e.g. a swap).
     UPROPERTY(BlueprintReadOnly)
-    bool bLineScored = false;
+    TArray<FConnectItScoringConfiguration> ScoringConfigurations;
 
-    UPROPERTY(BlueprintReadOnly)
-    int32 ScoringFactionSlot = -1;
+    bool HasScored() const { return !ScoringConfigurations.IsEmpty(); }
 
-    UPROPERTY(BlueprintReadOnly)
-    float PointsScored = 0.f;
-
-    // Every tile that was part of a completed line on this placement --
-    // the union across all lines if more than one completed simultaneously
-    // (e.g. a horizontal and a diagonal through the same piece), not kept
-    // separate per line since USTRUCT arrays-of-arrays don't replicate
-    // (same reason shift below uses parallel arrays instead of a TMap/TSet).
-    // Empty when bLineScored is false.
-    UPROPERTY(BlueprintReadOnly)
-    TArray<FGridPosition> ScoringLinePositions;
+    float GetTotalPointsScored() const
+    {
+        float Total = 0.f;
+        for (const FConnectItScoringConfiguration& Configuration : ScoringConfigurations)
+        {
+            Total += Configuration.Points;
+        }
+        return Total;
+    }
 
     UPROPERTY(BlueprintReadOnly)
     bool bGameWon = false;
@@ -345,108 +360,4 @@ struct FConnectItBoardStateSnapshot
     // What specifically changed on this update -- see FConnectItBoardChangeEvent
     UPROPERTY(BlueprintReadWrite)
     FConnectItBoardChangeEvent ChangeEvent;
-};
-
-// FTurnActionRequest payload -- FactionID lives on the envelope itself,
-// not duplicated here (see FTurnActionRequest in TurnBasedMechanicsStructs.h)
-USTRUCT(BlueprintType)
-struct FConnectItRequestPlacePiece
-{
-    GENERATED_BODY()
-
-    // Grid positions relevant to this request
-    UPROPERTY(BlueprintReadWrite)
-    TArray<FGridPosition> Positions;
-};
-
-// FTurnActionRequest payload -- UConnectIt_TileMultiplierDestroyerAction
-USTRUCT(BlueprintType)
-struct FConnectItRequestDestroyTileMultiplier
-{
-    GENERATED_BODY()
-
-    UPROPERTY(BlueprintReadWrite)
-    FGridPosition Position;
-};
-
-// FTurnActionRequest payload -- UConnectIt_TimedPieceRemoverAction.
-// DelayTurns is forward-declared for a delayed/scheduled follow-up that
-// doesn't exist yet -- see that action's class comment. The current board
-// manager handler only honours DelayTurns == 0 (immediate removal).
-USTRUCT(BlueprintType)
-struct FConnectItRequestRemovePiece
-{
-    GENERATED_BODY()
-
-    UPROPERTY(BlueprintReadWrite)
-    FGridPosition Position;
-
-    UPROPERTY(BlueprintReadWrite, meta = (ClampMin = 0))
-    int32 DelayTurns = 0;
-};
-
-// FTurnActionRequest payload -- UConnectIt_PieceSwapperAction
-USTRUCT(BlueprintType)
-struct FConnectItRequestSwapPieces
-{
-    GENERATED_BODY()
-
-    UPROPERTY(BlueprintReadWrite)
-    FGridPosition PositionA;
-
-    UPROPERTY(BlueprintReadWrite)
-    FGridPosition PositionB;
-};
-
-// FTurnActionRequest payload -- UConnectIt_TileActivationToggleAction
-USTRUCT(BlueprintType)
-struct FConnectItRequestToggleTileActive
-{
-    GENERATED_BODY()
-
-    UPROPERTY(BlueprintReadWrite)
-    FGridPosition Position;
-};
-
-// FTurnActionRequest payload -- UConnectIt_PieceCaptureAction. No explicit
-// capturing faction field -- FTurnActionRequest::FactionID on the envelope
-// is already "who's making this request" for every request type.
-USTRUCT(BlueprintType)
-struct FConnectItRequestCapturePiece
-{
-    GENERATED_BODY()
-
-    UPROPERTY(BlueprintReadWrite)
-    FGridPosition Position;
-};
-
-// FTurnActionRequest payload -- UConnectIt_ForcePiecePlaceOnTileAction.
-// Deliberately the same shape as FConnectItRequestPlacePiece (not reused
-// directly) -- keeps this request type free to diverge later (e.g. an
-// explicit faction override) without touching the normal placement payload.
-USTRUCT(BlueprintType)
-struct FConnectItRequestForcePlacePiece
-{
-    GENERATED_BODY()
-
-    UPROPERTY(BlueprintReadWrite)
-    FGridPosition Position;
-};
-
-// FTurnActionRequest payload -- UConnectIt_BoardShiftAction. Positions is the
-// full line to be shifted (see UGridTileRegistryBase::GetTilesByDirection),
-// in line order from the selected tile outward, so the Mediator doesn't have
-// to re-walk the line itself; Direction says which way it shifts. Still
-// re-validated server-side against the actual board state before use, same
-// as every other request payload -- never trusted blindly.
-USTRUCT(BlueprintType)
-struct FConnectItRequestBoardShift
-{
-    GENERATED_BODY()
-
-    UPROPERTY(BlueprintReadWrite)
-    TArray<FGridPosition> Positions;
-
-    UPROPERTY(BlueprintReadWrite)
-    EGridDirection Direction = EGridDirection::Max;
 };

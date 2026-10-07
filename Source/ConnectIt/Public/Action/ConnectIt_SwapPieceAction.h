@@ -20,7 +20,7 @@ class UGridTileRegistryBase;
 // instead: the first valid selection is remembered (bHasFirstSelection/
 // FirstPosition) and highlighted; the second fires the actual request.
 // Purely a client-side UX aid -- UConnectIt_BoardRequestMediator::
-// HandleSwapPiecesRequest independently re-validates everything (faction
+// DispatchRequest (FConnectItBoardOperation_SwapPieces::CanApply) independently re-validates everything (faction
 // ownership, occupancy, remaining uses) server-side regardless of what this
 // class allowed locally.
 //
@@ -83,7 +83,7 @@ private:
     // Two-step selection scratch state. Deliberately not a UPROPERTY/not
     // networked -- purely local UX state driving hover/selection feedback;
     // the server never reads it, it only sees the final
-    // FConnectItRequestSwapPieces payload. Reset on both a successful
+    // FConnectItBoardOperation_SwapPieces payload. Reset on both a successful
     // second pick and ClearSelectionState (covers a server rejection via
     // the normal awaiting-confirmation reactivation).
     bool bHasSelectionFirst = false;

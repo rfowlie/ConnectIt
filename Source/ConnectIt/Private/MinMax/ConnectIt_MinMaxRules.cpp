@@ -2,6 +2,7 @@
 
 #include "MinMax/ConnectIt_MinMaxRules.h"
 #include "Board/Rules/ConnectIt_LineScoringRule.h"
+#include "ConnectIt_GameplayTags.h"
 
 
 // --- Geometry ---
@@ -18,6 +19,33 @@ FConnectItMinMaxGeometry FConnectItMinMaxGeometry::Build(
     for (int32 Index = 0; Index < NumTiles; Index++)
     {
         IndexByPosition.Add(Board.GetPositionAt(Index), Index);
+    }
+
+    // The same lookup as a flat table over the board's bounding box, for the
+    // search (see TileIndexAt)
+    if (NumTiles > 0)
+    {
+        int32 MaxX = TNumericLimits<int32>::Lowest();
+        int32 MaxY = TNumericLimits<int32>::Lowest();
+        Geometry.MinX = TNumericLimits<int32>::Max();
+        Geometry.MinY = TNumericLimits<int32>::Max();
+        for (int32 Index = 0; Index < NumTiles; Index++)
+        {
+            const FGridPosition Position = Board.GetPositionAt(Index);
+            Geometry.MinX = FMath::Min(Geometry.MinX, Position.X);
+            Geometry.MinY = FMath::Min(Geometry.MinY, Position.Y);
+            MaxX = FMath::Max(MaxX, Position.X);
+            MaxY = FMath::Max(MaxY, Position.Y);
+        }
+
+        Geometry.Width = MaxX - Geometry.MinX + 1;
+        Geometry.Height = MaxY - Geometry.MinY + 1;
+        Geometry.TileIndexGrid.Init(INDEX_NONE, Geometry.Width * Geometry.Height);
+        for (int32 Index = 0; Index < NumTiles; Index++)
+        {
+            const FGridPosition Position = Board.GetPositionAt(Index);
+            Geometry.TileIndexGrid[(Position.Y - Geometry.MinY) * Geometry.Width + (Position.X - Geometry.MinX)] = Index;
+        }
     }
 
     // No line scoring, no line windows
@@ -74,50 +102,34 @@ FConnectItMinMaxGeometry FConnectItMinMaxGeometry::Build(
 FConnectItMinMaxRules::FConnectItMinMaxRules(
     const FConnectItBoardState& Board,
     const FConnectItRuleSet& InRules,
-    const TArray<TInstancedStruct<FConnectItMinMaxEvalTerm>>& InEvaluationTerms,
-    const TArray<TInstancedStruct<FConnectItMinMaxOrderTerm>>& InOrderingTerms)
+    const FConnectItMinMaxEvaluationWeights& InEvaluationWeights,
+    const FConnectItMinMaxOrderingWeights& InOrderingWeights,
+    const FGameplayTagContainer& Side0RequestTypes,
+    const FGameplayTagContainer& Side1RequestTypes)
     : Rules(InRules)
-    , ScoringRule(Rules.GetScoringRule())
     , WinCondition(Rules.GetWinCondition())
-    , TilePlaceableRule(Rules.GetTilePlaceableRule())
     , Geometry(FConnectItMinMaxGeometry::Build(
         Board,
         Rules.GetScoringRuleAs<FConnectItScoringRule_Lines>()
             ? Rules.GetScoringRuleAs<FConnectItScoringRule_Lines>()->ConnectLength
             : 0))
-    , EvaluationTerms(InEvaluationTerms)
-    , OrderingTerms(InOrderingTerms)
+    , EvaluationWeights(InEvaluationWeights)
+    , OrderingWeights(InOrderingWeights)
 {
-    if (!ScoringRule || !WinCondition || !TilePlaceableRule)
+    if (!Rules.GetScoringRule() || !WinCondition)
     {
         UE_LOG(LogTemp, Warning,
             TEXT("ConnectIt_MinMaxRules: the match's rule set is missing a "
-                 "rule (scoring %s, win condition %s, placement %s) -- the AI "
-                 "will play as if that rule did nothing"),
-            ScoringRule ? TEXT("ok") : TEXT("MISSING"),
-            WinCondition ? TEXT("ok") : TEXT("MISSING"),
-            TilePlaceableRule ? TEXT("ok") : TEXT("MISSING"));
+                 "rule (scoring %s, win condition %s) -- the AI will play as "
+                 "if that rule did nothing"),
+            Rules.GetScoringRule() ? TEXT("ok") : TEXT("MISSING"),
+            WinCondition ? TEXT("ok") : TEXT("MISSING"));
     }
 
-    // Pointers into the arrays above -- stable, since this object is never
-    // copied and the arrays never change after this.
-    for (const TInstancedStruct<FConnectItMinMaxEvalTerm>& Term : EvaluationTerms)
-    {
-        const FConnectItMinMaxEvalTerm* Ptr = Term.GetPtr();
-        if (Ptr && Ptr->Weight != 0.f)
-        {
-            ActiveEvaluationTerms.Add(Ptr);
-        }
-    }
-
-    for (const TInstancedStruct<FConnectItMinMaxOrderTerm>& Term : OrderingTerms)
-    {
-        const FConnectItMinMaxOrderTerm* Ptr = Term.GetPtr();
-        if (Ptr && Ptr->Weight != 0.f)
-        {
-            ActiveOrderingTerms.Add(Ptr);
-        }
-    }
+    // Each side's kinds of move: the ones the search can model (see
+    // FConnectItMinMaxMove) that the side was given the request type for
+    bSideCanPlace[0] = Side0RequestTypes.HasTagExact(ConnectIt_Game_PlacePiece);
+    bSideCanPlace[1] = Side1RequestTypes.HasTagExact(ConnectIt_Game_PlacePiece);
 }
 
 FConnectItMinMaxRules::FState FConnectItMinMaxRules::MakeRoot(
@@ -134,35 +146,36 @@ FConnectItMinMaxRules::FState FConnectItMinMaxRules::MakeRoot(
 
 void FConnectItMinMaxRules::GenerateMoves(const FState& State, TArray<FMove>& OutMoves) const
 {
-    // The match's own placement rule, asked by tile index (no position
-    // lookups).
-    if (!TilePlaceableRule) return;
+    if (!ensure(State.SideToMove == 0 || State.SideToMove == 1)) return;
 
-    const int32 NumTiles = State.Board.NumTiles();
-    for (int32 Index = 0; Index < NumTiles; Index++)
+    if (bSideCanPlace[State.SideToMove])
     {
-        if (TilePlaceableRule->IsTilePlaceable(State.Board, Index))
-        {
-            OutMoves.Add({ Index, State.Board.GetPositionAt(Index) });
-        }
+        FConnectItBoardOperation_PlacePiece::ForEachMove(State.Board, State.SideToMove,
+            [&OutMoves](const FConnectItBoardOperation_PlacePiece& Operation)
+            {
+                OutMoves.Emplace(TInPlaceType<FConnectItBoardOperation_PlacePiece>(), Operation);
+            });
     }
 }
 
 FConnectItMinMaxRules::FState FConnectItMinMaxRules::ApplyMove(
     const FState& State, const FMove& Move) const
 {
-    // Mirrors UConnectIt_BoardRequestMediator::HandlePlacePieceRequest:
-    // place the piece, then run the match's scoring rule from the placed
-    // position.
     FState Child = State;
-    Child.Board.TileDataArray[Move.TileIndex].SetFactionPiece(State.SideToMove);
 
-    if (ScoringRule)
+    // 1. The move: the operation changes the board, and only that
+    FConnectItTouchedPositions TouchedPositions;
+    Visit([&Child, &TouchedPositions](const auto& Operation)
     {
-        TArray<FGridPosition> ScoringPositions; // visuals-only output, unused here
-        ScoringRule->ApplyScoring(Child.Board, Move.Position, State.SideToMove, ScoringPositions);
-    }
+        Operation.Apply(Child.Board, TouchedPositions, nullptr);
+    }, Move);
 
+    // 2. What follows from the change -- the same step the Mediator runs
+    //    after a real move
+    Rules.ResolveBoardChange(Child.Board, TouchedPositions);
+
+    // 3. The turn passes. The one thing still assumed here: every move ends
+    //    the turn.
     Child.SideToMove = Opponent(State.SideToMove);
     return Child;
 }
@@ -186,10 +199,22 @@ int32 FConnectItMinMaxRules::EvaluateTerminalState(const FState& State, int32 Pl
 
 int32 FConnectItMinMaxRules::EvaluateState(const FState& State) const
 {
+    const int32 Side = State.SideToMove;
+    const int32 Other = Opponent(Side);
+
     float Value = 0.f;
-    for (const FConnectItMinMaxEvalTerm* Term : ActiveEvaluationTerms)
+
+    if (EvaluationWeights.ScoreDifference != 0.f)
     {
-        Value += Term->Weight * Term->Evaluate(*this, State.Board, State.SideToMove);
+        Value += EvaluationWeights.ScoreDifference * ScoreDifference(State.Board, Side);
+    }
+
+    // Mine minus theirs. Skipped entirely when unweighted: it walks every
+    // line window on the board.
+    if (EvaluationWeights.LinePotential != 0.f)
+    {
+        Value += EvaluationWeights.LinePotential
+            * (LinePotential(State.Board, Side) - LinePotential(State.Board, Other));
     }
 
     // Keep heuristic values clear of the win band
@@ -199,10 +224,81 @@ int32 FConnectItMinMaxRules::EvaluateState(const FState& State) const
 
 int32 FConnectItMinMaxRules::EvaluateMove(const FState& State, const FMove& Move) const
 {
-    float Score = 0.f;
-    for (const FConnectItMinMaxOrderTerm* Term : ActiveOrderingTerms)
+    // Placing a piece: judged by the tile it goes on
+    if (const FConnectItBoardOperation_PlacePiece* Place = Move.TryGet<FConnectItBoardOperation_PlacePiece>())
     {
-        Score += Term->Weight * Term->Score(*this, State.Board, Move.TileIndex, State.SideToMove);
+        const int32 TileIndex = Geometry.TileIndexAt(Place->Position);
+        if (TileIndex == INDEX_NONE) return 0;
+
+        return FMath::RoundToInt(
+            OrderingWeights.TileMultiplier * TileMultiplierAt(State.Board, TileIndex)
+            + OrderingWeights.AdjacentPieces * CountAdjacentPieces(State.Board, TileIndex));
     }
-    return FMath::RoundToInt(Score);
+
+    return 0;
+}
+
+// --- The factors ---
+
+float FConnectItMinMaxRules::ScoreDifference(const FConnectItBoardState& Board, int32 Side)
+{
+    return Board.GetScore(Side) - Board.GetScore(Opponent(Side));
+}
+
+float FConnectItMinMaxRules::LinePotential(const FConnectItBoardState& Board, int32 Side) const
+{
+    float Potential = 0.f;
+
+    for (const TArray<int32>& Window : Geometry.LineWindows)
+    {
+        int32 Pieces = 0;
+        float Multiplier = 0.f;
+        bool bOpen = true;
+
+        for (const int32 Index : Window)
+        {
+            const FConnectItTileData& Tile = Board.GetTileDataAt(Index);
+            if (Tile.FactionPiece == Side)
+            {
+                Pieces++;
+            }
+            else if (!Tile.bIsActive || Tile.bIsOccupied)
+            {
+                // Inactive, the other faction's piece, or a non-faction blocker
+                bOpen = false;
+                break;
+            }
+
+            Multiplier += Tile.Multiplier;
+        }
+
+        if (bOpen && Pieces > 0)
+        {
+            Potential += static_cast<float>(Pieces * Pieces) * Multiplier;
+        }
+    }
+
+    return Potential;
+}
+
+float FConnectItMinMaxRules::TileMultiplierAt(const FConnectItBoardState& Board, int32 TileIndex)
+{
+    return Board.TileDataArray.IsValidIndex(TileIndex)
+        ? Board.GetTileDataAt(TileIndex).Multiplier
+        : 0.f;
+}
+
+int32 FConnectItMinMaxRules::CountAdjacentPieces(const FConnectItBoardState& Board, int32 TileIndex) const
+{
+    if (!Geometry.Neighbours.IsValidIndex(TileIndex)) return 0;
+
+    int32 Count = 0;
+    for (const int32 NeighbourIndex : Geometry.Neighbours[TileIndex])
+    {
+        if (Board.GetTileDataAt(NeighbourIndex).FactionPiece != -1)
+        {
+            Count++;
+        }
+    }
+    return Count;
 }

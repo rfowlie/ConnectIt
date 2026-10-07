@@ -10,6 +10,11 @@
 | Add ConnectIt page to existing portfolio site | 2026-09-30 | — | active | Week 2. Hero video → pitch → 4 case-study cards → breadth strip → showcase repo link. |
 | Write and publish 3 technical posts + 1 LinkedIn piece | 2026-09-30 | — | active | Week 3. MinMax off-thread, authoritative board, Instanced-UObject rule trees; then "built it, then removed it." Adapt from `ConnectIt/_decisions/`. |
 | Distribute, network, apply | 2026-09-30 | — | active | Week 4. LinkedIn + one community channel; 3–5 named people get the demo + one write-up; resume/LinkedIn rewrite; tailored bullets per role type; interview narratives. |
+| Confirm site builder supports YouTube embeds + link blocks | 2026-10-07 | — | active | From [advertising-strategy.md](../advertising-strategy.md). If not, plan a single GitHub Pages hub page. |
+| Clean up public profiles: GitHub, YouTube, LinkedIn, itch.io | 2026-10-07 | — | active | Same handle, bio links to the hub only, banner/avatar style; LinkedIn headline/About/Featured per the strategy. |
+| Try a packaged Windows build that runs without Steam | 2026-10-07 | — | active | Prerequisite for the itch.io page. Check multiplayer without Steam; upload with `butler`. |
+| Rebuild site hub: ConnectIt page + devlog index, migrate heavy media to YouTube/GitHub | 2026-10-07 | — | active | Keep old post URLs working as short pages linking to new homes. |
+| Set up the weekly devlog loop (template in vault, first clip) | 2026-10-07 | — | active | ~5 h/week: capture, write, publish, adapt+post, engage. |
 | Small proof-gap fixes (≤ 1 day total) | 2026-09-30 | — | active | Only if they serve the showcase: 5–8 automation tests on scoring/board rules; fresh-clone build note. |
 
 <!--

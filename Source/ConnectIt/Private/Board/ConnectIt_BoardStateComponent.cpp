@@ -224,7 +224,7 @@ void UConnectIt_BoardStateComponent::EnqueueBoardEventTags() const
     const FConnectItBoardChangeEvent& ChangeEvent = BoardSnapshot.ChangeEvent;
 
     // Fixed order -- each SetBoardState call represents exactly one kind of
-    // concrete change, then conditionally LineScored and/or PlayerWin. Each
+    // concrete change, then conditionally Scored and/or PlayerWin. Each
     // call enqueues independently; UGameEventTaskSubsystem's own queue
     // serializes them so the next one doesn't start firing until the
     // previous is done.
@@ -262,9 +262,9 @@ void UConnectIt_BoardStateComponent::EnqueueBoardEventTags() const
     }
 
     // knock on board changes from rules
-    if (ChangeEvent.bLineScored)
+    if (ChangeEvent.HasScored())
     {
-        GameEventSubsystem->QueueTagContainer(FGameplayTagContainer(ConnectIt_Event_LineScored));
+        GameEventSubsystem->QueueTagContainer(FGameplayTagContainer(ConnectIt_Event_Scored));
     }    
     if (ChangeEvent.bGameWon)
     {

@@ -2,11 +2,37 @@
 
 #include "AI/ConnectIt_AIStrategy.h"
 #include "Framework/Controller/ConnectIt_AIController.h"
+#include "Action/ActionConfig.h"
+#include "Action/ActionLoadoutDataAsset.h"
+#include "Action/TurnBasedAction.h"
 
 
 AConnectIt_AIController* UConnectIt_AIStrategy::GetOwningController() const
 {
     return Cast<AConnectIt_AIController>(GetOuter());
+}
+
+bool UConnectIt_AIStrategy::LoadoutGrantsRequestType(
+    const UActionLoadoutDataAsset* Loadout, FGameplayTag RequestType)
+{
+    if (!IsValid(Loadout) || !RequestType.IsValid()) return false;
+
+    const auto Grants = [RequestType](const TSubclassOf<UTurnBasedAction>& ActionClass)
+    {
+        const UTurnBasedAction* DefaultAction =
+            ActionClass ? ActionClass->GetDefaultObject<UTurnBasedAction>() : nullptr;
+        return IsValid(DefaultAction) && DefaultAction->ProducesRequestType(RequestType);
+    };
+
+    for (const FPermanentActionConfig& Config : Loadout->PermanentActions)
+    {
+        if (Grants(Config.ActionClass)) return true;
+    }
+    for (const FNumberedActionConfig& Config : Loadout->NumberedActions)
+    {
+        if (Grants(Config.ActionClass)) return true;
+    }
+    return false;
 }
 
 void UConnectIt_AIStrategy::StartDecision(const FConnectItAIDecisionContext& Context)

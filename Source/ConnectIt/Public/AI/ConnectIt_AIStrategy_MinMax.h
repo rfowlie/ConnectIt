@@ -5,8 +5,7 @@
 #include "CoreMinimal.h"
 #include "AI/ConnectIt_AIStrategy.h"
 #include "MinMax/ConnectIt_MinMaxRules.h"
-#include "MinMax/ConnectIt_MinMaxTerms.h"
-#include "StructUtils/InstancedStruct.h"
+#include "MinMax/ConnectIt_MinMaxWeights.h"
 #include <atomic>
 #include "ConnectIt_AIStrategy_MinMax.generated.h"
 
@@ -17,9 +16,9 @@
 //
 // Strength comes from MaxDepth / TimeBudgetSeconds; TopMovesConsidered +
 // MistakeChance let it deliberately play a weaker-but-reasonable move;
-// EvaluationTerms decide what it values and OrderingTerms how it guesses which
-// moves to try first (see ConnectIt_MinMaxTerms.h) -- all editor data, so a
-// different-feeling MinMax opponent is a different set of terms, not a new class.
+// EvaluationWeights tune what it values and OrderingWeights how it guesses
+// which moves to try first (see ConnectIt_MinMaxWeights.h) -- all editor data,
+// so a different-feeling MinMax opponent is different numbers, not a new class.
 UCLASS(Blueprintable, BlueprintType, EditInlineNew, DefaultToInstanced,
     meta = (DisplayName = "MinMax (Classic)"))
 class CONNECTIT_API UConnectIt_AIStrategy_MinMax : public UConnectIt_AIStrategy
@@ -27,8 +26,6 @@ class CONNECTIT_API UConnectIt_AIStrategy_MinMax : public UConnectIt_AIStrategy
     GENERATED_BODY()
 
 public:
-
-    UConnectIt_AIStrategy_MinMax();
 
     // Deepest search, in plies (one ply = one placement by either side)
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "AI|MinMax",
@@ -54,18 +51,14 @@ public:
         meta = (ClampMin = 0.0, ClampMax = 1.0))
     float MistakeChance = 0.f;
 
-    // What makes a position good: score = sum of Weight x term. Defaults
-    // reproduce the original evaluation (score difference 1000, line
-    // potential 10). Win/loss is always checked first, outside these.
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "AI|MinMax|Evaluation",
-        meta = (ExcludeBaseStruct))
-    TArray<TInstancedStruct<FConnectItMinMaxEvalTerm>> EvaluationTerms;
+    // What the AI values in an unfinished position. Win/loss is always
+    // checked first, outside these.
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "AI|MinMax|Evaluation")
+    FConnectItMinMaxEvaluationWeights EvaluationWeights;
 
-    // Which moves to try first (speed only -- never changes which move wins).
-    // Defaults: tile multiplier 10, adjacent pieces 5.
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "AI|MinMax|Move Ordering",
-        meta = (ExcludeBaseStruct))
-    TArray<TInstancedStruct<FConnectItMinMaxOrderTerm>> OrderingTerms;
+    // Which moves to try first (speed only -- never changes which move wins)
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "AI|MinMax|Move Ordering")
+    FConnectItMinMaxOrderingWeights OrderingWeights;
 
 protected:
 

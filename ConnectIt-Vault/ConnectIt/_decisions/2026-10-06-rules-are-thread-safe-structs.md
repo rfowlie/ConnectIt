@@ -1,7 +1,7 @@
 ---
 Date: 2026-10-06
-status: Active
-superseded by:
+status: Partly superseded
+superseded by: 2026-10-07-concrete-placement-check-and-scoring-configurations (placement rule only)
 tags:
   - rules
   - ai
@@ -44,3 +44,9 @@ Supersedes the mechanism in
 [2026-09-24-minmax-calls-real-rules-as-static-thread-safe-functions](2026-09-24-minmax-calls-real-rules-as-static-thread-safe-functions.md)
 and [2026-10-04-minmax-win-detection-from-win-condition](2026-10-04-minmax-win-detection-from-win-condition.md)
 (their intent -- the search uses the game's real rules -- stands).
+
+## Update (2026-10-07)
+
+The placement rule struct (`FConnectItTilePlaceableRule`) was removed: placement is one concrete function on the Place
+Piece operation. See [concrete placement check and scoring configurations](2026-10-07-concrete-placement-check-and-scoring-configurations.md).
+Scoring and win condition remain rule structs as decided here.

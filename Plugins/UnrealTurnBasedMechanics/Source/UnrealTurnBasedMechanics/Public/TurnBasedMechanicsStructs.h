@@ -152,7 +152,7 @@ struct FTurnActionRequest
 
     // Project-specific payload -- the plugin has no idea what concrete
     // struct this holds. Each project defines its own USTRUCTs (e.g.
-    // FConnectItRequestPlacePiece) and wraps one here per request type.
+    // FConnectItBoardOperation_PlacePiece) and wraps one here per request type.
     UPROPERTY(BlueprintReadWrite)
     FInstancedStruct Payload;
 

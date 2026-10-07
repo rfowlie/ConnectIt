@@ -4,15 +4,6 @@
 #include "ConnectIt_GameplayTags.h"
 
 
-UConnectIt_AIStrategy_MinMax::UConnectIt_AIStrategy_MinMax()
-{
-    EvaluationTerms.Add(TInstancedStruct<FConnectItMinMaxEvalTerm>::Make<FConnectItMinMaxEvalTerm_ScoreDifference>());
-    EvaluationTerms.Add(TInstancedStruct<FConnectItMinMaxEvalTerm>::Make<FConnectItMinMaxEvalTerm_LinePotential>());
-
-    OrderingTerms.Add(TInstancedStruct<FConnectItMinMaxOrderTerm>::Make<FConnectItMinMaxOrderTerm_TileMultiplier>());
-    OrderingTerms.Add(TInstancedStruct<FConnectItMinMaxOrderTerm>::Make<FConnectItMinMaxOrderTerm_AdjacentPieces>());
-}
-
 void UConnectIt_AIStrategy_MinMax::BeginDecision_Implementation(
     const FConnectItAIDecisionContext& Context)
 {
@@ -31,21 +22,47 @@ void UConnectIt_AIStrategy_MinMax::BeginDecision_Implementation(
 
     // Everything the search reads is built here, on the game thread, as
     // plain data -- the search never touches this UObject.
-    if (EvaluationTerms.IsEmpty())
+    if (EvaluationWeights.IsAllZero())
     {
         UE_LOG(LogTemp, Warning,
-            TEXT("ConnectIt_AIStrategy_MinMax: no EvaluationTerms -- every "
-                 "non-winning position looks equal, the AI will only see wins "
-                 "and losses"));
+            TEXT("ConnectIt_AIStrategy_MinMax: every evaluation weight is 0 -- "
+                 "every non-winning position looks equal, the AI will only see "
+                 "wins and losses"));
     }
 
+    // Which kinds of move each side plays with in the search: the ones the
+    // search can model (FConnectItMinMaxMove -- Place Piece only for now)
+    // that the side's loadout grants.
+    FGameplayTagContainer OwnRequestTypes;
+    FGameplayTagContainer OpponentRequestTypes;
+    if (LoadoutGrantsRequestType(Context.OwnLoadout, ConnectIt_Game_PlacePiece))
+    {
+        OwnRequestTypes.AddTag(ConnectIt_Game_PlacePiece);
+    }
+    if (LoadoutGrantsRequestType(Context.OpponentLoadout, ConnectIt_Game_PlacePiece))
+    {
+        OpponentRequestTypes.AddTag(ConnectIt_Game_PlacePiece);
+    }
+
+    if (OwnRequestTypes.IsEmpty())
+    {
+        UE_LOG(LogTemp, Error,
+            TEXT("ConnectIt_AIStrategy_MinMax: this AI's loadout grants no move "
+                 "the search can make (it needs a Place Piece action) -- no move"));
+        FinishDecision(FConnectItAIDecision());
+        return;
+    }
+
+    const bool bOwnIsSlot0 = Context.OwnSlot == 0;
     const TSharedRef<const FConnectItMinMaxRules, ESPMode::ThreadSafe> Rules =
         MakeShared<const FConnectItMinMaxRules, ESPMode::ThreadSafe>(
             Context.Board,
             Context.Rules,
-            EvaluationTerms,
-            OrderingTerms);
-    
+            EvaluationWeights,
+            OrderingWeights,
+            bOwnIsSlot0 ? OwnRequestTypes : OpponentRequestTypes,
+            bOwnIsSlot0 ? OpponentRequestTypes : OwnRequestTypes);
+
     FConnectItMinMaxRules::FState Root = Rules->MakeRoot(Context.Board, Context.OwnSlot);
 
     MinMax::FParams Params;
@@ -80,18 +97,25 @@ void UConnectIt_AIStrategy_MinMax::BeginDecision_Implementation(
             }
 
             const int32 PickIndex = Self->PickMoveIndex(Result);
-            const FGridPosition Move = Result.RootScores[PickIndex].Move.Position;
 
+            // The chosen move already is the board change to request --
+            // whichever kind of operation it is
             FConnectItAIDecision Decision;
-            Decision.RequestType = ConnectIt_Game_PlacePiece;
-            Decision.Payload.InitializeAs<FConnectItRequestPlacePiece>(
-                FConnectItRequestPlacePiece{ .Positions = { Move } });
+            FString MoveText;
+            Visit([&Decision, &MoveText](const auto& Operation)
+            {
+                Decision.RequestType = Operation.GetRequestType();
+                Decision.Payload = FInstancedStruct::Make(Operation);
+                MoveText = Operation.Describe();
+            }, Result.RootScores[PickIndex].Move);
+
             Decision.Summary = FString::Printf(
-                TEXT("MinMax depth %d%s, %lld nodes in %.0f ms -- (%d,%d) score %d "
-                     "(rank %d of %d, best %d)"),
+                TEXT("MinMax depth %d%s, %lld nodes in %.0f ms -- %s %s "
+                     "score %d (rank %d of %d, best %d)"),
                 Result.DepthReached, Result.bOutOfTime ? TEXT(" (out of time)") : TEXT(""),
                 Result.NodesVisited, Result.ElapsedSeconds * 1000.0,
-                Move.X, Move.Y, Result.RootScores[PickIndex].Score,
+                *Decision.RequestType.ToString(), *MoveText,
+                Result.RootScores[PickIndex].Score,
                 PickIndex + 1, Result.RootScores.Num(), Result.RootScores[0].Score);
 
             Self->FinishDecision(Decision);

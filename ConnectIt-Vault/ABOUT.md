@@ -45,7 +45,7 @@ vault; see [`_core/CLAUDE.md`](_core/CLAUDE.md).
 | `tasks` | Status tables (`active`/`suspended`/`complete`) | `_core/_tasks/` (vault) · `optimal-co-developer/_tasks/` · `Portfolio/_tasks/` |
 | `questions` | One note per open, unresolved question | `_core/_questions/` (vault) · `optimal-co-developer/_questions/` · `ConnectIt/_questions/` |
 | `meetings` | One dated note per meeting or session | `optimal-co-developer/_meetings/` |
-| `discussions` | One dated note per discussion; topics link to their most recent prior mention instead of a folder hierarchy | schema defined, no note yet (`ConnectIt/_discussions/` empty) |
+| `discussions` | One dated note per discussion; topics link to their most recent prior mention instead of a folder hierarchy | `ConnectIt/_discussions/` · `Portfolio/_discussions/` |
 | `daily` | One free-form note per day | `optimal-co-developer/_daily/` |
 | `ask-vault` `attachments` | Vault-level instances | `_core/_*/` |
 | `data` | `raw/` (verbatim, still templateless) + `wiki/` (`[[TSchemaWiki]]`, tracks `atomic-summary`); `/process-atomic` sweeps `wiki/` into `atomic` | not yet used — no `_data/` folder exists yet |
@@ -118,6 +118,9 @@ Full rulebook per section: `_core/_schema/_<section>.md`.
 
 ## Changelog
 
+- **2026-10-07** — `Portfolio` gained `_discussions/` and its first note (advertising-strategy interview), plus
+  `advertising-strategy.md` (platform roles, media matrix, weekly devlog loop, rollout) and 5 new tasks.
+  Logs: `_core/_logs/2026-10-07-1200.md`, `2026-10-07-1330.md`.
 - **2026-09-30** — New non-code domain **`Portfolio`** (career presentation for the
   technical-artist → gameplay-programmer pivot): `Portfolio/CLAUDE.md` router,
   `portfolio-plan.md` (moved in from `~/.claude/plans/` — plans now live in the repo, not the

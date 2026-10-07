@@ -34,7 +34,7 @@ class UGridHoverSubsystem;
 // DeactivatePiece/ReleasePiece) -- a caller that needs to inject work
 // between steps (e.g. project-specific initialization between retrieval
 // and activation) calls the primitives directly instead. See
-// UConnectIt_PlacePieceGameEvent/UConnectIt_LineScoreGameEvent for the
+// UConnectIt_PlacePieceGameEvent/UConnectIt_ScoreGameEvent for the
 // reference callers of each (both currently stubbed pending the same
 // rewiring noted above).
 UCLASS(ClassGroup=(Custom), meta=(BlueprintSpawnableComponent))

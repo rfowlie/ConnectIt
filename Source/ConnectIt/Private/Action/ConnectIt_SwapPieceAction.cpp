@@ -2,6 +2,7 @@
 
 
 #include "Action/ConnectIt_SwapPieceAction.h"
+#include "Board/Operations/ConnectIt_BoardOperations.h"
 #include "Board/ConnectIt_BoardStateComponent.h"
 #include "ConnectIt_GameplayTags.h"
 #include "ConnectIt_Structs.h"
@@ -151,11 +152,15 @@ void UConnectIt_SwapPieceAction::HandleValidSelection_Implementation(AGridTileBa
 
     // Second pick confirmed -- build the request. Board manager handles all
     // validation/mutation; this action has no knowledge of it.
+    FConnectItBoardOperation_SwapPieces Operation;
+    Operation.Faction = GetOwningControllerFactionID();
+    Operation.PositionA = PositionFirst;
+    Operation.PositionB = Position;
+
     FTurnActionRequest Request;
-    Request.RequestType = ConnectIt_Game_SwapPieces;
-    Request.FactionID = GetOwningControllerFactionID();
-    Request.Payload.InitializeAs<FConnectItRequestSwapPieces>(
-        FConnectItRequestSwapPieces{ .PositionA = PositionFirst, .PositionB = Position });
+    Request.RequestType = Operation.GetRequestType();
+    Request.FactionID = Operation.Faction;
+    Request.Payload = FInstancedStruct::Make(Operation);
 
     UE_LOG(LogTemp, Log,
         TEXT("PieceSwapperAction: Second selection at (%d,%d) -- "
