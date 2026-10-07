@@ -7,6 +7,7 @@
 #include "GameplayTagContainer.h"
 #include "StructUtils/InstancedStruct.h"
 #include "ConnectIt_Structs.h"
+#include "Board/Rules/ConnectIt_WinCondition.h"
 #include "ConnectIt_AIStrategy.generated.h"
 
 class AConnectIt_AIController;
@@ -31,9 +32,15 @@ struct FConnectItAIDecisionContext
     UPROPERTY(BlueprintReadOnly, Category = "AI")
     int32 ConnectLength = 4;
 
-    // From the level's win condition; 0 = not score-based
+    // From the level's win condition; 0 = not score-based. Information for
+    // strategies -- searches should use WinCheck to detect wins.
     UPROPERTY(BlueprintReadOnly, Category = "AI")
     float WinScoreThreshold = 0.f;
+
+    // C++ only: the level's win condition as a thread-safe test (see
+    // IConnectIt_WinCondition::MakeSearchWinCheck). Null = this win condition
+    // can't be tested off the game thread.
+    TSharedPtr<const FConnectItWinCheck, ESPMode::ThreadSafe> WinCheck;
 };
 
 // What a strategy decided: one board-change request, without the parts the
@@ -61,9 +68,9 @@ struct FConnectItAIDecision
 
 DECLARE_DELEGATE_OneParam(FOnConnectItAIDecisionFinished, const FConnectItAIDecision&);
 
-// How an AI opponent picks its moves -- chosen per level on
-// UConnectIt_LevelConfigDataAsset::AIStrategy, the same inline-instanced
-// pattern as the level's scoring / win / placeable rules.
+// How an AI opponent picks its moves -- configured inline on a
+// UConnectIt_AIProfile asset (the same inline-instanced pattern as the
+// level's scoring / win / placeable rules).
 // AConnectIt_AIController owns turn timing and submitting; the strategy only
 // decides. Subclass in C++ (see UConnectIt_AIStrategy_MinMax) or Blueprint.
 //

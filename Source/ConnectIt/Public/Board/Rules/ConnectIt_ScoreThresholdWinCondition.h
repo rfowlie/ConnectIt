@@ -27,4 +27,31 @@ public:
     {
         return WinScoreThreshold;
     }
+
+    virtual bool SetTargetScore_Implementation(float NewTargetScore) override
+    {
+        WinScoreThreshold = NewTargetScore;
+        return true;
+    }
+
+    virtual TSharedPtr<const FConnectItWinCheck, ESPMode::ThreadSafe> MakeSearchWinCheck() const override;
+
+    // The rule itself: the first faction slot at or above Threshold, or
+    // INDEX_NONE. Shared by CheckWinCondition and the AI's win check so the
+    // two can't drift.
+    static int32 GetWinningFaction(const TArray<float>& ScoreBoard, float Threshold);
+};
+
+// UConnectIt_ScoreThresholdWinCondition's test with its threshold baked in --
+// see FConnectItWinCheck.
+struct CONNECTIT_API FConnectItScoreThresholdWinCheck final : public FConnectItWinCheck
+{
+    explicit FConnectItScoreThresholdWinCheck(float InThreshold) : Threshold(InThreshold) {}
+
+    virtual int32 GetWinningFaction(const FConnectItBoardState& Board) const override
+    {
+        return UConnectIt_ScoreThresholdWinCondition::GetWinningFaction(Board.ScoreBoard, Threshold);
+    }
+
+    float Threshold = 0.f;
 };

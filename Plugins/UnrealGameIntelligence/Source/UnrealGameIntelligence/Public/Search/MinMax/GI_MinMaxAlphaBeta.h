@@ -25,17 +25,27 @@
 // a search is running.
 namespace GameIntelligence::Search::MinMax
 {
-    // TGame::FState  -- a complete game position, including whose move it is
-    // TGame::FMove   -- one move from a position
-    // GenerateMoves  -- every legal move from State, appended to OutMoves
-    // ApplyMove      -- the position after Move is played from State (and the
-    //                   other side is to move)
-    // IsTerminal     -- the game is over in State
-    // Evaluate       -- score of State FROM THE SIDE TO MOVE's point of view
-    //                   (negamax). Ply is the distance from the search root, so
-    //                   a game can prefer faster wins / slower losses
-    // OrderScore     -- cheap "how promising is Move" guess; higher is tried
-    //                   first, which makes alpha-beta prune more
+    // TGame::FState     -- a complete game position, including whose move it is
+    // TGame::FMove      -- one move from a position
+    // GenerateMoves     -- every legal move from State, appended to OutMoves
+    // ApplyMove         -- the position after Move is played from State (and
+    //                      the other side is to move)
+    // IsTerminalState   -- the game is over in State (someone has won, or
+    //                      whatever else ends this game)
+    // EvaluateTerminalState
+    //                   -- score of a FINISHED State from the side to move's
+    //                      point of view (win / loss / draw). Ply is how many
+    //                      moves State is from the search root (see Negamax)
+    //                      -- use it to make a win worth less the further
+    //                      away it is, so the search prefers faster wins and
+    //                      slower losses
+    // EvaluateState     -- score of an UNFINISHED State from the side to move's
+    //                      point of view (negamax): the game's judgement of
+    //                      who is better placed. Never called for a finished
+    //                      State
+    // EvaluateMove      -- cheap "how promising is Move" guess, used only to
+    //                      order moves: higher is tried first, which makes
+    //                      alpha-beta prune more
     //
     // All are const member functions, so a rules object can carry per-search
     // configuration (weights, precomputed geometry) and a variant can derive
@@ -50,9 +60,10 @@ namespace GameIntelligence::Search::MinMax
     {
         { Game.GenerateMoves(State, OutMoves) } -> std::same_as<void>;
         { Game.ApplyMove(State, Move) } -> std::same_as<typename TGame::FState>;
-        { Game.IsTerminal(State) } -> std::same_as<bool>;
-        { Game.Evaluate(State, Ply) } -> std::convertible_to<int32>;
-        { Game.OrderScore(State, Move) } -> std::convertible_to<int32>;
+        { Game.IsTerminalState(State) } -> std::same_as<bool>;
+        { Game.EvaluateTerminalState(State, Ply) } -> std::convertible_to<int32>;
+        { Game.EvaluateState(State) } -> std::convertible_to<int32>;
+        { Game.EvaluateMove(State, Move) } -> std::convertible_to<int32>;
     };
 
     // Scores are kept well inside int32 so negating never overflows.
@@ -113,15 +124,17 @@ namespace GameIntelligence::Search::MinMax
 
             FResult Result;
 
+            // early out
+            if (Game.IsTerminalState(Root)) return Result;
+
             TArray<FMove> RootMoves;
             Game.GenerateMoves(Root, RootMoves);
-            if (RootMoves.IsEmpty() || Game.IsTerminal(Root))
-            {
-                return Result;
-            }
+            if (RootMoves.IsEmpty()) return Result;
 
+            // initial estimation of move effectiveness
             OrderMoves(Game, Root, RootMoves);
 
+            // ensure at least a depth of 1
             const int32 MaxDepth = FMath::Max(1, Params.MaxDepth);
             for (int32 Depth = 1; Depth <= MaxDepth; Depth++)
             {
@@ -137,8 +150,9 @@ namespace GameIntelligence::Search::MinMax
                 TArray<TScoredMove<FMove>> DepthScores;
                 DepthScores.Reserve(RootMoves.Num());
 
-                for (const FMove& Move : 11)
+                for (const FMove& Move : RootMoves)
                 {
+                    // Child is one move from the root, hence Ply 1
                     const FState Child = Game.ApplyMove(Root, Move);
                     const int32 Score = -Negamax(
                         Game, Child, Depth - 1, -ScoreInfinity, ScoreInfinity, 1, Context);
@@ -225,7 +239,7 @@ namespace GameIntelligence::Search::MinMax
             Keyed.Reserve(Moves.Num());
             for (const FMove& Move : Moves)
             {
-                Keyed.Emplace(Game.OrderScore(State, Move), Move);
+                Keyed.Emplace(Game.EvaluateMove(State, Move), Move);
             }
 
             Algo::StableSort(Keyed, [](const TPair<int32, FMove>& A, const TPair<int32, FMove>& B)
@@ -241,6 +255,25 @@ namespace GameIntelligence::Search::MinMax
 
         // Score of State for the side to move. Returns 0 once aborted -- the
         // caller discards the whole iteration in that case.
+        //
+        // Depth and Ply count opposite ways:
+        //   Depth -- moves still to search below this node (counts DOWN to 0)
+        //   Ply   -- moves already played from the search root to reach this
+        //            node (counts UP: the root's children are Ply 1, theirs
+        //            Ply 2, ...). At any node, Depth + Ply = this iteration's
+        //            depth.
+        // Ply is passed down rather than derived from Depth because iterative
+        // deepening runs the search at depth 1, 2, 3...: the same Depth value
+        // means a different distance from the root in each iteration.
+        //
+        // Ply is only for EvaluateTerminalState, so a game can rank wins and losses by
+        // how soon they happen (e.g. return WinValue - Ply for a win). Without
+        // it a win next move and a win in three moves score the same, so the
+        // search may dawdle toward a win it could take now; and every loss
+        // looks equally bad, so when losing is unavoidable it doesn't delay
+        // it. With it: nearest win first, and the farthest loss is preferred
+        // -- more moves for the opponent to go wrong. (Chess engines do the
+        // same for checkmate distance.)
         static int32 Negamax(
             const TGame& Game, const FState& State, int32 Depth, int32 Alpha, int32 Beta,
             int32 Ply, FContext& Context)
@@ -249,16 +282,25 @@ namespace GameIntelligence::Search::MinMax
             Context.Poll();
             if (Context.bAborted) return 0;
 
-            if (Depth <= 0 || Game.IsTerminal(State))
+            // A finished game is scored as a result (win/loss/draw), never by
+            // the position heuristic
+            if (Game.IsTerminalState(State))
             {
-                return Game.Evaluate(State, Ply);
+                return Game.EvaluateTerminalState(State, Ply);
             }
 
+            if (Depth <= 0)
+            {
+                return Game.EvaluateState(State);
+            }
+
+            // No legal moves but not finished: the game decided this isn't an
+            // end state, so judge it like any other unfinished position
             TArray<FMove> Moves;
             Game.GenerateMoves(State, Moves);
             if (Moves.IsEmpty())
             {
-                return Game.Evaluate(State, Ply);
+                return Game.EvaluateState(State);
             }
 
             OrderMoves(Game, State, Moves);

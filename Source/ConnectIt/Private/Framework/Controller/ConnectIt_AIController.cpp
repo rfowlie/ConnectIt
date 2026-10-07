@@ -8,9 +8,10 @@
 #include "Board/ConnectIt_BoardStateComponent.h"
 #include "Board/Rules/ConnectIt_BoardRules.h"
 #include "Action/ActionLoadoutDataAsset.h"
-#include "Action/ConnectIt_AIActionsComponent.h"
 #include "Action/TurnBasedAction.h"
-#include "Action/TurnBasedActionsComponent.h"
+#include "Turn/Participant/TurnBasedParticipantComponent.h"
+#include "AI/ConnectIt_AIProfile.h"
+#include "Framework/Subsystem/ConnectIt_MatchSetupSubsystem.h"
 #include "AI/ConnectIt_AIStrategy_MinMax.h"
 #include "ConnectIt_Structs.h"
 #include "Framework/Data/ConnectIt_LevelConfigDataAsset.h"
@@ -22,26 +23,151 @@
 
 AConnectIt_AIController::AConnectIt_AIController(
     const FObjectInitializer& ObjectInitializer)
-    : Super(ObjectInitializer.SetDefaultSubobjectClass<UConnectIt_AIActionsComponent>(
-        TEXT("ActionsComponent")))
+    : Super(ObjectInitializer)
 {
     AIDisplayName = TEXT("Opponent");
 }
 
 void AConnectIt_AIController::BeginPlay()
 {
-    // Base creates PlayerState and binds participant delegates
+    // Base creates the PlayerState
     Super::BeginPlay();
 
     if (!HasAuthority()) return;
 
     InitialiseFromLevelConfig();
+
+    // Turn start/end reach an AI through its participant component: the
+    // manager's "client" notification runs locally on the server for a
+    // controller with no owning connection.
+    if (IsValid(ParticipantComponent))
+    {
+        TurnNotificationHandle = ParticipantComponent->OnTurnNotificationReceived_Native.AddUObject(
+            this, &AConnectIt_AIController::HandleTurnNotification);
+    }
+
+    if (ATurnBasedGameState* GameState = GetWorld()->GetGameState<ATurnBasedGameState>())
+    {
+        MatchPhaseHandle = GameState->OnMatchPhaseChanged_Native.AddUObject(
+            this, &AConnectIt_AIController::HandleMatchPhaseChanged);
+    }
 }
 
 void AConnectIt_AIController::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
     CancelDecision();
+
+    if (IsValid(ParticipantComponent))
+    {
+        ParticipantComponent->OnTurnNotificationReceived_Native.Remove(TurnNotificationHandle);
+    }
+    if (const UWorld* World = GetWorld())
+    {
+        if (ATurnBasedGameState* GameState = World->GetGameState<ATurnBasedGameState>())
+        {
+            GameState->OnMatchPhaseChanged_Native.Remove(MatchPhaseHandle);
+        }
+    }
+
     Super::EndPlay(EndPlayReason);
+}
+
+void AConnectIt_AIController::SeedActionState(UActionLoadoutDataAsset* Loadout)
+{
+    ATurnBasedPlayerState* PS = GetPlayerState<ATurnBasedPlayerState>();
+    if (!IsValid(PS))
+    {
+        UE_LOG(LogTemp, Error,
+            TEXT("ConnectIt_AIController: no ATurnBasedPlayerState to seed -- "
+                 "every board request will be rejected"));
+        return;
+    }
+
+    if (!IsValid(Loadout))
+    {
+        UE_LOG(LogTemp, Error,
+            TEXT("ConnectIt_AIController: no AI loadout -- every board request "
+                 "will be rejected"));
+        return;
+    }
+
+    PS->InitialiseActionState(Loadout);
+
+    UE_LOG(LogTemp, Log,
+        TEXT("ConnectIt_AIController: seeded action state from loadout '%s' "
+             "(%d permanent, %d numbered)"),
+        *Loadout->LoadoutName, Loadout->PermanentActions.Num(),
+        Loadout->NumberedActions.Num());
+}
+
+void AConnectIt_AIController::HandleTurnNotification(const FTurnNotification& Notification)
+{
+    switch (Notification.Phase)
+    {
+        case ETurnPhase::TurnStart:
+        case ETurnPhase::TurnActive:
+            if (Notification.TurnNumber != LastStartedTurnNumber)
+            {
+                LastStartedTurnNumber = Notification.TurnNumber;
+                OnMyTurnStarted();
+            }
+            break;
+
+        case ETurnPhase::TurnEnd:
+        case ETurnPhase::TurnTimeout:
+        case ETurnPhase::TurnSkipped:
+        case ETurnPhase::GameOver:
+            bResumeOnUnpause = false;
+            CancelDecision();
+            break;
+
+        default:
+            break;
+    }
+}
+
+void AConnectIt_AIController::HandleMatchPhaseChanged(EMatchPhase NewPhase)
+{
+    switch (NewPhase)
+    {
+        case EMatchPhase::Paused:
+            // Only worth resuming if this AI was mid-turn
+            bResumeOnUnpause = IsMyTurnNow();
+            CancelDecision();
+            break;
+
+        case EMatchPhase::GameOver:
+        case EMatchPhase::InvalidNumberOfPlayers:
+            bResumeOnUnpause = false;
+            CancelDecision();
+            break;
+
+        case EMatchPhase::InProgress:
+            if (bResumeOnUnpause)
+            {
+                bResumeOnUnpause = false;
+                if (IsMyTurnNow())
+                {
+                    BeginDecision();
+                }
+            }
+            break;
+
+        default:
+            break;
+    }
+}
+
+bool AConnectIt_AIController::IsMyTurnNow() const
+{
+    const UWorld* World = GetWorld();
+    const ATurnBasedGameState* GameState =
+        World ? World->GetGameState<ATurnBasedGameState>() : nullptr;
+    if (!IsValid(GameState)) return false;
+
+    bool bValid = false;
+    const FTurnParticipantInfo Active = GameState->GetActiveParticipant(bValid);
+    return bValid && Active.PlayerState == GetPlayerState<ATurnBasedPlayerState>();
 }
 
 void AConnectIt_AIController::InitialiseFromLevelConfig()
@@ -57,24 +183,34 @@ void AConnectIt_AIController::InitialiseFromLevelConfig()
         return;
     }
 
-    if (UActionLoadoutDataAsset* LoadOut = LevelConfig->EnemyLoadout)
+    const UConnectIt_AIProfile* Profile = ResolveAIProfile();
+    if (!IsValid(Profile))
     {
-        ActionsComponent->InitialiseFromLoadout(LoadOut);
+        UE_LOG(LogTemp, Error,
+            TEXT("ConnectIt_AIController: no AI profile (set AIProfile on the "
+                 "level config) -- no loadout, so every move will be rejected"));
+    }
+    else
+    {
+        UE_LOG(LogTemp, Log,
+            TEXT("ConnectIt_AIController: using AI profile '%s'"), *Profile->GetName());
     }
 
-    // The level config's strategy is a template inside a shared, loaded-once
+    SeedActionState(IsValid(Profile) ? Profile->Loadout.Get() : nullptr);
+
+    // The profile's strategy is a template inside a shared, loaded-once
     // asset -- duplicate it so this controller's decision state is its own
     // (same reason UConnectIt_BoardRegistrySubsystem duplicates the
     // registry templates).
-    if (IsValid(LevelConfig->AIStrategy))
+    if (IsValid(Profile) && IsValid(Profile->Strategy))
     {
-        Strategy = DuplicateObject<UConnectIt_AIStrategy>(LevelConfig->AIStrategy, this);
+        Strategy = DuplicateObject<UConnectIt_AIStrategy>(Profile->Strategy, this);
     }
     else
     {
         UE_LOG(LogTemp, Warning,
-            TEXT("ConnectIt_AIController: level config has no AIStrategy -- "
-                 "using a default MinMax strategy"));
+            TEXT("ConnectIt_AIController: AI profile has no Strategy -- using "
+                 "a default MinMax strategy"));
         Strategy = NewObject<UConnectIt_AIStrategy_MinMax>(this);
     }
     Strategy->OnDecisionFinished.BindUObject(this, &AConnectIt_AIController::HandleDecisionFinished);
@@ -86,6 +222,21 @@ void AConnectIt_AIController::InitialiseFromLevelConfig()
     // RegisterAIParticipant guards against a literal duplicate by taking the
     // "reconnect" branch instead, which is the wrong branch for a controller
     // that was never disconnected. One registration, one call site.
+}
+
+const UConnectIt_AIProfile* AConnectIt_AIController::ResolveAIProfile() const
+{
+    // Main-menu choice first, then the level's default
+    FConnectItMatchSettings MatchSettings;
+    if (UConnectIt_MatchSetupSubsystem::GetSettingsForCurrentLevel(this, MatchSettings)
+        && IsValid(MatchSettings.AIProfile))
+    {
+        return MatchSettings.AIProfile;
+    }
+
+    const UConnectIt_LevelConfigDataAsset* LevelConfig =
+        UConnectIt_GameUtilityLibrary::GetLevelConfig(this);
+    return IsValid(LevelConfig) ? LevelConfig->AIProfile.Get() : nullptr;
 }
 
 bool AConnectIt_AIController::CheckAndApplyForcedMove()
@@ -148,6 +299,14 @@ void AConnectIt_AIController::BeginDecision()
     Context.Board = BoardState->GetCurrentState();
     Context.OwnSlot = PS->GetSlotIndex();
     Context.WinScoreThreshold = BoardRules->GetTargetScore();
+    Context.WinCheck = BoardRules->MakeSearchWinCheck();
+    if (!Context.WinCheck.IsValid())
+    {
+        UE_LOG(LogTemp, Warning,
+            TEXT("ConnectIt_AIController: the level's win condition provides no "
+                 "search win check (Blueprint, or MakeSearchWinCheck not "
+                 "implemented) -- the AI won't see wins coming"));
+    }
     Context.ConnectLength = BoardRules->GetMinimumConnectLength();
     if (Context.ConnectLength <= 0)
     {
@@ -314,16 +473,12 @@ void AConnectIt_AIController::SubmitDecision(int32 DecisionId, FConnectItAIDecis
         return;
     }
 
-    // Nothing on this controller's action stack ever completes (the AI never
-    // pushes/activates a real UTurnBasedAction instance -- it calls the
-    // Mediator directly), so CheckAutoEndTurn's usual HandleActionCompleted
-    // trigger never fires for it. ConsumeActionUse above already updated
-    // PlayerState synchronously (server, same call stack -- no replication
-    // lag to wait out, unlike a human client's limbo), so it's safe to check
-    // turn end immediately.
-    if (ActionsComponent->CanEndTurn())
+    // ConsumeActionUse above already updated the PlayerState synchronously
+    // (server, same call stack -- no replication lag to wait out, unlike a
+    // human client's limbo), so it's safe to check turn end immediately.
+    if (PS->CanEndTurn())
     {
-        ActionsComponent->RequestTurnEnd();
+        ParticipantComponent->ServerSubmitTurnEnd();
         return;
     }
 

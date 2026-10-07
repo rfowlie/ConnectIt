@@ -10,7 +10,7 @@
 #include "ConnectIt_LevelConfigDataAsset.generated.h"
 
 class UActionLoadoutDataAsset;
-class UConnectIt_AIStrategy;
+class UConnectIt_AIProfile;
 class AConnectIt_GridPiece;
 class UConnectIt_TileRegistry;
 class UConnectIt_PieceRegistry;
@@ -37,17 +37,12 @@ public:
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "ConnectIt|Config")
     TObjectPtr<UActionLoadoutDataAsset> PlayerLoadout = nullptr;
 
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "ConnectIt|Config")
-    TObjectPtr<UActionLoadoutDataAsset> EnemyLoadout = nullptr;
-
     // --- AI ---
 
-    // How the AI opponent picks its moves on this level -- e.g. "MinMax
-    // (Classic)" with its depth / time / mistake / weight settings, or a
-    // bespoke strategy. A template: AConnectIt_AIController duplicates it per
-    // controller. Unset = a default MinMax strategy (with a warning).
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Instanced, Category = "ConnectIt|AI")
-    TObjectPtr<UConnectIt_AIStrategy> AIStrategy = nullptr;
+    // This level's default AI opponent (strategy + loadout) when played
+    // against the AI. A match setup chosen in the main menu can override it.
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "ConnectIt|AI")
+    TObjectPtr<UConnectIt_AIProfile> AIProfile = nullptr;
 
     // --- Piece Pool ---
 

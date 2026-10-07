@@ -73,15 +73,23 @@ FConnectItMinMaxGeometry FConnectItMinMaxGeometry::Build(
 FConnectItMinMaxRules::FConnectItMinMaxRules(
     const FConnectItBoardState& Board,
     int32 InConnectLength,
-    float InWinThreshold,
+    TSharedPtr<const FConnectItWinCheck, ESPMode::ThreadSafe> InWinCheck,
     const TArray<TInstancedStruct<FConnectItMinMaxEvalTerm>>& InEvaluationTerms,
     const TArray<TInstancedStruct<FConnectItMinMaxOrderTerm>>& InOrderingTerms)
     : ConnectLength(InConnectLength)
-    , WinThreshold(InWinThreshold)
+    , WinCheck(MoveTemp(InWinCheck))
     , Geometry(FConnectItMinMaxGeometry::Build(Board, InConnectLength))
     , EvaluationTerms(InEvaluationTerms)
     , OrderingTerms(InOrderingTerms)
 {
+    if (!WinCheck.IsValid())
+    {
+        UE_LOG(LogTemp, Warning,
+            TEXT("ConnectIt_MinMaxRules: no win check -- the level's win "
+                 "condition can't be tested off the game thread, so the AI "
+                 "won't see wins or losses coming"));
+    }
+
     // Pointers into the arrays above -- stable, since this object is never
     // copied and the arrays never change after this.
     for (const TInstancedStruct<FConnectItMinMaxEvalTerm>& Term : EvaluationTerms)
@@ -143,32 +151,29 @@ FConnectItMinMaxRules::FState FConnectItMinMaxRules::ApplyMove(
     return Child;
 }
 
-bool FConnectItMinMaxRules::IsTerminal(const FState& State) const
+bool FConnectItMinMaxRules::IsTerminalState(const FState& State) const
 {
-    if (WinThreshold <= 0.f) return false;
-
-    for (const float Score : State.Board.ScoreBoard)
-    {
-        if (Score >= WinThreshold) return true;
-    }
-    return false;
+    return WinCheck.IsValid() && WinCheck->GetWinningFaction(State.Board) != INDEX_NONE;
 }
 
-int32 FConnectItMinMaxRules::Evaluate(const FState& State, int32 Ply) const
+int32 FConnectItMinMaxRules::EvaluateTerminalState(const FState& State, int32 Ply) const
 {
-    const int32 Me = State.SideToMove;
+    const int32 Winner = WinCheck.IsValid()
+        ? WinCheck->GetWinningFaction(State.Board)
+        : INDEX_NONE;
 
-    // Win/loss is the game's rule, not a matter of taste -- always first
-    if (WinThreshold > 0.f)
-    {
-        if (State.Board.GetScore(Me) >= WinThreshold) return WinValue - Ply;
-        if (State.Board.GetScore(Opponent(Me)) >= WinThreshold) return -(WinValue - Ply);
-    }
+    if (Winner == INDEX_NONE) return 0;
 
+    // Ply makes nearer wins and farther losses score better (see WinValue)
+    return Winner == State.SideToMove ? WinValue - Ply : -(WinValue - Ply);
+}
+
+int32 FConnectItMinMaxRules::EvaluateState(const FState& State) const
+{
     float Value = 0.f;
     for (const FConnectItMinMaxEvalTerm* Term : ActiveEvaluationTerms)
     {
-        Value += Term->Weight * Term->Evaluate(*this, State.Board, Me);
+        Value += Term->Weight * Term->Evaluate(*this, State.Board, State.SideToMove);
     }
 
     // Keep heuristic values clear of the win band
@@ -176,7 +181,7 @@ int32 FConnectItMinMaxRules::Evaluate(const FState& State, int32 Ply) const
     return FMath::RoundToInt(FMath::Clamp(Value, -Limit, Limit));
 }
 
-int32 FConnectItMinMaxRules::OrderScore(const FState& State, const FMove& Move) const
+int32 FConnectItMinMaxRules::EvaluateMove(const FState& State, const FMove& Move) const
 {
     float Score = 0.f;
     for (const FConnectItMinMaxOrderTerm* Term : ActiveOrderingTerms)

@@ -4,8 +4,6 @@
 #include "Framework/Controller/TurnBasedAIController.h"
 #include "Framework/PlayerState/TurnBasedPlayerState.h"
 #include "Turn/Participant/TurnBasedParticipantComponent.h"
-#include "Action/TurnBasedActionsComponent.h"
-#include "Framework/Controller/TurnBasedControllerCoordinatorComponent.h"
 
 
 ATurnBasedAIController::ATurnBasedAIController(
@@ -15,26 +13,16 @@ ATurnBasedAIController::ATurnBasedAIController(
     ParticipantComponent =
         CreateDefaultSubobject<UTurnBasedParticipantComponent>(
             TEXT("ParticipantComponent"));
-
-    ActionsComponent =
-        CreateDefaultSubobject<UTurnBasedActionsComponent>(
-            TEXT("ActionsComponent"));
-
-    CoordinatorComponent =
-        CreateDefaultSubobject<UTurnBasedControllerCoordinatorComponent>(
-            TEXT("CoordinatorComponent"));
 }
 
 void ATurnBasedAIController::BeginPlay()
 {
-    // PlayerState must exist before coordinator wiring
-    // and before participant registration
+    // PlayerState must exist before participant registration
     if (HasAuthority() && bAutoCreatePlayerState)
     {
         EnsurePlayerState();
     }
 
-    // Super triggers component BeginPlay including coordinator wiring
     Super::BeginPlay();
 }
 

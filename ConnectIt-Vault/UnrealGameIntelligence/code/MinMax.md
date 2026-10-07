@@ -23,7 +23,8 @@ tree-building helpers.
 > **Status (2026-10-02):** the game uses the newer **`Search/`** headers, not these.
 > - `Search/MinMax/GI_MinMaxAlphaBeta.h` — `GameIntelligence::Search::MinMax::TAlphaBeta<TGame>`: negamax + alpha-beta
 >   over a **const rules instance** (`c_game`: `TGame::FState`, `TGame::FMove`, const members `GenerateMoves` /
->   `ApplyMove` / `IsTerminal` / `Evaluate` (side to move) / `OrderScore`), children generated on demand, move ordering,
+>   `ApplyMove` / `IsTerminalState` / `EvaluateTerminalState` (finished games, with Ply) / `EvaluateState`
+>   (unfinished positions, side to move) / `EvaluateMove`), children generated on demand, move ordering,
 >   iterative deepening, time budget, cancel flag; root moves get exact (full-window) scores. `Run(Game, Root, FParams)`
 >   → `TResult` (`TScoredMove` list best-first, depth, nodes, time).
 > - `Search/GI_SearchAsync.h` — `GameIntelligence::Search`: `FCancelFlag` / `MakeCancelFlag`, searcher-agnostic
@@ -78,6 +79,11 @@ Isolated. Converging the game module onto these means providing a `TNode` that s
 
 ## Changes
 
+- 2026-10-04 — `c_game` split terminal from non-terminal scoring: new `EvaluateTerminalState(State, Ply)`;
+  `EvaluateState(State)` lost `Ply` and is only called for unfinished positions.
+- 2026-10-04 — `c_game` names made consistent: `IsTerminal` → `IsTerminalState`, `Evaluate` → `EvaluateState`,
+  `EvaluateMoveScore` → `EvaluateMove` (owner's request).
+- 2026-10-04 — `c_game`'s move-ordering function renamed `OrderScore` → `EvaluateMoveScore` (owner's request).
 - 2026-10-02 (latest) — owner merged `LaunchAlphaBetaAsync` into `GI_MinMaxAlphaBeta.h` (`GI_MinMaxAsync.h` removed);
   ConnectIt consumer renamed to `FConnectItMinMaxRules`.
 - 2026-10-02 (later) — search moved to `GameIntelligence::Search::MinMax` (`GI_MinMaxAlphaBeta.h`), takes a const

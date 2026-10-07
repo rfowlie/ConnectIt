@@ -7,6 +7,7 @@
 #include "ConnectIt_LevelConfigSettings.generated.h"
 
 class UConnectIt_LevelConfigDataAsset;
+class UConnectIt_LevelCatalog;
 
 // Project-settings mapping of level name -> ConnectIt_LevelConfigDataAsset.
 // No AssetManager/PrimaryAssetType machinery exists anywhere in this project
@@ -35,5 +36,10 @@ public:
     
     UPROPERTY(EditAnywhere, Config, Category = "ConnectIt")
     TMap<FName, TSoftObjectPtr<UConnectIt_LevelConfigDataAsset>> LevelConfigs;
+
+    // What the main menu offers: playable levels and AI opponents. Read via
+    // UConnectIt_MatchSetupSubsystem::GetLevelCatalog.
+    UPROPERTY(EditAnywhere, Config, Category = "ConnectIt|Main Menu")
+    TSoftObjectPtr<UConnectIt_LevelCatalog> LevelCatalog;
 
 };

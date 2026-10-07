@@ -83,6 +83,21 @@ float UConnectIt_BoardRules::GetTargetScore() const
     return IConnectIt_WinCondition::Execute_GetTargetScore(WinConditionRule);
 }
 
+bool UConnectIt_BoardRules::SetTargetScore(float NewTargetScore)
+{
+    if (!WinConditionRule) return false;
+
+    return IConnectIt_WinCondition::Execute_SetTargetScore(WinConditionRule, NewTargetScore);
+}
+
+TSharedPtr<const FConnectItWinCheck, ESPMode::ThreadSafe> UConnectIt_BoardRules::MakeSearchWinCheck() const
+{
+    // C++ interface call -- a Blueprint-implemented win condition has no
+    // native IConnectIt_WinCondition to cast to, and gets no search check.
+    const IConnectIt_WinCondition* WinCondition = Cast<IConnectIt_WinCondition>(WinConditionRule);
+    return WinCondition ? WinCondition->MakeSearchWinCheck() : nullptr;
+}
+
 int32 UConnectIt_BoardRules::GetMinimumConnectLength() const
 {
     if (!ScoringRule) return 0;

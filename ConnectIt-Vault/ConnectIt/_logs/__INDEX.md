@@ -6,6 +6,21 @@ Vault-wide passes go in `_core/_logs/`.
 
 Newest first:
 
+- [2026-10-04-1700](2026-10-04-1700.md) — session — MinMax win detection now comes from the level's win condition;
+  terminal vs unfinished scoring split; full-board question filed.
+
+- [2026-10-04-1530](2026-10-04-1530.md) — session — Ply explained in MinMax code comments; concept rename reapplied after an editor overwrite.
+
+- [2026-10-04-1500](2026-10-04-1500.md) — session — MinMax concept names: `IsTerminalState`, `EvaluateState`, `EvaluateMove`.
+
+- [2026-10-04-1000](2026-10-04-1000.md) — session — MinMax concept: `OrderScore` renamed `EvaluateMoveScore`.
+
+- [2026-10-02-1600](2026-10-02-1600.md) — session — AI profile assets, AI controller runs its own turn, main-menu match setup
+  subsystem + level catalog, per-match rule copies. Build clean; tests pass.
+
+- [2026-10-02-1330](2026-10-02-1330.md) — session — next steps agreed (AI profile asset, controller-driven AI turns, match setup
+  subsystem); design note written, nothing implemented.
+
 - [2026-10-02-1255](2026-10-02-1255.md) — session — wishlist task added: explore MinMax moves beyond PlacePiece (Swap).
 
 - [2026-10-02-1250](2026-10-02-1250.md) — session — wishlist task added: curve-based mapping of MinMax heuristic scores into the non-win band.

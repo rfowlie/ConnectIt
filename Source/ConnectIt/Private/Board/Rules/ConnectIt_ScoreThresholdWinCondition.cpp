@@ -12,19 +12,34 @@ void UConnectIt_ScoreThresholdWinCondition::CheckWinCondition_Implementation(
     // at runtime (it's BlueprintReadWrite).
     MutableState.TargetScore = WinScoreThreshold;
 
-    for (int32 i = 0; i < MutableState.ScoreBoard.Num(); i++)
+    const int32 Winner = GetWinningFaction(MutableState.ScoreBoard, WinScoreThreshold);
+    if (Winner != INDEX_NONE)
     {
-        if (MutableState.ScoreBoard[i] >= WinScoreThreshold)
+        MutableState.bGameOver = true;
+        MutableState.WinningFactionSlot = Winner;
+
+        UE_LOG(LogTemp, Log,
+            TEXT("ConnectIt_ScoreThresholdWinCondition: "
+                 "Faction %d wins with %.0f points"),
+            Winner, MutableState.ScoreBoard[Winner]);
+    }
+}
+
+TSharedPtr<const FConnectItWinCheck, ESPMode::ThreadSafe>
+UConnectIt_ScoreThresholdWinCondition::MakeSearchWinCheck() const
+{
+    return MakeShared<const FConnectItScoreThresholdWinCheck, ESPMode::ThreadSafe>(WinScoreThreshold);
+}
+
+int32 UConnectIt_ScoreThresholdWinCondition::GetWinningFaction(
+    const TArray<float>& ScoreBoard, float Threshold)
+{
+    for (int32 i = 0; i < ScoreBoard.Num(); i++)
+    {
+        if (ScoreBoard[i] >= Threshold)
         {
-            MutableState.bGameOver = true;
-            MutableState.WinningFactionSlot = i;
-
-            UE_LOG(LogTemp, Log,
-                TEXT("ConnectIt_ScoreThresholdWinCondition: "
-                     "Faction %d wins with %.0f points"),
-                i, MutableState.ScoreBoard[i]);
-
-            return;
+            return i;
         }
     }
+    return INDEX_NONE;
 }

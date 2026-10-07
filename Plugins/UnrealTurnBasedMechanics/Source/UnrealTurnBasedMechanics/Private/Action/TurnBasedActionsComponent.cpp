@@ -781,14 +781,10 @@ bool UTurnBasedActionsComponent::CanAutoEndTurn_Implementation() const
         return true;
     }
 
-    // Each leaf compares its action's uses this turn -- read from the
-    // player's authoritative PlayerState -- against its own required count.
+    // Evaluated by the player's authoritative PlayerState (shared with AI
+    // controllers), against this component's own loadout.
     const ATurnBasedPlayerState* PS = GetOwnerPlayerState();
-    return Loadout->TurnEndRequirements->IsSatisfied(
-        [PS](const FGameplayTag& ActionTag) -> int32
-        {
-            return IsValid(PS) ? PS->GetActionUsesThisTurnByTag(ActionTag) : 0;
-        });
+    return IsValid(PS) && PS->AreTurnEndRequirementsMet(Loadout);
 }
 
 // --- Completion Handlers ---

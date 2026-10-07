@@ -10,6 +10,7 @@
 #include "Framework/Controller/ConnectIt_AIController.h"
 #include "Action/ActionLoadoutDataAsset.h"
 #include "Framework/Data/ConnectIt_LevelConfigDataAsset.h"
+#include "Framework/Subsystem/ConnectIt_MatchSetupSubsystem.h"
 #include "Framework/GameState/ConnectIt_GameState.h"
 #include "Framework/GameState/TurnBasedGameState.h"
 #include "Framework/PlayerState/ConnectIt_PlayerState.h"
@@ -124,11 +125,44 @@ void AConnectIt_GameMode::HandleMatchHasStarted()
     if (const UConnectIt_LevelConfigDataAsset* LevelConfig =
         UConnectIt_GameUtilityLibrary::GetLevelConfig(this))
     {
-        BoardRules->ScoringRule = LevelConfig->ScoringRule;
-        BoardRules->WinConditionRule = LevelConfig->WinConditionRule;
-        BoardRules->TilePlaceableRule = LevelConfig->TilePlaceableRule;
+        // Per-match copies, never the asset's own instances: those are
+        // subobjects of a shared, loaded-once data asset, so changing one
+        // at runtime (e.g. a menu-chosen target score) would modify the
+        // asset itself and leak into the next match / PIE session. Same
+        // reason the registries and the AI strategy are duplicated.
+        auto DuplicateRule = [this](UObject* Template) -> UObject*
+        {
+            return IsValid(Template)
+                ? DuplicateObject<UObject>(Template, BoardRules)
+                : nullptr;
+        };
+        BoardRules->ScoringRule = DuplicateRule(LevelConfig->ScoringRule);
+        BoardRules->WinConditionRule = DuplicateRule(LevelConfig->WinConditionRule);
+        BoardRules->TilePlaceableRule = DuplicateRule(LevelConfig->TilePlaceableRule);
     }
     BoardRules->Initialise();
+
+    // Main-menu match setup for this level, if any -- applied to the
+    // per-match rule copies above, so the level config asset is untouched.
+    FConnectItMatchSettings MatchSettings;
+    if (UConnectIt_MatchSetupSubsystem::GetSettingsForCurrentLevel(this, MatchSettings)
+        && MatchSettings.TargetScore > 0.f)
+    {
+        if (BoardRules->SetTargetScore(MatchSettings.TargetScore))
+        {
+            UE_LOG(LogTemp, Log,
+                TEXT("ConnectIt_GameMode: target score %.0f from match setup"),
+                MatchSettings.TargetScore);
+        }
+        else
+        {
+            UE_LOG(LogTemp, Warning,
+                TEXT("ConnectIt_GameMode: match setup asked for target score "
+                     "%.0f, but this level's win condition isn't score-based "
+                     "-- ignored"),
+                MatchSettings.TargetScore);
+        }
+    }
 
     BoardRequestMediator = NewObject<UConnectIt_BoardRequestMediator>(this);
     BoardRequestMediator->Initialise(BoardRules);

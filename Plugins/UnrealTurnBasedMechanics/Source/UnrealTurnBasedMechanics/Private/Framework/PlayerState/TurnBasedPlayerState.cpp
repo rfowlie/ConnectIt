@@ -3,6 +3,7 @@
 #include "Framework/PlayerState/TurnBasedPlayerState.h"
 #include "Action/ActionLoadoutDataAsset.h"
 #include "Action/TurnBasedAction.h"
+#include "Action/TurnEndRequirement.h"
 #include "Net/UnrealNetwork.h"
 
 namespace
@@ -77,6 +78,22 @@ int32 ATurnBasedPlayerState::GetActionMaxUsesPerTurn(TSubclassOf<UTurnBasedActio
 		return N->State.MaxUsesThisTurn;
 	}
 	return 0;
+}
+
+bool ATurnBasedPlayerState::AreTurnEndRequirementsMet(const UActionLoadoutDataAsset* InLoadout) const
+{
+    if (!IsValid(InLoadout) || !InLoadout->HasTurnEndRequirements())
+    {
+        return true;
+    }
+
+    // Each leaf compares its action's uses this turn against its own
+    // required count.
+    return InLoadout->TurnEndRequirements->IsSatisfied(
+        [this](const FGameplayTag& ActionTag) -> int32
+        {
+            return GetActionUsesThisTurnByTag(ActionTag);
+        });
 }
 
 int32 ATurnBasedPlayerState::GetActionUsesThisTurnByTag(FGameplayTag ActionTag) const

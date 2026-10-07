@@ -72,6 +72,15 @@ public:
     UFUNCTION(BlueprintPure, Category = "ConnectIt|Rules")
     float GetTargetScore() const;
 
+    // Wraps IConnectIt_WinCondition::Execute_SetTargetScore -- false if unset
+    // or the win condition isn't score-based.
+    bool SetTargetScore(float NewTargetScore);
+
+    // The win condition's thread-safe win test for the AI's search (see
+    // IConnectIt_WinCondition::MakeSearchWinCheck). Game thread only. Null if
+    // unset, Blueprint-implemented, or the condition doesn't provide one.
+    TSharedPtr<const FConnectItWinCheck, ESPMode::ThreadSafe> MakeSearchWinCheck() const;
+
     // Wraps IConnectIt_ScoringRule::Execute_GetMinimumConnectLength -- 0 if
     // unset or the rule doesn't report one. Game-thread only (like
     // GetTargetScore) -- callers that need this on a background thread (the

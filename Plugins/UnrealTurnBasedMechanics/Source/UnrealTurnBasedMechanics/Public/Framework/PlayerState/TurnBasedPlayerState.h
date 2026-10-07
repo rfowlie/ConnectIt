@@ -110,6 +110,17 @@ public:
     UFUNCTION(BlueprintPure, Category = "Turn Based|Actions")
     bool CanUseAction(TSubclassOf<UTurnBasedAction> ActionClass) const;
 
+    // Whether InLoadout's turn-end requirement tree is satisfied by this
+    // player's uses this turn. No loadout or no tree = nothing is required,
+    // so true. The one place turn-end requirements are evaluated -- the human
+    // actions component (UTurnBasedActionsComponent::CanAutoEndTurn) and AI
+    // controllers both call it.
+    bool AreTurnEndRequirementsMet(const UActionLoadoutDataAsset* InLoadout) const;
+
+    // AreTurnEndRequirementsMet against this player's own (seeded) loadout
+    UFUNCTION(BlueprintPure, Category = "Turn Based|Actions")
+    bool CanEndTurn() const { return AreTurnEndRequirementsMet(Loadout); }
+
     // Server only. Sets the loadout and seeds every entry from its config
     // arrays (numbered actions start at StartingMatchUses).
     void InitialiseActionState(UActionLoadoutDataAsset* InLoadout);

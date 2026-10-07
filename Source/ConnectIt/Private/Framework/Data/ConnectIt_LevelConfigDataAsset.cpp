@@ -2,6 +2,7 @@
 
 #include "Framework/Data/ConnectIt_LevelConfigDataAsset.h"
 #include "Action/ActionLoadoutDataAsset.h"
+#include "AI/ConnectIt_AIProfile.h"
 #include "Board/ConnectIt_TileRegistry.h"
 #include "Grid/ConnectIt_GridPiece.h"
 #include "Misc/DataValidation.h"
@@ -21,11 +22,13 @@ EDataValidationResult UConnectIt_LevelConfigDataAsset::IsDataValid(
         Result = EDataValidationResult::Invalid;
     }
 
-    if (!IsValid(EnemyLoadout))
+    // Not an error: online-only levels have no AI. Vs-AI matches can also
+    // get a profile from the main menu's match setup.
+    if (!IsValid(AIProfile))
     {
         Context.AddWarning(FText::FromString(TEXT(
-            "ConnectIt_LevelConfigDataAsset: No EnemyLoadout set.")));
-        Result = EDataValidationResult::Invalid;
+            "ConnectIt_LevelConfigDataAsset: No AIProfile set -- this level "
+            "has no default AI opponent.")));
     }
 
     if (!PieceActorClass)
