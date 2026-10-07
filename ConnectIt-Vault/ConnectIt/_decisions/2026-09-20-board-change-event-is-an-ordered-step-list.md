@@ -1,7 +1,7 @@
 ---
 Date: 2026-09-20
-status: Active
-superseded by:
+status: Partly superseded
+superseded by: 2026-10-07-board-events-are-structs-carried-by-the-queue (shape of a step)
 tags:
   - board
   - events
@@ -40,3 +40,9 @@ Intermediate states are deliberately not replicated.
 If visuals need the board as it stood between steps, replicating intermediate states (or per-step
 deltas) would be reconsidered. Migration is additive: dual-write steps beside the old bools, switch
 the enqueue and reactors, then remove the bools.
+
+## Update (2026-10-07)
+
+Built. The ordered list, "the queued entry carries its own data" and "steps must describe every position they
+touched" all hold. What changed: a step is a polymorphic event struct, not one flat generic struct. See
+[board events are structs carried by the queue](2026-10-07-board-events-are-structs-carried-by-the-queue.md).

@@ -88,11 +88,10 @@ public:
         return BoardSnapshot.PreviousState;
     }
 
-    // What specifically changed on the most recent ApplyAndBroadcast call.
-    // Listeners bound to a UGameEventTaskSubsystem board event tag (which
-    // carries no parameters) call this to read payload data -- position,
-    // faction, points scored, winner -- instead of it being threaded
-    // through a delegate parameter
+    // Everything that happened in the most recent board change, as an
+    // ordered list of events. For a listener reacting to ONE event (bound to
+    // a board event tag), use UConnectIt_BoardEventLibrary instead -- by the time an
+    // event plays, a newer board change may already have replaced this list.
     UFUNCTION(BlueprintPure, Category = "Board State")
     const FConnectItBoardChangeEvent& GetChangeEvent() const
     {
@@ -143,14 +142,11 @@ private:
     UFUNCTION()
     void OnRep_BoardSnapshot();
 
-    // Reads the just-recorded ChangeEvent and enqueues this board change's
-    // event tags on UGameEventTaskSubsystem, one QueueTagContainer call per
-    // event, in the fixed order shift/piece-placed, then line-scored, then
-    // player-win (shift and piece-placed are always mutually exclusive on a
-    // single ChangeEvent). Called symmetrically from both SetBoardState
-    // (server) and OnRep_BoardSnapshot (client), right after BroadcastChange
-    // -- ported from the now-deprecated UConnectIt_BoardSequencerComponent,
-    // which used to derive the same step list from a separate listener
-    // rather than the component that already owns this data.
+    // Queues every event of the just-recorded ChangeEvent on
+    // UGameEventTaskSubsystem, in list order: one queue entry per event,
+    // carrying the event's tag and the event itself as payload. The queue
+    // plays them one at a time, waiting for each one's visuals. Called
+    // symmetrically from both SetBoardState (server) and OnRep_BoardSnapshot
+    // (client), right after BroadcastChange.
     void EnqueueBoardEventTags() const;
 };

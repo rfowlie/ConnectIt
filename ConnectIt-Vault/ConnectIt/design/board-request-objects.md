@@ -149,3 +149,9 @@ Built as [board operations](board-operations.md) ([decision](../_decisions/2026-
 Place, Remove, Destroy Multiplier and Toggle are now operations too, the request payload is the operation itself, and
 the Mediator has a single path. Still to do from this note: reactions inside the resolve step, and the step-list
 change event (operations fill the flat-bool event from `Apply`).
+
+## Update (2026-10-07): the step-list change event is built
+
+As [board events](board-events.md): an ordered list of polymorphic event structs (not the flat step sketched above),
+each queued with its own payload. Still to do from this note: reactions inside the resolve step (they would append
+their own result events).

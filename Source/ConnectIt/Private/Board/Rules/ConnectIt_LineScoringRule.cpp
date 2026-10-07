@@ -2,13 +2,14 @@
 
 
 #include "Board/Rules/ConnectIt_LineScoringRule.h"
+#include "Board/Events/ConnectIt_BoardEvents.h"
 
 
 float FConnectItScoringRule_Lines::ApplyScoring(
     FConnectItBoardState& MutableState,
     FGridPosition Position,
     int32 FactionSlot,
-    TArray<FConnectItScoringConfiguration>* OutConfigurations) const
+    FConnectItBoardChangeEvent* OutEvents) const
 {
     TArray<TArray<FGridPosition>> ScoringLines =
         FindScoringLines(MutableState, Position, FactionSlot, ConnectLength);
@@ -23,13 +24,15 @@ float FConnectItScoringRule_Lines::ApplyScoring(
             MutableState, Line, Position, FactionSlot);
         TotalPoints += LinePoints;
 
-        // One configuration per completed line (lines always share Position)
-        if (OutConfigurations)
+        // One Scored event per completed line (lines always share Position)
+        if (OutEvents)
         {
-            FConnectItScoringConfiguration& Configuration = OutConfigurations->AddDefaulted_GetRef();
-            Configuration.FactionSlot = FactionSlot;
-            Configuration.Points      = LinePoints;
-            Configuration.Positions   = Line;
+            FConnectItBoardEvent_Scored Event;
+            Event.Faction   = FactionSlot;
+            Event.Points    = LinePoints;
+            Event.PlacedPosition = Position;
+            Event.Positions = Line;
+            OutEvents->Add(Event);
         }
     }
 

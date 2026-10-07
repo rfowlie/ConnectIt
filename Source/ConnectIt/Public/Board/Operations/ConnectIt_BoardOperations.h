@@ -66,7 +66,7 @@ struct CONNECTIT_API FConnectItBoardOperation_PlacePiece : public FConnectItBoar
     virtual void Apply(
         FConnectItBoardState& Board,
         FConnectItTouchedPositions& OutTouched,
-        FConnectItBoardChangeEvent* OutEvent) const override;
+        FConnectItBoardChangeEvent* OutEvents) const override;
     virtual FString Describe() const override;
 };
 
@@ -89,7 +89,7 @@ struct CONNECTIT_API FConnectItBoardOperation_SwapPieces : public FConnectItBoar
     virtual void Apply(
         FConnectItBoardState& Board,
         FConnectItTouchedPositions& OutTouched,
-        FConnectItBoardChangeEvent* OutEvent) const override;
+        FConnectItBoardChangeEvent* OutEvents) const override;
     virtual FString Describe() const override;
 };
 
@@ -117,7 +117,7 @@ struct CONNECTIT_API FConnectItBoardOperation_Shift : public FConnectItBoardOper
     virtual void Apply(
         FConnectItBoardState& Board,
         FConnectItTouchedPositions& OutTouched,
-        FConnectItBoardChangeEvent* OutEvent) const override;
+        FConnectItBoardChangeEvent* OutEvents) const override;
     virtual FString Describe() const override;
 };
 
@@ -138,7 +138,7 @@ struct CONNECTIT_API FConnectItBoardOperation_ForcePlacePiece : public FConnectI
     virtual void Apply(
         FConnectItBoardState& Board,
         FConnectItTouchedPositions& OutTouched,
-        FConnectItBoardChangeEvent* OutEvent) const override;
+        FConnectItBoardChangeEvent* OutEvents) const override;
     virtual FString Describe() const override;
 };
 
@@ -157,7 +157,7 @@ struct CONNECTIT_API FConnectItBoardOperation_CapturePiece : public FConnectItBo
     virtual void Apply(
         FConnectItBoardState& Board,
         FConnectItTouchedPositions& OutTouched,
-        FConnectItBoardChangeEvent* OutEvent) const override;
+        FConnectItBoardChangeEvent* OutEvents) const override;
     virtual FString Describe() const override;
 };
 
@@ -181,7 +181,7 @@ struct CONNECTIT_API FConnectItBoardOperation_RemovePiece : public FConnectItBoa
     virtual void Apply(
         FConnectItBoardState& Board,
         FConnectItTouchedPositions& OutTouched,
-        FConnectItBoardChangeEvent* OutEvent) const override;
+        FConnectItBoardChangeEvent* OutEvents) const override;
     virtual FString Describe() const override;
 };
 
@@ -200,7 +200,7 @@ struct CONNECTIT_API FConnectItBoardOperation_DestroyTileMultiplier : public FCo
     virtual void Apply(
         FConnectItBoardState& Board,
         FConnectItTouchedPositions& OutTouched,
-        FConnectItBoardChangeEvent* OutEvent) const override;
+        FConnectItBoardChangeEvent* OutEvents) const override;
     virtual FString Describe() const override;
 };
 
@@ -218,6 +218,6 @@ struct CONNECTIT_API FConnectItBoardOperation_ToggleTileActive : public FConnect
     virtual void Apply(
         FConnectItBoardState& Board,
         FConnectItTouchedPositions& OutTouched,
-        FConnectItBoardChangeEvent* OutEvent) const override;
+        FConnectItBoardChangeEvent* OutEvents) const override;
     virtual FString Describe() const override;
 };

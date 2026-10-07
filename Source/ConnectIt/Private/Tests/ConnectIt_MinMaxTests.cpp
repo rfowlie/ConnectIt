@@ -6,6 +6,7 @@
 #include "ConnectIt_MinMaxTestTerms.h"
 #include "Board/Rules/ConnectIt_RuleSet.h"
 #include "Board/Operations/ConnectIt_BoardOperations.h"
+#include "Board/Events/ConnectIt_BoardEvents.h"
 #include "ConnectIt_GameplayTags.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
@@ -107,6 +108,20 @@ namespace ConnectItMinMaxTests
     const FConnectItTileData& TileAt(const FConnectItBoardState& Board, int32 X, int32 Y)
     {
         return *Board.GetTileData(FGridPosition(X, Y));
+    }
+
+    // The event at Index of a change's list, if it is a TEvent
+    template<typename TEvent>
+    const TEvent* EventAt(const FConnectItBoardChangeEvent& Change, int32 Index)
+    {
+        return Change.Events.IsValidIndex(Index) ? Change.Events[Index].GetPtr<TEvent>() : nullptr;
+    }
+
+    // The change's one and only event, if it is a TEvent
+    template<typename TEvent>
+    const TEvent* OnlyEvent(const FConnectItBoardChangeEvent& Change)
+    {
+        return Change.Events.Num() == 1 ? EventAt<TEvent>(Change, 0) : nullptr;
     }
 }
 
@@ -403,8 +418,9 @@ bool FConnectItPlaceOperationTest::RunTest(const FString& Parameters)
     TestTrue(TEXT("exactly the placed position is reported"),
         Touched.Num() == 1 && Touched[0] == FGridPosition(0, 0));
     TestEqual(TEXT("applying an operation does not score"), Board.GetScore(0), 0.f);
-    TestTrue(TEXT("the event says a piece was placed, where and by whom"),
-        Event.bPiecePlaced && Event.PlacedPosition == FGridPosition(0, 0) && Event.PlacingFactionSlot == 0);
+    const auto* Placed = OnlyEvent<FConnectItBoardEvent_PiecePlaced>(Event);
+    TestTrue(TEXT("one Piece Placed event says where and by whom"),
+        Placed && Placed->Position == FGridPosition(0, 0) && Placed->Faction == 0);
 
     TestEqual(TEXT("its request type is Place Piece"),
         Free.GetRequestType(), FGameplayTag(ConnectIt_Game_PlacePiece));
@@ -452,29 +468,33 @@ bool FConnectItSwapOperationTest::RunTest(const FString& Parameters)
     TestEqual(TEXT("faction 0's piece is now on (3,3)"), TileAt(Board, 3, 3).FactionPiece, 0);
     TestTrue(TEXT("both positions are reported"), Touched.Num() == 2);
     TestEqual(TEXT("applying an operation does not score"), Board.GetScore(0), 0.f);
-    TestTrue(TEXT("the event says which two were swapped"),
-        Event.bPiecesSwapped && Event.SwapPositionA == Stray && Event.SwapPositionB == Enemy);
+    const auto* Swapped = OnlyEvent<FConnectItBoardEvent_PiecesSwapped>(Event);
+    TestTrue(TEXT("one Pieces Swapped event says which two"),
+        Swapped && Swapped->PositionA == Stray && Swapped->PositionB == Enemy);
 
     // The separate after-move step is what scores the completed line
     const FConnectItRuleSet Rules;
-    TArray<FConnectItScoringConfiguration> Configurations;
-    const float Points = Rules.ResolveBoardChange(Board, Touched, &Configurations);
+    const float Points = Rules.ResolveBoardChange(Board, Touched, &Event);
     TestEqual(TEXT("the completed line scores for faction 0"), Board.GetScore(0), 4.f);
     TestEqual(TEXT("faction 1 scores nothing"), Board.GetScore(1), 0.f);
     TestEqual(TEXT("the points are returned"), Points, 4.f);
-    if (TestEqual(TEXT("one thing scored"), Configurations.Num(), 1))
+    if (TestEqual(TEXT("the swap event is followed by one Scored event"), Event.Events.Num(), 2))
     {
-        TestEqual(TEXT("...for faction 0"), Configurations[0].FactionSlot, 0);
-        TestEqual(TEXT("...worth 4 points"), Configurations[0].Points, 4.f);
-        TestEqual(TEXT("...over 4 tiles"), Configurations[0].Positions.Num(), 4);
+        const auto* Scored = EventAt<FConnectItBoardEvent_Scored>(Event, 1);
+        if (TestNotNull(TEXT("the second event is a Scored event"), Scored))
+        {
+            TestEqual(TEXT("...for faction 0"), Scored->Faction, 0);
+            TestEqual(TEXT("...worth 4 points"), Scored->Points, 4.f);
+            TestEqual(TEXT("...over 4 tiles"), Scored->Positions.Num(), 4);
+        }
     }
     return true;
 }
 
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(FConnectItScoringConfigurationsTest,
-    "ConnectIt.AI.MinMax.ScoringConfigurationsPerLine", TestFlags)
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FConnectItScoredEventPerLineTest,
+    "ConnectIt.Board.Events.ScoredEventPerLine", TestFlags)
 
-bool FConnectItScoringConfigurationsTest::RunTest(const FString& Parameters)
+bool FConnectItScoredEventPerLineTest::RunTest(const FString& Parameters)
 {
     // A row and a column of three, both missing (3,3): one placement
     // completes two lines at once.
@@ -493,27 +513,30 @@ bool FConnectItScoringConfigurationsTest::RunTest(const FString& Parameters)
     FConnectItTouchedPositions Touched;
     Completing.Apply(Board, Touched, nullptr);
 
-    TArray<FConnectItScoringConfiguration> Configurations;
-    const float Points = Rules.ResolveBoardChange(Board, Touched, &Configurations);
+    FConnectItBoardChangeEvent Change;
+    const float Points = Rules.ResolveBoardChange(Board, Touched, &Change);
 
-    if (!TestEqual(TEXT("each completed line is its own configuration"), Configurations.Num(), 2)) return false;
+    if (!TestEqual(TEXT("each completed line is its own Scored event"), Change.Events.Num(), 2)) return false;
 
     float Sum = 0.f;
-    for (const FConnectItScoringConfiguration& Configuration : Configurations)
+    for (int32 Index = 0; Index < Change.Events.Num(); Index++)
     {
-        TestEqual(TEXT("scored for the placing faction"), Configuration.FactionSlot, 0);
-        TestEqual(TEXT("a line of four tiles"), Configuration.Positions.Num(), 4);
-        TestTrue(TEXT("includes the completing tile"), Configuration.Positions.Contains(FGridPosition(3, 3)));
-        Sum += Configuration.Points;
+        const auto* Scored = EventAt<FConnectItBoardEvent_Scored>(Change, Index);
+        if (!TestNotNull(TEXT("a Scored event"), Scored)) return false;
+
+        TestEqual(TEXT("scored for the placing faction"), Scored->Faction, 0);
+        TestEqual(TEXT("a line of four tiles"), Scored->Positions.Num(), 4);
+        TestTrue(TEXT("includes the completing tile"), Scored->Positions.Contains(FGridPosition(3, 3)));
+        Sum += Scored->Points;
     }
-    TestEqual(TEXT("configurations add up to the points returned"), Sum, Points);
+    TestEqual(TEXT("the events add up to the points returned"), Sum, Points);
     TestEqual(TEXT("...and to the score gained"), Board.GetScore(0), Points);
 
     // The search asks for no details and gets the same result
     FConnectItBoardState Quiet = MakeCross();
     FConnectItTouchedPositions QuietTouched;
     Completing.Apply(Quiet, QuietTouched, nullptr);
-    TestEqual(TEXT("same points without asking for configurations"),
+    TestEqual(TEXT("same points without asking for events"),
         Rules.ResolveBoardChange(Quiet, QuietTouched), Points);
     return true;
 }
@@ -563,8 +586,9 @@ bool FConnectItForcePlaceOperationTest::RunTest(const FString& Parameters)
     TestEqual(TEXT("the piece there is replaced"), TileAt(Board, 1, 1).FactionPiece, 0);
     TestTrue(TEXT("the position is reported for scoring"),
         Touched.Num() == 1 && Touched[0] == FGridPosition(1, 1));
+    const auto* Placed = OnlyEvent<FConnectItBoardEvent_PiecePlaced>(Event);
     TestTrue(TEXT("visuals see it as a placement"),
-        Event.bPiecePlaced && Event.PlacedPosition == FGridPosition(1, 1) && Event.PlacingFactionSlot == 0);
+        Placed && Placed->Position == FGridPosition(1, 1) && Placed->Faction == 0);
     TestEqual(TEXT("the tile array did not grow"), Board.NumTiles(), 25);
     return true;
 }
@@ -589,9 +613,10 @@ bool FConnectItCaptureOperationTest::RunTest(const FString& Parameters)
     TestEqual(TEXT("the piece changes owner"), TileAt(Board, 1, 1).FactionPiece, 0);
     TestTrue(TEXT("the position is reported for scoring"),
         Touched.Num() == 1 && Touched[0] == FGridPosition(1, 1));
-    TestTrue(TEXT("the event names both factions"),
-        Event.bPieceCaptured && Event.CapturedPosition == FGridPosition(1, 1)
-        && Event.CapturingFactionSlot == 0 && Event.PreviousFactionSlot == 1);
+    const auto* Captured = OnlyEvent<FConnectItBoardEvent_PieceCaptured>(Event);
+    TestTrue(TEXT("one Piece Captured event names both factions"),
+        Captured && Captured->Position == FGridPosition(1, 1)
+        && Captured->CapturingFaction == 0 && Captured->PreviousFaction == 1);
     return true;
 }
 
@@ -641,12 +666,13 @@ bool FConnectItShiftOperationTest::RunTest(const FString& Parameters)
 
     TestTrue(TEXT("positions that now hold a piece are reported for scoring"),
         Touched.Num() == 2 && Touched.Contains(FGridPosition(1, 0)) && Touched.Contains(FGridPosition(3, 0)));
-    TestTrue(TEXT("the event describes the shift"),
-        Event.bBoardShifted && Event.ShiftDirection == EGridDirection::Right
-        && Event.ShiftAnchorPosition == FGridPosition(0, 0));
+    const auto* Shifted = OnlyEvent<FConnectItBoardEvent_BoardShifted>(Event);
+    if (!TestNotNull(TEXT("one Board Shifted event"), Shifted)) return false;
+    TestTrue(TEXT("it describes the shift"),
+        Shifted->Direction == EGridDirection::Right && Shifted->AnchorPosition == FGridPosition(0, 0));
     TestTrue(TEXT("...with a from/to pair per tile that moved (not the fixed one)"),
-        Event.ShiftStartPositions.Num() == 4 && Event.ShiftEndPositions.Num() == 4
-        && !Event.ShiftEndPositions.Contains(FGridPosition(2, 0)));
+        Shifted->StartPositions.Num() == 4 && Shifted->EndPositions.Num() == 4
+        && !Shifted->EndPositions.Contains(FGridPosition(2, 0)));
     return true;
 }
 
@@ -673,8 +699,9 @@ bool FConnectItRemoveOperationTest::RunTest(const FString& Parameters)
     TestTrue(TEXT("the piece is gone"),
         TileAt(Board, 1, 1).FactionPiece == -1 && !TileAt(Board, 1, 1).bIsOccupied);
     TestEqual(TEXT("nothing is reported for scoring"), Touched.Num(), 0);
-    TestTrue(TEXT("the event says whose piece was removed"),
-        Event.bPieceRemoved && Event.RemovedPosition == FGridPosition(1, 1) && Event.RemovedFactionSlot == 1);
+    const auto* Removed = OnlyEvent<FConnectItBoardEvent_PieceRemoved>(Event);
+    TestTrue(TEXT("one Piece Removed event says whose piece it was"),
+        Removed && Removed->Position == FGridPosition(1, 1) && Removed->RemovedFaction == 1);
     return true;
 }
 
@@ -696,8 +723,9 @@ bool FConnectItDestroyMultiplierOperationTest::RunTest(const FString& Parameters
     MakeAt<FDestroy>(0, 1, 1).Apply(Board, Touched, &Event);
     TestEqual(TEXT("the multiplier is back to 1"), TileAt(Board, 1, 1).Multiplier, 1.f);
     TestEqual(TEXT("nothing is reported for scoring"), Touched.Num(), 0);
-    TestTrue(TEXT("the event says where"),
-        Event.bTileMultiplierDestroyed && Event.MultiplierDestroyedPosition == FGridPosition(1, 1));
+    const auto* Destroyed = OnlyEvent<FConnectItBoardEvent_TileMultiplierDestroyed>(Event);
+    TestTrue(TEXT("one Tile Multiplier Destroyed event says where"),
+        Destroyed && Destroyed->Position == FGridPosition(1, 1));
     return true;
 }
 
@@ -718,13 +746,57 @@ bool FConnectItToggleActiveOperationTest::RunTest(const FString& Parameters)
     Toggle.Apply(Board, Touched, &Event);
     TestFalse(TEXT("an active tile becomes inactive"), TileAt(Board, 1, 1).bIsActive);
     TestEqual(TEXT("nothing is reported for scoring"), Touched.Num(), 0);
-    TestTrue(TEXT("the event says where and the new state"),
-        Event.bTileActiveToggled && Event.ToggledPosition == FGridPosition(1, 1)
-        && !Event.bToggledPositionNowActive);
+    const auto* Toggled = OnlyEvent<FConnectItBoardEvent_TileActiveToggled>(Event);
+    TestTrue(TEXT("one Tile Active Toggled event says where and the new state"),
+        Toggled && Toggled->Position == FGridPosition(1, 1) && !Toggled->bNowActive);
 
     FConnectItBoardChangeEvent Again;
     Toggle.Apply(Board, Touched, &Again);
-    TestTrue(TEXT("and back again"), TileAt(Board, 1, 1).bIsActive && Again.bToggledPositionNowActive);
+    const auto* ToggledBack = OnlyEvent<FConnectItBoardEvent_TileActiveToggled>(Again);
+    TestTrue(TEXT("and back again"), TileAt(Board, 1, 1).bIsActive && ToggledBack && ToggledBack->bNowActive);
+    return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FConnectItBoardEventOrderTest,
+    "ConnectIt.Board.Events.Order", TestFlags)
+
+bool FConnectItBoardEventOrderTest::RunTest(const FString& Parameters)
+{
+    // The calls the Mediator makes for one request, on a placement that
+    // completes a line: the change's events come out in the order things
+    // happened, and say which category each belongs to.
+    FConnectItBoardState Board = MakeBoard(7);
+    Place(Board, 3, 0, 0);
+    Place(Board, 3, 1, 0);
+    Place(Board, 3, 2, 0);
+
+    const FConnectItRuleSet Rules;
+    FConnectItBoardChangeEvent Change;
+
+    FConnectItTouchedPositions Touched;
+    MakeAt<FConnectItBoardOperation_PlacePiece>(0, 3, 3).Apply(Board, Touched, &Change);
+    Rules.ResolveBoardChange(Board, Touched, &Change);
+
+    if (!TestEqual(TEXT("two events"), Change.Events.Num(), 2)) return false;
+
+    TestNotNull(TEXT("first: the piece was placed"), EventAt<FConnectItBoardEvent_PiecePlaced>(Change, 0));
+    TestNotNull(TEXT("...an operation event"), EventAt<FConnectItBoardOperationEvent>(Change, 0));
+    TestNull(TEXT("...not a result event"), EventAt<FConnectItBoardResultEvent>(Change, 0));
+
+    TestNotNull(TEXT("second: it scored"), EventAt<FConnectItBoardEvent_Scored>(Change, 1));
+    TestNotNull(TEXT("...a result event"), EventAt<FConnectItBoardResultEvent>(Change, 1));
+    TestNull(TEXT("...not an operation event"), EventAt<FConnectItBoardOperationEvent>(Change, 1));
+
+    // Each event names the tag its listeners bind to
+    const FConnectItBoardEvent* First = EventAt<FConnectItBoardEvent>(Change, 0);
+    const FConnectItBoardEvent* Second = EventAt<FConnectItBoardEvent>(Change, 1);
+    TestTrue(TEXT("tags: PiecePlaced then Scored"),
+        First && Second
+        && First->GetEventTag() == ConnectIt_Event_PiecePlaced
+        && Second->GetEventTag() == ConnectIt_Event_Scored);
+
+    TestNotNull(TEXT("FindFirst finds the scored event"), Change.FindFirst<FConnectItBoardEvent_Scored>());
+    TestNull(TEXT("no win event without a win"), Change.FindFirst<FConnectItBoardEvent_GameWon>());
     return true;
 }
 

@@ -59,13 +59,13 @@ struct CONNECTIT_API FConnectItBoardOperation
     // Changes Board -- nothing else. Only call when CanApply.
     // OutTouched: appends every position a piece arrived on or changed owner
     // at (the positions that might now score).
-    // OutEvent: if not null, gets this operation's own part of the change
-    // event visuals react to (e.g. bPiecePlaced + where + who). The AI's
-    // search passes null.
+    // OutEvents: if not null, the operation appends the event describing
+    // what it did (an FConnectItBoardOperationEvent, e.g. Piece Placed +
+    // where + who) for visuals to react to. The AI's search passes null.
     virtual void Apply(
         FConnectItBoardState& Board,
         FConnectItTouchedPositions& OutTouched,
-        FConnectItBoardChangeEvent* OutEvent) const
+        FConnectItBoardChangeEvent* OutEvents) const
     {
     }
 

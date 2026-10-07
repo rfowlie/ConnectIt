@@ -9,6 +9,7 @@
 #include "Board/ConnectIt_BoardStateComponent.h"
 #include "Board/Rules/ConnectIt_RuleSet.h"
 #include "Board/Operations/ConnectIt_BoardOperation.h"
+#include "Board/Events/ConnectIt_BoardEvents.h"
 #include "Framework/GameState/ConnectIt_GameState.h"
 #include "Framework/Library/ConnectIt_GameUtilityLibrary.h"
 #include "Framework/PlayerState/ConnectIt_PlayerState.h"
@@ -37,8 +38,8 @@ void UConnectIt_BoardRequestMediator::CreateGameEventsFromBoardUpdate_Implementa
         return;
     }
 
-    FConnectItBoardChangeEvent ChangeEvent = BoardState->GetChangeEvent();
-    if (ChangeEvent.bPiecePlaced)
+    const FConnectItBoardChangeEvent& ChangeEvent = BoardState->GetChangeEvent();
+    if (ChangeEvent.FindFirst<FConnectItBoardEvent_PiecePlaced>())
     {
         // create place piece game event
         // or initialize reusable game event and add to queue
@@ -206,34 +207,37 @@ bool UConnectIt_BoardRequestMediator::DispatchRequest(const FTurnActionRequest& 
         return false;
     }
 
-    // What happened is recorded in a change event that replicates alongside
-    // the state itself via SetBoardState, instead of broadcasting gameplay
-    // delegates directly here. This only ever runs on the server, so a direct
+    // What happened is recorded as an ordered list of board events (see
+    // ConnectIt_BoardEvents.h) that replicates alongside the state itself via
+    // SetBoardState, instead of broadcasting gameplay delegates directly here. This only ever runs on the server, so a direct
     // broadcast would never reach a real remote client.
-    // ConnectIt_BoardStateComponent reads the event back from its own
-    // BoardSnapshot.ChangeEvent and enqueues the matching event tags on
+    // ConnectIt_BoardStateComponent reads the list back from its own
+    // BoardSnapshot.ChangeEvent and queues each event on
     // UGameEventTaskSubsystem itself, symmetrically on both server (from
     // SetBoardState) and client (from OnRep) -- this mediator plays no role
-    // in sequencing, only in deciding what happened.
+    // in sequencing, only in deciding what happened, in what order.
     FConnectItBoardChangeEvent ChangeEvent;
 
-    // The change itself: the operation only changes the board (and says what
-    // it did)...
+    // The change itself: the operation only changes the board (and appends
+    // the event saying what it did)...
     FConnectItBoardState NewState = Current;
     FConnectItTouchedPositions TouchedPositions;
     Operation.Apply(NewState, TouchedPositions, &ChangeEvent);
 
     // ...what follows from the change is a separate step: scoring where
-    // pieces arrived, then whether anyone has now won
+    // pieces arrived (appending Scored events), then whether anyone has now won
     const float PointsScored =
-        Rules->ResolveBoardChange(NewState, TouchedPositions, &ChangeEvent.ScoringConfigurations);
+        Rules->ResolveBoardChange(NewState, TouchedPositions, &ChangeEvent);
     Rules->StampWinState(NewState);
 
-    // Edge-triggered -- true only on the transition into game-over, not
-    // "the game is currently over" (Current.bGameOver would already be
-    // true on every snapshot after the winning move)
-    ChangeEvent.bGameWon           = NewState.bGameOver && !Current.bGameOver;
-    ChangeEvent.WinningFactionSlot = NewState.WinningFactionSlot;
+    // Edge-triggered -- only on the transition into game-over, not "the
+    // game is currently over"
+    if (NewState.bGameOver && !Current.bGameOver)
+    {
+        FConnectItBoardEvent_GameWon Won;
+        Won.WinningFaction = NewState.WinningFactionSlot;
+        ChangeEvent.Add(Won);
+    }
 
     UE_LOG(LogTemp, Log,
         TEXT("ConnectIt_BoardRequestMediator: '%s' %s by faction %d (scored %.0f)"),

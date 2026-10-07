@@ -8,9 +8,18 @@
 
 void UGameEventTaskSubsystem::QueueTagContainer(const FGameplayTagContainer& Tags)
 {
+    QueueTagContainerWithPayload(Tags, FInstancedStruct());
+}
+
+void UGameEventTaskSubsystem::QueueTagContainerWithPayload(
+    const FGameplayTagContainer& Tags, const FInstancedStruct& Payload)
+{
     if (Tags.IsEmpty()) return;
 
-    ContainerQueue.Add(Tags);
+    FGameEventQueueEntry& Entry = ContainerQueue.AddDefaulted_GetRef();
+    Entry.Tags = Tags;
+    Entry.Payload = Payload;
+
     TryExecuteNextContainer();
 }
 
@@ -106,11 +115,17 @@ void UGameEventTaskSubsystem::TryExecuteNextContainer()
     if (!ActiveTagContainer.IsEmpty()) return; // something already firing
     if (ContainerQueue.IsEmpty()) return;
 
-    ActiveTagContainer = ContainerQueue[0];
+    // The payload is in place before any tag triggers, so listeners can read
+    // it from the first callback on
+    ActiveTagContainer = ContainerQueue[0].Tags;
+    ActivePayload = MoveTemp(ContainerQueue[0].Payload);
     ContainerQueue.RemoveAt(0);
     OnActiveEventTagsChanged();
-    
-    for (const FGameplayTag& Tag : ActiveTagContainer)
+
+    // Iterate a copy: a tag whose sequence finishes at once completes inside
+    // TriggerTag and removes itself from ActiveTagContainer
+    const FGameplayTagContainer TagsToTrigger = ActiveTagContainer;
+    for (const FGameplayTag& Tag : TagsToTrigger)
     {
         // Bound directly (AddUniqueDynamic/RemoveDynamic, compile-time
         // signature-checked) rather than through the reflection-based
@@ -164,6 +179,7 @@ void UGameEventTaskSubsystem::HandleOnManagerComplete(const FGameplayTag Tag)
     // only try next if all ActiveManagerTags are complete
     if (ActiveTagContainer.IsEmpty())
     {
+        ActivePayload.Reset();
         TryExecuteNextContainer();
     }
 }

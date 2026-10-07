@@ -1,6 +1,7 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 #include "Board/Operations/ConnectIt_BoardOperations.h"
+#include "Board/Events/ConnectIt_BoardEvents.h"
 #include "ConnectIt_GameplayTags.h"
 
 
@@ -40,7 +41,7 @@ bool FConnectItBoardOperation_PlacePiece::CanApply(const FConnectItBoardState& B
 void FConnectItBoardOperation_PlacePiece::Apply(
     FConnectItBoardState& Board,
     FConnectItTouchedPositions& OutTouched,
-    FConnectItBoardChangeEvent* OutEvent) const
+    FConnectItBoardChangeEvent* OutEvents) const
 {
     if (FConnectItTileData* Tile = Board.GetTileDataMutable(Position))
     {
@@ -48,11 +49,12 @@ void FConnectItBoardOperation_PlacePiece::Apply(
         OutTouched.Add(Position);
     }
 
-    if (OutEvent)
+    if (OutEvents)
     {
-        OutEvent->bPiecePlaced       = true;
-        OutEvent->PlacedPosition     = Position;
-        OutEvent->PlacingFactionSlot = Faction;
+        FConnectItBoardEvent_PiecePlaced Event;
+        Event.Position = Position;
+        Event.Faction  = Faction;
+        OutEvents->Add(Event);
     }
 }
 
@@ -98,7 +100,7 @@ bool FConnectItBoardOperation_SwapPieces::CanApply(const FConnectItBoardState& B
 void FConnectItBoardOperation_SwapPieces::Apply(
     FConnectItBoardState& Board,
     FConnectItTouchedPositions& OutTouched,
-    FConnectItBoardChangeEvent* OutEvent) const
+    FConnectItBoardChangeEvent* OutEvents) const
 {
     FConnectItTileData* DataA = Board.GetTileDataMutable(PositionA);
     FConnectItTileData* DataB = Board.GetTileDataMutable(PositionB);
@@ -114,11 +116,12 @@ void FConnectItBoardOperation_SwapPieces::Apply(
         OutTouched.Add(PositionB);
     }
 
-    if (OutEvent)
+    if (OutEvents)
     {
-        OutEvent->bPiecesSwapped = true;
-        OutEvent->SwapPositionA  = PositionA;
-        OutEvent->SwapPositionB  = PositionB;
+        FConnectItBoardEvent_PiecesSwapped Event;
+        Event.PositionA = PositionA;
+        Event.PositionB = PositionB;
+        OutEvents->Add(Event);
     }
 }
 
@@ -174,7 +177,7 @@ bool FConnectItBoardOperation_Shift::CanApply(const FConnectItBoardState& Board,
 void FConnectItBoardOperation_Shift::Apply(
     FConnectItBoardState& Board,
     FConnectItTouchedPositions& OutTouched,
-    FConnectItBoardChangeEvent* OutEvent) const
+    FConnectItBoardChangeEvent* OutEvents) const
 {
     // A tile with bCanShift false is skipped -- it keeps its own data
     // untouched and takes no part in the rotation. Snapshot the shiftable
@@ -225,13 +228,14 @@ void FConnectItBoardOperation_Shift::Apply(
         }
     }
 
-    if (OutEvent)
+    if (OutEvents)
     {
-        OutEvent->bBoardShifted       = true;
-        OutEvent->ShiftDirection      = Direction;
-        OutEvent->ShiftAnchorPosition = Positions.IsEmpty() ? FGridPosition() : Positions[0];
-        OutEvent->ShiftStartPositions = MoveTemp(ShiftStartPositions);
-        OutEvent->ShiftEndPositions   = MoveTemp(ShiftEndPositions);
+        FConnectItBoardEvent_BoardShifted Event;
+        Event.Direction      = Direction;
+        Event.AnchorPosition = Positions.IsEmpty() ? FGridPosition() : Positions[0];
+        Event.StartPositions = MoveTemp(ShiftStartPositions);
+        Event.EndPositions   = MoveTemp(ShiftEndPositions);
+        OutEvents->Add(Event);
     }
 }
 
@@ -267,7 +271,7 @@ bool FConnectItBoardOperation_ForcePlacePiece::CanApply(const FConnectItBoardSta
 void FConnectItBoardOperation_ForcePlacePiece::Apply(
     FConnectItBoardState& Board,
     FConnectItTouchedPositions& OutTouched,
-    FConnectItBoardChangeEvent* OutEvent) const
+    FConnectItBoardChangeEvent* OutEvents) const
 {
     if (FConnectItTileData* Tile = Board.GetTileDataMutable(Position))
     {
@@ -275,11 +279,12 @@ void FConnectItBoardOperation_ForcePlacePiece::Apply(
         OutTouched.Add(Position);
     }
 
-    if (OutEvent)
+    if (OutEvents)
     {
-        OutEvent->bPiecePlaced       = true;
-        OutEvent->PlacedPosition     = Position;
-        OutEvent->PlacingFactionSlot = Faction;
+        FConnectItBoardEvent_PiecePlaced Event;
+        Event.Position = Position;
+        Event.Faction  = Faction;
+        OutEvents->Add(Event);
     }
 }
 
@@ -320,7 +325,7 @@ bool FConnectItBoardOperation_CapturePiece::CanApply(const FConnectItBoardState&
 void FConnectItBoardOperation_CapturePiece::Apply(
     FConnectItBoardState& Board,
     FConnectItTouchedPositions& OutTouched,
-    FConnectItBoardChangeEvent* OutEvent) const
+    FConnectItBoardChangeEvent* OutEvents) const
 {
     int32 PreviousFaction = INDEX_NONE;
     if (FConnectItTileData* Tile = Board.GetTileDataMutable(Position))
@@ -330,12 +335,13 @@ void FConnectItBoardOperation_CapturePiece::Apply(
         OutTouched.Add(Position);
     }
 
-    if (OutEvent)
+    if (OutEvents)
     {
-        OutEvent->bPieceCaptured       = true;
-        OutEvent->CapturedPosition     = Position;
-        OutEvent->CapturingFactionSlot = Faction;
-        OutEvent->PreviousFactionSlot  = PreviousFaction;
+        FConnectItBoardEvent_PieceCaptured Event;
+        Event.Position         = Position;
+        Event.CapturingFaction = Faction;
+        Event.PreviousFaction  = PreviousFaction;
+        OutEvents->Add(Event);
     }
 }
 
@@ -377,7 +383,7 @@ bool FConnectItBoardOperation_RemovePiece::CanApply(const FConnectItBoardState& 
 void FConnectItBoardOperation_RemovePiece::Apply(
     FConnectItBoardState& Board,
     FConnectItTouchedPositions& OutTouched,
-    FConnectItBoardChangeEvent* OutEvent) const
+    FConnectItBoardChangeEvent* OutEvents) const
 {
     // No piece arrives anywhere, so nothing is reported in OutTouched
     int32 RemovedFaction = INDEX_NONE;
@@ -387,11 +393,12 @@ void FConnectItBoardOperation_RemovePiece::Apply(
         Tile->SetFactionPiece(-1);
     }
 
-    if (OutEvent)
+    if (OutEvents)
     {
-        OutEvent->bPieceRemoved      = true;
-        OutEvent->RemovedPosition    = Position;
-        OutEvent->RemovedFactionSlot = RemovedFaction;
+        FConnectItBoardEvent_PieceRemoved Event;
+        Event.Position       = Position;
+        Event.RemovedFaction = RemovedFaction;
+        OutEvents->Add(Event);
     }
 }
 
@@ -432,17 +439,18 @@ bool FConnectItBoardOperation_DestroyTileMultiplier::CanApply(const FConnectItBo
 void FConnectItBoardOperation_DestroyTileMultiplier::Apply(
     FConnectItBoardState& Board,
     FConnectItTouchedPositions& OutTouched,
-    FConnectItBoardChangeEvent* OutEvent) const
+    FConnectItBoardChangeEvent* OutEvents) const
 {
     if (FConnectItTileData* Tile = Board.GetTileDataMutable(Position))
     {
         Tile->Multiplier = 1.0f;
     }
 
-    if (OutEvent)
+    if (OutEvents)
     {
-        OutEvent->bTileMultiplierDestroyed    = true;
-        OutEvent->MultiplierDestroyedPosition = Position;
+        FConnectItBoardEvent_TileMultiplierDestroyed Event;
+        Event.Position = Position;
+        OutEvents->Add(Event);
     }
 }
 
@@ -474,7 +482,7 @@ bool FConnectItBoardOperation_ToggleTileActive::CanApply(const FConnectItBoardSt
 void FConnectItBoardOperation_ToggleTileActive::Apply(
     FConnectItBoardState& Board,
     FConnectItTouchedPositions& OutTouched,
-    FConnectItBoardChangeEvent* OutEvent) const
+    FConnectItBoardChangeEvent* OutEvents) const
 {
     bool bNowActive = false;
     if (FConnectItTileData* Tile = Board.GetTileDataMutable(Position))
@@ -483,11 +491,12 @@ void FConnectItBoardOperation_ToggleTileActive::Apply(
         bNowActive = Tile->bIsActive;
     }
 
-    if (OutEvent)
+    if (OutEvents)
     {
-        OutEvent->bTileActiveToggled        = true;
-        OutEvent->ToggledPosition           = Position;
-        OutEvent->bToggledPositionNowActive = bNowActive;
+        FConnectItBoardEvent_TileActiveToggled Event;
+        Event.Position   = Position;
+        Event.bNowActive = bNowActive;
+        OutEvents->Add(Event);
     }
 }
 

@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "GridMechanicsBaseEnums.h"
 #include "GridMechanicsBaseStructs.h"
+#include "StructUtils/InstancedStruct.h"
 #include "ConnectIt_Structs.generated.h"
 
 
@@ -174,163 +175,43 @@ struct FConnectItBoardState
     }
 };
 
-// Describes what specifically happened on the most recent ApplyAndBroadcast
-// call -- rides along inside FConnectItBoardStateSnapshot so it replicates
-// atomically with the state it describes. Consumed by AConnectIt_BoardManager
-// to drive typed delegates and gated visual sequencing identically on server
-// and client (see HandleBoardStateChanged), instead of the old pattern of
-// firing gameplay delegates directly from server-only request handlers.
+// What happened in one board change: an ordered list of board events
+// (FConnectItBoardEvent and its subclasses -- see ConnectIt_BoardEvents.h), in
+// the order they happened. E.g. [Piece Placed, Scored, Scored, Game Won].
 //
-// One thing that scored: who, how much, and the tiles that took part. What
-// counts as "one thing" is up to the match's scoring rule (for the Lines
-// rule: one completed line). Tiles can appear in more than one configuration
-// of the same change (two lines crossing at the piece that completed both).
-USTRUCT(BlueprintType)
-struct FConnectItScoringConfiguration
-{
-    GENERATED_BODY()
-
-    UPROPERTY(BlueprintReadOnly)
-    int32 FactionSlot = -1;
-
-    UPROPERTY(BlueprintReadOnly)
-    float Points = 0.f;
-
-    UPROPERTY(BlueprintReadOnly)
-    TArray<FGridPosition> Positions;
-};
-
-// bGameWon is edge-triggered -- true only on the transition into game-over,
-// not "the game is currently over" (FConnectItBoardState::bGameOver stays
-// true on every snapshot after the win).
+// Rides along inside FConnectItBoardStateSnapshot so it replicates atomically
+// with the state it describes. Built on the server as the change is carried
+// out: the operation appends what it did, the scoring rule appends what
+// scored, the Mediator appends a win. UConnectIt_BoardStateComponent then
+// plays the events one at a time, identically on server and client.
 USTRUCT(BlueprintType)
 struct FConnectItBoardChangeEvent
 {
     GENERATED_BODY()
 
-    // The board was just initialised from the level (see InitialiseBoardState):
-    // there may be starting pieces on tiles that need their visuals created.
-    // Set only on the initial snapshot.
+    // Each entry holds one FConnectItBoardEvent subclass
     UPROPERTY(BlueprintReadOnly)
-    bool bBoardSeeded = false;
+    TArray<FInstancedStruct> Events;
 
-    UPROPERTY(BlueprintReadOnly)
-    bool bPiecePlaced = false;
-
-    UPROPERTY(BlueprintReadOnly)
-    FGridPosition PlacedPosition;
-
-    UPROPERTY(BlueprintReadOnly)
-    int32 PlacingFactionSlot = -1;
-
-    // Everything that scored as a result of this change, in the order it
-    // was scored -- empty when nothing did. More than one entry when a move
-    // scores several ways at once (e.g. a horizontal and a diagonal line
-    // through the same piece) or for more than one faction (e.g. a swap).
-    UPROPERTY(BlueprintReadOnly)
-    TArray<FConnectItScoringConfiguration> ScoringConfigurations;
-
-    bool HasScored() const { return !ScoringConfigurations.IsEmpty(); }
-
-    float GetTotalPointsScored() const
+    template<typename TEvent>
+    void Add(const TEvent& Event)
     {
-        float Total = 0.f;
-        for (const FConnectItScoringConfiguration& Configuration : ScoringConfigurations)
-        {
-            Total += Configuration.Points;
-        }
-        return Total;
+        Events.Add(FInstancedStruct::Make(Event));
     }
 
-    UPROPERTY(BlueprintReadOnly)
-    bool bGameWon = false;
-
-    UPROPERTY(BlueprintReadOnly)
-    int32 WinningFactionSlot = -1;
-
-    // --- Tile Multiplier Destroyed --- (UConnectIt_TileMultiplierDestroyerAction)
-
-    UPROPERTY(BlueprintReadOnly)
-    bool bTileMultiplierDestroyed = false;
-
-    UPROPERTY(BlueprintReadOnly)
-    FGridPosition MultiplierDestroyedPosition;
-
-    // --- Piece Removed --- (UConnectIt_TimedPieceRemoverAction)
-
-    UPROPERTY(BlueprintReadOnly)
-    bool bPieceRemoved = false;
-
-    UPROPERTY(BlueprintReadOnly)
-    FGridPosition RemovedPosition;
-
-    UPROPERTY(BlueprintReadOnly)
-    int32 RemovedFactionSlot = -1;
-
-    // --- Pieces Swapped --- (UConnectIt_PieceSwapperAction)
-
-    UPROPERTY(BlueprintReadOnly)
-    bool bPiecesSwapped = false;
-
-    UPROPERTY(BlueprintReadOnly)
-    FGridPosition SwapPositionA;
-
-    UPROPERTY(BlueprintReadOnly)
-    FGridPosition SwapPositionB;
-
-    // --- Tile Active Toggled --- (UConnectIt_TileActivationToggleAction)
-
-    UPROPERTY(BlueprintReadOnly)
-    bool bTileActiveToggled = false;
-
-    UPROPERTY(BlueprintReadOnly)
-    FGridPosition ToggledPosition;
-
-    UPROPERTY(BlueprintReadOnly)
-    bool bToggledPositionNowActive = false;
-
-    // --- Piece Captured --- (UConnectIt_PieceCaptureAction)
-
-    UPROPERTY(BlueprintReadOnly)
-    bool bPieceCaptured = false;
-
-    UPROPERTY(BlueprintReadOnly)
-    FGridPosition CapturedPosition;
-
-    UPROPERTY(BlueprintReadOnly)
-    int32 CapturingFactionSlot = -1;
-
-    UPROPERTY(BlueprintReadOnly)
-    int32 PreviousFactionSlot = -1;
-
-    // --- Board Shifted --- (UConnectIt_BoardShiftAction)
-
-    UPROPERTY(BlueprintReadOnly)
-    bool bBoardShifted = false;
-
-    UPROPERTY(BlueprintReadOnly)
-    EGridDirection ShiftDirection = EGridDirection::Max;
-
-    UPROPERTY(BlueprintReadOnly)
-    FGridPosition ShiftAnchorPosition;
-
-    // Where each shifted tile's data came from and went to -- parallel arrays,
-    // index-aligned (ShiftStartPositions[i] -> ShiftEndPositions[i]), not a
-    // TMap: this struct rides inside BoardSnapshot, which replicates via
-    // standard UPROPERTY(ReplicatedUsing=...) property replication, and TMap
-    // isn't net-serializable through that path (same reason
-    // FConnectItBoardState uses TilePositions/TileDataArray instead of a
-    // TMap -- a TMap field here would populate on the server and silently
-    // stay empty on every client). Build a local TMap from these two arrays
-    // client-side if a lookup-by-start-position is actually needed; don't
-    // replicate one. Only the tiles that actually moved appear here -- a
-    // subset of the full selected line when any tile in it has bCanShift
-    // false (those are skipped, keep their own data, and are left out).
-    UPROPERTY(BlueprintReadOnly)
-    TArray<FGridPosition> ShiftStartPositions;
-
-    UPROPERTY(BlueprintReadOnly)
-    TArray<FGridPosition> ShiftEndPositions;
+    // The first event of type TEvent (or a subclass of it), or null
+    template<typename TEvent>
+    const TEvent* FindFirst() const
+    {
+        for (const FInstancedStruct& Entry : Events)
+        {
+            if (const TEvent* Event = Entry.GetPtr<TEvent>())
+            {
+                return Event;
+            }
+        }
+        return nullptr;
+    }
 };
 
 // Snapshot -- the ONE replicated property on UConnectItBoardStateComponent

@@ -11,7 +11,7 @@
 // pieces through the arriving piece scores. Points = the sum of the line's
 // tile multipliers; every tile in the line then loses its piece and gains +1
 // multiplier, except the arriving piece, which stays. Each completed line is
-// one scoring configuration.
+// its own Scored event.
 USTRUCT(BlueprintType, meta = (DisplayName = "Lines"))
 struct CONNECTIT_API FConnectItScoringRule_Lines : public FConnectItScoringRule
 {
@@ -24,7 +24,7 @@ struct CONNECTIT_API FConnectItScoringRule_Lines : public FConnectItScoringRule
         FConnectItBoardState& Board,
         FGridPosition Position,
         int32 Faction,
-        TArray<FConnectItScoringConfiguration>* OutConfigurations) const override;
+        FConnectItBoardChangeEvent* OutEvents) const override;
 
     // The four line axes scoring checks (each walked both ways). Public so
     // the MinMax line-potential evaluation measures along exactly the same

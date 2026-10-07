@@ -5,11 +5,26 @@
 #include "CoreMinimal.h"
 #include "Subsystems/WorldSubsystem.h"
 #include "GameplayTagContainer.h"
+#include "StructUtils/InstancedStruct.h"
 #include "GameEvent/GameEventTaskHandler.h"
 #include "GameEventTaskSubsystem.generated.h"
 
 class UGameEventTaskManager;
 class UGameEventTask_Async;
+
+// One entry in UGameEventTaskSubsystem's queue: the tags to fire together,
+// and optional data describing what they are about.
+USTRUCT()
+struct FGameEventQueueEntry
+{
+    GENERATED_BODY()
+
+    UPROPERTY()
+    FGameplayTagContainer Tags;
+
+    UPROPERTY()
+    FInstancedStruct Payload;
+};
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnActiveManagerTagsChanged, const FGameplayTagContainer&, TagContainer);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnAnyTagComplete, const FGameplayTag, Tag);
@@ -44,6 +59,19 @@ public:
     // itself is private, reachable only internally.
     UFUNCTION(BlueprintCallable, Category = "GameEvent")
     void QueueTagContainer(const FGameplayTagContainer& Tags);
+
+    // Same as QueueTagContainer, with data that travels with the entry: any
+    // struct the caller likes (this subsystem never looks inside it). While
+    // the entry is the one being processed, listeners read it back with
+    // GetActivePayload -- so each queued event has its own data, however
+    // many are waiting and whatever has happened since it was queued.
+    UFUNCTION(BlueprintCallable, Category = "GameEvent")
+    void QueueTagContainerWithPayload(const FGameplayTagContainer& Tags, const FInstancedStruct& Payload);
+
+    // The payload of the entry being processed right now. Empty (invalid)
+    // when nothing is being processed or the entry was queued without one.
+    UFUNCTION(BlueprintPure, Category = "GameEvent")
+    const FInstancedStruct& GetActivePayload() const { return ActivePayload; }
     
     // Registers a gated task against a tag's sequence at the given phase.
     // See UGameEventTaskManager::RegisterAsyncTask -- refused if that tag's
@@ -117,10 +145,15 @@ private:
     // interfering with each other.
 
     UPROPERTY()
-    TArray<FGameplayTagContainer> ContainerQueue;
+    TArray<FGameEventQueueEntry> ContainerQueue;
 
     UPROPERTY()
     FGameplayTagContainer ActiveTagContainer;
+
+    // The active entry's payload -- set when the entry starts, cleared when
+    // its last tag completes
+    UPROPERTY()
+    FInstancedStruct ActivePayload;
 
     void TryExecuteNextContainer();
     void OnActiveEventTagsChanged() const;

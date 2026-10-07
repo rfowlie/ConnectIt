@@ -2,6 +2,7 @@
 
 #include "Board/ConnectIt_BoardStateComponent.h"
 #include "ConnectIt_GameplayTags.h"
+#include "Board/Events/ConnectIt_BoardEvents.h"
 #include "Framework/Library/ConnectIt_GameUtilityLibrary.h"
 #include "GameEvent/GameEventTaskSubsystem.h"
 #include "Library/CodingUtilsLibrary.h"
@@ -103,7 +104,7 @@ void UConnectIt_BoardStateComponent::InitialiseBoardState(
     // BroadcastChange() stays off: nothing changed relative to a previous
     // state, only the game-event tag is needed.
     BoardSnapshot.ChangeEvent = FConnectItBoardChangeEvent();
-    BoardSnapshot.ChangeEvent.bBoardSeeded = true;
+    BoardSnapshot.ChangeEvent.Add(FConnectItBoardEvent_BoardSeeded());
     EnqueueBoardEventTags();
 }
 
@@ -221,63 +222,23 @@ void UConnectIt_BoardStateComponent::EnqueueBoardEventTags() const
         return;
     }
 
-    const FConnectItBoardChangeEvent& ChangeEvent = BoardSnapshot.ChangeEvent;
+    // One queue entry per event, in the order they happened. Each carries
+    // its own data as the entry's payload, so a listener always reads the
+    // event that is actually playing (UConnectIt_BoardEventLibrary) -- even if this
+    // snapshot has been replaced by a newer one by then.
+    for (const FInstancedStruct& Entry : BoardSnapshot.ChangeEvent.Events)
+    {
+        const FConnectItBoardEvent* Event = Entry.GetPtr<FConnectItBoardEvent>();
+        const FGameplayTag EventTag = Event ? Event->GetEventTag() : FGameplayTag();
+        if (!EventTag.IsValid())
+        {
+            UE_LOG(LogTemp, Error,
+                TEXT("ConnectIt_BoardStateComponent: EnqueueBoardEventTags — "
+                     "skipping an entry that isn't a board event with a tag (%s)"),
+                *GetNameSafe(Entry.GetScriptStruct()));
+            continue;
+        }
 
-    // Fixed order -- each SetBoardState call represents exactly one kind of
-    // concrete change, then conditionally Scored and/or PlayerWin. Each
-    // call enqueues independently; UGameEventTaskSubsystem's own queue
-    // serializes them so the next one doesn't start firing until the
-    // previous is done.
-    
-    // initial board seed -- starting pieces from the level need visuals
-    if (ChangeEvent.bBoardSeeded)
-    {
-        GameEventSubsystem->QueueTagContainer(FGameplayTagContainer(ConnectIt_Event_BoardSeeded));
+        GameEventSubsystem->QueueTagContainerWithPayload(FGameplayTagContainer(EventTag), Entry);
     }
-
-    // concrete changes to board from player actions
-    if (ChangeEvent.bPiecePlaced)
-    {
-        GameEventSubsystem->QueueTagContainer(FGameplayTagContainer(ConnectIt_Event_PiecePlaced));
-    }
-    if (ChangeEvent.bPieceRemoved)
-    {
-        GameEventSubsystem->QueueTagContainer(FGameplayTagContainer(ConnectIt_Event_PieceRemoved));
-    }
-    if (ChangeEvent.bPiecesSwapped)
-    {
-        GameEventSubsystem->QueueTagContainer(FGameplayTagContainer(ConnectIt_Event_PiecesSwapped));
-    }
-    if (ChangeEvent.bPieceCaptured)
-    {
-        GameEventSubsystem->QueueTagContainer(FGameplayTagContainer(ConnectIt_Event_PieceCaptured));
-    }
-    if (ChangeEvent.bTileMultiplierDestroyed)
-    {
-        GameEventSubsystem->QueueTagContainer(FGameplayTagContainer(ConnectIt_Event_TileMultiplierDestroyed));
-    }
-    if (ChangeEvent.bBoardShifted)
-    {
-        GameEventSubsystem->QueueTagContainer(FGameplayTagContainer(ConnectIt_Event_BoardShifted));
-    }
-
-    // knock on board changes from rules
-    if (ChangeEvent.HasScored())
-    {
-        GameEventSubsystem->QueueTagContainer(FGameplayTagContainer(ConnectIt_Event_Scored));
-    }    
-    if (ChangeEvent.bGameWon)
-    {
-        GameEventSubsystem->QueueTagContainer(FGameplayTagContainer(ConnectIt_Event_PlayerWin));
-    }
-
-    // New mutation types (see AConnectIt_BoardManager's Handle*Request
-    // methods) -- each is its own disjoint kind of change, so no ordering
-    // relationship between them
-    
-    if (ChangeEvent.bTileActiveToggled)
-    {
-        GameEventSubsystem->QueueTagContainer(FGameplayTagContainer(ConnectIt_Event_TileActiveToggled));
-    }
-    
 }

@@ -3,6 +3,8 @@
 
 #include "Board/ConnectIt_PieceRegistry.h"
 #include "Board/ConnectIt_BoardStateComponent.h"
+#include "Board/Events/ConnectIt_BoardEvents.h"
+#include "Framework/Library/ConnectIt_BoardEventLibrary.h"
 #include "ConnectIt_GameplayTags.h"
 #include "ConnectIt_Structs.h"
 #include "Framework/Library/ConnectIt_GameUtilityLibrary.h"
@@ -16,11 +18,17 @@ UConnectIt_BoardStateComponent* UConnectIt_PieceRegistry::GetBoardState() const
 
 void UConnectIt_PieceRegistry::HandleBoardShifted()
 {
-    UConnectIt_BoardStateComponent* BoardState = GetBoardState();
-    if (!IsValid(BoardState)) return;
+    const FConnectItBoardEvent_BoardShifted* Shift =
+        UConnectIt_BoardEventLibrary::GetActiveBoardEventAs<FConnectItBoardEvent_BoardShifted>(this);
+    if (!Shift)
+    {
+        UE_LOG(LogTemp, Error, TEXT(
+            "ConnectIt_PieceRegistry: HandleBoardShifted — "
+            "the board event being played is not a Board Shifted event"));
+        return;
+    }
 
-    const FConnectItBoardChangeEvent& ChangeEvent = BoardState->GetChangeEvent();
-    if (ChangeEvent.ShiftStartPositions.Num() != ChangeEvent.ShiftEndPositions.Num())
+    if (Shift->StartPositions.Num() != Shift->EndPositions.Num())
     {
         UE_LOG(LogTemp, Error, TEXT(
             "ConnectIt_PieceRegistry: HandleBoardShifted — "
@@ -34,35 +42,41 @@ void UConnectIt_PieceRegistry::HandleBoardShifted()
     // per-pair Remove-then-Add would stomp data a later iteration still
     // needs to read.
     TArray<TObjectPtr<AGridPieceBase>> MovingPieces;
-    MovingPieces.Reserve(ChangeEvent.ShiftStartPositions.Num());
-    for (const FGridPosition& StartPos : ChangeEvent.ShiftStartPositions)
+    MovingPieces.Reserve(Shift->StartPositions.Num());
+    for (const FGridPosition& StartPos : Shift->StartPositions)
     {
         TObjectPtr<AGridPieceBase>* Found = PieceMap.Find(StartPos);
         MovingPieces.Add(Found ? *Found : nullptr);
     }
 
-    for (const FGridPosition& StartPos : ChangeEvent.ShiftStartPositions)
+    for (const FGridPosition& StartPos : Shift->StartPositions)
     {
         PieceMap.Remove(StartPos);
     }
 
-    for (int32 Index = 0; Index < ChangeEvent.ShiftEndPositions.Num(); Index++)
+    for (int32 Index = 0; Index < Shift->EndPositions.Num(); Index++)
     {
         if (AGridPieceBase* Piece = MovingPieces[Index])
         {
-            PieceMap.Add(ChangeEvent.ShiftEndPositions[Index], Piece);
+            PieceMap.Add(Shift->EndPositions[Index], Piece);
         }
     }
 }
 
 void UConnectIt_PieceRegistry::HandleBoardPiecesSwapped()
 {
-    UConnectIt_BoardStateComponent* BoardState = GetBoardState();
-    if (!IsValid(BoardState)) return;
+    const FConnectItBoardEvent_PiecesSwapped* Swap =
+        UConnectIt_BoardEventLibrary::GetActiveBoardEventAs<FConnectItBoardEvent_PiecesSwapped>(this);
+    if (!Swap)
+    {
+        UE_LOG(LogTemp, Error, TEXT(
+            "ConnectIt_PieceRegistry: HandleBoardPiecesSwapped — "
+            "the board event being played is not a Pieces Swapped event"));
+        return;
+    }
 
-    const FConnectItBoardChangeEvent& ChangeEvent = BoardState->GetChangeEvent();
-    const FGridPosition& A = ChangeEvent.SwapPositionA;
-    const FGridPosition& B = ChangeEvent.SwapPositionB;
+    const FGridPosition& A = Swap->PositionA;
+    const FGridPosition& B = Swap->PositionB;
 
     TObjectPtr<AGridPieceBase>* FoundA = PieceMap.Find(A);
     TObjectPtr<AGridPieceBase>* FoundB = PieceMap.Find(B);
@@ -75,8 +89,15 @@ void UConnectIt_PieceRegistry::HandleBoardPiecesSwapped()
 
 void UConnectIt_PieceRegistry::HandleBoardPieceRemoved()
 {
-    UConnectIt_BoardStateComponent* BoardState = GetBoardState();
-    if (!IsValid(BoardState)) return;
+    const FConnectItBoardEvent_PieceRemoved* Removed =
+        UConnectIt_BoardEventLibrary::GetActiveBoardEventAs<FConnectItBoardEvent_PieceRemoved>(this);
+    if (!Removed)
+    {
+        UE_LOG(LogTemp, Error, TEXT(
+            "ConnectIt_PieceRegistry: HandleBoardPieceRemoved — "
+            "the board event being played is not a Piece Removed event"));
+        return;
+    }
 
-    PieceMap.Remove(BoardState->GetChangeEvent().RemovedPosition);
+    PieceMap.Remove(Removed->Position);
 }

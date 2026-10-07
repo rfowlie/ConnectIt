@@ -52,13 +52,13 @@ struct CONNECTIT_API FConnectItRuleSet
     // itself: every touched position that now holds a faction's piece is
     // scored for that faction, in order. Other
     // follow-on effects of a board change (reactions) will run here too.
-    // Returns the points scored; OutConfigurations, if given, gets one entry
-    // per thing that scored (the AI's search passes none). Does not check for
+    // Returns the points scored; OutEvents, if given, gets one Scored event
+    // appended per thing that scored (the AI's search passes none). Does not check for
     // a win -- see GetWinningFaction / StampWinState.
     float ResolveBoardChange(
         FConnectItBoardState& Board,
         TConstArrayView<FGridPosition> TouchedPositions,
-        TArray<FConnectItScoringConfiguration>* OutConfigurations = nullptr) const;
+        FConnectItBoardChangeEvent* OutEvents = nullptr) const;
 
     // --- Convenience: each is a no-op / "no" when its rule is unset ---
 
@@ -66,7 +66,7 @@ struct CONNECTIT_API FConnectItRuleSet
         FConnectItBoardState& Board,
         FGridPosition Position,
         int32 Faction,
-        TArray<FConnectItScoringConfiguration>* OutConfigurations = nullptr) const;
+        FConnectItBoardChangeEvent* OutEvents = nullptr) const;
 
     int32 GetWinningFaction(const FConnectItBoardState& Board) const;
 

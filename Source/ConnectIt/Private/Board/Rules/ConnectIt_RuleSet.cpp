@@ -14,7 +14,7 @@ FConnectItRuleSet::FConnectItRuleSet()
 float FConnectItRuleSet::ResolveBoardChange(
     FConnectItBoardState& Board,
     TConstArrayView<FGridPosition> TouchedPositions,
-    TArray<FConnectItScoringConfiguration>* OutConfigurations) const
+    FConnectItBoardChangeEvent* OutEvents) const
 {
     const FConnectItScoringRule* Rule = GetScoringRule();
     if (!Rule) return 0.f;
@@ -28,7 +28,7 @@ float FConnectItRuleSet::ResolveBoardChange(
         const FConnectItTileData* Tile = Board.GetTileData(Position);
         if (!Tile || Tile->FactionPiece == INDEX_NONE) continue;
 
-        TotalPoints += Rule->ApplyScoring(Board, Position, Tile->FactionPiece, OutConfigurations);
+        TotalPoints += Rule->ApplyScoring(Board, Position, Tile->FactionPiece, OutEvents);
     }
     return TotalPoints;
 }
@@ -37,10 +37,10 @@ float FConnectItRuleSet::ApplyScoring(
     FConnectItBoardState& Board,
     FGridPosition Position,
     int32 Faction,
-    TArray<FConnectItScoringConfiguration>* OutConfigurations) const
+    FConnectItBoardChangeEvent* OutEvents) const
 {
     const FConnectItScoringRule* Rule = GetScoringRule();
-    return Rule ? Rule->ApplyScoring(Board, Position, Faction, OutConfigurations) : 0.f;
+    return Rule ? Rule->ApplyScoring(Board, Position, Faction, OutEvents) : 0.f;
 }
 
 int32 FConnectItRuleSet::GetWinningFaction(const FConnectItBoardState& Board) const

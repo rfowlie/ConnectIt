@@ -6,6 +6,15 @@ Vault-wide passes go in `_core/_logs/`.
 
 Newest first:
 
+- [2026-10-07-1529](2026-10-07-1529.md) — session — typed board-event getters moved from the board state component into the static
+  `UConnectIt_BoardEventLibrary`. Not yet compiled (editor was open with Live Coding).
+
+- [2026-10-07-1518](2026-10-07-1518.md) — session — typed Blueprint getters for the board event being played (one per event kind, True/False pins,
+  error on mismatch); untyped Blueprint getter removed. Build clean, 20/20 tests.
+
+- [2026-10-07-1453](2026-10-07-1453.md) — session — board events: the change event is an ordered list of small event structs (operation / result),
+  each queued with its own payload and played one at a time; event queue plugin gains a payload. 20/20 tests; BP rewire + PIE pending.
+
 - [2026-10-07-1426](2026-10-07-1426.md) — session — MinMax judgement: term structs replaced by named weights on the strategy and handwritten
   `EvaluateState` / `EvaluateMove` helpers. Build clean, 19/19 tests, 390k nodes/s; PIE vs AI pending.
 
