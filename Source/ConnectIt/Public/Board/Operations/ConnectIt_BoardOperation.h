@@ -69,6 +69,14 @@ struct CONNECTIT_API FConnectItBoardOperation
     {
     }
 
+    // Whether a piece this operation brought onto a tile stays there when
+    // that piece completes something that scores. True for most (placing the
+    // fourth piece of a line clears the other three and leaves it standing);
+    // an operation returns false to have its arriving pieces cleared along
+    // with the rest. Passed on to FConnectItRuleSet::ResolveBoardChange by
+    // whoever applies the operation.
+    virtual bool ArrivingPiecesSurviveScoring() const { return true; }
+
     // Short text for logs, e.g. "(3,2)"
     virtual FString Describe() const { return FString(); }
 };

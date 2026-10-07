@@ -227,7 +227,8 @@ bool UConnectIt_BoardRequestMediator::DispatchRequest(const FTurnActionRequest& 
     // ...what follows from the change is a separate step: scoring where
     // pieces arrived (appending Scored events), then whether anyone has now won
     const float PointsScored =
-        Rules->ResolveBoardChange(NewState, TouchedPositions, &ChangeEvent);
+        Rules->ResolveBoardChange(
+            NewState, TouchedPositions, Operation.ArrivingPiecesSurviveScoring(), &ChangeEvent);
     Rules->StampWinState(NewState);
 
     // Edge-triggered -- only on the transition into game-over, not "the

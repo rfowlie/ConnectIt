@@ -22,7 +22,7 @@
 
 
 // What scores, and how the board changes as a result, after a piece has
-// arrived on a tile.
+// arrived at a tile.
 USTRUCT(BlueprintType)
 struct CONNECTIT_API FConnectItScoringRule
 {
@@ -33,12 +33,15 @@ struct CONNECTIT_API FConnectItScoringRule
     // Faction now has a piece on Position (placed, swapped in, shifted in,
     // captured...). Apply any scoring to Board -- its ScoreBoard, and whatever
     // else scoring does to tiles and pieces -- and return the points scored.
+    // bArrivingPieceSurvives: whether that piece stays on Position if it
+    // scores (FConnectItBoardOperation::ArrivingPiecesSurviveScoring).
     // OutEvents, if not null, gets one FConnectItBoardEvent_Scored appended
     // per thing that scored (for visuals); the AI's search passes null.
     virtual float ApplyScoring(
         FConnectItBoardState& Board,
         FGridPosition Position,
         int32 Faction,
+        bool bArrivingPieceSurvives,
         FConnectItBoardChangeEvent* OutEvents) const
     {
         return 0.f;

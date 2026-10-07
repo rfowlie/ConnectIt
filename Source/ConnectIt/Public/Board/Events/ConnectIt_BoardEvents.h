@@ -206,14 +206,17 @@ struct CONNECTIT_API FConnectItBoardEvent_Scored : public FConnectItBoardResultE
 
     UPROPERTY(BlueprintReadOnly, Category = "Event")
     float Points = 0.f;
-
-    // need to know what placed position scored so we keep it
-    // TODO: figure out how this will interact with Swap...
-    UPROPERTY(BlueprintReadOnly, Category = "Event")
-    FGridPosition PlacedPosition;
     
     UPROPERTY(BlueprintReadOnly, Category = "Event")
     TArray<FGridPosition> Positions;
+
+    // The positions whose piece this score removed from the board -- what
+    // visuals should despawn. A subset of Positions: it leaves out a
+    // completing piece that stays, and a position already cleared by an
+    // earlier Scored event of the same change (two lines crossing at a piece
+    // that doesn't stay).
+    UPROPERTY(BlueprintReadOnly, Category = "Event")
+    TArray<FGridPosition> ClearedPositions;
 
     virtual FGameplayTag GetEventTag() const override;
 };

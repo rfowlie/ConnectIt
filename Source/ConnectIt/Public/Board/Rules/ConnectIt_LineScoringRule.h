@@ -10,7 +10,8 @@
 // The classic rule: a straight line of ConnectLength or more of one faction's
 // pieces through the arriving piece scores. Points = the sum of the line's
 // tile multipliers; every tile in the line then loses its piece and gains +1
-// multiplier, except the arriving piece, which stays. Each completed line is
+// multiplier, except the arriving piece, which stays (unless the operation
+// that brought it says its pieces don't survive scoring). Each completed line is
 // its own Scored event.
 USTRUCT(BlueprintType, meta = (DisplayName = "Lines"))
 struct CONNECTIT_API FConnectItScoringRule_Lines : public FConnectItScoringRule
@@ -24,6 +25,7 @@ struct CONNECTIT_API FConnectItScoringRule_Lines : public FConnectItScoringRule
         FConnectItBoardState& Board,
         FGridPosition Position,
         int32 Faction,
+        bool bArrivingPieceSurvives,
         FConnectItBoardChangeEvent* OutEvents) const override;
 
     // The four line axes scoring checks (each walked both ways). Public so
@@ -39,9 +41,14 @@ private:
         int32 FactionSlot,
         int32 ConnectLength);
 
+    // Clears the line's pieces, raises its tiles' multipliers, returns the
+    // points. The piece on CompletingPosition is left standing only if
+    // bKeepCompletingPiece. OutClearedPositions, if not null, gets every
+    // position a piece was actually removed from.
     static float ApplyScoringLine(
         FConnectItBoardState& MutableState,
         const TArray<FGridPosition>& Line,
         FGridPosition CompletingPosition,
-        int32 FactionSlot);
+        bool bKeepCompletingPiece,
+        TArray<FGridPosition>* OutClearedPositions);
 };

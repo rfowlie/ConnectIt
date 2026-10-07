@@ -50,7 +50,10 @@ struct CONNECTIT_API FConnectItRuleSet
     // The step AFTER an operation has changed the board
     // (FConnectItBoardOperation::Apply), kept separate from the change
     // itself: every touched position that now holds a faction's piece is
-    // scored for that faction, in order. Other
+    // scored for that faction, in order. bArrivingPiecesSurvive is the
+    // operation's own answer (FConnectItBoardOperation::
+    // ArrivingPiecesSurviveScoring): whether a touched piece that scores
+    // stays on its tile. Other
     // follow-on effects of a board change (reactions) will run here too.
     // Returns the points scored; OutEvents, if given, gets one Scored event
     // appended per thing that scored (the AI's search passes none). Does not check for
@@ -58,6 +61,7 @@ struct CONNECTIT_API FConnectItRuleSet
     float ResolveBoardChange(
         FConnectItBoardState& Board,
         TConstArrayView<FGridPosition> TouchedPositions,
+        bool bArrivingPiecesSurvive,
         FConnectItBoardChangeEvent* OutEvents = nullptr) const;
 
     // --- Convenience: each is a no-op / "no" when its rule is unset ---
@@ -66,6 +70,7 @@ struct CONNECTIT_API FConnectItRuleSet
         FConnectItBoardState& Board,
         FGridPosition Position,
         int32 Faction,
+        bool bArrivingPieceSurvives,
         FConnectItBoardChangeEvent* OutEvents = nullptr) const;
 
     int32 GetWinningFaction(const FConnectItBoardState& Board) const;

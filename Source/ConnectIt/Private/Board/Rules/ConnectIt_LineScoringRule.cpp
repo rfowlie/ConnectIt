@@ -9,6 +9,7 @@ float FConnectItScoringRule_Lines::ApplyScoring(
     FConnectItBoardState& MutableState,
     FGridPosition Position,
     int32 FactionSlot,
+    bool bArrivingPieceSurvives,
     FConnectItBoardChangeEvent* OutEvents) const
 {
     TArray<TArray<FGridPosition>> ScoringLines =
@@ -20,8 +21,10 @@ float FConnectItScoringRule_Lines::ApplyScoring(
 
     for (const TArray<FGridPosition>& Line : ScoringLines)
     {
+        TArray<FGridPosition> ClearedPositions;
         const float LinePoints = ApplyScoringLine(
-            MutableState, Line, Position, FactionSlot);
+            MutableState, Line, Position, bArrivingPieceSurvives,
+            OutEvents ? &ClearedPositions : nullptr);
         TotalPoints += LinePoints;
 
         // One Scored event per completed line (lines always share Position)
@@ -30,8 +33,8 @@ float FConnectItScoringRule_Lines::ApplyScoring(
             FConnectItBoardEvent_Scored Event;
             Event.Faction   = FactionSlot;
             Event.Points    = LinePoints;
-            Event.PlacedPosition = Position;
             Event.Positions = Line;
+            Event.ClearedPositions = MoveTemp(ClearedPositions);
             OutEvents->Add(Event);
         }
     }
@@ -94,7 +97,8 @@ float FConnectItScoringRule_Lines::ApplyScoringLine(
     FConnectItBoardState& MutableState,
     const TArray<FGridPosition>& Line,
     FGridPosition CompletingPosition,
-    int32 FactionSlot)
+    bool bKeepCompletingPiece,
+    TArray<FGridPosition>* OutClearedPositions)
 {
     float PointsScored = 0.f;
 
@@ -103,18 +107,20 @@ float FConnectItScoringRule_Lines::ApplyScoringLine(
         FConnectItTileData* TileData = MutableState.GetTileDataMutable(Position);
         if (!TileData) continue;
 
+        // Every tile of the line scores and gains multiplier...
         PointsScored += TileData->Multiplier;
+        TileData->Multiplier += 1.0f;
 
-        // Remove piece and increment multiplier
-        TileData->SetFactionPiece(-1);
-        TileData->Multiplier  += 1.0f;
-    }
+        // ...and loses its piece, except the completing piece when it is kept
+        if (bKeepCompletingPiece && Position == CompletingPosition) continue;
 
-    // Completing piece stays on the board
-    if (FConnectItTileData* CompletingTile =
-        MutableState.GetTileDataMutable(CompletingPosition))
-    {
-        CompletingTile->SetFactionPiece(FactionSlot);
+        // Already empty when an earlier line through the same completing
+        // piece cleared it
+        if (TileData->FactionPiece != -1)
+        {
+            TileData->SetFactionPiece(-1);
+            if (OutClearedPositions) OutClearedPositions->Add(Position);
+        }
     }
 
     return PointsScored;

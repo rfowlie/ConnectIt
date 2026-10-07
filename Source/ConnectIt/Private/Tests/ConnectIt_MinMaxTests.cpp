@@ -359,7 +359,7 @@ bool FConnectItMinMaxSameRulesTest::RunTest(const FString& Parameters)
 
     FConnectItBoardState GameBoard = Board;
     Place(GameBoard, 3, 3, 0);
-    const float Points = RuleSet.ApplyScoring(GameBoard, FGridPosition(3, 3), 0);
+    const float Points = RuleSet.ApplyScoring(GameBoard, FGridPosition(3, 3), 0, true);
 
     const FConnectItMinMaxRules Rules(Board, RuleSet, DefaultEvaluationWeights(), DefaultOrderingWeights(), PlaceOnly(), PlaceOnly());
     const auto Root = Rules.MakeRoot(Board, 0);
@@ -474,8 +474,13 @@ bool FConnectItSwapOperationTest::RunTest(const FString& Parameters)
 
     // The separate after-move step is what scores the completed line
     const FConnectItRuleSet Rules;
-    const float Points = Rules.ResolveBoardChange(Board, Touched, &Event);
+    TestFalse(TEXT("a swap's arriving pieces don't survive scoring"), Trade.ArrivingPiecesSurviveScoring());
+    TestTrue(TEXT("a placement's do"), FConnectItBoardOperation_PlacePiece().ArrivingPiecesSurviveScoring());
+
+    const float Points = Rules.ResolveBoardChange(Board, Touched, Trade.ArrivingPiecesSurviveScoring(), &Event);
     TestEqual(TEXT("the completed line scores for faction 0"), Board.GetScore(0), 4.f);
+    TestEqual(TEXT("the swapped-in piece is cleared with the line"), TileAt(Board, 3, 3).FactionPiece, -1);
+    TestEqual(TEXT("the piece swapped the other way is untouched"), TileAt(Board, 0, 0).FactionPiece, 1);
     TestEqual(TEXT("faction 1 scores nothing"), Board.GetScore(1), 0.f);
     TestEqual(TEXT("the points are returned"), Points, 4.f);
     if (TestEqual(TEXT("the swap event is followed by one Scored event"), Event.Events.Num(), 2))
@@ -486,6 +491,7 @@ bool FConnectItSwapOperationTest::RunTest(const FString& Parameters)
             TestEqual(TEXT("...for faction 0"), Scored->Faction, 0);
             TestEqual(TEXT("...worth 4 points"), Scored->Points, 4.f);
             TestEqual(TEXT("...over 4 tiles"), Scored->Positions.Num(), 4);
+            TestEqual(TEXT("...all 4 pieces cleared"), Scored->ClearedPositions.Num(), 4);
         }
     }
     return true;
@@ -514,7 +520,7 @@ bool FConnectItScoredEventPerLineTest::RunTest(const FString& Parameters)
     Completing.Apply(Board, Touched, nullptr);
 
     FConnectItBoardChangeEvent Change;
-    const float Points = Rules.ResolveBoardChange(Board, Touched, &Change);
+    const float Points = Rules.ResolveBoardChange(Board, Touched, true, &Change);
 
     if (!TestEqual(TEXT("each completed line is its own Scored event"), Change.Events.Num(), 2)) return false;
 
@@ -527,8 +533,11 @@ bool FConnectItScoredEventPerLineTest::RunTest(const FString& Parameters)
         TestEqual(TEXT("scored for the placing faction"), Scored->Faction, 0);
         TestEqual(TEXT("a line of four tiles"), Scored->Positions.Num(), 4);
         TestTrue(TEXT("includes the completing tile"), Scored->Positions.Contains(FGridPosition(3, 3)));
+        TestEqual(TEXT("clears the other three pieces"), Scored->ClearedPositions.Num(), 3);
+        TestFalse(TEXT("...not the completing piece"), Scored->ClearedPositions.Contains(FGridPosition(3, 3)));
         Sum += Scored->Points;
     }
+    TestEqual(TEXT("the completing piece is still on the board"), TileAt(Board, 3, 3).FactionPiece, 0);
     TestEqual(TEXT("the events add up to the points returned"), Sum, Points);
     TestEqual(TEXT("...and to the score gained"), Board.GetScore(0), Points);
 
@@ -537,7 +546,26 @@ bool FConnectItScoredEventPerLineTest::RunTest(const FString& Parameters)
     FConnectItTouchedPositions QuietTouched;
     Completing.Apply(Quiet, QuietTouched, nullptr);
     TestEqual(TEXT("same points without asking for events"),
-        Rules.ResolveBoardChange(Quiet, QuietTouched), Points);
+        Rules.ResolveBoardChange(Quiet, QuietTouched, true), Points);
+
+    // The same cross, completed by a piece that does NOT survive scoring
+    // (what a swap's arriving piece does)
+    FConnectItBoardState Cleared = MakeCross();
+    FConnectItTouchedPositions ClearedTouched;
+    Completing.Apply(Cleared, ClearedTouched, nullptr);
+    FConnectItBoardChangeEvent ClearedChange;
+    const float ClearedPoints = Rules.ResolveBoardChange(Cleared, ClearedTouched, false, &ClearedChange);
+
+    TestEqual(TEXT("both lines still score the same points"), ClearedPoints, Points);
+    TestEqual(TEXT("the completing tile ends up empty"), TileAt(Cleared, 3, 3).FactionPiece, -1);
+    const auto* FirstLine = EventAt<FConnectItBoardEvent_Scored>(ClearedChange, 0);
+    const auto* SecondLine = EventAt<FConnectItBoardEvent_Scored>(ClearedChange, 1);
+    if (TestTrue(TEXT("two Scored events"), ClearedChange.Events.Num() == 2 && FirstLine && SecondLine))
+    {
+        TestEqual(TEXT("the first clears its whole line"), FirstLine->ClearedPositions.Num(), 4);
+        TestEqual(TEXT("the second clears only what is left"), SecondLine->ClearedPositions.Num(), 3);
+        TestFalse(TEXT("no position is cleared twice"), SecondLine->ClearedPositions.Contains(FGridPosition(3, 3)));
+    }
     return true;
 }
 
@@ -775,7 +803,7 @@ bool FConnectItBoardEventOrderTest::RunTest(const FString& Parameters)
 
     FConnectItTouchedPositions Touched;
     MakeAt<FConnectItBoardOperation_PlacePiece>(0, 3, 3).Apply(Board, Touched, &Change);
-    Rules.ResolveBoardChange(Board, Touched, &Change);
+    Rules.ResolveBoardChange(Board, Touched, true, &Change);
 
     if (!TestEqual(TEXT("two events"), Change.Events.Num(), 2)) return false;
 

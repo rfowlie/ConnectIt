@@ -72,7 +72,9 @@ struct CONNECTIT_API FConnectItBoardOperation_PlacePiece : public FConnectItBoar
 
 // Trade places between one of the faction's own pieces and one of another
 // faction's: both tiles must hold a piece, and exactly one must be the
-// faction's. Sent by UConnectIt_SwapPieceAction.
+// faction's. A swap that scores keeps nothing: the swapped-in piece is
+// cleared with the rest of what it completed (a balance choice -- placing a
+// piece keeps it). Sent by UConnectIt_SwapPieceAction.
 USTRUCT(BlueprintType, meta = (DisplayName = "Swap Pieces"))
 struct CONNECTIT_API FConnectItBoardOperation_SwapPieces : public FConnectItBoardOperation
 {
@@ -83,6 +85,8 @@ struct CONNECTIT_API FConnectItBoardOperation_SwapPieces : public FConnectItBoar
 
     UPROPERTY(BlueprintReadWrite, Category = "Operation")
     FGridPosition PositionB;
+
+    virtual bool ArrivingPiecesSurviveScoring() const override { return false; }
 
     virtual FGameplayTag GetRequestType() const override;
     virtual bool CanApply(const FConnectItBoardState& Board, FString* OutWhyNot = nullptr) const override;

@@ -165,14 +165,16 @@ FConnectItMinMaxRules::FState FConnectItMinMaxRules::ApplyMove(
 
     // 1. The move: the operation changes the board, and only that
     FConnectItTouchedPositions TouchedPositions;
-    Visit([&Child, &TouchedPositions](const auto& Operation)
+    bool bArrivingPiecesSurvive = true;
+    Visit([&Child, &TouchedPositions, &bArrivingPiecesSurvive](const auto& Operation)
     {
         Operation.Apply(Child.Board, TouchedPositions, nullptr);
+        bArrivingPiecesSurvive = Operation.ArrivingPiecesSurviveScoring();
     }, Move);
 
     // 2. What follows from the change -- the same step the Mediator runs
     //    after a real move
-    Rules.ResolveBoardChange(Child.Board, TouchedPositions);
+    Rules.ResolveBoardChange(Child.Board, TouchedPositions, bArrivingPiecesSurvive);
 
     // 3. The turn passes. The one thing still assumed here: every move ends
     //    the turn.

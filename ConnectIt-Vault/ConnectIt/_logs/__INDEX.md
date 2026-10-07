@@ -6,6 +6,9 @@ Vault-wide passes go in `_core/_logs/`.
 
 Newest first:
 
+- [2026-10-07-1612](2026-10-07-1612.md) — session — a swap that scores keeps nothing: operations say whether arriving pieces survive scoring;
+  Scored events list `ClearedPositions`. Not yet compiled (editor was open with Live Coding).
+
 - [2026-10-07-1529](2026-10-07-1529.md) — session — typed board-event getters moved from the board state component into the static
   `UConnectIt_BoardEventLibrary`. Not yet compiled (editor was open with Live Coding).
 
