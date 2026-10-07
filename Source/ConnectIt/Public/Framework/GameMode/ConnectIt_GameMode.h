@@ -6,12 +6,12 @@
 #include "GameplayTagContainer.h"
 #include "TurnBasedMechanicsStructs.h"
 #include "Framework/GameMode/TurnBasedGameMode.h"
+#include "Board/Rules/ConnectIt_RuleSet.h"
 #include "ConnectIt_GameMode.generated.h"
 
 class AConnectIt_AIController;
 class UTurnBasedParticipantManagerComponent;
 class UConnectIt_BoardRequestMediator;
-class UConnectIt_BoardRules;
 
 
 // Defines the match type -- affects how participants are registered
@@ -70,14 +70,10 @@ public:
     UFUNCTION(BlueprintCallable, Category = "ConnectIt|Board")
     bool ProcessBoardRequest(const FTurnActionRequest& Request);
 
-    // Read access to the resolved rule strategies (scoring/win-condition/
-    // placeable) -- the same object HandleMatchHasStarted already built from
-    // LevelConfig, defaults included. Lets a server-only reader (the Classic
-    // MinMax AI) query e.g. GetTargetScore()/GetMinimumConnectLength() without
-    // re-resolving LevelConfig and duplicating BoardRules::Initialise()'s
-    // defaulting logic itself.
-    UFUNCTION(BlueprintPure, Category = "ConnectIt|Board")
-    UConnectIt_BoardRules* GetBoardRules() const { return BoardRules; }
+    // This match's rules: the level config's rule set, copied when the match
+    // started, plus any per-match changes (e.g. the main menu's target
+    // score). Server-only, like this GameMode.
+    const FConnectItRuleSet& GetRules() const { return Rules; }
 
 protected:
 
@@ -125,7 +121,7 @@ private:
     TObjectPtr<UConnectIt_BoardRequestMediator> BoardRequestMediator = nullptr;
 
     UPROPERTY()
-    TObjectPtr<UConnectIt_BoardRules> BoardRules = nullptr;
+    FConnectItRuleSet Rules;
 
     // Tracks how many human players have connected
     // Used in Online mode to know when to start ready check

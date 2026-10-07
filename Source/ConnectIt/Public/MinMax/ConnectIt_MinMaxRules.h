@@ -7,7 +7,7 @@
 #include "GridMechanicsBaseStructs.h"
 #include "StructUtils/InstancedStruct.h"
 #include "MinMax/ConnectIt_MinMaxTerms.h"
-#include "Board/Rules/ConnectIt_WinCondition.h"
+#include "Board/Rules/ConnectIt_RuleSet.h"
 #include "Search/MinMax/GI_MinMaxAlphaBeta.h"
 
 
@@ -17,8 +17,9 @@
 struct FConnectItMinMaxGeometry
 {
     // Every run of ConnectLength existing tiles along one of the scoring
-    // axes (UConnectIt_LineScoringRule::GetScoringDirections), as indices
-    // into FConnectItBoardState::TileDataArray.
+    // axes (FConnectItScoringRule_Lines::GetScoringDirections), as indices
+    // into FConnectItBoardState::TileDataArray. Empty unless the match scores
+    // by lines (ConnectLength <= 0 builds none).
     TArray<TArray<int32>> LineWindows;
 
     // Each tile's existing neighbours (up to 8), as TileDataArray indices.
@@ -32,17 +33,22 @@ struct FConnectItMinMaxGeometry
 //
 // Not something you configure or subclass: UConnectIt_AIStrategy_MinMax
 // builds one per decision, on the game thread, from the live board and its
-// own editor data, then the search only reads it. The fixed part is the game
-// model (which moves exist, what a move does, and -- through the level's own
-// win condition -- when the game is over and who won); what the AI VALUES in
-// an unfinished position comes from the strategy's evaluation and ordering
-// terms (see ConnectIt_MinMaxTerms.h).
+// own editor data, then the search only reads it.
 //
-// Thread safety: the search runs on a background task, so nothing here may
-// touch a UObject. A simulated move is scored with
-// UConnectIt_LineScoringRule::ApplyLineScoring -- the exact static algorithm
-// the real scoring rule runs, never its BlueprintNativeEvent interface (which
-// could be Blueprint-authored and must stay on the game thread).
+// It holds a copy of the match's FConnectItRuleSet and plays by it: which
+// tiles can be played is the real placement rule, what a placement scores is
+// the real scoring rule, when the game is over and who won is the real win
+// condition -- the same rule code the server's Mediator runs, so the search
+// can't disagree with the game. What the AI VALUES in an unfinished position
+// comes from the strategy's evaluation and ordering terms (see
+// ConnectIt_MinMaxTerms.h).
+//
+// Still fixed here, for now: the only move is "place one piece", and turns
+// alternate one placement each (see the design note on moves as shared,
+// thread-safe types: ConnectIt/design/rules-as-structs-and-shared-simulation).
+//
+// Thread safety: the search runs on a background task; rule structs and terms
+// are plain data with no UObject references, which is what makes this legal.
 class CONNECTIT_API FConnectItMinMaxRules final
 {
 public:
@@ -72,19 +78,16 @@ public:
     static constexpr int32 WinValue = 10000000;
 
     // Board is only used for its geometry -- the position to search from is
-    // passed to MakeRoot. InWinCheck is the level's win condition as a
-    // thread-safe test (IConnectIt_WinCondition::MakeSearchWinCheck); null =
-    // the search never sees the game end. The term arrays are copied; invalid
-    // entries and zero-weight terms are skipped.
+    // passed to MakeRoot. InRules (the match's rule set) and the term arrays
+    // are copied; invalid term entries and zero-weight terms are skipped.
     FConnectItMinMaxRules(
         const FConnectItBoardState& Board,
-        int32 InConnectLength,
-        TSharedPtr<const FConnectItWinCheck, ESPMode::ThreadSafe> InWinCheck,
+        const FConnectItRuleSet& InRules,
         const TArray<TInstancedStruct<FConnectItMinMaxEvalTerm>>& InEvaluationTerms,
         const TArray<TInstancedStruct<FConnectItMinMaxOrderTerm>>& InOrderingTerms);
 
-    // Holds pointers into its own term arrays -- never copied or moved (the
-    // strategy keeps it behind a TSharedRef).
+    // Holds pointers into its own rule set and term arrays -- never copied or
+    // moved (the strategy keeps it behind a TSharedRef).
     FConnectItMinMaxRules(const FConnectItMinMaxRules&) = delete;
     FConnectItMinMaxRules& operator=(const FConnectItMinMaxRules&) = delete;
 
@@ -95,13 +98,14 @@ public:
     // --- For terms ---
 
     const FConnectItMinMaxGeometry& GetGeometry() const { return Geometry; }
-    int32 GetConnectLength() const { return ConnectLength; }
+    const FConnectItRuleSet& GetRuleSet() const { return Rules; }
 
     // --- MinMax::c_game ---
 
     void GenerateMoves(const FState& State, TArray<FMove>& OutMoves) const;
     FState ApplyMove(const FState& State, const FMove& Move) const;
-    // Someone has won, per the level's win condition. A position with no
+
+    // Someone has won, per the match's win condition. A position with no
     // legal moves and no winner (e.g. a full board) is deliberately NOT
     // terminal -- it's scored by the terms like any other position. What a
     // full board should mean is an open design question (draw online? usually
@@ -118,8 +122,12 @@ public:
 
 private:
 
-    int32 ConnectLength = 4;
-    TSharedPtr<const FConnectItWinCheck, ESPMode::ThreadSafe> WinCheck;
+    // Declaration order matters: the pointers and geometry are initialised
+    // from Rules.
+    FConnectItRuleSet Rules;
+    const FConnectItScoringRule* ScoringRule = nullptr;
+    const FConnectItWinCondition* WinCondition = nullptr;
+    const FConnectItTilePlaceableRule* TilePlaceableRule = nullptr;
     FConnectItMinMaxGeometry Geometry;
 
     // Owned copies of the strategy's terms, and pointers to the usable ones

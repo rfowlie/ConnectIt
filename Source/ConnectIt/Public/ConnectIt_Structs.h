@@ -85,15 +85,20 @@ struct FConnectItBoardState
     UPROPERTY(BlueprintReadOnly)
     int32 WinningFactionSlot = -1;
 
-    // Score needed to win, published by whichever IConnectIt_WinCondition is
-    // active (see UConnectIt_BoardRulesComponent::GetTargetScore) so UI can
-    // render "57 / 100" without knowing which strategy is in play or
-    // reaching into a server-side strategy object that isn't replicated.
+    // Score needed to win, published by the match's win condition (see
+    // FConnectItRuleSet::StampWinState) so UI can render "57 / 100" without
+    // knowing which condition is in play or reaching the server-only rules.
     // Rides this single replicated snapshot rather than adding a second
     // replicated property. 0 means "this win condition isn't score-based" --
-    // a progress bar should hide itself rather than divide by zero.
+    // use WinProgress for a bar that works under any condition.
     UPROPERTY(BlueprintReadOnly)
     float TargetScore = 0.f;
+
+    // How close each faction slot is to winning, 0 to 1, under whatever the
+    // match's win condition is (FConnectItWinCondition::GetProgress).
+    // Stamped alongside TargetScore after every move; empty until the first.
+    UPROPERTY(BlueprintReadOnly)
+    TArray<float> WinProgress;
 
     // --- Accessors ---
 

@@ -7,16 +7,16 @@
 #include "TurnBasedMechanicsStructs.h"
 #include "Action/TurnBasedAction.h"
 #include "Board/ConnectIt_BoardStateComponent.h"
-#include "Board/Rules/ConnectIt_BoardRules.h"
+#include "Board/Rules/ConnectIt_RuleSet.h"
 #include "Framework/GameState/ConnectIt_GameState.h"
 #include "Framework/Library/ConnectIt_GameUtilityLibrary.h"
 #include "Framework/PlayerState/ConnectIt_PlayerState.h"
 #include "GameEvent/ConnectIt_PlacePieceGameEvent.h"
 
 
-void UConnectIt_BoardRequestMediator::Initialise(UConnectIt_BoardRules* InBoardRules)
+void UConnectIt_BoardRequestMediator::Initialise(const FConnectItRuleSet* InRules)
 {
-    BoardRules = InBoardRules;
+    Rules = InRules;
 }
 
 // UConnectIt_BoardStateComponent* UConnectIt_BoardRequestMediator::GetBoardState() const
@@ -295,7 +295,7 @@ bool UConnectIt_BoardRequestMediator::HandlePlacePieceRequest(
     const FGridPosition TargetPosition = Request.Positions[0];
     const FConnectItBoardState& Current = BoardState->GetCurrentState();
 
-    if (!BoardRules->IsTilePlaceable(Current, TargetPosition))
+    if (!Rules->IsTilePlaceable(Current, TargetPosition))
     {
         UE_LOG(LogTemp, Warning,
             TEXT("ConnectIt_BoardRequestMediator: PlacePiece rejected "
@@ -314,11 +314,11 @@ bool UConnectIt_BoardRequestMediator::HandlePlacePieceRequest(
 
     // check scoring achieved (updates NewState)
     TArray<FGridPosition> ScoringPositions;
-    const float PointsScored = BoardRules->ApplyScoring(
+    const float PointsScored = Rules->ApplyScoring(
         NewState, TargetPosition, FactionID, ScoringPositions);
 
     // check win achieved
-    BoardRules->CheckWinCondition(NewState);
+    Rules->StampWinState(NewState);
 
     // Record what happened -- replicated alongside the state itself via
     // SetBoardState, instead of broadcasting gameplay delegates directly
@@ -381,10 +381,10 @@ bool UConnectIt_BoardRequestMediator::HandleForcePlacePieceRequest(
     }
 
     TArray<FGridPosition> ScoringPositions;
-    const float PointsScored = BoardRules->ApplyScoring(
+    const float PointsScored = Rules->ApplyScoring(
         NewState, Request.Position, FactionID, ScoringPositions);
 
-    BoardRules->CheckWinCondition(NewState);
+    Rules->StampWinState(NewState);
 
     FConnectItBoardChangeEvent ChangeEvent;
     ChangeEvent.bPiecePlaced       = true;
@@ -543,12 +543,12 @@ bool UConnectIt_BoardRequestMediator::HandleSwapPiecesRequest(
     // scoring factions in the event -- ScoreBoard itself (mutated inside
     // ApplyScoring) is correct for both regardless.
     TArray<FGridPosition> ScoringPositions;
-    const float PointsScoredA = BoardRules->ApplyScoring(
+    const float PointsScoredA = Rules->ApplyScoring(
         NewState, Request.PositionA, B, ScoringPositions);
-    const float PointsScoredB = BoardRules->ApplyScoring(
+    const float PointsScoredB = Rules->ApplyScoring(
         NewState, Request.PositionB, A, ScoringPositions);
 
-    BoardRules->CheckWinCondition(NewState);
+    Rules->StampWinState(NewState);
 
     FConnectItBoardChangeEvent ChangeEvent;
     ChangeEvent.bPiecesSwapped      = true;
@@ -683,7 +683,7 @@ bool UConnectIt_BoardRequestMediator::HandleBoardShiftRequest(
         const FConnectItTileData* NewData = NewState.GetTileData(Pos);
         if (!NewData || !NewData->bIsOccupied) continue;
 
-        const float PointsScored = BoardRules->ApplyScoring(
+        const float PointsScored = Rules->ApplyScoring(
             NewState, Pos, NewData->FactionPiece, ScoringPositions);
         if (PointsScored > 0.f)
         {
@@ -697,7 +697,7 @@ bool UConnectIt_BoardRequestMediator::HandleBoardShiftRequest(
         }
     }
 
-    BoardRules->CheckWinCondition(NewState);
+    Rules->StampWinState(NewState);
 
     FConnectItBoardChangeEvent ChangeEvent;
     ChangeEvent.bBoardShifted       = true;
@@ -802,10 +802,10 @@ bool UConnectIt_BoardRequestMediator::HandleCapturePieceRequest(
     // Exactly one position changed ownership -- same well-defined case
     // HandlePlacePieceRequest already handles, unlike HandleSwapPiecesRequest
     TArray<FGridPosition> ScoringPositions;
-    const float PointsScored = BoardRules->ApplyScoring(
+    const float PointsScored = Rules->ApplyScoring(
         NewState, Request.Position, FactionID, ScoringPositions);
 
-    BoardRules->CheckWinCondition(NewState);
+    Rules->StampWinState(NewState);
 
     FConnectItBoardChangeEvent ChangeEvent;
     ChangeEvent.bPieceCaptured        = true;

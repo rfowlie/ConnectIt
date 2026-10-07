@@ -20,9 +20,10 @@ FConnectItMinMaxGeometry FConnectItMinMaxGeometry::Build(
         IndexByPosition.Add(Board.GetPositionAt(Index), Index);
     }
 
-    const int32 WindowLength = FMath::Max(1, ConnectLength);
+    // No line scoring, no line windows
+    const int32 WindowLength = FMath::Max(0, ConnectLength);
     const TArray<FGridDirectionVector>& Directions =
-        UConnectIt_LineScoringRule::GetScoringDirections();
+        FConnectItScoringRule_Lines::GetScoringDirections();
 
     Geometry.Neighbours.SetNum(NumTiles);
 
@@ -45,7 +46,7 @@ FConnectItMinMaxGeometry FConnectItMinMaxGeometry::Build(
                 Window.Add(*CellIndex);
             }
 
-            if (Window.Num() == WindowLength)
+            if (WindowLength > 0 && Window.Num() == WindowLength)
             {
                 Geometry.LineWindows.Add(MoveTemp(Window));
             }
@@ -72,22 +73,30 @@ FConnectItMinMaxGeometry FConnectItMinMaxGeometry::Build(
 
 FConnectItMinMaxRules::FConnectItMinMaxRules(
     const FConnectItBoardState& Board,
-    int32 InConnectLength,
-    TSharedPtr<const FConnectItWinCheck, ESPMode::ThreadSafe> InWinCheck,
+    const FConnectItRuleSet& InRules,
     const TArray<TInstancedStruct<FConnectItMinMaxEvalTerm>>& InEvaluationTerms,
     const TArray<TInstancedStruct<FConnectItMinMaxOrderTerm>>& InOrderingTerms)
-    : ConnectLength(InConnectLength)
-    , WinCheck(MoveTemp(InWinCheck))
-    , Geometry(FConnectItMinMaxGeometry::Build(Board, InConnectLength))
+    : Rules(InRules)
+    , ScoringRule(Rules.GetScoringRule())
+    , WinCondition(Rules.GetWinCondition())
+    , TilePlaceableRule(Rules.GetTilePlaceableRule())
+    , Geometry(FConnectItMinMaxGeometry::Build(
+        Board,
+        Rules.GetScoringRuleAs<FConnectItScoringRule_Lines>()
+            ? Rules.GetScoringRuleAs<FConnectItScoringRule_Lines>()->ConnectLength
+            : 0))
     , EvaluationTerms(InEvaluationTerms)
     , OrderingTerms(InOrderingTerms)
 {
-    if (!WinCheck.IsValid())
+    if (!ScoringRule || !WinCondition || !TilePlaceableRule)
     {
         UE_LOG(LogTemp, Warning,
-            TEXT("ConnectIt_MinMaxRules: no win check -- the level's win "
-                 "condition can't be tested off the game thread, so the AI "
-                 "won't see wins or losses coming"));
+            TEXT("ConnectIt_MinMaxRules: the match's rule set is missing a "
+                 "rule (scoring %s, win condition %s, placement %s) -- the AI "
+                 "will play as if that rule did nothing"),
+            ScoringRule ? TEXT("ok") : TEXT("MISSING"),
+            WinCondition ? TEXT("ok") : TEXT("MISSING"),
+            TilePlaceableRule ? TEXT("ok") : TEXT("MISSING"));
     }
 
     // Pointers into the arrays above -- stable, since this object is never
@@ -117,18 +126,22 @@ FConnectItMinMaxRules::FState FConnectItMinMaxRules::MakeRoot(
     FState Root;
     Root.Board = Board;
     Root.SideToMove = SideToMove;
+    // UI-only data the search never reads -- dropped so each node's board
+    // copy doesn't carry (and allocate) it
+    Root.Board.WinProgress.Empty();
     return Root;
 }
 
 void FConnectItMinMaxRules::GenerateMoves(const FState& State, TArray<FMove>& OutMoves) const
 {
-    // Same test the default placeable rule (UConnectIt_UnoccupiedTilePlaceableRule)
-    // makes: active and unoccupied. Checked by index -- no position lookups.
+    // The match's own placement rule, asked by tile index (no position
+    // lookups).
+    if (!TilePlaceableRule) return;
+
     const int32 NumTiles = State.Board.NumTiles();
     for (int32 Index = 0; Index < NumTiles; Index++)
     {
-        const FConnectItTileData& Tile = State.Board.GetTileDataAt(Index);
-        if (Tile.bIsActive && !Tile.bIsOccupied)
+        if (TilePlaceableRule->IsTilePlaceable(State.Board, Index))
         {
             OutMoves.Add({ Index, State.Board.GetPositionAt(Index) });
         }
@@ -139,13 +152,16 @@ FConnectItMinMaxRules::FState FConnectItMinMaxRules::ApplyMove(
     const FState& State, const FMove& Move) const
 {
     // Mirrors UConnectIt_BoardRequestMediator::HandlePlacePieceRequest:
-    // place the piece, then score from the placed position.
+    // place the piece, then run the match's scoring rule from the placed
+    // position.
     FState Child = State;
     Child.Board.TileDataArray[Move.TileIndex].SetFactionPiece(State.SideToMove);
 
-    TArray<FGridPosition> ScoringPositions; // visuals-only output, unused here
-    UConnectIt_LineScoringRule::ApplyLineScoring(
-        Child.Board, Move.Position, State.SideToMove, ConnectLength, ScoringPositions);
+    if (ScoringRule)
+    {
+        TArray<FGridPosition> ScoringPositions; // visuals-only output, unused here
+        ScoringRule->ApplyScoring(Child.Board, Move.Position, State.SideToMove, ScoringPositions);
+    }
 
     Child.SideToMove = Opponent(State.SideToMove);
     return Child;
@@ -153,13 +169,13 @@ FConnectItMinMaxRules::FState FConnectItMinMaxRules::ApplyMove(
 
 bool FConnectItMinMaxRules::IsTerminalState(const FState& State) const
 {
-    return WinCheck.IsValid() && WinCheck->GetWinningFaction(State.Board) != INDEX_NONE;
+    return WinCondition && WinCondition->GetWinningFaction(State.Board) != INDEX_NONE;
 }
 
 int32 FConnectItMinMaxRules::EvaluateTerminalState(const FState& State, int32 Ply) const
 {
-    const int32 Winner = WinCheck.IsValid()
-        ? WinCheck->GetWinningFaction(State.Board)
+    const int32 Winner = WinCondition
+        ? WinCondition->GetWinningFaction(State.Board)
         : INDEX_NONE;
 
     if (Winner == INDEX_NONE) return 0;

@@ -20,7 +20,8 @@ need to agree on it.
 ## What would answer it
 
 A design decision per mode, then expressing it as a rule the game and the AI share -- most likely through the win
-condition (`IConnectIt_WinCondition` + its `MakeSearchWinCheck`, so the search sees the same outcome).
+condition (`FConnectItWinCondition` in the match's `FConnectItRuleSet` -- since 2026-10-06 the game and the AI's
+search call the same rule struct, so one answer there covers both).
 
 ## Current thinking
 

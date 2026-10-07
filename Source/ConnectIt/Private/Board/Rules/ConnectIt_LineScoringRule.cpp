@@ -4,22 +4,11 @@
 #include "Board/Rules/ConnectIt_LineScoringRule.h"
 
 
-float UConnectIt_LineScoringRule::ApplyScoring_Implementation(
+float FConnectItScoringRule_Lines::ApplyScoring(
     FConnectItBoardState& MutableState,
     FGridPosition Position,
     int32 FactionSlot,
-    TArray<FGridPosition>& OutScoringPositions)
-{
-    return ApplyLineScoring(
-        MutableState, Position, FactionSlot, ConnectLength, OutScoringPositions);
-}
-
-float UConnectIt_LineScoringRule::ApplyLineScoring(
-    FConnectItBoardState& MutableState,
-    FGridPosition Position,
-    int32 FactionSlot,
-    int32 ConnectLength,
-    TArray<FGridPosition>& OutScoringPositions)
+    TArray<FGridPosition>& OutScoringPositions) const
 {
     TArray<TArray<FGridPosition>> ScoringLines =
         FindScoringLines(MutableState, Position, FactionSlot, ConnectLength);
@@ -49,7 +38,7 @@ float UConnectIt_LineScoringRule::ApplyLineScoring(
     return TotalPoints;
 }
 
-TArray<TArray<FGridPosition>> UConnectIt_LineScoringRule::FindScoringLines(
+TArray<TArray<FGridPosition>> FConnectItScoringRule_Lines::FindScoringLines(
     const FConnectItBoardState& State,
     FGridPosition Position,
     int32 FactionSlot,
@@ -95,7 +84,7 @@ TArray<TArray<FGridPosition>> UConnectIt_LineScoringRule::FindScoringLines(
     return ScoringLines;
 }
 
-float UConnectIt_LineScoringRule::ApplyScoringLine(
+float FConnectItScoringRule_Lines::ApplyScoringLine(
     FConnectItBoardState& MutableState,
     const TArray<FGridPosition>& Line,
     FGridPosition CompletingPosition,
@@ -126,7 +115,7 @@ float UConnectIt_LineScoringRule::ApplyScoringLine(
 }
 
 const TArray<FGridDirectionVector>&
-UConnectIt_LineScoringRule::GetScoringDirections()
+FConnectItScoringRule_Lines::GetScoringDirections()
 {
     static const TArray<FGridDirectionVector> Directions =
     {

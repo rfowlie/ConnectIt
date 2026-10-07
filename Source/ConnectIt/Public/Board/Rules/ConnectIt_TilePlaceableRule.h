@@ -3,37 +3,39 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "UObject/Interface.h"
 #include "ConnectIt_Structs.h"
-#include "GridMechanicsBaseStructs.h"
 #include "ConnectIt_TilePlaceableRule.generated.h"
 
-// This class does not need to be modified.
-UINTERFACE(Blueprintable, BlueprintType)
-class UConnectIt_TilePlaceableRule : public UInterface
+
+// Whether a piece may be placed on a tile. A plain, thread-safe rule struct
+// (see the note at the top of ConnectIt_ScoringRule.h).
+USTRUCT(BlueprintType)
+struct CONNECTIT_API FConnectItTilePlaceableRule
 {
     GENERATED_BODY()
+
+    virtual ~FConnectItTilePlaceableRule() = default;
+
+    // TileIndex is an index into Board.TileDataArray / TilePositions (always
+    // valid when called). By index, not position, because position lookups
+    // are linear and the AI's search asks this for every tile of every
+    // position it considers; FConnectItRuleSet::IsTilePlaceable resolves a
+    // position for callers that have one.
+    virtual bool IsTilePlaceable(const FConnectItBoardState& Board, int32 TileIndex) const
+    {
+        return false;
+    }
 };
 
-// Pluggable placement-validity strategy -- whether a piece may be placed at
-// Position at all, before any mutation happens. Assigned via
-// UConnectIt_BoardRules::TilePlaceableRule (TObjectPtr<UObject>, EditAnywhere
-// Instanced), mirroring IConnectIt_ScoringRule/IConnectIt_WinCondition's
-// precedent. UConnectIt_UnoccupiedTilePlaceableRule (active-and-unoccupied,
-// today's previously-hardcoded behaviour) is the default implementation;
-// other reasons a tile can't be placed on (e.g. reserved for a different
-// faction, temporarily locked) can be added as new implementers without
-// touching UConnectIt_BoardRequestMediator.
-class CONNECTIT_API IConnectIt_TilePlaceableRule
+// The classic rule: the tile is active and has nothing on it.
+USTRUCT(BlueprintType, meta = (DisplayName = "Unoccupied"))
+struct CONNECTIT_API FConnectItTilePlaceableRule_Unoccupied : public FConnectItTilePlaceableRule
 {
     GENERATED_BODY()
 
-public:
-
-    // Read-only check against the board state as it stands before this
-    // placement -- implementations must not mutate State. Called from
-    // UConnectIt_BoardRequestMediator::HandlePlacePieceRequest before any
-    // tile data is written.
-    UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "ConnectIt|Placement")
-    bool IsTilePlaceable(const FConnectItBoardState& State, FGridPosition Position) const;
+    virtual bool IsTilePlaceable(const FConnectItBoardState& Board, int32 TileIndex) const override
+    {
+        const FConnectItTileData& Tile = Board.GetTileDataAt(TileIndex);
+        return Tile.bIsActive && !Tile.bIsOccupied;
+    }
 };

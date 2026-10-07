@@ -107,3 +107,24 @@ Modular per level, not a tile-carried power: a level lists a Crumble reaction to
 - Where the reaction fixpoint's depth cap is configured.
 - Whether the dormant `TurnBasedGameEventQueue`/`ExecuteGameEvents` scaffolding in the mediator is
   now redundant and can go.
+
+## Amendment (2026-10-06): everything here must be thread-safe plain C++
+
+Since this note was written the AI gained a background MinMax search, and on 10-06 the rules became plain thread-safe
+structs shared by the game and the search ([decision](../_decisions/2026-10-06-rules-are-thread-safe-structs.md),
+[note](rules-as-structs-and-shared-simulation.md)). The same applies to this design when it is built ("Phase B"):
+
+- **Request / move types, primitives, reactions and the pipeline are plain C++ (polymorphic structs or stateless
+  handlers), not UObjects** -- no BlueprintNativeEvents anywhere in the path. `Mediator::ProcessRequest` and the
+  search's `ApplyMove` then run the *same* pipeline: apply the move → score touched occupied positions
+  (`FConnectItRuleSet`) → reactions → win state. Today `FConnectItMinMaxRules::ApplyMove` re-implements place-piece
+  only; after Phase B it is "run the pipeline on a copy of the board".
+- **"How a move changes a board" belongs to the move type** (one per request type: place, swap, shift...), each with
+  validate + apply, used by both callers. The search's `FMove` becomes "request type + compact payload" rather than a
+  tile index.
+- **Hot-path constraints** (the search runs hundreds of thousands of positions per second): no per-node heap
+  allocation for moves (compact value payloads, stateless per-type handlers rather than an instanced object per move);
+  the step-list change event is an *optional* output -- the Mediator asks for it, the search passes null.
+- **Reactions** join `FConnectItRuleSet` as an ordered array of thread-safe structs.
+- **Phase C** (separate, exploratory -- the wishlist task): per-move-type *generation* for the AI, and a search that
+  understands multi-action turns and use budgets. Phase B makes it possible; it does not solve it.

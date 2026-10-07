@@ -1,7 +1,7 @@
 ---
 Date: 2026-09-24
-status: Active
-superseded by:
+status: Superseded (mechanism)
+superseded by: 2026-10-06-rules-are-thread-safe-structs
 tags:
   - ai
   - minmax
@@ -9,6 +9,9 @@ tags:
   - architecture
 ---
 ## Decision
+
+> **Mechanism superseded 2026-10-06:** rules are now thread-safe structs the game and the search share
+> directly -- see [2026-10-06-rules-are-thread-safe-structs](2026-10-06-rules-are-thread-safe-structs.md). The intent here stands.
 
 Classic MinMax's search node wraps a real `FConnectItBoardState` and simulates each candidate
 move by calling `UConnectIt_LineScoringRule::ApplyLineScoring` -- a new `public static` function

@@ -5,7 +5,6 @@
 #include "EngineUtils.h"
 #include "Board/ConnectIt_BoardRequestMediator.h"
 #include "Board/ConnectIt_BoardStateComponent.h"
-#include "Board/Rules/ConnectIt_BoardRules.h"
 #include "ConnectIt_GameplayTags.h"
 #include "Framework/Controller/ConnectIt_AIController.h"
 #include "Action/ActionLoadoutDataAsset.h"
@@ -114,41 +113,20 @@ void AConnectIt_GameMode::HandleMatchHasStarted()
             this, &AConnectIt_GameMode::HandleInvalidNumberOfPlayers);
     }
 
-    // Construct the server-only board objects -- NewObject here (not the
-    // constructor) so Blueprint-child property overrides on this GameMode
-    // are already applied by the time these read anything from it.
-    BoardRules = NewObject<UConnectIt_BoardRules>(this);
-
-    // Level-authored rule selection, if any -- both server and client
-    // resolve the same static asset independently (see GetLevelConfig);
-    // BoardRules->Initialise() below still defaults anything left unset.
-    if (const UConnectIt_LevelConfigDataAsset* LevelConfig =
-        UConnectIt_GameUtilityLibrary::GetLevelConfig(this))
-    {
-        // Per-match copies, never the asset's own instances: those are
-        // subobjects of a shared, loaded-once data asset, so changing one
-        // at runtime (e.g. a menu-chosen target score) would modify the
-        // asset itself and leak into the next match / PIE session. Same
-        // reason the registries and the AI strategy are duplicated.
-        auto DuplicateRule = [this](UObject* Template) -> UObject*
-        {
-            return IsValid(Template)
-                ? DuplicateObject<UObject>(Template, BoardRules)
-                : nullptr;
-        };
-        BoardRules->ScoringRule = DuplicateRule(LevelConfig->ScoringRule);
-        BoardRules->WinConditionRule = DuplicateRule(LevelConfig->WinConditionRule);
-        BoardRules->TilePlaceableRule = DuplicateRule(LevelConfig->TilePlaceableRule);
-    }
-    BoardRules->Initialise();
+    // This match's rules: a value copy of the level config's rule set (so
+    // per-match changes below never touch the asset), or the classic
+    // defaults if there is no level config.
+    const UConnectIt_LevelConfigDataAsset* RulesLevelConfig =
+        UConnectIt_GameUtilityLibrary::GetLevelConfig(this);
+    Rules = IsValid(RulesLevelConfig) ? RulesLevelConfig->Rules : FConnectItRuleSet();
 
     // Main-menu match setup for this level, if any -- applied to the
-    // per-match rule copies above, so the level config asset is untouched.
+    // per-match copy above, so the level config asset is untouched.
     FConnectItMatchSettings MatchSettings;
     if (UConnectIt_MatchSetupSubsystem::GetSettingsForCurrentLevel(this, MatchSettings)
         && MatchSettings.TargetScore > 0.f)
     {
-        if (BoardRules->SetTargetScore(MatchSettings.TargetScore))
+        if (Rules.SetTargetScore(MatchSettings.TargetScore))
         {
             UE_LOG(LogTemp, Log,
                 TEXT("ConnectIt_GameMode: target score %.0f from match setup"),
@@ -165,7 +143,7 @@ void AConnectIt_GameMode::HandleMatchHasStarted()
     }
 
     BoardRequestMediator = NewObject<UConnectIt_BoardRequestMediator>(this);
-    BoardRequestMediator->Initialise(BoardRules);
+    BoardRequestMediator->Initialise(&Rules);
 
     // Adventure mode -- spawn and register AI
     // Tiles have registered with subsystem by this point
@@ -243,9 +221,7 @@ void AConnectIt_GameMode::InitialiseBoard()
             GET_FUNCTION_NAME_CHECKED(AConnectIt_GameMode, HandleGameOver));
     }
 
-    const float InitialTargetScore = IsValid(BoardRules)
-        ? BoardRules->GetTargetScore()
-        : 0.f;
+    const float InitialTargetScore = Rules.GetTargetScore();
 
     // PieceRegistry param is still unused inside InitialiseBoardState's body
     // (confirmed) -- passed through anyway now that a real one is available,

@@ -3,50 +3,44 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "UObject/Interface.h"
 #include "ConnectIt_Structs.h"
 #include "GridMechanicsBaseStructs.h"
 #include "ConnectIt_ScoringRule.generated.h"
 
-// This class does not need to be modified.
-UINTERFACE(Blueprintable, BlueprintType)
-class UConnectIt_ScoringRule : public UInterface
+
+// --- How the board's rules are built (applies to every rule struct) ---------
+// Rules are plain polymorphic structs, held in a FConnectItRuleSet and picked /
+// configured per level in the Details panel. They are deliberately NOT
+// UObjects or Blueprint interfaces: the real game (the server's Mediator) and
+// the AI's background search both call the very same rule, so a rule must be
+// safe to call from any thread --
+//   * a pure function of its inputs (the board it is handed + its own
+//     properties),
+//   * no UObject references, no mutable state.
+// New kinds of rule are new C++ structs deriving from the bases.
+// ----------------------------------------------------------------------------
+
+
+// What scores, and how the board changes as a result, after a piece has
+// arrived on a tile.
+USTRUCT(BlueprintType)
+struct CONNECTIT_API FConnectItScoringRule
 {
     GENERATED_BODY()
-};
 
-// Pluggable board-scoring strategy -- how a just-placed piece scores, and
-// how the board mutates as a result. Assigned via UConnectIt_BoardRules::
-// ScoringRule (TObjectPtr<UObject>, EditAnywhere Instanced, MustImplement).
-// UConnectIt_LineScoringRule is the default implementation (N-in-a-row);
-// other shapes (e.g. matching a fixed pattern instead of a line) can be
-// added as new implementers without touching UConnectIt_BoardRequestMediator.
-class CONNECTIT_API IConnectIt_ScoringRule
-{
-    GENERATED_BODY()
+    virtual ~FConnectItScoringRule() = default;
 
-public:
-
-    // Called after FactionSlot's piece has already been written into
-    // MutableState at Position. Implementations mutate MutableState with any
-    // further scoring consequences (clearing tiles, incrementing
-    // multipliers, updating ScoreBoard) and return the total points awarded
-    // for this placement (0 if none). OutScoringPositions is appended with
-    // every tile that was part of a completed line (left untouched if
-    // nothing scored) -- the caller starts it empties each call.
-    UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "ConnectIt|Scoring")
-    float ApplyScoring(
-        UPARAM(ref) FConnectItBoardState& MutableState,
+    // Faction now has a piece on Position (placed, swapped in, shifted in,
+    // captured...). Apply any scoring to Board -- its ScoreBoard, and whatever
+    // else scoring does to tiles and pieces -- and return the points scored.
+    // OutScoringPositions gets every tile that took part (for visuals); left
+    // untouched if nothing scored.
+    virtual float ApplyScoring(
+        FConnectItBoardState& Board,
         FGridPosition Position,
-        int32 FactionSlot,
-        UPARAM(ref) TArray<FGridPosition>& OutScoringPositions);
-
-    // Minimum tiles-in-a-line this rule needs to score, for callers that must
-    // know it without applying a real move -- e.g. the Classic MinMax AI's
-    // search, which needs the same length the real rule uses. 0 means "not
-    // line-based, or this rule doesn't report one." Mirrors GetTargetScore's
-    // role on IConnectIt_WinCondition. Default implementation returns 0;
-    // line-based rules override it.
-    UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "ConnectIt|Scoring")
-    int32 GetMinimumConnectLength() const;
+        int32 Faction,
+        TArray<FGridPosition>& OutScoringPositions) const
+    {
+        return 0.f;
+    }
 };

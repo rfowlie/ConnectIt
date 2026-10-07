@@ -4,9 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "Engine/DataAsset.h"
-#include "Board/Rules/ConnectIt_ScoringRule.h"
-#include "Board/Rules/ConnectIt_TilePlaceableRule.h"
-#include "Board/Rules/ConnectIt_WinCondition.h"
+#include "Board/Rules/ConnectIt_RuleSet.h"
 #include "ConnectIt_LevelConfigDataAsset.generated.h"
 
 class UActionLoadoutDataAsset;
@@ -55,29 +53,14 @@ public:
     int32 PiecePoolInitialSize = 32;
 
     // --- Rules ---
-    // Designer-selectable concrete subclass per level -- replaces the
-    // equivalent Instanced selection that used to live on the placed
-    // UConnectIt_BoardRulesComponent instance.
-
-    // TObjectPtr<UObject> + Instanced + MustImplement (not TScriptInterface
-    // -- Instanced only drives the inline class-pick/edit Details-panel
-    // behaviour on an FObjectProperty, which TScriptInterface's
-    // FInterfaceProperty is not).
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Instanced, Category = "ConnectIt|Rules",
-        meta = (MustImplement = "/Script/ConnectIt.ConnectIt_ScoringRule"))
-    TObjectPtr<UObject> ScoringRule;
-
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Instanced, Category = "ConnectIt|Rules",
-        meta = (MustImplement = "/Script/ConnectIt.ConnectIt_WinCondition"))
-    TObjectPtr<UObject> WinConditionRule;
-
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Instanced, Category = "ConnectIt|Rules",
-        meta = (MustImplement = "/Script/ConnectIt.ConnectIt_TilePlaceableRule"))
-    TObjectPtr<UObject> TilePlaceableRule;
+    // How this level scores, is won, and where pieces may go: pick each
+    // rule's type and set its values. The GameMode plays each match on its
+    // own copy (so e.g. a menu-chosen target score never touches this asset).
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "ConnectIt|Rules")
+    FConnectItRuleSet Rules;
 
     // --- Board Registries ---
-    // Instanced concrete-class UObject polymorphism, same shape as the rules
-    // above but typed directly to a concrete registry base rather than an
+    // Instanced concrete-class UObject polymorphism, typed directly to a concrete registry base rather than an
     // interface -- a designer picks a whole UConnectIt_TileRegistry/
     // UConnectIt_PieceRegistry subclass with its own inline-editable
     // sub-properties, the same pattern ABoardManagerBase used to expose

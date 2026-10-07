@@ -10,10 +10,10 @@
 
 class UConnectIt_PlacePieceGameEvent;
 class UTurnBasedGameEvent;
-class UConnectIt_BoardRules;
+struct FConnectItRuleSet;
 class UConnectIt_BoardStateComponent;
 
-// TODO: should adjsut this to listen to server player controller broadcasts
+// TODO: should adjust this to listen to server player controller broadcasts
 // that way the flow is the player broadcasts a request instead of reaching into here force the request...
 
 // Accepts and dispatches board-change requests -- the server-only successor
@@ -39,7 +39,9 @@ class CONNECTIT_API UConnectIt_BoardRequestMediator : public UObject
 public:
 
     // Called once by AConnectIt_GameMode right after construction.
-    void Initialise(UConnectIt_BoardRules* InBoardRules);
+    // InRules is the GameMode's per-match rule set; it outlives this object
+    // (the GameMode owns both).
+    void Initialise(const FConnectItRuleSet* InRules);
     
     // Entry point for all board change requests -- see
     // AConnectIt_GameMode::ProcessBoardRequest, the only intended caller.
@@ -79,8 +81,7 @@ private:
     // rather than repeating GetWorld()->GetGameState<>() at each call site.
     // UConnectIt_BoardStateComponent* GetBoardState() const;
 
-    UPROPERTY()
-    TObjectPtr<UConnectIt_BoardRules> BoardRules = nullptr;
+    const FConnectItRuleSet* Rules = nullptr;
 
     // --- Request Handlers ---
     // FactionID is passed separately rather than living on each payload
@@ -109,8 +110,8 @@ private:
     // still have SWAP uses remaining (UConnectIt_GameUtilityLibrary::
     // GetPlayerStateForFaction, server-authoritative -- the client-side
     // action's own pre-checks are cosmetic only). Re-runs
-    // IConnectIt_ScoringRule::ApplyScoring once per swapped position (its
-    // new occupying faction) and IConnectIt_WinCondition::CheckWinCondition
+    // the scoring rule (FConnectItRuleSet::ApplyScoring) once per swapped position (its
+    // new occupying faction) and FConnectItRuleSet::StampWinState
     // once, same as HandleCapturePieceRequest -- a swap that completes a
     // line scores like any other turn-ending move.
     bool HandleSwapPiecesRequest(const FConnectItRequestSwapPieces& Request, int32 FactionID) const;

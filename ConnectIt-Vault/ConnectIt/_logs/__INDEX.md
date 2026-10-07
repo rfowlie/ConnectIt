@@ -6,6 +6,12 @@ Vault-wide passes go in `_core/_logs/`.
 
 Newest first:
 
+- [2026-10-06-2300](2026-10-06-2300.md) — session — design note, question and task for rules that change mid-level (rotating
+  scoring axis); no code.
+
+- [2026-10-06-2210](2026-10-06-2210.md) — session — rules became thread-safe structs in one `FConnectItRuleSet` shared by the game
+  and the AI search (interfaces + `UConnectIt_BoardRules` removed); Phase B (moves/pipeline) written up.
+
 - [2026-10-04-1700](2026-10-04-1700.md) — session — MinMax win detection now comes from the level's win condition;
   terminal vs unfinished scoring split; full-board question filed.
 

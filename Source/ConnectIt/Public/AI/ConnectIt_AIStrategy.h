@@ -7,7 +7,7 @@
 #include "GameplayTagContainer.h"
 #include "StructUtils/InstancedStruct.h"
 #include "ConnectIt_Structs.h"
-#include "Board/Rules/ConnectIt_WinCondition.h"
+#include "Board/Rules/ConnectIt_RuleSet.h"
 #include "ConnectIt_AIStrategy.generated.h"
 
 class AConnectIt_AIController;
@@ -28,19 +28,12 @@ struct FConnectItAIDecisionContext
     UPROPERTY(BlueprintReadOnly, Category = "AI")
     int32 OwnSlot = INDEX_NONE;
 
-    // From the level's scoring rule (UConnectIt_BoardRules::GetMinimumConnectLength)
+    // This match's rules -- a copy of the GameMode's rule set (scoring, win
+    // condition, placement), including any per-match changes such as a
+    // menu-chosen target score. Plain thread-safe data: a strategy may hand
+    // it to a background search as is.
     UPROPERTY(BlueprintReadOnly, Category = "AI")
-    int32 ConnectLength = 4;
-
-    // From the level's win condition; 0 = not score-based. Information for
-    // strategies -- searches should use WinCheck to detect wins.
-    UPROPERTY(BlueprintReadOnly, Category = "AI")
-    float WinScoreThreshold = 0.f;
-
-    // C++ only: the level's win condition as a thread-safe test (see
-    // IConnectIt_WinCondition::MakeSearchWinCheck). Null = this win condition
-    // can't be tested off the game thread.
-    TSharedPtr<const FConnectItWinCheck, ESPMode::ThreadSafe> WinCheck;
+    FConnectItRuleSet Rules;
 };
 
 // What a strategy decided: one board-change request, without the parts the

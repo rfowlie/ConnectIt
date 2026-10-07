@@ -1,13 +1,16 @@
 ---
 Date: 2026-10-04
-status: Active
-superseded by:
+status: Superseded (mechanism)
+superseded by: 2026-10-06-rules-are-thread-safe-structs
 tags:
   - ai
   - minmax
   - rules
 ---
 ## Decision
+
+> **Mechanism superseded 2026-10-06:** rules are now thread-safe structs the game and the search share
+> directly -- see [2026-10-06-rules-are-thread-safe-structs](2026-10-06-rules-are-thread-safe-structs.md). The intent here stands.
 
 The MinMax search learns **when the game is over and who won from the level's own win condition**, not from a
 hardcoded score threshold and not from a designer evaluation term. `IConnectIt_WinCondition` gained a C++-only

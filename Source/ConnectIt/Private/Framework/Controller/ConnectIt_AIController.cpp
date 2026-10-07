@@ -6,7 +6,7 @@
 #include "Framework/PlayerState/TurnBasedPlayerState.h"
 #include "Framework/GameState/TurnBasedGameState.h"
 #include "Board/ConnectIt_BoardStateComponent.h"
-#include "Board/Rules/ConnectIt_BoardRules.h"
+#include "Board/Rules/ConnectIt_RuleSet.h"
 #include "Action/ActionLoadoutDataAsset.h"
 #include "Action/TurnBasedAction.h"
 #include "Turn/Participant/TurnBasedParticipantComponent.h"
@@ -279,44 +279,25 @@ void AConnectIt_AIController::BeginDecision()
         return;
     }
 
-    UConnectIt_BoardRules* BoardRules = GameMode->GetBoardRules();
     const UConnectIt_BoardStateComponent* BoardState =
         UConnectIt_GameUtilityLibrary::GetBoardStateComponent(this);
     const ATurnBasedPlayerState* PS = GetPlayerState<ATurnBasedPlayerState>();
 
-    if (!IsValid(BoardRules) || !IsValid(BoardState) || !IsValid(PS))
+    if (!IsValid(BoardState) || !IsValid(PS))
     {
         UE_LOG(LogTemp, Error,
-            TEXT("ConnectIt_AIController: BeginDecision -- BoardRules, "
-                 "BoardStateComponent, or PlayerState is null, cannot decide"));
+            TEXT("ConnectIt_AIController: BeginDecision -- BoardStateComponent "
+                 "or PlayerState is null, cannot decide"));
         return;
     }
 
-    // Rules are read here, on the game thread, and handed to the strategy as
-    // plain values -- a strategy that searches off the game thread never
-    // has to touch a rule UObject.
+    // The board and the match's rules are copied here, on the game thread.
+    // Both are plain data, so a strategy that searches off the game thread
+    // can use them directly -- the same rule code the Mediator runs.
     FConnectItAIDecisionContext Context;
     Context.Board = BoardState->GetCurrentState();
     Context.OwnSlot = PS->GetSlotIndex();
-    Context.WinScoreThreshold = BoardRules->GetTargetScore();
-    Context.WinCheck = BoardRules->MakeSearchWinCheck();
-    if (!Context.WinCheck.IsValid())
-    {
-        UE_LOG(LogTemp, Warning,
-            TEXT("ConnectIt_AIController: the level's win condition provides no "
-                 "search win check (Blueprint, or MakeSearchWinCheck not "
-                 "implemented) -- the AI won't see wins coming"));
-    }
-    Context.ConnectLength = BoardRules->GetMinimumConnectLength();
-    if (Context.ConnectLength <= 0)
-    {
-        UE_LOG(LogTemp, Warning,
-            TEXT("ConnectIt_AIController: active ScoringRule doesn't report a "
-                 "connect length (not UConnectIt_LineScoringRule, or a "
-                 "Blueprint override) -- defaulting to 4. The AI may disagree "
-                 "with this level's real scoring."));
-        Context.ConnectLength = 4;
-    }
+    Context.Rules = GameMode->GetRules();
 
     ++CurrentDecisionId;
     DecisionTurnNumber = GameState->GetActiveTurnNumber();

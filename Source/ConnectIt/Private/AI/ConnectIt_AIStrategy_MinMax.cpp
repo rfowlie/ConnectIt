@@ -42,8 +42,7 @@ void UConnectIt_AIStrategy_MinMax::BeginDecision_Implementation(
     const TSharedRef<const FConnectItMinMaxRules, ESPMode::ThreadSafe> Rules =
         MakeShared<const FConnectItMinMaxRules, ESPMode::ThreadSafe>(
             Context.Board,
-            Context.ConnectLength,
-            Context.WinCheck,
+            Context.Rules,
             EvaluationTerms,
             OrderingTerms);
     

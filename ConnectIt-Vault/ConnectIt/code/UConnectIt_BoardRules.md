@@ -15,7 +15,15 @@ reconciled: 2026-09-14
 commit: 5047e21
 ---
 
-# UConnectIt_BoardRules (+ scoring / win-condition / placement strategies)
+# UConnectIt_BoardRules (removed 2026-10-06)
+
+> **Removed.** Replaced by the plain struct `FConnectItRuleSet` (`Board/Rules/ConnectIt_RuleSet.h`) holding
+> `FConnectItScoringRule` / `FConnectItWinCondition` / `FConnectItTilePlaceableRule` structs; the interfaces and
+> UObject rule classes described below no longer exist. See
+> [the decision](../_decisions/2026-10-06-rules-are-thread-safe-structs.md). This page is kept as history until
+> `/process-code` replaces it.
+
+# (historical) UConnectIt_BoardRules (+ scoring / win-condition / placement strategies)
 
 `UObject`, **server-only**, on [[AConnectIt_GameMode|AConnectIt_GameMode]].
 Holds the board's three **pluggable strategies** — an `IConnectIt_ScoringRule`, an

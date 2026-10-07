@@ -4,7 +4,7 @@
 #include "MinMax/ConnectIt_MinMaxRules.h"
 #include "AI/ConnectIt_AIStrategy_MinMax.h"
 #include "ConnectIt_MinMaxTestTerms.h"
-#include "Board/Rules/ConnectIt_ScoreThresholdWinCondition.h"
+#include "Board/Rules/ConnectIt_RuleSet.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
 
@@ -57,21 +57,13 @@ namespace ConnectItMinMaxTests
         return GetDefault<UConnectIt_AIStrategy_MinMax>()->OrderingTerms;
     }
 
-    // The default win condition's search check at Threshold
-    TSharedPtr<const FConnectItWinCheck, ESPMode::ThreadSafe> ScoreWin(float Threshold)
+    // The classic rule set (lines of 4, unoccupied tiles) won at Threshold
+    FConnectItRuleSet RulesWonAt(float Threshold)
     {
-        return MakeShared<const FConnectItScoreThresholdWinCheck, ESPMode::ThreadSafe>(Threshold);
+        FConnectItRuleSet Rules;
+        Rules.SetTargetScore(Threshold);
+        return Rules;
     }
-
-    // A non-score win condition: whoever owns the (0,0) corner has won
-    struct FCornerWinCheck final : public FConnectItWinCheck
-    {
-        virtual int32 GetWinningFaction(const FConnectItBoardState& Board) const override
-        {
-            const FConnectItTileData* Corner = Board.GetTileData(FGridPosition(0, 0));
-            return Corner && Corner->FactionPiece != -1 ? Corner->FactionPiece : INDEX_NONE;
-        }
-    };
 
     bool IsPosition(const FConnectItMinMaxRules::FMove& Move, int32 X, int32 Y)
     {
@@ -96,7 +88,7 @@ bool FConnectItMinMaxTakesWinTest::RunTest(const FString& Parameters)
     Place(Board, 0, 6, 1);
     Place(Board, 6, 6, 1);
 
-    const FConnectItMinMaxRules Rules(Board, 4, ScoreWin(4.f), DefaultEvaluationTerms(), DefaultOrderingTerms());
+    const FConnectItMinMaxRules Rules(Board, RulesWonAt(4.f), DefaultEvaluationTerms(), DefaultOrderingTerms());
     const auto Root = Rules.MakeRoot(Board, 0);
     const auto Result = FConnectItMinMaxSearch::Run(Rules, Root, Depth(3));
 
@@ -121,7 +113,7 @@ bool FConnectItMinMaxBlocksLossTest::RunTest(const FString& Parameters)
     Place(Board, 2, 1, 1);
     Place(Board, 6, 6, 0);
 
-    const FConnectItMinMaxRules Rules(Board, 4, ScoreWin(4.f), DefaultEvaluationTerms(), DefaultOrderingTerms());
+    const FConnectItMinMaxRules Rules(Board, RulesWonAt(4.f), DefaultEvaluationTerms(), DefaultOrderingTerms());
     const auto Root = Rules.MakeRoot(Board, 0);
     const auto Result = FConnectItMinMaxSearch::Run(Rules, Root, Depth(2));
 
@@ -144,7 +136,7 @@ bool FConnectItMinMaxLegalMovesTest::RunTest(const FString& Parameters)
     // A non-faction blocker: occupied, but nobody's piece
     Board.GetTileDataMutable(FGridPosition(4, 0))->bIsOccupied = true;
 
-    const FConnectItMinMaxRules Rules(Board, 4, ScoreWin(100.f), DefaultEvaluationTerms(), DefaultOrderingTerms());
+    const FConnectItMinMaxRules Rules(Board, RulesWonAt(100.f), DefaultEvaluationTerms(), DefaultOrderingTerms());
     const auto Root = Rules.MakeRoot(Board, 1);
     const auto Result = FConnectItMinMaxSearch::Run(Rules, Root, Depth(2));
 
@@ -167,7 +159,7 @@ bool FConnectItMinMaxRootSideTest::RunTest(const FString& Parameters)
     // Regression for the 09-24 off-by-one: the root's moves must place the
     // searcher's own piece, and the turn then passes to the other faction.
     const FConnectItBoardState Board = MakeBoard(5);
-    const FConnectItMinMaxRules Rules(Board, 4, ScoreWin(100.f), DefaultEvaluationTerms(), DefaultOrderingTerms());
+    const FConnectItMinMaxRules Rules(Board, RulesWonAt(100.f), DefaultEvaluationTerms(), DefaultOrderingTerms());
     const auto Root = Rules.MakeRoot(Board, 1);
 
     TArray<FConnectItMinMaxRules::FMove> Moves;
@@ -186,7 +178,7 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(FConnectItMinMaxCancelTest,
 
 bool FConnectItMinMaxCancelTest::RunTest(const FString& Parameters)
 {
-    const FConnectItMinMaxRules Rules(MakeBoard(7), 4, ScoreWin(100.f), DefaultEvaluationTerms(), DefaultOrderingTerms());
+    const FConnectItMinMaxRules Rules(MakeBoard(7), RulesWonAt(100.f), DefaultEvaluationTerms(), DefaultOrderingTerms());
     const auto Root = Rules.MakeRoot(MakeBoard(7), 0);
 
     std::atomic<bool> Cancelled(true);
@@ -215,7 +207,7 @@ bool FConnectItMinMaxThroughputTest::RunTest(const FString& Parameters)
     Place(Board, 2, 2, 0);
     Place(Board, 4, 4, 1);
 
-    const FConnectItMinMaxRules Rules(Board, 4, ScoreWin(100.f), DefaultEvaluationTerms(), DefaultOrderingTerms());
+    const FConnectItMinMaxRules Rules(Board, RulesWonAt(100.f), DefaultEvaluationTerms(), DefaultOrderingTerms());
     const auto Root = Rules.MakeRoot(Board, 0);
 
     FParams Params;
@@ -245,8 +237,8 @@ bool FConnectItMinMaxTermsDriveChoiceTest::RunTest(const FString& Parameters)
     TArray<TInstancedStruct<FConnectItMinMaxEvalTerm>> CornerOnly;
     CornerOnly.Add(TInstancedStruct<FConnectItMinMaxEvalTerm>::Make<FConnectItMinMaxEvalTerm_TestCorner>());
 
-    const FConnectItMinMaxRules Defaults(Board, 4, ScoreWin(100.f), DefaultEvaluationTerms(), DefaultOrderingTerms());
-    const FConnectItMinMaxRules Corner(Board, 4, ScoreWin(100.f), CornerOnly, DefaultOrderingTerms());
+    const FConnectItMinMaxRules Defaults(Board, RulesWonAt(100.f), DefaultEvaluationTerms(), DefaultOrderingTerms());
+    const FConnectItMinMaxRules Corner(Board, RulesWonAt(100.f), CornerOnly, DefaultOrderingTerms());
 
     const auto DefaultResult = FConnectItMinMaxSearch::Run(Defaults, Defaults.MakeRoot(Board, 0), Depth(1));
     const auto CornerResult = FConnectItMinMaxSearch::Run(Corner, Corner.MakeRoot(Board, 0), Depth(1));
@@ -266,12 +258,15 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(FConnectItMinMaxWinConditionTest,
 
 bool FConnectItMinMaxWinConditionTest::RunTest(const FString& Parameters)
 {
-    // A win condition the search knows nothing about (not score-based):
-    // plugged in through FConnectItWinCheck, the AI goes for it with no AI
+    // A win condition the search knows nothing about (not score-based): set
+    // on the rule set like a designer would, the AI goes for it with no AI
     // changes -- and scores it as a win, not via the evaluation terms.
     const FConnectItBoardState Board = MakeBoard(5);
-    const FConnectItMinMaxRules Rules(Board, 4,
-        MakeShared<const FCornerWinCheck, ESPMode::ThreadSafe>(),
+    FConnectItRuleSet CornerRules;
+    CornerRules.WinCondition =
+        TInstancedStruct<FConnectItWinCondition>::Make<FConnectItWinCondition_TestCorner>();
+
+    const FConnectItMinMaxRules Rules(Board, CornerRules,
         DefaultEvaluationTerms(), DefaultOrderingTerms());
 
     const auto Result = FConnectItMinMaxSearch::Run(Rules, Rules.MakeRoot(Board, 0), Depth(2));
@@ -280,6 +275,46 @@ bool FConnectItMinMaxWinConditionTest::RunTest(const FString& Parameters)
     TestTrue(TEXT("the AI takes the winning corner"), IsPosition(Result.RootScores[0].Move, 0, 0));
     TestTrue(TEXT("and scores it as a win"),
         Result.RootScores[0].Score > FConnectItMinMaxRules::WinValue / 2);
+    return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FConnectItMinMaxSameRulesTest,
+    "ConnectIt.AI.MinMax.RuleSetScoresLikeTheGame", TestFlags)
+
+bool FConnectItMinMaxSameRulesTest::RunTest(const FString& Parameters)
+{
+    // The 4th piece of a line, applied two ways: the way the server's
+    // Mediator does it (place, then FConnectItRuleSet::ApplyScoring) and
+    // through the search's ApplyMove. Same rule code, so the same board.
+    FConnectItBoardState Board = MakeBoard(7);
+    Place(Board, 3, 0, 0);
+    Place(Board, 3, 1, 0);
+    Place(Board, 3, 2, 0);
+
+    const FConnectItRuleSet RuleSet = RulesWonAt(100.f);
+
+    FConnectItBoardState GameBoard = Board;
+    Place(GameBoard, 3, 3, 0);
+    TArray<FGridPosition> ScoringPositions;
+    const float Points = RuleSet.ApplyScoring(GameBoard, FGridPosition(3, 3), 0, ScoringPositions);
+
+    const FConnectItMinMaxRules Rules(Board, RuleSet, DefaultEvaluationTerms(), DefaultOrderingTerms());
+    const auto Root = Rules.MakeRoot(Board, 0);
+    const int32 TileIndex = Board.TilePositions.IndexOfByKey(FGridPosition(3, 3));
+    const auto Child = Rules.ApplyMove(Root, { TileIndex, FGridPosition(3, 3) });
+
+    TestEqual(TEXT("the game scored the line (4 tiles x multiplier 1)"), Points, 4.f);
+    TestEqual(TEXT("same score"), Child.Board.GetScore(0), GameBoard.GetScore(0));
+
+    bool bSameTiles = Child.Board.NumTiles() == GameBoard.NumTiles();
+    for (int32 Index = 0; bSameTiles && Index < GameBoard.NumTiles(); Index++)
+    {
+        const FConnectItTileData& A = GameBoard.GetTileDataAt(Index);
+        const FConnectItTileData& B = Child.Board.GetTileDataAt(Index);
+        bSameTiles = A.FactionPiece == B.FactionPiece && A.Multiplier == B.Multiplier
+            && A.bIsOccupied == B.bIsOccupied && A.bIsActive == B.bIsActive;
+    }
+    TestTrue(TEXT("same pieces and multipliers on every tile"), bSameTiles);
     return true;
 }
 
