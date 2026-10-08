@@ -8,6 +8,7 @@
 #include "Framework/GameState/TurnBasedGameState.h"
 #include "Board/ConnectIt_BoardStateComponent.h"
 #include "Board/Rules/ConnectIt_RuleSet.h"
+#include "Board/Operations/ConnectIt_BoardOperation.h"
 #include "Action/ActionLoadoutDataAsset.h"
 #include "Action/TurnBasedAction.h"
 #include "Turn/Participant/TurnBasedParticipantComponent.h"
@@ -393,16 +394,27 @@ void AConnectIt_AIController::SubmitDecision(int32 DecisionId, FConnectItAIDecis
         return;
     }
 
+    // What kind of request this is comes from the decision's operation
+    const FConnectItBoardOperation* DecidedOperation = Decision.Payload.GetPtr<FConnectItBoardOperation>();
+    if (!DecidedOperation)
+    {
+        UE_LOG(LogTemp, Error,
+            TEXT("ConnectIt_AIController: SubmitDecision -- the decision's "
+                 "payload is not a board operation"));
+        return;
+    }
+    const FGameplayTag RequestType = DecidedOperation->GetRequestType();
+
     // Submit as the loadout action allowed to produce this request type --
     // found by asking each configured class, not by hardcoding a reference
     // (the class-keyed action-config convention: config references the
     // class, the tag is derived from it). The Mediator gate checks the same.
     TSubclassOf<UTurnBasedAction> ActionClass = nullptr;
-    auto ConsiderClass = [&ActionClass, &Decision](const TSubclassOf<UTurnBasedAction>& Candidate)
+    auto ConsiderClass = [&ActionClass, &RequestType](const TSubclassOf<UTurnBasedAction>& Candidate)
     {
         if (ActionClass || !Candidate) return;
         const UTurnBasedAction* CDO = Candidate->GetDefaultObject<UTurnBasedAction>();
-        if (IsValid(CDO) && CDO->ProducesRequestType(Decision.RequestType))
+        if (IsValid(CDO) && CDO->ProducesRequestType(RequestType))
         {
             ActionClass = Candidate;
         }
@@ -421,7 +433,7 @@ void AConnectIt_AIController::SubmitDecision(int32 DecisionId, FConnectItAIDecis
         UE_LOG(LogTemp, Error,
             TEXT("ConnectIt_AIController: SubmitDecision -- loadout '%s' has "
                  "no configured action that produces '%s' requests"),
-            *Loadout->LoadoutName, *Decision.RequestType.ToString());
+            *Loadout->LoadoutName, *RequestType.ToString());
         return;
     }
 
@@ -435,16 +447,14 @@ void AConnectIt_AIController::SubmitDecision(int32 DecisionId, FConnectItAIDecis
     }
 
     FTurnActionRequest Request;
-    Request.RequestType = Decision.RequestType;
     Request.ActionTag = UTurnBasedAction::GetTagForClass(ActionClass);
-    Request.FactionID = PS->GetSlotIndex();
     Request.Payload = Decision.Payload;
 
-    const bool bSucceeded = GameMode->ProcessBoardRequest(Request);
+    const bool bSucceeded = GameMode->ProcessBoardRequest(Request, PS->GetSlotIndex());
 
     UE_LOG(LogTemp, Log,
         TEXT("ConnectIt_AIController: '%s' as %s -- %s"),
-        *Decision.RequestType.ToString(), *ActionClass->GetName(),
+        *RequestType.ToString(), *ActionClass->GetName(),
         bSucceeded ? TEXT("accepted") : TEXT("REJECTED"));
 
     if (!bSucceeded)

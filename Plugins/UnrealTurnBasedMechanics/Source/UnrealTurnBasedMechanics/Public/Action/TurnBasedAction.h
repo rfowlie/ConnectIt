@@ -216,8 +216,11 @@ protected:
     void ClearSelectionState();
     virtual void ClearSelectionState_Implementation();
 
-    // Fires OnChangeRequested -- subclasses call from HandleValidSelection
-    void RequestBoardChange(const FTurnActionRequest& Request);
+    // Asks the server for a board change. Payload is the project's own struct
+    // describing the change; it is wrapped in a FTurnActionRequest stamped
+    // with this action's tag and sent on via OnChangeRequested. Subclasses
+    // call it from HandleValidSelection.
+    void RequestBoardChange(const FInstancedStruct& Payload);
 
     UPROPERTY(BlueprintReadOnly)
     TObjectPtr<AGridTileBase> CurrentHoveredTile = nullptr;

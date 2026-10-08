@@ -58,14 +58,29 @@ void UConnectIt_BoardRequestMediator::ExecuteGameEvents()
 
 // --- Request Processing ---
 
-bool UConnectIt_BoardRequestMediator::ProcessRequest(const FTurnActionRequest& Request)
+bool UConnectIt_BoardRequestMediator::ProcessRequest(const FTurnActionRequest& Request, int32 RequestingFaction)
 {
+    // The payload is the board change itself. It is client-supplied, so it
+    // must be an operation at all. What kind of request this is comes from
+    // the operation -- there is nowhere else for it to be stated.
+    const FConnectItBoardOperation* Requested = Request.Payload.GetPtr<FConnectItBoardOperation>();
+    if (!Requested)
+    {
+        UE_LOG(LogTemp, Warning,
+            TEXT("ConnectIt_BoardRequestMediator: request by action '%s' rejected "
+                 "-- its payload is missing or is not a board operation"),
+            *Request.ActionTag.ToString());
+        return false;
+    }
+    const FGameplayTag RequestType = Requested->GetRequestType();
+
     // Every board-change request is spent against an action in the requester's
     // loadout, and the requester's PlayerState holds the authoritative
     // per-action state. There is no ungated path: a player with no action
     // state (e.g. the PlayerState was never seeded) can do nothing.
-    AConnectIt_PlayerState* PlayerState = Request.FactionID >= 0
-        ? UConnectIt_GameUtilityLibrary::GetPlayerStateForFaction(this, Request.FactionID)
+    // RequestingFaction is the server's own knowledge of who sent this.
+    AConnectIt_PlayerState* PlayerState = RequestingFaction >= 0
+        ? UConnectIt_GameUtilityLibrary::GetPlayerStateForFaction(this, RequestingFaction)
         : nullptr;
 
     if (!IsValid(PlayerState) || !PlayerState->HasActionConfig())
@@ -74,13 +89,13 @@ bool UConnectIt_BoardRequestMediator::ProcessRequest(const FTurnActionRequest& R
             TEXT("ConnectIt_BoardRequestMediator: request '%s' rejected -- "
                  "faction %d has no action state (PlayerState missing, or not "
                  "seeded from a loadout with PermanentActions/NumberedActions)"),
-            *Request.RequestType.ToString(), Request.FactionID);
+            *RequestType.ToString(), RequestingFaction);
         return false;
     }
 
     // ActionTag is client-supplied: it must name an action in this player's
-    // loadout, that action must be allowed to produce this RequestType, and
-    // the player must currently be able to use it.
+    // loadout, that action must be allowed to send this kind of operation,
+    // and the player must currently be able to use it.
     const TSubclassOf<UTurnBasedAction> ActionClass =
         PlayerState->FindActionClassByTag(Request.ActionTag);
     if (!ActionClass)
@@ -88,18 +103,18 @@ bool UConnectIt_BoardRequestMediator::ProcessRequest(const FTurnActionRequest& R
         UE_LOG(LogTemp, Warning,
             TEXT("ConnectIt_BoardRequestMediator: request '%s' rejected -- "
                  "ActionTag '%s' is not in faction %d's loadout"),
-            *Request.RequestType.ToString(),
-            *Request.ActionTag.ToString(), Request.FactionID);
+            *RequestType.ToString(),
+            *Request.ActionTag.ToString(), RequestingFaction);
         return false;
     }
 
     const UTurnBasedAction* DefaultAction = ActionClass->GetDefaultObject<UTurnBasedAction>();
-    if (!IsValid(DefaultAction) || !DefaultAction->ProducesRequestType(Request.RequestType))
+    if (!IsValid(DefaultAction) || !DefaultAction->ProducesRequestType(RequestType))
     {
         UE_LOG(LogTemp, Warning,
             TEXT("ConnectIt_BoardRequestMediator: request '%s' rejected -- "
                  "action '%s' does not produce that request type"),
-            *Request.RequestType.ToString(), *ActionClass->GetName());
+            *RequestType.ToString(), *ActionClass->GetName());
         return false;
     }
 
@@ -109,12 +124,12 @@ bool UConnectIt_BoardRequestMediator::ProcessRequest(const FTurnActionRequest& R
             TEXT("ConnectIt_BoardRequestMediator: request '%s' rejected -- "
                  "faction %d cannot use '%s' right now (no uses left, "
                  "per-turn cap reached, or on cooldown)"),
-            *Request.RequestType.ToString(), Request.FactionID,
+            *RequestType.ToString(), RequestingFaction,
             *ActionClass->GetName());
         return false;
     }
 
-    const bool bSucceeded = DispatchRequest(Request);
+    const bool bSucceeded = DispatchRequest(Request.Payload, RequestingFaction);
 
     // Spend the use only once the change has actually been committed --
     // never burn one on a request rejected above or by its handler.
@@ -125,17 +140,17 @@ bool UConnectIt_BoardRequestMediator::ProcessRequest(const FTurnActionRequest& R
             UE_LOG(LogTemp, Error,
                 TEXT("ConnectIt_BoardRequestMediator: '%s' committed but its "
                      "use could not be consumed on faction %d"),
-                *ActionClass->GetName(), Request.FactionID);
+                *ActionClass->GetName(), RequestingFaction);
         }
     }
 
     return bSucceeded;
 }
 
-bool UConnectIt_BoardRequestMediator::DispatchRequest(const FTurnActionRequest& Request)
+bool UConnectIt_BoardRequestMediator::DispatchRequest(
+    const FInstancedStruct& Payload, int32 RequestingFaction)
 {
-    // UConnectIt_BoardStateComponent* BoardState = GetBoardState();
-    const UConnectIt_BoardStateComponent* BoardState = UConnectIt_GameUtilityLibrary::GetBoardStateComponent(this);
+    UConnectIt_BoardStateComponent* BoardState = UConnectIt_GameUtilityLibrary::GetBoardStateComponent(this);
     if (!IsValid(BoardState))
     {
         UE_LOG(LogTemp, Error,
@@ -147,7 +162,8 @@ bool UConnectIt_BoardRequestMediator::DispatchRequest(const FTurnActionRequest& 
     // Universal choke point regardless of caller (player-controller RPC or
     // AI controller's direct server-side call) -- once the game is over,
     // no further board mutation is possible, full stop.
-    if (BoardState->GetCurrentState().bGameOver)
+    const FConnectItBoardState& Current = BoardState->GetCurrentState();
+    if (Current.bGameOver)
     {
         UE_LOG(LogTemp, Warning,
             TEXT("ConnectIt_BoardRequestMediator: ProcessRequest rejected — "
@@ -155,46 +171,15 @@ bool UConnectIt_BoardRequestMediator::DispatchRequest(const FTurnActionRequest& 
         return false;
     }
 
-    if (!Request.IsValid())
-    {
-        UE_LOG(LogTemp, Warning,
-            TEXT("ConnectIt_BoardRequestMediator: Received invalid "
-                 "FTurnActionRequest"));
-        return false;
-    }
+    // Work on our own copy of the operation, made by the requester the
+    // server knows -- never by whoever the payload says
+    FInstancedStruct OperationStorage = Payload;
+    FConnectItBoardOperation* OperationPtr = OperationStorage.GetMutablePtr<FConnectItBoardOperation>();
+    if (!ensure(OperationPtr)) return false; // ProcessRequest checked this
+    FConnectItBoardOperation& Operation = *OperationPtr;
+    Operation.Faction = RequestingFaction;
 
-    // The payload is the board change itself. It is client-supplied, so:
-    // it must be an operation at all...
-    const FConnectItBoardOperation* Requested = Request.Payload.GetPtr<FConnectItBoardOperation>();
-    if (!Requested)
-    {
-        UE_LOG(LogTemp, Warning,
-            TEXT("ConnectIt_BoardRequestMediator: '%s' rejected -- the request's "
-                 "payload is missing or is not a board operation"),
-            *Request.RequestType.ToString());
-        return false;
-    }
-
-    // ...and of the kind the request claims. ProcessRequest's gate approved
-    // Request.RequestType for this player's action; without this check a
-    // request could name one type and carry another kind of operation.
-    if (Requested->GetRequestType() != Request.RequestType)
-    {
-        UE_LOG(LogTemp, Warning,
-            TEXT("ConnectIt_BoardRequestMediator: '%s' rejected -- its payload "
-                 "is a '%s' operation"),
-            *Request.RequestType.ToString(), *Requested->GetRequestType().ToString());
-        return false;
-    }
-
-    // Work on our own copy, made by the requester the server knows -- never
-    // by whoever the payload says
-    FInstancedStruct OperationStorage = Request.Payload;
-    FConnectItBoardOperation& Operation = OperationStorage.GetMutable<FConnectItBoardOperation>();
-    Operation.Faction = Request.FactionID;
-
-    UConnectIt_BoardStateComponent* MutableBoardState = UConnectIt_GameUtilityLibrary::GetBoardStateComponent(this);
-    const FConnectItBoardState& Current = MutableBoardState->GetCurrentState();
+    const FGameplayTag RequestType = Operation.GetRequestType();
 
     // May this be done to the board as it stands?
     FString WhyNot;
@@ -203,19 +188,19 @@ bool UConnectIt_BoardRequestMediator::DispatchRequest(const FTurnActionRequest& 
         UE_LOG(LogTemp, Warning,
             TEXT("ConnectIt_BoardRequestMediator: '%s' by faction %d rejected "
                  "-- %s"),
-            *Request.RequestType.ToString(), Operation.Faction, *WhyNot);
+            *RequestType.ToString(), Operation.Faction, *WhyNot);
         return false;
     }
 
     // What happened is recorded as an ordered list of board events (see
     // ConnectIt_BoardEvents.h) that replicates alongside the state itself via
-    // SetBoardState, instead of broadcasting gameplay delegates directly here. This only ever runs on the server, so a direct
-    // broadcast would never reach a real remote client.
-    // ConnectIt_BoardStateComponent reads the list back from its own
-    // BoardSnapshot.ChangeEvent and queues each event on
-    // UGameEventTaskSubsystem itself, symmetrically on both server (from
-    // SetBoardState) and client (from OnRep) -- this mediator plays no role
-    // in sequencing, only in deciding what happened, in what order.
+    // SetBoardState, instead of broadcasting gameplay delegates directly
+    // here. This only ever runs on the server, so a direct broadcast would
+    // never reach a real remote client. ConnectIt_BoardStateComponent reads
+    // the list back from its own BoardSnapshot.ChangeEvent and queues each
+    // event on UGameEventTaskSubsystem itself, symmetrically on both server
+    // (from SetBoardState) and client (from OnRep) -- this mediator plays no
+    // role in sequencing, only in deciding what happened, in what order.
     FConnectItBoardChangeEvent ChangeEvent;
 
     // The change itself: the operation only changes the board (and appends
@@ -242,8 +227,8 @@ bool UConnectIt_BoardRequestMediator::DispatchRequest(const FTurnActionRequest& 
 
     UE_LOG(LogTemp, Log,
         TEXT("ConnectIt_BoardRequestMediator: '%s' %s by faction %d (scored %.0f)"),
-        *Request.RequestType.ToString(), *Operation.Describe(), Operation.Faction, PointsScored);
+        *RequestType.ToString(), *Operation.Describe(), Operation.Faction, PointsScored);
 
-    MutableBoardState->SetBoardState(NewState, ChangeEvent);
+    BoardState->SetBoardState(NewState, ChangeEvent);
     return true;
 }

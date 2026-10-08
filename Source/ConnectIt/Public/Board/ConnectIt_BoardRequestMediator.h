@@ -28,7 +28,8 @@ class UConnectIt_BoardStateComponent;
 // It knows nothing about any particular kind of board change. A request's
 // payload IS the change -- a FConnectItBoardOperation (place this piece here,
 // swap these two...) -- and every request takes the same path:
-//   1. ProcessRequest: may this player's action send this request type now?
+//   1. ProcessRequest: may this player's action send this kind of operation
+//      now?
 //   2. DispatchRequest: the operation checks itself against the board
 //      (CanApply), changes a copy of it (Apply), the match's rule set
 //      resolves what follows (scoring, then win state), and the new board is
@@ -55,13 +56,15 @@ public:
 
     // Entry point for all board change requests -- see
     // AConnectIt_GameMode::ProcessBoardRequest, the only intended caller.
-    // Request.Payload must hold a FConnectItBoardOperation whose request type
-    // is Request.RequestType. Returns whether the request succeeded -- the
+    // Request.Payload must hold a FConnectItBoardOperation. RequestingFaction
+    // is who is asking, as the server knows it (the sending controller's
+    // PlayerState slot): a request doesn't say, and the operation's own
+    // Faction field is overwritten with it. Returns whether the request succeeded -- the
     // caller (AConnectIt_PlayerController) reports this back to the
     // requesting client via ClientNotifyBoardChangeOutcome so
     // UTurnBasedActionsComponent can resolve its awaiting-confirmation state.
     UFUNCTION(BlueprintCallable, Category = "ConnectIt|Board")
-    bool ProcessRequest(const FTurnActionRequest& Request);
+    bool ProcessRequest(const FTurnActionRequest& Request, int32 RequestingFaction);
 
 protected:
 
@@ -85,7 +88,7 @@ private:
     // wraps it with the per-action gate (can this player use this action
     // right now?) and the spend of that use once the change has been
     // committed.
-    bool DispatchRequest(const FTurnActionRequest& Request);
+    bool DispatchRequest(const FInstancedStruct& Payload, int32 RequestingFaction);
 
     // Board state lives on AConnectIt_GameState -- resolved through here
     // rather than repeating GetWorld()->GetGameState<>() at each call site.

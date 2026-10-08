@@ -48,20 +48,16 @@ struct FConnectItAIDecisionContext
     TObjectPtr<const UActionLoadoutDataAsset> OpponentLoadout;
 };
 
-// What a strategy decided: one board-change request, without the parts the
-// controller fills in (ActionTag, FactionID). The controller finds the
-// loadout action that produces RequestType and submits it as that action.
+// What a strategy decided: one board change. The controller finds the
+// loadout action allowed to send that kind of operation and submits it as
+// that action, as its own faction.
 USTRUCT(BlueprintType)
 struct FConnectItAIDecision
 {
     GENERATED_BODY()
 
-    // e.g. ConnectIt_Game_PlacePiece. Left empty = no move.
-    UPROPERTY(BlueprintReadWrite, Category = "AI")
-    FGameplayTag RequestType;
-
-    // The board change itself: a FConnectItBoardOperation of that type,
-    // e.g. FConnectItBoardOperation_PlacePiece
+    // The board change itself: a FConnectItBoardOperation, e.g.
+    // FConnectItBoardOperation_PlacePiece. Left empty = no move.
     UPROPERTY(BlueprintReadWrite, Category = "AI")
     FInstancedStruct Payload;
 
@@ -69,7 +65,7 @@ struct FConnectItAIDecision
     UPROPERTY(BlueprintReadWrite, Category = "AI")
     FString Summary;
 
-    bool HasMove() const { return RequestType.IsValid(); }
+    bool HasMove() const { return Payload.IsValid(); }
 };
 
 DECLARE_DELEGATE_OneParam(FOnConnectItAIDecisionFinished, const FConnectItAIDecision&);

@@ -124,30 +124,26 @@ void UConnectIt_PlacePieceAction::HandleValidSelection_Implementation(AGridTileB
     
     // Build the request -- board manager handles all mutation
     // Action has no knowledge of pools, piece actors, or state changes
-    // The request's payload is the board change itself (see
-    // FConnectItBoardOperation)
+    // The request IS the board change (see FConnectItBoardOperation).
+    // Faction is filled in for completeness and the log; the server sets it
+    // itself from whoever sent the request.
     FConnectItBoardOperation_PlacePiece Operation;
     Operation.Faction = GetOwningControllerFactionID();
     Operation.Position = Position;
-
-    FTurnActionRequest Request;
-    Request.RequestType = Operation.GetRequestType();
-    Request.FactionID = Operation.Faction;
-    Request.Payload = FInstancedStruct::Make(Operation);
 
     UE_LOG(LogTemp, Log,
         TEXT("PlacePieceAction: Selection confirmed at (%d,%d) "
              "faction %d — requesting board change"),
         Position.X,
         Position.Y,
-        Request.FactionID);
+        Operation.Faction);
 
     // Route to action component which sends to server. Complete() is no
     // longer called here -- UTurnBasedActionsComponent pushes an
     // awaiting-confirmation state and calls Complete() itself once the
     // server's answer arrives (NotifyBoardChangeOutcome), so a rejected
     // request no longer falsely completes this action.
-    RequestBoardChange(Request);
+    RequestBoardChange(FInstancedStruct::Make(Operation));
 }
 
 void UConnectIt_PlacePieceAction::ClearSelectionState_Implementation()

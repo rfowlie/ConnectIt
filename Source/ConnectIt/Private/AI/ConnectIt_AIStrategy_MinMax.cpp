@@ -104,17 +104,17 @@ void UConnectIt_AIStrategy_MinMax::BeginDecision_Implementation(
             FString MoveText;
             Visit([&Decision, &MoveText](const auto& Operation)
             {
-                Decision.RequestType = Operation.GetRequestType();
                 Decision.Payload = FInstancedStruct::Make(Operation);
-                MoveText = Operation.Describe();
+                MoveText = FString::Printf(TEXT("%s %s"),
+                    *Operation.GetRequestType().ToString(), *Operation.Describe());
             }, Result.RootScores[PickIndex].Move);
 
             Decision.Summary = FString::Printf(
-                TEXT("MinMax depth %d%s, %lld nodes in %.0f ms -- %s %s "
+                TEXT("MinMax depth %d%s, %lld nodes in %.0f ms -- %s "
                      "score %d (rank %d of %d, best %d)"),
                 Result.DepthReached, Result.bOutOfTime ? TEXT(" (out of time)") : TEXT(""),
                 Result.NodesVisited, Result.ElapsedSeconds * 1000.0,
-                *Decision.RequestType.ToString(), *MoveText,
+                *MoveText,
                 Result.RootScores[PickIndex].Score,
                 PickIndex + 1, Result.RootScores.Num(), Result.RootScores[0].Score);
 

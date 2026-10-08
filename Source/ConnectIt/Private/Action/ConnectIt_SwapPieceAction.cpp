@@ -157,17 +157,12 @@ void UConnectIt_SwapPieceAction::HandleValidSelection_Implementation(AGridTileBa
     Operation.PositionA = PositionFirst;
     Operation.PositionB = Position;
 
-    FTurnActionRequest Request;
-    Request.RequestType = Operation.GetRequestType();
-    Request.FactionID = Operation.Faction;
-    Request.Payload = FInstancedStruct::Make(Operation);
-
     UE_LOG(LogTemp, Log,
         TEXT("PieceSwapperAction: Second selection at (%d,%d) -- "
              "requesting swap with (%d,%d), faction %d"),
         Position.X, Position.Y,
         PositionFirst.X, PositionFirst.Y,
-        Request.FactionID);
+        Operation.Faction);
 
     // Reset selection state before the round trip -- if the server rejects
     // this, the action reactivates via the normal awaiting-confirmation
@@ -181,7 +176,7 @@ void UConnectIt_SwapPieceAction::HandleValidSelection_Implementation(AGridTileBa
     // awaiting-confirmation state and calls Complete() itself once the
     // server's answer arrives (NotifyBoardChangeOutcome), same as
     // UConnectIt_PlacePieceAction.
-    RequestBoardChange(Request);
+    RequestBoardChange(FInstancedStruct::Make(Operation));
 }
 
 void UConnectIt_SwapPieceAction::ClearSelectionState_Implementation()

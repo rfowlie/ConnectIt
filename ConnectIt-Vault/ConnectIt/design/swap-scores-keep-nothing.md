@@ -59,7 +59,9 @@ list cleared positions); log + indexes. Task rows left to the owner.
 - Owner, PIE: a placement that scores leaves its piece; a swap that scores leaves the line empty on both machines,
   for whichever faction scored.
 
-## Status (2026-10-07): written, NOT yet compiled
+## Status (2026-10-07): built
+
+Built and tested later the same day (log 2026-10-07-1657): build clean, `ConnectIt` tests 20/20. Earlier note, kept for the record:
 
 - All edits are in the working tree as planned. The build was refused twice because the editor was open with Live
   Coding active, so neither this change nor the earlier event-library move has been compiled or tested.

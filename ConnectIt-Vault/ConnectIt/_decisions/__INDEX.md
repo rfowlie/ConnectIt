@@ -8,6 +8,7 @@ Newest first:
 
 | Date | Decision | Status |
 |---|---|---|
+| [2026-10-07-payload-is-the-request-server-supplies-faction](2026-10-07-payload-is-the-request-server-supplies-faction.md) | A board-change request is `{ ActionTag, Payload }`; actions hand over just the payload; the requester's faction comes from the sending controller on the server (closing a hole where a client could act as the opponent); request type comes from the payload operation | Active |
 | [2026-10-07-swap-that-scores-keeps-nothing](2026-10-07-swap-that-scores-keeps-nothing.md) | A swap that scores keeps nothing (balance trial): operations say whether their arriving pieces survive scoring, passed through the resolve step; Scored events list `ClearedPositions` for visuals | Active |
 | [2026-10-07-board-events-are-structs-carried-by-the-queue](2026-10-07-board-events-are-structs-carried-by-the-queue.md) | What happens to the board is one small struct per event (operation events / result events); the change event is an ordered list of them, appended by whoever causes each; each is queued with its own data as payload on the game event queue and played one at a time | Active |
 | [2026-10-07-minmax-judgement-is-named-weights](2026-10-07-minmax-judgement-is-named-weights.md) | What the MinMax AI values is two structs of named float weights on the strategy; the logic they scale is handwritten in `FConnectItMinMaxRules` (`EvaluateState`, `EvaluateMove`, plain helpers); the polymorphic term structs and their editor lists are removed | Active |

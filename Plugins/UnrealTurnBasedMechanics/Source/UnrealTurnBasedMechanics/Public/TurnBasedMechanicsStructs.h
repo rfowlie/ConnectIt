@@ -118,47 +118,40 @@ struct FTurnBasedActionRecord
     float Timestamp = 0.f;
 };
 
-// Request sent from UTurnBasedAction to UTurnBasedActionComponent
-// Routed to server then to project-specific board manager
-// Generic envelope only -- never needs to grow for a new project action
-// type. Concrete per-action data (grid positions, shift parameters, etc.)
-// lives in a project-defined USTRUCT wrapped in Payload instead of being
-// added here directly.
+// A board-change request on its way from a UTurnBasedAction, through
+// UTurnBasedActionsComponent, to the server. It says two things only: WHICH
+// ACTION is asking (so the server can check and spend that action's uses) and
+// WHAT is being asked (the payload).
+//
+// The plugin has no idea what the payload is -- each project defines its own
+// USTRUCTs for it (e.g. ConnectIt's FConnectItBoardOperation_PlacePiece) and
+// its own server code to carry it out. An action hands over just the payload
+// (UTurnBasedAction::RequestBoardChange); the action tag is stamped for it.
+//
+// Deliberately absent: who is asking. A request arrives from a client, so the
+// server must take the requester from the connection it arrived on (the
+// sending controller), never from anything inside the request.
 USTRUCT(BlueprintType)
 struct FTurnActionRequest
 {
     GENERATED_BODY()
 
-    // Identifies what kind of change is requested
-    // e.g. ConnectIt.Game.State.PlacePiece, ConnectIt.Game.State.Shift
-    UPROPERTY(BlueprintReadWrite)
-    FGameplayTag RequestType;
-
-    // The action that sent this request. Stamped automatically by
-    // UTurnBasedAction::RequestBoardChange so an action can't forget it;
-    // the server uses it to find (and spend) that action's runtime state on
-    // the requester's PlayerState. Client-supplied, so handlers must still
-    // check RequestType is one this action is allowed to produce.
+    // The action that sent this request. Stamped by
+    // UTurnBasedAction::RequestBoardChange so an action can't forget it; the
+    // server uses it to find (and spend) that action's runtime state on the
+    // requester's PlayerState. Client-supplied, so the server must still
+    // check this action is in the requester's loadout and may send this
+    // payload.
     UPROPERTY(BlueprintReadWrite)
     FGameplayTag ActionTag;
 
-    // Faction making the request — from SlotIndex on participant component
-    UPROPERTY(BlueprintReadWrite)
-    int32 FactionID = -1;
-
-    // Flexible additional data — shard type, etc.
-    UPROPERTY(BlueprintReadWrite)
-    FGameplayTagContainer AdditionalData;
-
-    // Project-specific payload -- the plugin has no idea what concrete
-    // struct this holds. Each project defines its own USTRUCTs (e.g.
-    // FConnectItBoardOperation_PlacePiece) and wraps one here per request type.
+    // What is being asked -- a project-defined struct
     UPROPERTY(BlueprintReadWrite)
     FInstancedStruct Payload;
 
     bool IsValid() const
     {
-        return RequestType.IsValid() && FactionID >= 0 && Payload.IsValid();
+        return Payload.IsValid();
     }
 
     // Used by UTurnBasedActionsComponent's awaiting-confirmation machinery
@@ -166,10 +159,7 @@ struct FTurnActionRequest
     // on -- see NotifyBoardChangeOutcome.
     bool operator==(const FTurnActionRequest& Other) const
     {
-        return RequestType == Other.RequestType
-            && ActionTag == Other.ActionTag
-            && FactionID == Other.FactionID
-            && AdditionalData == Other.AdditionalData
+        return ActionTag == Other.ActionTag
             && Payload == Other.Payload;
     }
 };

@@ -220,7 +220,7 @@ void AConnectIt_GameMode::HandleMatchHasEnded()
         TEXT("ConnectIt_GameMode: Match ended"));
 }
 
-bool AConnectIt_GameMode::ProcessBoardRequest(const FTurnActionRequest& Request)
+bool AConnectIt_GameMode::ProcessBoardRequest(const FTurnActionRequest& Request, int32 RequestingFaction)
 {
     if (!IsValid(BoardRequestMediator))
     {
@@ -230,7 +230,7 @@ bool AConnectIt_GameMode::ProcessBoardRequest(const FTurnActionRequest& Request)
         return false;
     }
 
-    return BoardRequestMediator->ProcessRequest(Request);
+    return BoardRequestMediator->ProcessRequest(Request, RequestingFaction);
 }
 
 // --- Board Setup ---

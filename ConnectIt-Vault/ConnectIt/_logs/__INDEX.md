@@ -6,6 +6,9 @@ Vault-wide passes go in `_core/_logs/`.
 
 Newest first:
 
+- [2026-10-07-1657](2026-10-07-1657.md) — session — request pipeline slimmed: `FTurnActionRequest` is `ActionTag` + `Payload`, the server supplies the
+  requester's faction (closes a spoofing hole). Build clean, 20/20 tests, also covering the two changes that were waiting.
+
 - [2026-10-07-1612](2026-10-07-1612.md) — session — a swap that scores keeps nothing: operations say whether arriving pieces survive scoring;
   Scored events list `ClearedPositions`. Not yet compiled (editor was open with Live Coding).
 

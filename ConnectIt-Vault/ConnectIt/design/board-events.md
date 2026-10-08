@@ -208,7 +208,11 @@ Step 0; update the function location in today's board-events decision note; log 
 - Owner, editor: in any Blueprint graph, the nine nodes appear under **ConnectIt > Board Events** with no target
   pin; use them when rewiring `CI_PieceVisualHandler`.
 
-### Status: written, NOT yet compiled
+### Status: built
+
+Built and tested later the same day (log 2026-10-07-1657): build clean, `ConnectIt` tests 20/20.
+
+Earlier note, kept for the record:
 
 The edits are in the working tree, but the build was refused because the editor was open with Live Coding active.
 The automation run that followed used the previous binaries, so it says nothing about this change. Needs a build

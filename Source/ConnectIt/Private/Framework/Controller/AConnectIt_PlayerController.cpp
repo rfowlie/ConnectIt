@@ -127,12 +127,19 @@ void AConnectIt_PlayerController::ServerRouteBoardChangeRequest_Implementation(
         return;
     }
 
-    // TODO: this feels problematic, any action can be made valid if no FactionID set?
-    // TODO: should this bo added to the failure case?
-    // Stamp faction ID if not set by action
-    if (Request.FactionID < 0)
+    // Who is asking is decided here, from the connection the request arrived
+    // on: this controller's own PlayerState. Nothing in the request says who
+    // sent it, so a client cannot ask as somebody else.
+    const ATurnBasedPlayerState* RequestingPlayerState = GetPlayerState<ATurnBasedPlayerState>();
+    const int32 RequestingFaction =
+        IsValid(RequestingPlayerState) ? RequestingPlayerState->GetSlotIndex() : INDEX_NONE;
+    if (RequestingFaction < 0)
     {
-        Request.FactionID = ParticipantComponent->GetActiveParticipantSlotIndex();
+        UE_LOG(LogTemp, Error,
+            TEXT("ConnectIt_PlayerController: Board change request rejected "
+                 "— this controller has no PlayerState slot"));
+        ClientNotifyBoardChangeOutcome(Request, false);
+        return;
     }
 
     // Route to GameMode -- server-only, structurally unreachable from any
@@ -150,16 +157,16 @@ void AConnectIt_PlayerController::ServerRouteBoardChangeRequest_Implementation(
     }
 
     // process
-    const bool bSucceeded = GameMode->ProcessBoardRequest(Request);
+    const bool bSucceeded = GameMode->ProcessBoardRequest(Request, RequestingFaction);
 
     // return success value to client to halt player input
     ClientNotifyBoardChangeOutcome(Request, bSucceeded);
 
     UE_LOG(LogTemp, Log,
         TEXT("ConnectIt_PlayerController: Board change request routed "
-             "'%s' from faction %d — %s"),
-        *Request.RequestType.ToString(),
-        Request.FactionID,
+             "by action '%s' from faction %d — %s"),
+        *Request.ActionTag.ToString(),
+        RequestingFaction,
         bSucceeded ? TEXT("succeeded") : TEXT("rejected"));
 }
 

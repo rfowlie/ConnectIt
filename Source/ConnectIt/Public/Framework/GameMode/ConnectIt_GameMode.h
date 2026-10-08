@@ -69,8 +69,10 @@ public:
     // RPC) depend on GameMode's public surface, not on the mediator's
     // existence directly. Structurally server-only: this whole object
     // (and therefore BoardRequestMediator) doesn't exist on any client.
+    // RequestingFaction is who is asking, as the SERVER knows it (the
+    // sending controller's PlayerState slot) -- a request doesn't say.
     UFUNCTION(BlueprintCallable, Category = "ConnectIt|Board")
-    bool ProcessBoardRequest(const FTurnActionRequest& Request);
+    bool ProcessBoardRequest(const FTurnActionRequest& Request, int32 RequestingFaction);
 
     // --- Live match setup ---
     // This GameMode is the authority for what the match is actually using.

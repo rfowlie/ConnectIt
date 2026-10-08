@@ -119,24 +119,19 @@ void UConnectIt_BoardShiftAction::HandleValidSelection_Implementation(AGridTileB
 	Operation.Positions = ShiftPositions;
 	Operation.Direction = ShiftDirection;
 
-	FTurnActionRequest Request;
-	Request.RequestType = Operation.GetRequestType();
-	Request.FactionID = Operation.Faction;
-	Request.Payload = FInstancedStruct::Make(Operation);
-
 	UE_LOG(LogTemp, Log,
 		TEXT("BoardShiftAction: Selection confirmed at (%d,%d), direction %d, "
 			 "%d tile(s) in line, faction %d — requesting board shift"),
 		Position.X, Position.Y,
 		static_cast<uint8>(ShiftDirection),
 		ShiftPositions.Num(),
-		Request.FactionID);
+		Operation.Faction);
 
 	// Route to action component which sends to server. Complete() is not
 	// called here -- UTurnBasedActionsComponent pushes an
 	// awaiting-confirmation state and calls Complete() itself once the
 	// server's answer arrives, same as PlacePiece/Swap.
-	RequestBoardChange(Request);
+	RequestBoardChange(FInstancedStruct::Make(Operation));
 }
 
 void UConnectIt_BoardShiftAction::ClearSelectionState_Implementation()

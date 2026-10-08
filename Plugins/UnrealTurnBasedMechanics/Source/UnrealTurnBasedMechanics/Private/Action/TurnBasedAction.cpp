@@ -151,23 +151,24 @@ int32 UTurnBasedAction::GetUsesRemaining() const
     return IsValid(PS) ? PS->GetNumberedActionUsesRemaining(GetClass()) : 0;
 }
 
-void UTurnBasedAction::RequestBoardChange(const FTurnActionRequest& Request)
+void UTurnBasedAction::RequestBoardChange(const FInstancedStruct& Payload)
 {
-    if (!Request.IsValid())
+    if (!Payload.IsValid())
     {
         UE_LOG(LogTurnBasedMechanics, Warning,
-            TEXT("TurnBasedAction: '%s' fired invalid FTurnActionRequest"),
+            TEXT("TurnBasedAction: '%s' requested a board change with no payload"),
             *GetActionTag().ToString());
         return;
     }
 
     // Stamp the sending action's identity so the server can resolve which
     // config/runtime-state entry this request belongs to.
-    FTurnActionRequest StampedRequest = Request;
-    StampedRequest.ActionTag = GetActionTag();
+    FTurnActionRequest Request;
+    Request.ActionTag = GetActionTag();
+    Request.Payload = Payload;
 
-    OnChangeRequested.Broadcast(StampedRequest);
-    OnChangeRequested_Native.Broadcast(StampedRequest);
+    OnChangeRequested.Broadcast(Request);
+    OnChangeRequested_Native.Broadcast(Request);
 }
 
 UGridHoverSubsystem* UTurnBasedAction::GetGridSubsystem() const
