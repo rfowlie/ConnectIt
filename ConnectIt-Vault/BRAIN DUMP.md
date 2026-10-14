@@ -1,1 +1,17 @@
 
+- I am imagining a situation much like super smash bros, where we have a level that is designed for a specific adventure mode, but then we want to allow for players to use in multiplayer with custom rules. How do we go about supporting that?
+- We will want to broadcast what checkpoint win condition has completed so that the same object can act differently for different check points reached. 
+	- Not sure we should use tags though, it should really just be an index. We will want a way to check the state of win conditions for all players (int func(playerId));
+- AI
+	- Investigate the MinMax AI. Ideally we want this to be more of an option that can be parametrized and triggered by BP AI strategies setup by designers. We don't want to hide this inside a specific AI minmax strategy
+	- Loadouts are somewhat redundant/I'm not entirely sure how these are going to the server and being validated. From BP it appears that you can simply create a move and then send it regardless of if there is a load out or not.
+	- Is the strategy the entire AI controller? Or are strategies generic, parameterizable containers for AI behavior. Does the controller then act as the coordinator of these strategies? 
+		- We want designers to have the freedom to swap and mix and match strategies?
+	- OKAY so the setup is that there is a base ConnectIt_AIController -> ConnectIt_AIStrategy. 
+		- ConnectIt_AIStrategy->BeginDecision(FConnectItAIDecisionContext) needs to call ConnectIt_AIStrategy->FinishDecision(FConnectItAIDecision)->OnDecisionFinished Delegate is then binded to by the base ConnectIt_AIController->HandleDecisionFinished(FConnectItAIDecision) which checks some values then calles SubmitDecision()
+			- The checks are important, but what we need is exposure to BP. So we should make HandleDecisionFinished a templated function which calls HandleDecisionFinishedInternal() which returns a bool indicating whether to submit that decision or not which can be implemented in BP (default implmenetation just returns true)
+			- This will create a nice flow where, in BP we want initialize and reuse the current AIStrategy, set it on the controller then call BeginDecision which will then flow the correct pipeline and submit the move choice to the server.
+		- ConnectIt_AIController->SubmitDecision() checks PlayerState is valid and that it has a loadout. As well, it checks whether the decision is valid depending on the loadout.
+			- Should AIControllers dictate the loadout not configs? For example what about a level where the AI swaps between Loadouts each turn, how would that work currently?
+	- For the MinMaxStrategy, it automatically constricts move choices by the AI's move loadout so we do not have to worry about tampering. The thing is, Stratgizes are a mechanism to return decisions. The Controller is responsible for sending the decision, it can not use a AI Strategy at all if desired, and then send some random no move load out decision. Is this desirable?
+		- One note about the MinMaxStrategy, it currently gets move loadouts of the player state? It would be ideal to potentially paramaterize this instead of a direct read to allow for highly customizable changes, like if the player gets close to winning, we can maybe give the AI new moves to stage a comeback?

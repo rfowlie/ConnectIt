@@ -171,6 +171,22 @@ bool FConnectItBoardOperation_Shift::CanApply(const FConnectItBoardState& Board,
         return false;
     }
 
+    if (Steps < 1)
+    {
+        SetWhyNot(OutWhyNot, FString::Printf(
+            TEXT("Steps must be at least 1, got %d"), Steps));
+        return false;
+    }
+
+    // A whole number of laps puts every tile back where it started
+    if (Steps % NumShiftable == 0)
+    {
+        SetWhyNot(OutWhyNot, FString::Printf(
+            TEXT("shifting %d step(s) along %d shiftable tile(s) is a full lap -- nothing would move"),
+            Steps, NumShiftable));
+        return false;
+    }
+
     return true;
 }
 
@@ -196,14 +212,16 @@ void FConnectItBoardOperation_Shift::Apply(
     }
 
     // Rotate whole tile data (FactionPiece, Multiplier, bIsActive, bCanShift
-    // -- the tile itself, not just the piece on it) one step along the
-    // shiftable subset: each shiftable position takes on the PREVIOUS
-    // shiftable position's old data, with the last one's data wrapping around
-    // to the first. Since Positions is sorted by increasing distance along
-    // Direction from the selected tile, this moves every shiftable tile
-    // exactly one step further in that direction. Nothing outside Positions
-    // is ever touched. ShiftStartPositions/ShiftEndPositions record the same
-    // pairing the rotation itself uses, for visual listeners.
+    // -- the tile itself, not just the piece on it) Steps places along the
+    // shiftable subset: each shiftable position takes on the old data of the
+    // shiftable position Steps places BEFORE it, the far end's data wrapping
+    // around to the near end. Since Positions is sorted by increasing
+    // distance along Direction from the selected tile, this moves every
+    // shiftable tile exactly Steps shiftable places further in that
+    // direction. Nothing outside Positions is ever touched.
+    // ShiftStartPositions/ShiftEndPositions record the same pairing the
+    // rotation itself uses, for visual listeners -- a tile goes straight from
+    // its start to its end, however many places that is.
     const int32 ShiftableNum = ShiftablePositions.Num();
     TArray<FGridPosition> ShiftStartPositions;
     TArray<FGridPosition> ShiftEndPositions;
@@ -211,7 +229,7 @@ void FConnectItBoardOperation_Shift::Apply(
     ShiftEndPositions.Reserve(ShiftableNum);
     for (int32 Index = 0; Index < ShiftableNum; Index++)
     {
-        const int32 FromIndex = (Index - 1 + ShiftableNum) % ShiftableNum;
+        const int32 FromIndex = ((Index - Steps) % ShiftableNum + ShiftableNum) % ShiftableNum;
 
         Board.SetTileData(ShiftablePositions[Index], ShiftableOldData[FromIndex]);
         ShiftStartPositions.Add(ShiftablePositions[FromIndex]);
@@ -233,6 +251,7 @@ void FConnectItBoardOperation_Shift::Apply(
         FConnectItBoardEvent_BoardShifted Event;
         Event.Direction      = Direction;
         Event.AnchorPosition = Positions.IsEmpty() ? FGridPosition() : Positions[0];
+        Event.Steps          = Steps;
         Event.StartPositions = MoveTemp(ShiftStartPositions);
         Event.EndPositions   = MoveTemp(ShiftEndPositions);
         OutEvents->Add(Event);
@@ -241,8 +260,8 @@ void FConnectItBoardOperation_Shift::Apply(
 
 FString FConnectItBoardOperation_Shift::Describe() const
 {
-    return FString::Printf(TEXT("%d tile(s) from %s"),
-        Positions.Num(), Positions.IsEmpty() ? TEXT("(?)") : *PositionText(Positions[0]));
+    return FString::Printf(TEXT("%d tile(s) from %s, %d step(s)"),
+        Positions.Num(), Positions.IsEmpty() ? TEXT("(?)") : *PositionText(Positions[0]), Steps);
 }
 
 // ---------------------------------------------------------------------------

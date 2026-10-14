@@ -1,9 +1,9 @@
 # Board Shift
 
-Pick a tile, and the whole row, column, or diagonal line running through it rotates one
-step in the chosen direction — wrapping the far end around to the near end. Currently
-unrestricted: no resource cost, no faction check, and not yet wired into any turn-end
-requirement.
+Pick a tile, and the whole row, column, or diagonal line running through it rotates **N
+steps** in the chosen direction (N fixed per action, default 1) — wrapping the far end
+around to the near end. Currently unrestricted: no faction check, one use however large N
+is. See [board-shift-steps](board-shift-steps.md) for how N works.
 
 ## How it works
 
@@ -12,7 +12,7 @@ requirement.
   Shift instance per direction it wants to offer.
 - Every tile sharing that line (same row, column, or diagonal axis) gets collected, sorted
   in order along the shift direction, then **whole tile data** — piece, multiplier,
-  active-state, all of it — rotates one step along that order. The far end's data wraps
+  active-state, all of it — rotates N steps along that order. The far end's data wraps
   around to the near end. No piece is ever removed from the board by a shift, only moved.
 - A tile can opt out via `bCanShift = false` — it stays exactly where it is and is skipped
   entirely; the rest of the line rotates around it as if it weren't part of the line.

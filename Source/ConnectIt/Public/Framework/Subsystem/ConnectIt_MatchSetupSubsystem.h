@@ -7,6 +7,7 @@
 #include "ConnectIt_MatchSetupSubsystem.generated.h"
 
 class UConnectIt_AIProfile;
+class UConnectIt_MatchPreset;
 class UConnectIt_LevelCatalog;
 
 
@@ -20,7 +21,12 @@ struct FConnectItMatchSettings
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Match")
     TSoftObjectPtr<UWorld> Level;
 
-    // Opponent for a vs-AI match; unset = the level config's AIProfile
+    // How to play it; unset = the level's own DefaultMatchPreset. The values
+    // below are tweaks applied on top of whichever preset plays.
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Match")
+    TObjectPtr<UConnectIt_MatchPreset> MatchPreset = nullptr;
+
+    // Opponent for a vs-AI match; unset = the preset's AIProfile
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Match")
     TObjectPtr<UConnectIt_AIProfile> AIProfile = nullptr;
 

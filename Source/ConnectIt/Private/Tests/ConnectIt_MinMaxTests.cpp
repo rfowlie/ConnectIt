@@ -5,6 +5,10 @@
 #include "AI/ConnectIt_AIStrategy_MinMax.h"
 #include "ConnectIt_MinMaxTestTerms.h"
 #include "Board/Rules/ConnectIt_RuleSet.h"
+#include "Framework/Library/ConnectIt_BoardStateLibrary.h"
+#include "Board/Rules/ConnectIt_LineScoringRule.h"
+#include "Board/Rules/ConnectIt_ScoreThresholdWinCondition.h"
+#include "Board/Rules/ConnectIt_PieceCountWinCondition.h"
 #include "Board/Operations/ConnectIt_BoardOperations.h"
 #include "Board/Events/ConnectIt_BoardEvents.h"
 #include "ConnectIt_GameplayTags.h"
@@ -60,12 +64,56 @@ namespace ConnectItMinMaxTests
         return GetDefault<UConnectIt_AIStrategy_MinMax>()->OrderingWeights;
     }
 
-    // The classic rule set (lines of 4) won at Threshold
+    template<typename TCondition>
+    void AddCondition(FConnectItWinConditionGroup& Group, const TCondition& Condition)
+    {
+        Group.Conditions.Add(TInstancedStruct<FConnectItWinCondition>::Make<TCondition>(Condition));
+    }
+
+    FConnectItWinCondition_ScoreThreshold ScoreAtLeast(float Threshold)
+    {
+        FConnectItWinCondition_ScoreThreshold Condition;
+        Condition.WinScoreThreshold = Threshold;
+        return Condition;
+    }
+
+    FConnectItWinCondition_PieceCount PiecesIs(EConnectItPieceCountComparison Comparison, int32 Count)
+    {
+        FConnectItWinCondition_PieceCount Condition;
+        Condition.Comparison = Comparison;
+        Condition.Count = Count;
+        return Condition;
+    }
+
+    // A new, empty win group at the end of Groups (valid until Groups changes)
+    FConnectItWinConditionGroup& AddGroup(TArray<FConnectItWinConditionGroup>& Groups, FName Name = NAME_None)
+    {
+        FConnectItWinConditionGroup& Group = Groups.AddDefaulted_GetRef();
+        Group.Name = Name;
+        return Group;
+    }
+
+    // The classic rule set (lines of 4) won at Threshold: one player group. A
+    // fresh rule set has no win groups, so every test that needs one starts here.
     FConnectItRuleSet RulesWonAt(float Threshold)
     {
         FConnectItRuleSet Rules;
-        Rules.SetTargetScore(Threshold);
+        AddCondition(AddGroup(Rules.PlayerWinGroups), ScoreAtLeast(Threshold));
         return Rules;
+    }
+
+    // Win state is persisted on the board (completed groups), so a board built
+    // by hand has to be stamped before anything is "won". These stamp a copy.
+    int32 WinnerOf(const FConnectItRuleSet& Rules, FConnectItBoardState Board)
+    {
+        Rules.StampWinState(Board);
+        return Board.bGameOver ? Board.WinningFactionSlot : static_cast<int32>(INDEX_NONE);
+    }
+
+    bool HasWon(const FConnectItRuleSet& Rules, FConnectItBoardState Board, int32 Faction)
+    {
+        Rules.StampWinState(Board);
+        return Rules.HasFactionWon(Board, Faction);
     }
 
     // Both sides can place pieces, and nothing else -- what the MinMax
@@ -327,8 +375,7 @@ bool FConnectItMinMaxWinConditionTest::RunTest(const FString& Parameters)
     // changes -- and scores it as a win, not via the evaluation terms.
     const FConnectItBoardState Board = MakeBoard(5);
     FConnectItRuleSet CornerRules;
-    CornerRules.WinCondition =
-        TInstancedStruct<FConnectItWinCondition>::Make<FConnectItWinCondition_TestCorner>();
+    AddCondition(AddGroup(CornerRules.PlayerWinGroups), FConnectItWinCondition_TestCorner());
 
     const FConnectItMinMaxRules Rules(Board, CornerRules,
         DefaultEvaluationWeights(), DefaultOrderingWeights(), PlaceOnly(), PlaceOnly());
@@ -339,6 +386,285 @@ bool FConnectItMinMaxWinConditionTest::RunTest(const FString& Parameters)
     TestTrue(TEXT("the AI takes the winning corner"), IsPosition(Result.RootScores[0].Move, 0, 0));
     TestTrue(TEXT("and scores it as a win"),
         Result.RootScores[0].Score > FConnectItMinMaxRules::WinValue / 2);
+    return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FConnectItPieceCountWinTest,
+    "ConnectIt.Board.WinConditions.PieceCount", TestFlags)
+
+bool FConnectItPieceCountWinTest::RunTest(const FString& Parameters)
+{
+    FConnectItBoardState Board = MakeBoard(5);
+    Place(Board, 0, 0, 0);
+    Place(Board, 1, 0, 0);
+    Place(Board, 4, 4, 1);
+    Board.ScoreBoard = { 0.f, 0.f };
+    Board.StartingPieces = { 2, 1 };
+
+    // Faction 0 holds 2 pieces, faction 1 holds 1
+    TestFalse(TEXT("Equal 0: pieces left"), PiecesIs(EConnectItPieceCountComparison::Equal, 0).HasFactionWon(Board, 0));
+    TestTrue(TEXT("Equal 2 is met by faction 0"), PiecesIs(EConnectItPieceCountComparison::Equal, 2).HasFactionWon(Board, 0));
+    TestFalse(TEXT("...and not by faction 1"), PiecesIs(EConnectItPieceCountComparison::Equal, 2).HasFactionWon(Board, 1));
+    TestTrue(TEXT("Less Than 3: 2 < 3"), PiecesIs(EConnectItPieceCountComparison::LessThan, 3).HasFactionWon(Board, 0));
+    TestFalse(TEXT("Less Than 2: 2 < 2 is false"), PiecesIs(EConnectItPieceCountComparison::LessThan, 2).HasFactionWon(Board, 0));
+    TestTrue(TEXT("Greater Than 1: 2 > 1"), PiecesIs(EConnectItPieceCountComparison::GreaterThan, 1).HasFactionWon(Board, 0));
+    TestFalse(TEXT("Greater Than 2: 2 > 2 is false"), PiecesIs(EConnectItPieceCountComparison::GreaterThan, 2).HasFactionWon(Board, 0));
+    TestFalse(TEXT("an unknown faction can't win"), PiecesIs(EConnectItPieceCountComparison::Equal, 0).HasFactionWon(Board, 5));
+    TestEqual(TEXT("the winner is named (lowest slot)"),
+        PiecesIs(EConnectItPieceCountComparison::Equal, 2).GetWinningFaction(Board), 0);
+    TestEqual(TEXT("nobody has won"),
+        PiecesIs(EConnectItPieceCountComparison::Equal, 0).GetWinningFaction(Board), static_cast<int32>(INDEX_NONE));
+
+    // Progress is measured from the starting count the board remembers
+    const FConnectItWinCondition_PieceCount ClearAll = PiecesIs(EConnectItPieceCountComparison::Equal, 0);
+    TestEqual(TEXT("no progress yet (2 of 2 left)"), ClearAll.GetProgress(Board, 0), 0.f);
+    Board.GetTileDataMutable(FGridPosition(0, 0))->SetFactionPiece(-1);
+    TestEqual(TEXT("half way (1 of 2 left)"), ClearAll.GetProgress(Board, 0), 0.5f);
+    Board.GetTileDataMutable(FGridPosition(1, 0))->SetFactionPiece(-1);
+    TestTrue(TEXT("none left: met with no score at all"), ClearAll.HasFactionWon(Board, 0));
+    TestEqual(TEXT("full progress on the win"), ClearAll.GetProgress(Board, 0), 1.f);
+
+    // Less Than 1 is the same goal as Equal 0, and Greater Than counts up
+    TestEqual(TEXT("Less Than 1 aims at 0"),
+        PiecesIs(EConnectItPieceCountComparison::LessThan, 1).GetProgress(Board, 1), 0.f);
+    FConnectItBoardState Growing = MakeBoard(5);
+    Place(Growing, 0, 0, 0);
+    Place(Growing, 1, 0, 0);
+    Growing.ScoreBoard = { 0.f, 0.f };
+    Growing.StartingPieces = { 1, 0 };
+    TestEqual(TEXT("Greater Than 2 aims at 3: from 1 to 2 is half way"),
+        PiecesIs(EConnectItPieceCountComparison::GreaterThan, 2).GetProgress(Growing, 0), 0.5f);
+
+    // No starting count on the board: progress is 0 until met
+    Growing.StartingPieces.Empty();
+    TestEqual(TEXT("no baseline: 0"),
+        PiecesIs(EConnectItPieceCountComparison::GreaterThan, 2).GetProgress(Growing, 0), 0.f);
+    return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FConnectItRuleSetWinConditionsTest,
+    "ConnectIt.Board.WinConditions.RuleSet", TestFlags)
+
+bool FConnectItRuleSetWinConditionsTest::RunTest(const FString& Parameters)
+{
+    // A swap-puzzle level: the player (faction 0) wins by clearing its pieces
+    // AFTER scoring 4 (one group); the AI (faction 1) by reaching 8 points.
+    FConnectItRuleSet Rules;
+    {
+        FConnectItWinConditionGroup& Goal = AddGroup(Rules.PlayerWinGroups);
+        AddCondition(Goal, PiecesIs(EConnectItPieceCountComparison::Equal, 0));
+        AddCondition(Goal, ScoreAtLeast(4.f));
+    }
+    AddCondition(AddGroup(Rules.AIWinGroups), ScoreAtLeast(8.f));
+    Rules.AIFaction = 1;
+
+    FConnectItBoardState Board = MakeBoard(5);
+    Place(Board, 0, 0, 0);
+    Board.StartingPieces = { 1, 0 };
+    Board.ScoreBoard = { 4.f, 0.f };
+    TestEqual(TEXT("nobody has won yet"), WinnerOf(Rules, Board), static_cast<int32>(INDEX_NONE));
+
+    // The player's score alone is not enough: a piece is still on the board
+    Board.ScoreBoard = { 50.f, 0.f };
+    TestFalse(TEXT("score without clearing the pieces"), HasWon(Rules, Board, 0));
+
+    // ...and clearing the pieces alone is not enough either (the 'win without
+    // scoring' hole the second condition closes)
+    Board.GetTileDataMutable(FGridPosition(0, 0))->SetFactionPiece(-1);
+    Board.ScoreBoard = { 0.f, 0.f };
+    TestFalse(TEXT("pieces cleared but nothing scored"), HasWon(Rules, Board, 0));
+    Board.ScoreBoard = { 4.f, 2.f };
+    TestEqual(TEXT("both hold: the player wins"), WinnerOf(Rules, Board), 0);
+
+    // The AI reaching 8 wins by its own list
+    Place(Board, 0, 0, 0);
+    Board.ScoreBoard = { 4.f, 8.f };
+    TestEqual(TEXT("the AI wins at its threshold"), WinnerOf(Rules, Board), 1);
+
+    // Both at once: the lowest slot wins
+    Board.GetTileDataMutable(FGridPosition(0, 0))->SetFactionPiece(-1);
+    Board.ScoreBoard = { 4.f, 9.f };
+    TestEqual(TEXT("both satisfied: lowest slot"), WinnerOf(Rules, Board), 0);
+
+    // The AI's 8 belongs to the AI: the player reaching 8 does not win by it
+    FConnectItBoardState Other = MakeBoard(5);
+    Place(Other, 0, 0, 0);
+    Other.ScoreBoard = { 8.f, 0.f };
+    TestFalse(TEXT("the AI's target belongs to the AI"), HasWon(Rules, Other, 0));
+
+    // Progress: a group is the average of its conditions; the AI reads its own
+    FConnectItBoardState Progress = MakeBoard(5);
+    Place(Progress, 0, 0, 0);
+    Progress.StartingPieces = { 1, 0 };
+    Progress.ScoreBoard = { 2.f, 4.f };
+    TestEqual(TEXT("player: pieces 0 and score 2 of 4 -> 0.25"), Rules.GetProgress(Progress, 0), 0.25f);
+    TestEqual(TEXT("AI: score 4 of 8"), Rules.GetProgress(Progress, 1), 0.5f);
+
+    // Target score: the player's first group has a score-based condition; a
+    // menu override reaches the final group of both lists
+    TestEqual(TEXT("the target comes from the player's list"), Rules.GetTargetScore(), 4.f);
+    TestTrue(TEXT("the override applies"), Rules.SetTargetScore(20.f));
+    float AITarget = 0.f;
+    TestTrue(TEXT("...to the AI's list too"), Rules.AIWinGroups.Last().GetTargetScore(AITarget));
+    TestEqual(TEXT("...with the new value"), AITarget, 20.f);
+    TestEqual(TEXT("...and the player's"), Rules.GetTargetScore(), 20.f);
+
+    // No fallback between sides: an AI with no goals of its own cannot win
+    FConnectItRuleSet NoAIGoals = RulesWonAt(8.f);
+    NoAIGoals.AIFaction = 1;
+    Other.ScoreBoard = { 0.f, 100.f };
+    TestEqual(TEXT("empty AI list: the AI can't win"),
+        WinnerOf(NoAIGoals, Other), static_cast<int32>(INDEX_NONE));
+
+    // No AI in the match (Online): the player's list applies to every faction
+    FConnectItRuleSet Online = RulesWonAt(15.f);
+    AddCondition(AddGroup(Online.AIWinGroups), ScoreAtLeast(5.f));
+    FConnectItBoardState Humans = MakeBoard(5);
+    Place(Humans, 0, 0, 0);
+    Humans.ScoreBoard = { 0.f, 20.f };
+    Online.AIFaction = INDEX_NONE;
+    TestEqual(TEXT("no AI slot: faction 1 wins by the player's list (15)"), WinnerOf(Online, Humans), 1);
+    Humans.ScoreBoard = { 0.f, 10.f };
+    TestEqual(TEXT("...and 10 is not enough for it"), WinnerOf(Online, Humans), static_cast<int32>(INDEX_NONE));
+    Online.AIFaction = 1;
+    TestEqual(TEXT("with an AI slot, the AI's own list (5) applies instead"), WinnerOf(Online, Humans), 1);
+
+    // A group with a cleared slot can't be satisfied, rather than skipping it
+    FConnectItRuleSet HalfSet = RulesWonAt(1.f);
+    HalfSet.PlayerWinGroups[0].Conditions.Add(TInstancedStruct<FConnectItWinCondition>());
+    Other.ScoreBoard = { 50.f, 0.f };
+    TestFalse(TEXT("an empty slot in the group blocks the win"), HasWon(HalfSet, Other, 0));
+
+    // A group with no conditions is never completed, so it blocks the ones after it
+    FConnectItRuleSet Blocked;
+    AddGroup(Blocked.PlayerWinGroups, TEXT("Nothing"));
+    AddCondition(AddGroup(Blocked.PlayerWinGroups), ScoreAtLeast(1.f));
+    TestEqual(TEXT("an empty group blocks the list"), WinnerOf(Blocked, Other), static_cast<int32>(INDEX_NONE));
+
+    // No win groups at all: nobody wins, nothing to show
+    const FConnectItRuleSet Empty;
+    Other.ScoreBoard = { 1000.f, 1000.f };
+    TestEqual(TEXT("no win groups: nobody wins"), WinnerOf(Empty, Other), static_cast<int32>(INDEX_NONE));
+    TestEqual(TEXT("...no target score"), Empty.GetTargetScore(), 0.f);
+    TestEqual(TEXT("...no board target score"), Empty.GetTargetScore(Other), 0.f);
+    TestEqual(TEXT("...no progress"), Empty.GetProgress(Other, 0), 0.f);
+    FConnectItRuleSet EmptyCopy = Empty;
+    TestFalse(TEXT("...and the override has nothing to set"), EmptyCopy.SetTargetScore(5.f));
+    return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FConnectItWinStagesTest,
+    "ConnectIt.Board.WinConditions.Stages", TestFlags)
+
+bool FConnectItWinStagesTest::RunTest(const FString& Parameters)
+{
+    // The player's goals, in order: score 4 ("Score"), THEN have no pieces
+    // left ("Clear"). The AI has one goal: 10 points.
+    FConnectItRuleSet Rules;
+    AddCondition(AddGroup(Rules.PlayerWinGroups, TEXT("Score")), ScoreAtLeast(4.f));
+    AddCondition(AddGroup(Rules.PlayerWinGroups, TEXT("Clear")), PiecesIs(EConnectItPieceCountComparison::Equal, 0));
+    AddCondition(AddGroup(Rules.AIWinGroups, TEXT("AIGoal")), ScoreAtLeast(10.f));
+    Rules.AIFaction = 1;
+
+    FConnectItBoardState Board = MakeBoard(5);
+    Place(Board, 0, 0, 0);
+    Place(Board, 4, 4, 1);
+    Board.StartingPieces = { 1, 1 };
+    Board.ScoreBoard = { 0.f, 0.f };
+
+    // Nothing met yet
+    FConnectItBoardChangeEvent Change;
+    Rules.StampWinState(Board, &Change);
+    TestEqual(TEXT("no checkpoint events yet"), Change.Events.Num(), 0);
+    TestEqual(TEXT("no group completed"), Board.GroupsCompleted[0], 0);
+    TestEqual(TEXT("target score is the first group's"), Rules.GetTargetScore(Board), 4.f);
+    TestFalse(TEXT("not over"), Board.bGameOver);
+
+    // Group 0 met: a checkpoint, not a win
+    Board.ScoreBoard = { 4.f, 0.f };
+    Change = FConnectItBoardChangeEvent();
+    Rules.StampWinState(Board, &Change);
+    TestEqual(TEXT("first group completed"), Board.GroupsCompleted[0], 1);
+    if (const auto* Checkpoint = OnlyEvent<FConnectItBoardEvent_WinCheckpointReached>(Change))
+    {
+        TestEqual(TEXT("checkpoint faction"), Checkpoint->Faction, 0);
+        TestEqual(TEXT("checkpoint group index"), Checkpoint->GroupIndex, 0);
+        TestEqual(TEXT("checkpoint group name"), Checkpoint->GroupName, FName(TEXT("Score")));
+    }
+    else
+    {
+        AddError(TEXT("expected exactly one WinCheckpointReached event"));
+    }
+    TestFalse(TEXT("a checkpoint is not a win"), Board.bGameOver);
+    TestEqual(TEXT("progress: one group done, the second not started (0 of 1 pieces cleared)"),
+        Rules.GetProgress(Board, 0), 0.5f);
+    TestEqual(TEXT("the AI is untouched"), Board.GroupsCompleted[1], 0);
+
+    // Completed groups stay completed, and don't fire again
+    Change = FConnectItBoardChangeEvent();
+    Rules.StampWinState(Board, &Change);
+    TestEqual(TEXT("no second event for the same group"), Change.Events.Num(), 0);
+    TestEqual(TEXT("still one group completed"), Board.GroupsCompleted[0], 1);
+
+    // The last group is the win, and is not reported as a checkpoint
+    Board.GetTileDataMutable(FGridPosition(0, 0))->SetFactionPiece(-1);
+    Change = FConnectItBoardChangeEvent();
+    Rules.StampWinState(Board, &Change);
+    TestEqual(TEXT("both groups completed"), Board.GroupsCompleted[0], 2);
+    TestEqual(TEXT("the last group is a win, not a checkpoint"), Change.Events.Num(), 0);
+    TestTrue(TEXT("game over"), Board.bGameOver);
+    TestEqual(TEXT("the player won"), Board.WinningFactionSlot, 0);
+    TestEqual(TEXT("progress is full"), Rules.GetProgress(Board, 0), 1.f);
+
+    // One move can complete several groups: one checkpoint event, then the win
+    FConnectItBoardState Chained = MakeBoard(5);
+    Place(Chained, 4, 4, 1);
+    Chained.StartingPieces = { 1, 1 };
+    Chained.ScoreBoard = { 4.f, 0.f };
+    Change = FConnectItBoardChangeEvent();
+    Rules.StampWinState(Chained, &Change);
+    TestEqual(TEXT("both groups completed by one stamp"), Chained.GroupsCompleted[0], 2);
+    TestEqual(TEXT("one checkpoint event (for the first group only)"), Change.Events.Num(), 1);
+    TestTrue(TEXT("and the win"), Chained.bGameOver && Chained.WinningFactionSlot == 0);
+
+    // A completed group is latched: its condition stopping to hold doesn't undo it
+    FConnectItRuleSet Latch;
+    AddCondition(AddGroup(Latch.PlayerWinGroups, TEXT("HavePieces")), PiecesIs(EConnectItPieceCountComparison::GreaterThan, 0));
+    AddCondition(AddGroup(Latch.PlayerWinGroups, TEXT("Score")), ScoreAtLeast(4.f));
+    FConnectItBoardState Held = MakeBoard(5);
+    Place(Held, 0, 0, 0);
+    Held.ScoreBoard = { 0.f, 0.f };
+    Latch.StampWinState(Held);
+    TestEqual(TEXT("first group completed while a piece is held"), Held.GroupsCompleted[0], 1);
+    Held.GetTileDataMutable(FGridPosition(0, 0))->SetFactionPiece(-1);
+    Held.ScoreBoard = { 4.f, 0.f };
+    Latch.StampWinState(Held);
+    TestEqual(TEXT("it stays complete after the piece is gone, and the second completes"), Held.GroupsCompleted[0], 2);
+    TestTrue(TEXT("won"), Held.bGameOver);
+
+    // Each side has its own list and its own progress: the AI's single group is a win at once
+    FConnectItBoardState AIWins = MakeBoard(5);
+    Place(AIWins, 0, 0, 0);
+    AIWins.StartingPieces = { 1, 1 };
+    AIWins.ScoreBoard = { 0.f, 10.f };
+    Change = FConnectItBoardChangeEvent();
+    Rules.StampWinState(AIWins, &Change);
+    TestEqual(TEXT("the AI completed its only group"), AIWins.GroupsCompleted[1], 1);
+    TestEqual(TEXT("the player is where they were"), AIWins.GroupsCompleted[0], 0);
+    TestEqual(TEXT("a single-group list reports no checkpoint"), Change.Events.Num(), 0);
+    TestTrue(TEXT("the AI won"), AIWins.bGameOver && AIWins.WinningFactionSlot == 1);
+
+    // A menu target override changes each list's LAST group only
+    FConnectItRuleSet Menu = Rules;
+    AddCondition(AddGroup(Menu.AIWinGroups, TEXT("AIFinal")), ScoreAtLeast(30.f));
+    TestTrue(TEXT("the override applies"), Menu.SetTargetScore(7.f));
+    float Target = 0.f;
+    TestTrue(TEXT("the player's first group is a checkpoint..."), Menu.PlayerWinGroups[0].GetTargetScore(Target));
+    TestEqual(TEXT("...and keeps its designed target"), Target, 4.f);
+    TestTrue(TEXT("the AI's first group too"), Menu.AIWinGroups[0].GetTargetScore(Target));
+    TestEqual(TEXT("...keeps 10"), Target, 10.f);
+    TestTrue(TEXT("the AI's last group has the override"), Menu.AIWinGroups.Last().GetTargetScore(Target));
+    TestEqual(TEXT("...7"), Target, 7.f);
     return true;
 }
 
@@ -704,6 +1030,110 @@ bool FConnectItShiftOperationTest::RunTest(const FString& Parameters)
     return true;
 }
 
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FConnectItShiftStepsTest,
+    "ConnectIt.Board.Operations.ShiftSteps", TestFlags)
+
+bool FConnectItShiftStepsTest::RunTest(const FString& Parameters)
+{
+    // Row Y = 0 of a 5-wide board with distinct data per tile: a piece of
+    // faction 0 on X = 0, faction 1 on X = 1, and a x3 multiplier on X = 4
+    FConnectItBoardState Board = MakeBoard(5);
+    Place(Board, 0, 0, 0);
+    Place(Board, 1, 0, 1);
+    Board.GetTileDataMutable(FGridPosition(4, 0))->Multiplier = 3.f;
+
+    FConnectItBoardOperation_Shift Shift;
+    Shift.Faction = 0;
+    Shift.Direction = EGridDirection::Right;
+    for (int32 X = 0; X < 5; X++)
+    {
+        Shift.Positions.Add(FGridPosition(X, 0));
+    }
+
+    // Which steps are allowed: 1 .. (shiftable tiles - 1), and anything that
+    // isn't a whole number of laps
+    FConnectItBoardOperation_Shift Zero = Shift;
+    Zero.Steps = 0;
+    TestFalse(TEXT("zero steps is refused"), Zero.CanApply(Board));
+
+    FConnectItBoardOperation_Shift Negative = Shift;
+    Negative.Steps = -2;
+    TestFalse(TEXT("negative steps is refused"), Negative.CanApply(Board));
+
+    FConnectItBoardOperation_Shift FullLap = Shift;
+    FullLap.Steps = 5;
+    TestFalse(TEXT("a full lap (steps = shiftable tiles) is refused"), FullLap.CanApply(Board));
+
+    FConnectItBoardOperation_Shift LapAndOne = Shift;
+    LapAndOne.Steps = 6;
+    TestTrue(TEXT("a lap and one more is the same as one"), LapAndOne.CanApply(Board));
+
+    // Two steps: every tile's data moves two places, the last two wrapping
+    FConnectItBoardState Before = Board;
+    Shift.Steps = 2;
+    TestTrue(TEXT("two steps is valid"), Shift.CanApply(Board));
+
+    FConnectItTouchedPositions Touched;
+    FConnectItBoardChangeEvent Event;
+    Shift.Apply(Board, Touched, &Event);
+
+    TestEqual(TEXT("X=2 holds what X=0 held (faction 0)"), TileAt(Board, 2, 0).FactionPiece, 0);
+    TestEqual(TEXT("X=3 holds what X=1 held (faction 1)"), TileAt(Board, 3, 0).FactionPiece, 1);
+    TestEqual(TEXT("X=1 holds what X=4 held (multiplier 3, wrapped past the end)"),
+        TileAt(Board, 1, 0).Multiplier, 3.f);
+    TestEqual(TEXT("X=0 holds what X=3 held (empty, multiplier 1)"), TileAt(Board, 0, 0).Multiplier, 1.f);
+
+    TestTrue(TEXT("both pieces are reported for scoring"),
+        Touched.Num() == 2 && Touched.Contains(FGridPosition(2, 0)) && Touched.Contains(FGridPosition(3, 0)));
+
+    const auto* Shifted = OnlyEvent<FConnectItBoardEvent_BoardShifted>(Event);
+    if (!TestNotNull(TEXT("one Board Shifted event"), Shifted)) return false;
+    TestEqual(TEXT("the event carries the step count"), Shifted->Steps, 2);
+    if (!TestEqual(TEXT("one from/to pair per tile"), Shifted->StartPositions.Num(), 5)) return false;
+    const int32 FromX0 = Shifted->StartPositions.IndexOfByKey(FGridPosition(0, 0));
+    const int32 FromX4 = Shifted->StartPositions.IndexOfByKey(FGridPosition(4, 0));
+    TestTrue(TEXT("X=0 -> X=2 is one of the pairs"),
+        FromX0 != INDEX_NONE && Shifted->EndPositions[FromX0] == FGridPosition(2, 0));
+    TestTrue(TEXT("X=4 -> X=1 (wrapped) is one of the pairs"),
+        FromX4 != INDEX_NONE && Shifted->EndPositions[FromX4] == FGridPosition(1, 0));
+
+    // Nothing is created or destroyed: same pieces, same multipliers, just moved
+    int32 PiecesBefore = 0, PiecesAfter = 0;
+    float MultiplierBefore = 0.f, MultiplierAfter = 0.f;
+    for (int32 X = 0; X < 5; X++)
+    {
+        PiecesBefore += TileAt(Before, X, 0).FactionPiece != -1;
+        PiecesAfter += TileAt(Board, X, 0).FactionPiece != -1;
+        MultiplierBefore += TileAt(Before, X, 0).Multiplier;
+        MultiplierAfter += TileAt(Board, X, 0).Multiplier;
+    }
+    TestEqual(TEXT("the same number of pieces"), PiecesAfter, PiecesBefore);
+    TestEqual(TEXT("the same total multiplier"), MultiplierAfter, MultiplierBefore);
+
+    // A fixed tile is jumped over, not counted: with X=2 fixed the shiftable
+    // tiles are X = 0, 1, 3, 4, and two steps puts X=0's data on X=3
+    FConnectItBoardState Pinned = Before;
+    Pinned.GetTileDataMutable(FGridPosition(2, 0))->bCanShift = false;
+
+    FConnectItBoardOperation_Shift PinnedShift = Shift;
+    PinnedShift.Steps = 2;
+    TestTrue(TEXT("a shift with a fixed tile in the line is valid"), PinnedShift.CanApply(Pinned));
+
+    FConnectItTouchedPositions PinnedTouched;
+    PinnedShift.Apply(Pinned, PinnedTouched, nullptr);
+    TestEqual(TEXT("X=0's piece moved two shiftable places, over the fixed tile, to X=3"),
+        TileAt(Pinned, 3, 0).FactionPiece, 0);
+    TestEqual(TEXT("X=1's piece moved to X=4"), TileAt(Pinned, 4, 0).FactionPiece, 1);
+    TestTrue(TEXT("the fixed tile kept its own data"),
+        TileAt(Pinned, 2, 0).FactionPiece == -1 && !TileAt(Pinned, 2, 0).bCanShift);
+
+    // With the fixed tile there are only 4 shiftable tiles, so 4 steps is a lap
+    FConnectItBoardOperation_Shift PinnedLap = PinnedShift;
+    PinnedLap.Steps = 4;
+    TestFalse(TEXT("a lap of the shiftable tiles (4, not 5) is refused"), PinnedLap.CanApply(Pinned));
+    return true;
+}
+
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FConnectItRemoveOperationTest,
     "ConnectIt.Board.Operations.RemovePiece", TestFlags)
 
@@ -825,6 +1255,138 @@ bool FConnectItBoardEventOrderTest::RunTest(const FString& Parameters)
 
     TestNotNull(TEXT("FindFirst finds the scored event"), Change.FindFirst<FConnectItBoardEvent_Scored>());
     TestNull(TEXT("no win event without a win"), Change.FindFirst<FConnectItBoardEvent_GameWon>());
+    return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FConnectItLineDirectionsTest,
+    "ConnectIt.Board.Rules.LineDirections", TestFlags)
+
+bool FConnectItLineDirectionsTest::RunTest(const FString& Parameters)
+{
+    using EDir = EConnectItScoringDirection;
+
+    // Points for faction 0 completing a line of four from (X, Y) stepping
+    // (DX, DY), under a Lines rule that allows only Allowed
+    const auto ScoreLine = [](int32 Allowed, int32 X, int32 Y, int32 DX, int32 DY)
+    {
+        FConnectItRuleSet Rules;
+        Rules.ScoringRule.GetMutablePtr<FConnectItScoringRule_Lines>()->ScoringDirections = Allowed;
+
+        FConnectItBoardState Board = MakeBoard(7);
+        for (int32 Step = 0; Step < 4; Step++)
+        {
+            Place(Board, X + Step * DX, Y + Step * DY, 0);
+        }
+        // Scored as if the last piece of the line had just arrived
+        return Rules.ApplyScoring(Board, FGridPosition(X + 3 * DX, Y + 3 * DY), 0, true);
+    };
+
+    // The rule's own axes: {0,1} is "horizontal" (a row), {1,0} "vertical"
+    const int32 Horizontal = static_cast<int32>(EDir::Horizontal);
+    const int32 Vertical = static_cast<int32>(EDir::Vertical);
+    const int32 Diagonal = static_cast<int32>(EDir::Diagonal);
+    const int32 All = Horizontal | Vertical | Diagonal;
+
+    TestEqual(TEXT("default allows every direction"), FConnectItScoringRule_Lines().ScoringDirections, All);
+
+    TestEqual(TEXT("horizontal only: a row scores"), ScoreLine(Horizontal, 1, 0, 0, 1), 4.f);
+    TestEqual(TEXT("horizontal only: a column does not"), ScoreLine(Horizontal, 0, 1, 1, 0), 0.f);
+    TestEqual(TEXT("horizontal only: a diagonal does not"), ScoreLine(Horizontal, 0, 0, 1, 1), 0.f);
+
+    TestEqual(TEXT("vertical only: a column scores"), ScoreLine(Vertical, 0, 1, 1, 0), 4.f);
+    TestEqual(TEXT("vertical only: a row does not"), ScoreLine(Vertical, 1, 0, 0, 1), 0.f);
+
+    TestEqual(TEXT("diagonal only: one diagonal scores"), ScoreLine(Diagonal, 0, 0, 1, 1), 4.f);
+    TestEqual(TEXT("diagonal only: the other diagonal scores"), ScoreLine(Diagonal, 0, 3, 1, -1), 4.f);
+    TestEqual(TEXT("diagonal only: a row does not"), ScoreLine(Diagonal, 1, 0, 0, 1), 0.f);
+
+    TestEqual(TEXT("horizontal + vertical: a row scores"), ScoreLine(Horizontal | Vertical, 1, 0, 0, 1), 4.f);
+    TestEqual(TEXT("horizontal + vertical: a diagonal does not"), ScoreLine(Horizontal | Vertical, 0, 0, 1, 1), 0.f);
+
+    TestEqual(TEXT("nothing allowed: nothing scores"), ScoreLine(0, 1, 0, 0, 1), 0.f);
+
+    // The AI only values lines-in-the-making along directions that can score
+    const FConnectItBoardState Board = MakeBoard(7);
+    const auto WindowCount = [&Board](int32 Allowed)
+    {
+        FConnectItRuleSet Rules = RulesWonAt(100.f);
+        Rules.ScoringRule.GetMutablePtr<FConnectItScoringRule_Lines>()->ScoringDirections = Allowed;
+        const FConnectItMinMaxRules MinMaxRules(Board, Rules,
+            DefaultEvaluationWeights(), DefaultOrderingWeights(), PlaceOnly(), PlaceOnly());
+        return MinMaxRules.GetGeometry().LineWindows.Num();
+    };
+    // 7x7, lines of 4: 4 windows per row or column (x7), 4x4 per diagonal direction
+    TestEqual(TEXT("all directions: 88 line windows"), WindowCount(All), 28 + 28 + 16 + 16);
+    TestEqual(TEXT("horizontal only: 28"), WindowCount(Horizontal), 28);
+    TestEqual(TEXT("diagonal only: 32"), WindowCount(Diagonal), 32);
+    return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FConnectItSimulateOperationTest,
+    "ConnectIt.Board.SimulateOperation", TestFlags)
+
+bool FConnectItSimulateOperationTest::RunTest(const FString& Parameters)
+{
+    // What a Blueprint AI strategy calls to look before it moves
+    using FLibrary = UConnectIt_BoardStateLibrary;
+
+    // A row and a column of three for faction 0, both missing (3,3); a
+    // faction 1 piece and an inactive tile elsewhere
+    FConnectItBoardState Board = MakeBoard(7);
+    Place(Board, 3, 0, 0); Place(Board, 3, 1, 0); Place(Board, 3, 2, 0);
+    Place(Board, 0, 3, 0); Place(Board, 1, 3, 0); Place(Board, 2, 3, 0);
+    Place(Board, 6, 6, 1);
+    Board.GetTileDataMutable(FGridPosition(5, 5))->bIsActive = false;
+
+    const FConnectItRuleSet Rules;
+
+    const TArray<FGridPosition> Placeable = FLibrary::GetPlaceablePositions(Board);
+    TestEqual(TEXT("placeable = every tile but the 7 occupied and 1 inactive"), Placeable.Num(), 49 - 8);
+    TestFalse(TEXT("...not an occupied one"), Placeable.Contains(FGridPosition(6, 6)));
+    TestFalse(TEXT("...not an inactive one"), Placeable.Contains(FGridPosition(5, 5)));
+
+    const auto Simulate = [&](int32 Faction, int32 X, int32 Y,
+        FConnectItBoardState& OutBoard, float& OutPoints, int32& OutNumScored)
+    {
+        // The operation's own Faction is deliberately left unset
+        FConnectItBoardOperation_PlacePiece Operation;
+        Operation.Position = FGridPosition(X, Y);
+        FConnectItBoardChangeEvent Events;
+        return FLibrary::SimulateOperation(Board, Rules, FInstancedStruct::Make(Operation), Faction,
+            OutBoard, OutPoints, OutNumScored, Events);
+    };
+
+    FConnectItBoardState Result;
+    float Points = 0.f;
+    int32 NumScored = 0;
+
+    // A quiet move
+    TestTrue(TEXT("an empty tile can be simulated"), Simulate(0, 6, 0, Result, Points, NumScored));
+    TestEqual(TEXT("...it scores nothing"), NumScored, 0);
+    TestEqual(TEXT("...the piece is on the result board, for the faction given"), TileAt(Result, 6, 0).FactionPiece, 0);
+    TestEqual(TEXT("...and not on the real one"), TileAt(Board, 6, 0).FactionPiece, -1);
+
+    // The crossing point completes two lines at once
+    TestTrue(TEXT("the crossing point can be simulated"), Simulate(0, 3, 3, Result, Points, NumScored));
+    TestEqual(TEXT("...it completes two lines"), NumScored, 2);
+    TestTrue(TEXT("...and scores"), Points > 0.f);
+    TestEqual(TEXT("...the result board has the score"), Result.GetScore(0), Points);
+    TestEqual(TEXT("...the real board does not"), Board.GetScore(0), 0.f);
+    TestEqual(TEXT("...and still holds the line"), TileAt(Board, 3, 0).FactionPiece, 0);
+
+    // The same tile for the other faction completes nothing
+    TestTrue(TEXT("the same tile for faction 1"), Simulate(1, 3, 3, Result, Points, NumScored));
+    TestEqual(TEXT("...scores nothing"), NumScored, 0);
+
+    // Moves that can't be made
+    TestFalse(TEXT("an occupied tile takes the False pin"), Simulate(0, 6, 6, Result, Points, NumScored));
+    TestEqual(TEXT("...and the result is just the board"), Result.GetScore(0), 0.f);
+    TestFalse(TEXT("so does an inactive tile"), Simulate(0, 5, 5, Result, Points, NumScored));
+
+    FConnectItBoardChangeEvent Events;
+    TestFalse(TEXT("so does a struct that isn't a board operation"),
+        FLibrary::SimulateOperation(Board, Rules, FInstancedStruct::Make(FGridPosition(0, 0)), 0,
+            Result, Points, NumScored, Events));
     return true;
 }
 

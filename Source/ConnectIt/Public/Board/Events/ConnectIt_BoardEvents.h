@@ -101,9 +101,10 @@ struct CONNECTIT_API FConnectItBoardEvent_PiecesSwapped : public FConnectItBoard
     virtual FGameplayTag GetEventTag() const override;
 };
 
-// A line of tiles shifted one step. StartPositions / EndPositions say where
+// A line of tiles shifted Steps places. StartPositions / EndPositions say where
 // each shifted tile's data came from and went to -- parallel arrays,
-// index-aligned (StartPositions[i] -> EndPositions[i]). Only the tiles that
+// index-aligned (StartPositions[i] -> EndPositions[i]); a tile goes straight
+// from its start to its end however many places that is. Only the tiles that
 // actually moved appear: a tile that can't shift stays put and is left out.
 USTRUCT(BlueprintType, meta = (DisplayName = "Board Shifted"))
 struct CONNECTIT_API FConnectItBoardEvent_BoardShifted : public FConnectItBoardOperationEvent
@@ -116,6 +117,10 @@ struct CONNECTIT_API FConnectItBoardEvent_BoardShifted : public FConnectItBoardO
     // The tile the shift was started from
     UPROPERTY(BlueprintReadOnly, Category = "Event")
     FGridPosition AnchorPosition;
+
+    // How many shiftable places each tile moved
+    UPROPERTY(BlueprintReadOnly, Category = "Event")
+    int32 Steps = 1;
 
     UPROPERTY(BlueprintReadOnly, Category = "Event")
     TArray<FGridPosition> StartPositions;
@@ -217,6 +222,30 @@ struct CONNECTIT_API FConnectItBoardEvent_Scored : public FConnectItBoardResultE
     // that doesn't stay).
     UPROPERTY(BlueprintReadOnly, Category = "Event")
     TArray<FGridPosition> ClearedPositions;
+
+    virtual FGameplayTag GetEventTag() const override;
+};
+
+// A faction just completed one of its win condition groups, and it was not the
+// last one (completing the last is the win: see GameWon). One per group
+// completed, in order -- a move that completes two in a row produces two. The
+// match's win groups are listed in the rule set
+// (FConnectItRuleSet::PlayerWinGroups / AIWinGroups).
+USTRUCT(BlueprintType, meta = (DisplayName = "Win Checkpoint Reached"))
+struct CONNECTIT_API FConnectItBoardEvent_WinCheckpointReached : public FConnectItBoardResultEvent
+{
+    GENERATED_BODY()
+
+    UPROPERTY(BlueprintReadOnly, Category = "Event")
+    int32 Faction = -1;
+
+    // Which group, by position in that side's list (0 = the first)
+    UPROPERTY(BlueprintReadOnly, Category = "Event")
+    int32 GroupIndex = -1;
+
+    // That group's Name, as authored
+    UPROPERTY(BlueprintReadOnly, Category = "Event")
+    FName GroupName;
 
     virtual FGameplayTag GetEventTag() const override;
 };

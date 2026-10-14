@@ -118,12 +118,14 @@ void UConnectIt_BoardShiftAction::HandleValidSelection_Implementation(AGridTileB
 	Operation.Faction = GetOwningControllerFactionID();
 	Operation.Positions = ShiftPositions;
 	Operation.Direction = ShiftDirection;
+	Operation.Steps = ShiftSteps;
 
 	UE_LOG(LogTemp, Log,
 		TEXT("BoardShiftAction: Selection confirmed at (%d,%d), direction %d, "
-			 "%d tile(s) in line, faction %d — requesting board shift"),
+			 "%d step(s), %d tile(s) in line, faction %d — requesting board shift"),
 		Position.X, Position.Y,
 		static_cast<uint8>(ShiftDirection),
+		ShiftSteps,
 		ShiftPositions.Num(),
 		Operation.Faction);
 

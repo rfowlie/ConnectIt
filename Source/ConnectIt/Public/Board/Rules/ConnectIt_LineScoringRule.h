@@ -7,8 +7,27 @@
 #include "ConnectIt_LineScoringRule.generated.h"
 
 
+// Which ways a line may run to score under FConnectItScoringRule_Lines. Flags:
+// any combination can be allowed at once.
+UENUM(BlueprintType, meta = (Bitflags, UseEnumValuesAsMaskValuesInEditor = "true"))
+enum class EConnectItScoringDirection : uint8
+{
+    None       = 0 UMETA(Hidden),
+
+    // Along a row
+    Horizontal = 1 << 0,
+
+    // Along a column
+    Vertical   = 1 << 1,
+
+    // Along either diagonal
+    Diagonal   = 1 << 2,
+};
+ENUM_CLASS_FLAGS(EConnectItScoringDirection);
+
 // The classic rule: a straight line of ConnectLength or more of one faction's
-// pieces through the arriving piece scores. Points = the sum of the line's
+// pieces through the arriving piece scores, if it runs in an allowed
+// direction (ScoringDirections). Points = the sum of the line's
 // tile multipliers; every tile in the line then loses its piece and gains +1
 // multiplier, except the arriving piece, which stays (unless the operation
 // that brought it says its pieces don't survive scoring). Each completed line is
@@ -21,6 +40,21 @@ struct CONNECTIT_API FConnectItScoringRule_Lines : public FConnectItScoringRule
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Scoring", meta = (ClampMin = 3))
     int32 ConnectLength = 4;
 
+    // Which ways a line may run to score. Default: all of them. A line in a
+    // direction that isn't ticked simply doesn't count (and the AI stops
+    // valuing it). With nothing ticked, nothing can ever score.
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Scoring",
+        meta = (Bitmask, BitmaskEnum = "/Script/ConnectIt.EConnectItScoringDirection"))
+    int32 ScoringDirections = static_cast<int32>(
+        EConnectItScoringDirection::Horizontal
+        | EConnectItScoringDirection::Vertical
+        | EConnectItScoringDirection::Diagonal);
+
+    bool IsDirectionAllowed(EConnectItScoringDirection Direction) const
+    {
+        return (ScoringDirections & static_cast<int32>(Direction)) != 0;
+    }
+
     virtual float ApplyScoring(
         FConnectItBoardState& Board,
         FGridPosition Position,
@@ -28,18 +62,20 @@ struct CONNECTIT_API FConnectItScoringRule_Lines : public FConnectItScoringRule
         bool bArrivingPieceSurvives,
         FConnectItBoardChangeEvent* OutEvents) const override;
 
-    // The four line axes scoring checks (each walked both ways). Public so
-    // the MinMax line-potential evaluation measures along exactly the same
-    // axes.
-    static const TArray<FGridDirectionVector>& GetScoringDirections();
+    // The line axes scoring checks under ScoringDirections (each is walked
+    // both ways): up to four -- the row axis, the column axis and the two
+    // diagonals. Public so the MinMax line-potential evaluation measures
+    // along exactly the same axes. Inline storage: called for every position
+    // the AI's search tries.
+    using FAxes = TArray<FGridDirectionVector, TInlineAllocator<4>>;
+    FAxes GetAllowedAxes() const;
 
 private:
 
-    static TArray<TArray<FGridPosition>> FindScoringLines(
+    TArray<TArray<FGridPosition>> FindScoringLines(
         const FConnectItBoardState& State,
         FGridPosition Position,
-        int32 FactionSlot,
-        int32 ConnectLength);
+        int32 FactionSlot) const;
 
     // Clears the line's pieces, raises its tiles' multipliers, returns the
     // points. The piece on CompletingPosition is left standing only if

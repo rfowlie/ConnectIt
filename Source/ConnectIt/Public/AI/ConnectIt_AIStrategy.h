@@ -46,6 +46,18 @@ struct FConnectItAIDecisionContext
 
     UPROPERTY(BlueprintReadOnly, Category = "AI")
     TObjectPtr<const UActionLoadoutDataAsset> OpponentLoadout;
+
+    // The match's turn number this decision is for
+    UPROPERTY(BlueprintReadOnly, Category = "AI")
+    int32 TurnNumber = 0;
+
+    // Which move of this AI's turn is being decided: 0 for the first, 1 for
+    // the second... (more than one when the loadout's turn-end requirements
+    // need several moves; each is decided from the board the previous one
+    // left). A strategy that remembers things between the moves of a turn
+    // resets them when this is 0.
+    UPROPERTY(BlueprintReadOnly, Category = "AI")
+    int32 DecisionIndexThisTurn = 0;
 };
 
 // What a strategy decided: one board change. The controller finds the

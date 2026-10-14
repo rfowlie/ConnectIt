@@ -3,10 +3,13 @@
 #include "Board/ConnectIt_BoardRequestMediator.h"
 #include "ConnectIt_GameplayTags.h"
 #include "GameplayTagContainer.h"
+#include "Misc/ScopeExit.h"
 #include "StructUtils/InstancedStruct.h"
 #include "TurnBasedMechanicsStructs.h"
 #include "Action/TurnBasedAction.h"
+#include "Action/ConnectIt_BoardShiftAction.h"
 #include "Board/ConnectIt_BoardStateComponent.h"
+#include "Board/Operations/ConnectIt_BoardOperations.h"
 #include "Board/Rules/ConnectIt_RuleSet.h"
 #include "Board/Operations/ConnectIt_BoardOperation.h"
 #include "Board/Events/ConnectIt_BoardEvents.h"
@@ -118,6 +121,23 @@ bool UConnectIt_BoardRequestMediator::ProcessRequest(const FTurnActionRequest& R
         return false;
     }
 
+    // A shift's Steps is client-supplied too: it must be exactly what the
+    // sending action grants, or any client could ask for any shift distance.
+    // (Direction is not checked -- it is runtime-settable on the action.)
+    if (const FConnectItBoardOperation_Shift* Shift = Request.Payload.GetPtr<FConnectItBoardOperation_Shift>())
+    {
+        const UConnectIt_BoardShiftAction* ShiftAction = Cast<UConnectIt_BoardShiftAction>(DefaultAction);
+        if (!ShiftAction || Shift->Steps != ShiftAction->ShiftSteps)
+        {
+            UE_LOG(LogTemp, Warning,
+                TEXT("ConnectIt_BoardRequestMediator: request '%s' rejected -- "
+                     "shift of %d step(s) but action '%s' grants %d"),
+                *RequestType.ToString(), Shift->Steps, *ActionClass->GetName(),
+                ShiftAction ? ShiftAction->ShiftSteps : 0);
+            return false;
+        }
+    }
+
     if (!PlayerState->CanUseAction(ActionClass))
     {
         UE_LOG(LogTemp, Warning,
@@ -150,6 +170,9 @@ bool UConnectIt_BoardRequestMediator::ProcessRequest(const FTurnActionRequest& R
 bool UConnectIt_BoardRequestMediator::DispatchRequest(
     const FInstancedStruct& Payload, int32 RequestingFaction)
 {
+    bDispatching = true;
+    ON_SCOPE_EXIT { bDispatching = false; };
+
     UConnectIt_BoardStateComponent* BoardState = UConnectIt_GameUtilityLibrary::GetBoardStateComponent(this);
     if (!IsValid(BoardState))
     {
@@ -203,18 +226,17 @@ bool UConnectIt_BoardRequestMediator::DispatchRequest(
     // role in sequencing, only in deciding what happened, in what order.
     FConnectItBoardChangeEvent ChangeEvent;
 
-    // The change itself: the operation only changes the board (and appends
-    // the event saying what it did)...
+    // The change itself and the scoring that follows from it (the operation
+    // changes the board, appending the event saying what it did; the rule set
+    // then scores where pieces arrived, appending Scored events) -- the same
+    // call a Blueprint "Simulate Operation" makes...
     FConnectItBoardState NewState = Current;
-    FConnectItTouchedPositions TouchedPositions;
-    Operation.Apply(NewState, TouchedPositions, &ChangeEvent);
+    const float PointsScored = Rules->CarryOutOperation(Operation, NewState, &ChangeEvent);
 
-    // ...what follows from the change is a separate step: scoring where
-    // pieces arrived (appending Scored events), then whether anyone has now won
-    const float PointsScored =
-        Rules->ResolveBoardChange(
-            NewState, TouchedPositions, Operation.ArrivingPiecesSurviveScoring(), &ChangeEvent);
-    Rules->StampWinState(NewState);
+    // ...then how far each side has got through its win groups (appending a
+    // checkpoint event for each group completed that isn't a side's last) and
+    // whether anyone has now won
+    Rules->StampWinState(NewState, &ChangeEvent);
 
     // Edge-triggered -- only on the transition into game-over, not "the
     // game is currently over"

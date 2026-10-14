@@ -10,6 +10,7 @@
 #include "ConnectIt_GameMode.generated.h"
 
 class AConnectIt_AIController;
+class ATurnBasedPlayerState;
 class UActionLoadoutDataAsset;
 class UConnectIt_AIProfile;
 class UTurnBasedParticipantManagerComponent;
@@ -26,6 +27,41 @@ enum class EConnectItMatchType : uint8
     // Online -- human vs human via lobby
     Online      UMETA(DisplayName = "Online")
 };
+
+// Which side of a match a rule or loadout change is for. There is one human
+// side and one AI side today (Online has no AI side: both humans are Player).
+UENUM(BlueprintType)
+enum class EConnectItRole : uint8
+{
+    Player  UMETA(DisplayName = "Player"),
+    AI      UMETA(DisplayName = "AI")
+};
+
+// When a replaced loadout takes effect
+UENUM(BlueprintType)
+enum class EConnectItLoadoutTiming : uint8
+{
+    // When that side's next turn begins. The default: swapping a loadout
+    // re-seeds every action's use counts and cooldowns, so doing it between
+    // turns can't hand out extra actions in a turn already under way.
+    NextTurnStart   UMETA(DisplayName = "Next Turn Start"),
+
+    // Now. Not allowed while a move is being carried out (that move's action
+    // use is spent only after it finishes, against the loadout it came from),
+    // and board event listeners such as OnWinCheckpointReached can run inside
+    // that window: there this quietly becomes NextTurnStart.
+    Immediately     UMETA(DisplayName = "Immediately")
+};
+
+// A faction completed one of its win condition groups, and it was not its last.
+// See AConnectIt_GameMode::OnWinCheckpointReached. (Parameters are named
+// PlayerRole, not Role: AActor already has a Role.)
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_FourParams(FOnWinCheckpointReached,
+    EConnectItRole, PlayerRole, int32, Faction, int32, GroupIndex, FName, GroupName);
+
+// A faction completed all of its win condition groups: the match is won. See
+// AConnectIt_GameMode::OnMatchWon.
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnMatchWon, EConnectItRole, PlayerRole, int32, Faction);
 
 UCLASS()
 class CONNECTIT_API AConnectIt_GameMode : public ATurnBasedGameMode
@@ -99,6 +135,31 @@ public:
     // change applies from the next move.
     void ModifyRules(const TFunctionRef<void(FConnectItRuleSet&)>& Change);
 
+    // --- Reacting to the match's goals (for a level Blueprint) ---
+    // The GameMode exists only on the server, so a level Blueprint reaches
+    // these through "Get Game Mode" (null on clients) -- gate on that.
+    // The goals themselves are the rule set's win groups, authored on the level
+    // config (FConnectItRuleSet::PlayerWinGroups / AIWinGroups).
+
+    // A side completed one of its win groups and it was not its last (GroupIndex
+    // counts from 0 in that side's list; GroupName is the group's own label).
+    // Fires after the move's scoring visuals. The place to change that side's
+    // loadout for the next stage (SetLoadout). Server only; keep the listener
+    // light: it can run inside the move that completed the group.
+    UPROPERTY(BlueprintAssignable, Category = "ConnectIt|Match")
+    FOnWinCheckpointReached OnWinCheckpointReached;
+
+    // A side completed ALL its win groups: the match is won. (The match result
+    // is written to the GameState and the match ends right after.) Server only.
+    UPROPERTY(BlueprintAssignable, Category = "ConnectIt|Match")
+    FOnMatchWon OnMatchWon;
+
+    // Replaces a side's loadout (Player: every human; AI: the AI). Re-seeds all
+    // of that side's action uses and cooldowns from the new loadout.
+    UFUNCTION(BlueprintCallable, Category = "ConnectIt|Match")
+    void SetLoadout(EConnectItRole PlayerRole, UActionLoadoutDataAsset* Loadout,
+        EConnectItLoadoutTiming Timing = EConnectItLoadoutTiming::NextTurnStart);
+
 protected:
 
     // Resolves the live match setup from the level config + main-menu
@@ -132,6 +193,12 @@ protected:
     UFUNCTION()
     void HandleGameOver(FGameplayTag Tag);
 
+    // Bound to UGameEventTaskSubsystem's ConnectIt_Event_WinCheckpointReached
+    // tag completing (see InitialiseBoard). Reads the event being played and
+    // broadcasts OnWinCheckpointReached.
+    UFUNCTION()
+    void HandleWinCheckpoint(FGameplayTag Tag);
+
     // Bound to UTurnBasedParticipantManagerComponent::OnInvalidNumberOfPlayers
     // (see HandleMatchHasStarted) -- fires when too few active participants
     // remain to continue (forfeit-by-missed-turns or disconnect-past-
@@ -141,7 +208,28 @@ protected:
     UFUNCTION()
     void HandleInvalidNumberOfPlayers();
 
+    // Bound to UTurnBasedParticipantManagerComponent::OnActiveControllerChanged
+    // (server side, as each turn starts): gives the side whose turn it now is
+    // the loadout waiting for it, if SetLoadout parked one.
+    UFUNCTION()
+    void HandleActiveControllerChanged(AController* NewActiveController);
+
 private:
+
+    // Seeds a PlayerState's action state from Loadout, now
+    void ApplyLoadout(ATurnBasedPlayerState* PlayerState, UActionLoadoutDataAsset* Loadout);
+
+    // Warns about a missing win group that would make a side unable to win
+    // (see the level config's validation)
+    void WarnAboutMissingWinConditions() const;
+
+    // Which side a faction slot is on: the AI's if it is the AI's slot
+    EConnectItRole RoleOfFaction(int32 Faction) const;
+
+    // Loadouts parked by SetLoadout (NextTurnStart), by faction slot
+    UPROPERTY()
+    TMap<int32, TObjectPtr<UActionLoadoutDataAsset>> PendingLoadouts;
+
 
     // Board request handling + rules -- server-only UObjects, constructed
     // in HandleMatchHasStarted (not the constructor -- NewObject there

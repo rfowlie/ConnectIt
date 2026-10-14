@@ -8,7 +8,7 @@
 // --- Geometry ---
 
 FConnectItMinMaxGeometry FConnectItMinMaxGeometry::Build(
-    const FConnectItBoardState& Board, int32 ConnectLength)
+    const FConnectItBoardState& Board, const FConnectItScoringRule_Lines* LinesRule)
 {
     FConnectItMinMaxGeometry Geometry;
 
@@ -48,10 +48,11 @@ FConnectItMinMaxGeometry FConnectItMinMaxGeometry::Build(
         }
     }
 
-    // No line scoring, no line windows
-    const int32 WindowLength = FMath::Max(0, ConnectLength);
-    const TArray<FGridDirectionVector>& Directions =
-        FConnectItScoringRule_Lines::GetScoringDirections();
+    // No line scoring, no line windows -- and only along the directions the
+    // rule lets score, so the AI doesn't value lines that are worth nothing
+    const int32 WindowLength = LinesRule ? FMath::Max(0, LinesRule->ConnectLength) : 0;
+    const FConnectItScoringRule_Lines::FAxes Directions =
+        LinesRule ? LinesRule->GetAllowedAxes() : FConnectItScoringRule_Lines::FAxes();
 
     Geometry.Neighbours.SetNum(NumTiles);
 
@@ -107,23 +108,29 @@ FConnectItMinMaxRules::FConnectItMinMaxRules(
     const FGameplayTagContainer& Side0RequestTypes,
     const FGameplayTagContainer& Side1RequestTypes)
     : Rules(InRules)
-    , WinCondition(Rules.GetWinCondition())
     , Geometry(FConnectItMinMaxGeometry::Build(
-        Board,
-        Rules.GetScoringRuleAs<FConnectItScoringRule_Lines>()
-            ? Rules.GetScoringRuleAs<FConnectItScoringRule_Lines>()->ConnectLength
-            : 0))
+        Board, Rules.GetScoringRuleAs<FConnectItScoringRule_Lines>()))
     , EvaluationWeights(InEvaluationWeights)
     , OrderingWeights(InOrderingWeights)
 {
-    if (!Rules.GetScoringRule() || !WinCondition)
+    if (const FConnectItScoringRule_Lines* LinesRule = Rules.GetScoringRuleAs<FConnectItScoringRule_Lines>())
+    {
+        if (LinesRule->GetAllowedAxes().IsEmpty())
+        {
+            UE_LOG(LogTemp, Warning,
+                TEXT("ConnectIt_MinMaxRules: the match's Lines scoring rule has "
+                     "no Scoring Directions ticked -- nothing can score"));
+        }
+    }
+
+    if (!Rules.GetScoringRule() || Rules.PlayerWinGroups.IsEmpty())
     {
         UE_LOG(LogTemp, Warning,
             TEXT("ConnectIt_MinMaxRules: the match's rule set is missing a "
-                 "rule (scoring %s, win condition %s) -- the AI will play as "
-                 "if that rule did nothing"),
+                 "rule (scoring %s, player win groups %s) -- the AI will "
+                 "play as if that rule did nothing"),
             Rules.GetScoringRule() ? TEXT("ok") : TEXT("MISSING"),
-            WinCondition ? TEXT("ok") : TEXT("MISSING"));
+            Rules.PlayerWinGroups.IsEmpty() ? TEXT("MISSING") : TEXT("ok"));
     }
 
     // Each side's kinds of move: the ones the search can model (see
@@ -176,6 +183,11 @@ FConnectItMinMaxRules::FState FConnectItMinMaxRules::ApplyMove(
     //    after a real move
     Rules.ResolveBoardChange(Child.Board, TouchedPositions, bArrivingPiecesSurvive);
 
+    //    ...and each side's progress through its win groups: a win (all
+    //    groups complete) is read from the board, so the search must keep it
+    //    up to date, as the Mediator's win stamp does for the real game
+    Rules.AdvanceWinGroups(Child.Board);
+
     // 3. The turn passes. The one thing still assumed here: every move ends
     //    the turn.
     Child.SideToMove = Opponent(State.SideToMove);
@@ -184,14 +196,12 @@ FConnectItMinMaxRules::FState FConnectItMinMaxRules::ApplyMove(
 
 bool FConnectItMinMaxRules::IsTerminalState(const FState& State) const
 {
-    return WinCondition && WinCondition->GetWinningFaction(State.Board) != INDEX_NONE;
+    return Rules.GetWinningFaction(State.Board) != INDEX_NONE;
 }
 
 int32 FConnectItMinMaxRules::EvaluateTerminalState(const FState& State, int32 Ply) const
 {
-    const int32 Winner = WinCondition
-        ? WinCondition->GetWinningFaction(State.Board)
-        : INDEX_NONE;
+    const int32 Winner = Rules.GetWinningFaction(State.Board);
 
     if (Winner == INDEX_NONE) return 0;
 

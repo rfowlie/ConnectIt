@@ -22,9 +22,25 @@ struct CONNECTIT_API FConnectItWinCondition
     virtual ~FConnectItWinCondition() = default;
 
     // The faction slot that has won on Board, or INDEX_NONE if nobody has.
+    // If more than one faction satisfies the condition at once, the lowest
+    // slot wins (the simultaneous case is rare: one move can finish both a
+    // swap's pieces).
     virtual int32 GetWinningFaction(const FConnectItBoardState& Board) const
     {
         return INDEX_NONE;
+    }
+
+    // Whether Faction in particular has won on Board, independent of any other
+    // faction. What the rule set asks of the condition assigned to a faction
+    // (FConnectItRuleSet::HasFactionWon -- the player and the AI can have
+    // different conditions): asking GetWinningFaction would be wrong there,
+    // since it names only the lowest faction that satisfies the condition.
+    // Conditions that can answer the question directly override this; the
+    // default derives it from GetWinningFaction, which is right for any
+    // condition that names a single possible winner.
+    virtual bool HasFactionWon(const FConnectItBoardState& Board, int32 Faction) const
+    {
+        return GetWinningFaction(Board) == Faction;
     }
 
     // How close Faction is to winning, 0 (nowhere) to 1 (won) -- whatever

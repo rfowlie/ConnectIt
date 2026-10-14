@@ -93,6 +93,8 @@ void UConnectIt_BoardStateComponent::InitialiseBoardState(
     InitialState.bGameOver        = false;
     InitialState.WinningFactionSlot = -1;
     InitialState.TargetScore      = InTargetScore;
+    InitialState.StartingPieces   = StartingPiecesPerFaction;
+    InitialState.GroupsCompleted.Init(0, NumFactions);
 
     // Apply without capturing snapshot -- no previous state yet
     BoardSnapshot.PreviousState = InitialState;

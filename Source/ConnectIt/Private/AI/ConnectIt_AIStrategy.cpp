@@ -77,5 +77,5 @@ void UConnectIt_AIStrategy::FinishDecision(const FConnectItAIDecision& Decision)
     }
 
     ActiveDecisionId = INDEX_NONE;
-    OnDecisionFinished.ExecuteIfBound(Decision);
+    if (OnDecisionFinished.IsBound()) { OnDecisionFinished.Execute(Decision); }
 }

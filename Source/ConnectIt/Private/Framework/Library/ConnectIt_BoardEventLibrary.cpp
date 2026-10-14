@@ -53,6 +53,12 @@ bool UConnectIt_BoardEventLibrary::GetActiveScoredEvent(
     return TryGetActiveBoardEvent(WorldContextObject, OutEvent, TEXT("GetActiveScoredEvent"));
 }
 
+bool UConnectIt_BoardEventLibrary::GetActiveWinCheckpointReachedEvent(
+    const UObject* WorldContextObject, FConnectItBoardEvent_WinCheckpointReached& OutEvent)
+{
+    return TryGetActiveBoardEvent(WorldContextObject, OutEvent, TEXT("GetActiveWinCheckpointReachedEvent"));
+}
+
 bool UConnectIt_BoardEventLibrary::GetActiveGameWonEvent(
     const UObject* WorldContextObject, FConnectItBoardEvent_GameWon& OutEvent)
 {

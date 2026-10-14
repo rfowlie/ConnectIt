@@ -22,15 +22,17 @@
 // creates hundreds of thousands per second.
 using FConnectItMinMaxMove = TVariant<FConnectItBoardOperation_PlacePiece>;
 
+struct FConnectItScoringRule_Lines;
+
 // Board geometry for one decision: depends only on tile positions and the
-// connect length, never on pieces, so it's built once (game thread) and read
+// Lines rule's settings (connect length, allowed directions), never on pieces, so it's built once (game thread) and read
 // by every node of the search.
 struct FConnectItMinMaxGeometry
 {
-    // Every run of ConnectLength existing tiles along one of the scoring
-    // axes (FConnectItScoringRule_Lines::GetScoringDirections), as indices
-    // into FConnectItBoardState::TileDataArray. Empty unless the match scores
-    // by lines (ConnectLength <= 0 builds none).
+    // Every run of ConnectLength existing tiles along one of the axes the
+    // match's Lines rule allows (FConnectItScoringRule_Lines::
+    // GetAllowedAxes), as indices into FConnectItBoardState::TileDataArray.
+    // Empty unless the match scores by lines.
     TArray<TArray<int32>> LineWindows;
 
     // Each tile's existing neighbours (up to 8), as TileDataArray indices.
@@ -49,7 +51,9 @@ struct FConnectItMinMaxGeometry
             : INDEX_NONE;
     }
 
-    static FConnectItMinMaxGeometry Build(const FConnectItBoardState& Board, int32 ConnectLength);
+    // LinesRule: the match's scoring rule if it scores by lines, else null
+    static FConnectItMinMaxGeometry Build(
+        const FConnectItBoardState& Board, const FConnectItScoringRule_Lines* LinesRule);
 
 private:
 
@@ -169,10 +173,8 @@ public:
 
 private:
 
-    // Declaration order matters: the pointers and geometry are initialised
-    // from Rules.
+    // Declaration order matters: the geometry is initialised from Rules.
     FConnectItRuleSet Rules;
-    const FConnectItWinCondition* WinCondition = nullptr;
     FConnectItMinMaxGeometry Geometry;
 
     // Which kinds of operation each side may make, resolved once from its

@@ -11,6 +11,7 @@ Step-by-step task procedures. Governed by [[_core/_schema/_code|_core/_schema/_c
 | Task | When you'd do it | Status |
 |---|---|---|
 | [[add-a-scoring-rule\|add-a-scoring-rule]] | Change how a placement scores (a new `IConnectIt_ScoringRule`) | current |
+| [[set-up-a-custom-ai-opponent\|set-up-a-custom-ai-opponent]] | Designer-facing: tune the built-in AI, make a Blueprint strategy, or a Blueprint AI controller, and wire it into a match preset | current |
 | [[add-a-board-request-type\|add-a-board-request-type]] | Add a new server-validated board mutation (destroy multiplier, swap, capture, …) | current |
 
 Candidate recipes not yet written (`stub`): add a game state-machine phase, add a win

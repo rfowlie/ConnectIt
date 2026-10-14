@@ -68,3 +68,20 @@ Built as part of [live match setup](live-match-setup.md): `AConnectIt_GameState`
 rules and refreshes the mirror. What remains for this scenario: the allowed-axes setting on
 `FConnectItScoringRule_Lines`, the turn-start trigger, the AI evaluation respecting allowed axes, and the open
 telegraphed-vs-hidden question.
+
+## Update (2026-10-08): Blueprint-callable changes exist
+
+`AConnectIt_GameMode` now has `SetLoadout(PlayerRole, Loadout, Timing)` (Blueprint-callable, server only) on top of
+`ModifyRules`, and the delegates `OnWinCheckpointReached` and `OnMatchWon`, so a level Blueprint can change a side's loadout when
+it completes a stage of its goals; see [win-condition-stages](win-condition-stages.md). (An earlier version of this update added
+`SetWinConditions` and a pre-commit `OnWinConditionsMet` hook so a Blueprint could swap the goal itself; both were removed on
+2026-10-13 in favour of declaring every goal up front.) There is still no Blueprint-callable wrapper for changing the scoring
+rule's directions mid-level, so the rotating-scoring-axis level still needs one.
+
+## Update (2026-10-08): the allowed-directions setting exists
+
+`FConnectItScoringRule_Lines::ScoringDirections` (flags: Horizontal, Vertical, Diagonal; default all) is written --
+see [line-scoring-directions](line-scoring-directions.md). Scoring only finds lines along allowed directions, and the
+AI's line windows are built along the same ones. It replicates with the rule set and can be changed mid-match through
+`AConnectIt_GameMode::ModifyRules`. Still not built from this note: the per-turn trigger that picks the mode, and UI
+that shows it.

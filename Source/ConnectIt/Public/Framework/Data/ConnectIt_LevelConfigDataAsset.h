@@ -4,25 +4,23 @@
 
 #include "CoreMinimal.h"
 #include "Engine/DataAsset.h"
-#include "Board/Rules/ConnectIt_RuleSet.h"
 #include "ConnectIt_LevelConfigDataAsset.generated.h"
 
-class UActionLoadoutDataAsset;
-class UConnectIt_AIProfile;
+class UConnectIt_MatchPreset;
 class AConnectIt_GridPiece;
 class UConnectIt_TileRegistry;
 class UConnectIt_PieceRegistry;
 class UGridDefinition;
 
-// Per-level board configuration -- replaces UConnectIt_ConfigComponent
-// (used to sit on the level-placed AConnectIt_BoardManager actor, one
-// instance configured per level) outright, not alongside it: a designer
-// authors one of these per level instead of configuring a placed actor,
-// and both AConnectIt_GameMode (server) and AConnectIt_PlayerController
-// (client, for its own loadout) resolve the SAME asset independently via
-// ConnectIt_LevelConfigSettings' level-name lookup -- symmetric, static,
-// un-networked data, so no live server object needs to hand it to clients.
-// See "Board architecture overhaul" plan.
+// A level's stage: the board it is played on (tile and piece registries, grid
+// geometry) and its pieces -- one per level, found by level name through
+// ConnectIt_LevelConfigSettings.
+//
+// How a match on this stage is played (rules, player loadout, AI) is not here:
+// that is a UConnectIt_MatchPreset. The level names the preset it plays as by
+// default (DefaultMatchPreset); the main menu can choose a different one, so
+// a level built for Adventure can also be played as a versus match with other
+// rules.
 UCLASS(BlueprintType)
 class CONNECTIT_API UConnectIt_LevelConfigDataAsset : public UDataAsset
 {
@@ -30,17 +28,13 @@ class CONNECTIT_API UConnectIt_LevelConfigDataAsset : public UDataAsset
 
 public:
 
-    // --- Loadouts ---
+    // --- Match ---
 
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "ConnectIt|Config")
-    TObjectPtr<UActionLoadoutDataAsset> PlayerLoadout = nullptr;
-
-    // --- AI ---
-
-    // This level's default AI opponent (strategy + loadout) when played
-    // against the AI. A match setup chosen in the main menu can override it.
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "ConnectIt|AI")
-    TObjectPtr<UConnectIt_AIProfile> AIProfile = nullptr;
+    // How this level is played when nothing else is chosen: its Adventure
+    // setup, or what opening the level directly in the editor plays. The main
+    // menu can pick another preset for the same level.
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "ConnectIt|Match")
+    TObjectPtr<UConnectIt_MatchPreset> DefaultMatchPreset = nullptr;
 
     // --- Piece Pool ---
 
@@ -51,13 +45,6 @@ public:
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "ConnectIt|Config",
         meta = (ClampMin = 1))
     int32 PiecePoolInitialSize = 32;
-
-    // --- Rules ---
-    // How this level scores, is won, and where pieces may go: pick each
-    // rule's type and set its values. The GameMode plays each match on its
-    // own copy (so e.g. a menu-chosen target score never touches this asset).
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "ConnectIt|Rules")
-    FConnectItRuleSet Rules;
 
     // --- Board Registries ---
     // Instanced concrete-class UObject polymorphism, typed directly to a concrete registry base rather than an

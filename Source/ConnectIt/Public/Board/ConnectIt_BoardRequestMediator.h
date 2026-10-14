@@ -66,6 +66,13 @@ public:
     UFUNCTION(BlueprintCallable, Category = "ConnectIt|Board")
     bool ProcessRequest(const FTurnActionRequest& Request, int32 RequestingFaction);
 
+    // True while a request is being carried out. The player's use of the
+    // action is spent only after that returns, so the loadout must not be
+    // swapped out from under it (see AConnectIt_GameMode::SetLoadout). Board
+    // event listeners can run inside it: committing the new board state queues
+    // the move's events, and an event with nothing to wait for completes at once.
+    bool IsDispatching() const { return bDispatching; }
+
 protected:
 
     // --- Game Events ---
@@ -89,6 +96,8 @@ private:
     // right now?) and the spend of that use once the change has been
     // committed.
     bool DispatchRequest(const FInstancedStruct& Payload, int32 RequestingFaction);
+
+    bool bDispatching = false;
 
     // Board state lives on AConnectIt_GameState -- resolved through here
     // rather than repeating GetWorld()->GetGameState<>() at each call site.

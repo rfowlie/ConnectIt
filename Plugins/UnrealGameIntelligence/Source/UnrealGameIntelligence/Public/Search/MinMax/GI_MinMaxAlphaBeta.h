@@ -134,7 +134,8 @@ namespace GameIntelligence::Search::MinMax
             // initial estimation of move effectiveness
             OrderMoves(Game, Root, RootMoves);
 
-            // ensure at least a depth of 1
+            // Iterative Deepening
+            // cache result after each depth level search, return if time is up
             const int32 MaxDepth = FMath::Max(1, Params.MaxDepth);
             for (int32 Depth = 1; Depth <= MaxDepth; Depth++)
             {
@@ -173,8 +174,8 @@ namespace GameIntelligence::Search::MinMax
                 Result.RootScores = DepthScores;
                 Result.DepthReached = Depth;
 
-                // Best-first next iteration: the best move so far is searched
-                // first, which tightens the inner windows soonest
+                // History Heuristic 
+                // The best move so far is searched first, which tightens the inner windows soonest
                 RootMoves.Reset();
                 for (const TScoredMove<FMove>& Scored : DepthScores)
                 {
@@ -221,11 +222,11 @@ namespace GameIntelligence::Search::MinMax
                     && FPlatformTime::Seconds() - StartTime >= Params.TimeBudgetSeconds;
             }
 
-            // Polled every 256 nodes -- cheap enough not to show up, frequent
-            // enough to stop within a few milliseconds
+            // Polled every (power of 2 subtract 1) nodes
+            // Can adjust according to preference
             void Poll()
             {
-                if ((Nodes & 255) != 0) return;
+                if ((Nodes & 511) != 0) return;
                 if (IsCancelled() || (bEnforceTimeBudget && IsOutOfTime()))
                 {
                     bAborted = true;

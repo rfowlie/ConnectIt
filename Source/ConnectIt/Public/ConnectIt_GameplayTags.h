@@ -37,6 +37,9 @@ UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_Event_PiecePlaced);
 UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_Event_BoardSeeded);
 UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_Event_Scored);
 UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_Event_PlayerWin);
+// A faction completed a win condition group that was not its last (see
+// FConnectItBoardEvent_WinCheckpointReached)
+UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_Event_WinCheckpointReached);
 UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_Event_TurnEnd);
 
 // Board event tags for the new mutation types -- ForcePlacePiece

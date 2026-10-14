@@ -27,6 +27,7 @@ UE_DEFINE_GAMEPLAY_TAG_COMMENT(ConnectIt_Event_PiecePlaced, "ConnectIt.Event.Pie
 UE_DEFINE_GAMEPLAY_TAG_COMMENT(ConnectIt_Event_BoardSeeded, "ConnectIt.Event.BoardSeeded", "");
 UE_DEFINE_GAMEPLAY_TAG_COMMENT(ConnectIt_Event_Scored, "ConnectIt.Event.Scored", "Something scored as a result of a board change (see FConnectItBoardEvent_Scored)");
 UE_DEFINE_GAMEPLAY_TAG_COMMENT(ConnectIt_Event_PlayerWin, "ConnectIt.Event.PlayerWin", "");
+UE_DEFINE_GAMEPLAY_TAG_COMMENT(ConnectIt_Event_WinCheckpointReached, "ConnectIt.Event.WinCheckpointReached", "A faction completed a win condition group that was not its last (see FConnectItBoardEvent_WinCheckpointReached)");
 UE_DEFINE_GAMEPLAY_TAG_COMMENT(ConnectIt_Event_TurnEnd, "ConnectIt.Event.TurnEnd", "");
 
 UE_DEFINE_GAMEPLAY_TAG_COMMENT(ConnectIt_Event_TileMultiplierDestroyed, "ConnectIt.Event.TileMultiplierDestroyed", "");

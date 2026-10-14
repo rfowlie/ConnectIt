@@ -2,6 +2,7 @@
 
 #include "Framework/Library/ConnectIt_BoardStateLibrary.h"
 #include "Board/Operations/ConnectIt_BoardOperations.h"
+#include "Board/Events/ConnectIt_BoardEvents.h"
 
 
 bool UConnectIt_BoardStateLibrary::GetTileData(
@@ -123,4 +124,54 @@ TArray<FGridPosition> UConnectIt_BoardStateLibrary::GetChangedPositions(
         }
     }
     return Result;
+}
+
+TArray<FGridPosition> UConnectIt_BoardStateLibrary::GetPlaceablePositions(const FConnectItBoardState& State)
+{
+    TArray<FGridPosition> Result;
+    for (int32 i = 0; i < State.NumTiles(); ++i)
+    {
+        if (FConnectItBoardOperation_PlacePiece::IsTilePlaceable(State, i))
+        {
+            Result.Add(State.GetPositionAt(i));
+        }
+    }
+    return Result;
+}
+
+bool UConnectIt_BoardStateLibrary::SimulateOperation(
+    const FConnectItBoardState& Board,
+    const FConnectItRuleSet& Rules,
+    const FInstancedStruct& Operation,
+    int32 Faction,
+    FConnectItBoardState& ResultBoard,
+    float& PointsScored,
+    int32& NumScoredEvents,
+    FConnectItBoardChangeEvent& Events)
+{
+    ResultBoard = Board;
+    PointsScored = 0.f;
+    NumScoredEvents = 0;
+    Events = FConnectItBoardChangeEvent();
+
+    // Our own copy of the operation, made by Faction -- what the server does
+    // with a request's operation and its requester
+    FInstancedStruct OperationStorage = Operation;
+    FConnectItBoardOperation* BoardOperation = OperationStorage.GetMutablePtr<FConnectItBoardOperation>();
+    if (!BoardOperation) return false;
+
+    BoardOperation->Faction = Faction;
+    if (!BoardOperation->CanApply(Board)) return false;
+
+    PointsScored = Rules.CarryOutOperation(*BoardOperation, ResultBoard, &Events);
+    Rules.StampWinState(ResultBoard, &Events);
+
+    for (const FInstancedStruct& Entry : Events.Events)
+    {
+        if (Entry.GetPtr<FConnectItBoardEvent_Scored>())
+        {
+            NumScoredEvents++;
+        }
+    }
+    return true;
 }

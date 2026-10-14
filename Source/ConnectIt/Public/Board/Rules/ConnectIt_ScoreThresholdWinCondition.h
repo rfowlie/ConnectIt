@@ -21,12 +21,17 @@ struct CONNECTIT_API FConnectItWinCondition_ScoreThreshold : public FConnectItWi
     {
         for (int32 Faction = 0; Faction < Board.ScoreBoard.Num(); Faction++)
         {
-            if (Board.ScoreBoard[Faction] >= WinScoreThreshold)
+            if (HasFactionWon(Board, Faction))
             {
                 return Faction;
             }
         }
         return INDEX_NONE;
+    }
+
+    virtual bool HasFactionWon(const FConnectItBoardState& Board, int32 Faction) const override
+    {
+        return Board.ScoreBoard.IsValidIndex(Faction) && Board.ScoreBoard[Faction] >= WinScoreThreshold;
     }
 
     virtual float GetProgress(const FConnectItBoardState& Board, int32 Faction) const override

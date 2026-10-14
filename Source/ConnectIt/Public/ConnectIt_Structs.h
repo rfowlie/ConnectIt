@@ -101,6 +101,22 @@ struct FConnectItBoardState
     UPROPERTY(BlueprintReadOnly)
     TArray<float> WinProgress;
 
+    // How many of its win condition groups each faction slot has completed
+    // (FConnectItRuleSet::PlayerWinGroups / AIWinGroups), in order. Groups stay
+    // completed once they are. A faction has won when this reaches the number
+    // of groups it has. Kept here, not in the rules, so the rules stay plain
+    // shared data and the AI's search carries each side's progress with the
+    // board. Empty on a board built without it (nobody has completed anything).
+    UPROPERTY(BlueprintReadOnly)
+    TArray<int32> GroupsCompleted;
+
+    // How many pieces each faction slot started the match with (the designer's
+    // starting pieces), set once when the board is built. A win condition about
+    // piece counts measures its progress from this, so the designer never has
+    // to type the number in. Empty on a board built without it.
+    UPROPERTY(BlueprintReadOnly)
+    TArray<int32> StartingPieces;
+
     // --- Accessors ---
 
     // Find tile data by position -- returns nullptr if not found

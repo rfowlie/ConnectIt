@@ -49,6 +49,11 @@ FGameplayTag FConnectItBoardEvent_Scored::GetEventTag() const
     return ConnectIt_Event_Scored;
 }
 
+FGameplayTag FConnectItBoardEvent_WinCheckpointReached::GetEventTag() const
+{
+    return ConnectIt_Event_WinCheckpointReached;
+}
+
 FGameplayTag FConnectItBoardEvent_GameWon::GetEventTag() const
 {
     return ConnectIt_Event_PlayerWin;

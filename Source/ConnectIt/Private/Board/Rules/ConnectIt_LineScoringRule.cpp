@@ -13,7 +13,7 @@ float FConnectItScoringRule_Lines::ApplyScoring(
     FConnectItBoardChangeEvent* OutEvents) const
 {
     TArray<TArray<FGridPosition>> ScoringLines =
-        FindScoringLines(MutableState, Position, FactionSlot, ConnectLength);
+        FindScoringLines(MutableState, Position, FactionSlot);
 
     if (ScoringLines.IsEmpty()) return 0.f;
 
@@ -50,12 +50,12 @@ float FConnectItScoringRule_Lines::ApplyScoring(
 TArray<TArray<FGridPosition>> FConnectItScoringRule_Lines::FindScoringLines(
     const FConnectItBoardState& State,
     FGridPosition Position,
-    int32 FactionSlot,
-    int32 ConnectLength)
+    int32 FactionSlot) const
 {
     TArray<TArray<FGridPosition>> ScoringLines;
 
-    for (const FGridDirectionVector& Dir : GetScoringDirections())
+    // Only lines along an allowed direction count
+    for (const FGridDirectionVector& Dir : GetAllowedAxes())
     {
         TArray<FGridPosition> Line;
         Line.Add(Position);
@@ -126,15 +126,21 @@ float FConnectItScoringRule_Lines::ApplyScoringLine(
     return PointsScored;
 }
 
-const TArray<FGridDirectionVector>&
-FConnectItScoringRule_Lines::GetScoringDirections()
+FConnectItScoringRule_Lines::FAxes FConnectItScoringRule_Lines::GetAllowedAxes() const
 {
-    static const TArray<FGridDirectionVector> Directions =
+    FAxes Axes;
+    if (IsDirectionAllowed(EConnectItScoringDirection::Horizontal))
     {
-        { 0,  1 },  // Row
-        { 1,  0 },  // Column
-        { 1,  1 },  // Diagonal top-down
-        { 1, -1 }   // Diagonal bottom-up
-    };
-    return Directions;
+        Axes.Add({ 0, 1 });     // Row
+    }
+    if (IsDirectionAllowed(EConnectItScoringDirection::Vertical))
+    {
+        Axes.Add({ 1, 0 });     // Column
+    }
+    if (IsDirectionAllowed(EConnectItScoringDirection::Diagonal))
+    {
+        Axes.Add({ 1, 1 });     // Diagonal top-down
+        Axes.Add({ 1, -1 });    // Diagonal bottom-up
+    }
+    return Axes;
 }

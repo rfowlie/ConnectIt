@@ -6,6 +6,39 @@ Vault-wide passes go in `_core/_logs/`.
 
 Newest first:
 
+- [2026-10-14-1500](2026-10-14-1500.md) — session — AI turn flow page + designer recipe for setting up a custom AI opponent (profile, Blueprint strategy,
+  Blueprint controller); restored a dropped `DecisionTurnNumber` assignment that made every AI decision look stale. Not compiled.
+
+- [2026-10-14-1355](2026-10-14-1355.md) — session — stage / match split: level config = stage + `DefaultMatchPreset`; `UConnectIt_MatchPreset` holds rules,
+  loadout and AI; the menu can pick a preset. Written, deliberately not built until the two configs are migrated.
+
+- [2026-10-13-1826](2026-10-13-1826.md) — session — Blueprint surface for designer AI strategies: `Simulate Operation`, `Get Placeable Positions`, turn info on
+  the decision context; shared `CarryOutOperation`. Build clean, 26/26 tests (also covers the scoring-directions change).
+
+- [2026-10-13-1000](2026-10-13-1000.md) — session — win conditions become an ordered list of groups per side; checkpoint (`OnWinCheckpointReached`) and win
+  (`OnMatchWon`) delegates; pre-commit hook and `SetWinConditions` removed. Not compiled.
+
+- [2026-10-08-2100](2026-10-08-2100.md) — session — win conditions are per-side lists that must all hold (no AI fallback); Piece Count replaces No Pieces;
+  `OnWinConditionsMet` hook + Blueprint-callable `SetWinConditions` / `SetLoadout` for phased levels. Not compiled.
+
+- [2026-10-08-2000](2026-10-08-2000.md) — session — rule set gets separate `PlayerWinCondition` (no default, renamed with a redirect) and optional
+  `AIWinCondition`; GameMode sets `AIFaction`; the Per Faction composite is removed. Not compiled.
+
+- [2026-10-08-1900](2026-10-08-1900.md) — session — swap-only puzzle levels designed; No Pieces win condition and a Per Faction win-condition composite built
+  (player and AI can have different goals). Tests added. Not compiled.
+
+- [2026-10-08-1810](2026-10-08-1810.md) — session — Lines scoring rule gains `ScoringDirections` (Horizontal / Vertical / Diagonal flags); scoring and the
+  AI's line windows follow it. Not yet compiled (editor was open with Live Coding).
+
+- [2026-10-08-1200](2026-10-08-1200.md) — session — setup checklist for the first two Adventure levels (Swap Heist, Shift Puzzle): shared
+  steps, rules/numbers, map layouts and PIE checks. No code changed.
+
+- [2026-10-08-1100](2026-10-08-1100.md) — session — Adventure Mode design note: levers a level has today, constraints, and 14 prospective
+  levels needing no new code (+ a short list needing small builds). No code changed; nothing chosen yet.
+
+- [2026-10-08-0900](2026-10-08-0900.md) — session — Board Shift moves its line N places: `Steps` on the Shift operation (fixed per action,
+  counted in shiftable tiles, one use), server rejects a mismatched `Steps`. Tests added. Not compiled.
+
 - [2026-10-07-1657](2026-10-07-1657.md) — session — request pipeline slimmed: `FTurnActionRequest` is `ActionTag` + `Payload`, the server supplies the
   requester's faction (closes a spoofing hole). Build clean, 20/20 tests, also covering the two changes that were waiting.
 

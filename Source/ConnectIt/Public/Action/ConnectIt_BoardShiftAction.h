@@ -34,6 +34,14 @@ public:
 	// Server-side check that a request's ActionTag matches its RequestType
 	virtual bool ProducesRequestType_Implementation(FGameplayTag RequestType) const override;
 
+	// How many places along the shift direction a shift by this action moves
+	// the line (counted in shiftable tiles -- a fixed tile is jumped over, not
+	// counted). Fixed per action class: EditDefaultsOnly so the class default
+	// object is authoritative, because the Mediator checks every request's
+	// Steps against it -- a request can't ask for more than the action grants.
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Action|Config", meta = (ClampMin = 1))
+	int32 ShiftSteps = 1;
+
 
 protected:
 

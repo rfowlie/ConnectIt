@@ -203,6 +203,7 @@ void AConnectIt_AIController::InitialiseFromMatchSetup()
                  "a default MinMax strategy"));
         Strategy = NewObject<UConnectIt_AIStrategy_MinMax>(this);
     }
+    
     Strategy->OnDecisionFinished.BindUObject(this, &AConnectIt_AIController::HandleDecisionFinished);
 
     // Registration itself is NOT done here -- AConnectIt_GameMode::
@@ -301,6 +302,8 @@ void AConnectIt_AIController::BeginDecision()
 
     ++CurrentDecisionId;
     DecisionTurnNumber = GameState->GetActiveTurnNumber();
+    Context.TurnNumber = DecisionTurnNumber;
+    Context.DecisionIndexThisTurn = DecisionsThisTurn;
     DecisionStartTime = FPlatformTime::Seconds();
 
     // May call HandleDecisionFinished before returning (a strategy that

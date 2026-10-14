@@ -97,12 +97,15 @@ struct CONNECTIT_API FConnectItBoardOperation_SwapPieces : public FConnectItBoar
     virtual FString Describe() const override;
 };
 
-// Shift a line of tiles one step. Positions is the full line, in line order
+// Shift a line of tiles Steps places. Positions is the full line, in line order
 // from the selected tile outward (see UGridTileRegistryBase::
 // GetTilesByDirection); Direction says which way it shifts. Whole tile data
 // moves (piece, multiplier, active state), wrapping the far end round to the
 // near end. A tile with bCanShift false stays exactly where it is and the
-// shiftable tiles rotate among themselves as if it weren't in the line.
+// shiftable tiles rotate among themselves as if it weren't in the line --
+// so Steps counts SHIFTABLE tiles: a tile jumps over a fixed one, it doesn't
+// spend a step on it. A shift by a whole number of laps (Steps a multiple of
+// the shiftable tile count) changes nothing and is refused.
 // Unrestricted: no ownership check on the line. Sent by
 // UConnectIt_BoardShiftAction.
 USTRUCT(BlueprintType, meta = (DisplayName = "Shift"))
@@ -115,6 +118,12 @@ struct CONNECTIT_API FConnectItBoardOperation_Shift : public FConnectItBoardOper
 
     UPROPERTY(BlueprintReadWrite, Category = "Operation")
     EGridDirection Direction = EGridDirection::Max;
+
+    // How many places along Direction the line moves. Client-supplied when it
+    // arrives in a request: the Mediator checks it against the sending
+    // action's own ShiftSteps.
+    UPROPERTY(BlueprintReadWrite, Category = "Operation", meta = (ClampMin = 1))
+    int32 Steps = 1;
 
     virtual FGameplayTag GetRequestType() const override;
     virtual bool CanApply(const FConnectItBoardState& Board, FString* OutWhyNot = nullptr) const override;

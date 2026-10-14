@@ -1,8 +1,7 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 #include "Framework/Data/ConnectIt_LevelConfigDataAsset.h"
-#include "Action/ActionLoadoutDataAsset.h"
-#include "AI/ConnectIt_AIProfile.h"
+#include "Framework/Data/ConnectIt_MatchPreset.h"
 #include "Board/ConnectIt_TileRegistry.h"
 #include "Grid/ConnectIt_GridPiece.h"
 #include "Misc/DataValidation.h"
@@ -15,20 +14,13 @@ EDataValidationResult UConnectIt_LevelConfigDataAsset::IsDataValid(
 {
     EDataValidationResult Result = Super::IsDataValid(Context);
 
-    if (!IsValid(PlayerLoadout))
+    // Not invalid: a level opened only from the menu always gets a preset
+    // from there -- but opening it directly needs a default to play.
+    if (!IsValid(DefaultMatchPreset))
     {
         Context.AddWarning(FText::FromString(TEXT(
-            "ConnectIt_LevelConfigDataAsset: No PlayerLoadout set.")));
-        Result = EDataValidationResult::Invalid;
-    }
-
-    // Not an error: online-only levels have no AI. Vs-AI matches can also
-    // get a profile from the main menu's match setup.
-    if (!IsValid(AIProfile))
-    {
-        Context.AddWarning(FText::FromString(TEXT(
-            "ConnectIt_LevelConfigDataAsset: No AIProfile set -- this level "
-            "has no default AI opponent.")));
+            "ConnectIt_LevelConfigDataAsset: No DefaultMatchPreset set -- this "
+            "level has no rules unless the main menu chooses a preset.")));
     }
 
     if (!PieceActorClass)
