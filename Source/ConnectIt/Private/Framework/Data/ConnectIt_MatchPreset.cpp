@@ -3,6 +3,7 @@
 #include "Framework/Data/ConnectIt_MatchPreset.h"
 #include "Action/ActionLoadoutDataAsset.h"
 #include "AI/ConnectIt_AIProfile.h"
+#include "AI/ConnectIt_AIDirector.h"
 #include "Misc/DataValidation.h"
 
 

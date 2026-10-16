@@ -4,21 +4,19 @@
 
 #include "CoreMinimal.h"
 #include "AI/ConnectIt_AIStrategy.h"
-#include "MinMax/ConnectIt_MinMaxRules.h"
-#include "MinMax/ConnectIt_MinMaxWeights.h"
-#include <atomic>
+#include "AI/ConnectIt_MinMaxSearch.h"
 #include "ConnectIt_AIStrategy_MinMax.generated.h"
 
 
-// Classic ConnectIt opponent: a negamax search
-// (GameIntelligence::Search::MinMax::TAlphaBeta over FConnectItMinMaxRules)
-// on a background task. Two factions, one PlacePiece per turn.
+// Classic ConnectIt opponent: one MinMax search per decision (see
+// ConnectIt_MinMaxSearch.h -- the same search a Blueprint strategy can run
+// with the "Find Best Moves (MinMax)" node), then its best moves as the
+// decision's candidates. Two factions; it can only plan with Place Piece.
 //
-// Strength comes from MaxDepth / TimeBudgetSeconds; TopMovesConsidered +
-// MistakeChance let it deliberately play a weaker-but-reasonable move;
-// EvaluationWeights tune what it values and OrderingWeights how it guesses
-// which moves to try first (see ConnectIt_MinMaxWeights.h) -- all editor data,
-// so a different-feeling MinMax opponent is different numbers, not a new class.
+// Strength comes from the search settings (depth, time, what it values);
+// TopMovesConsidered + MistakeChance let it deliberately play a
+// weaker-but-reasonable move. All editor data, so a different-feeling MinMax
+// opponent is different numbers, not a new class.
 UCLASS(Blueprintable, BlueprintType, EditInlineNew, DefaultToInstanced,
     meta = (DisplayName = "MinMax (Classic)"))
 class CONNECTIT_API UConnectIt_AIStrategy_MinMax : public UConnectIt_AIStrategy
@@ -27,17 +25,9 @@ class CONNECTIT_API UConnectIt_AIStrategy_MinMax : public UConnectIt_AIStrategy
 
 public:
 
-    // Deepest search, in plies (one ply = one placement by either side)
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "AI|MinMax",
-        meta = (ClampMin = 1, ClampMax = 10))
-    int32 MaxDepth = 4;
-
-    // Search time per decision; the search stops deepening when it runs out
-    // and plays the best move from the deepest completed depth. 0 = no limit
-    // (always reaches MaxDepth).
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "AI|MinMax",
-        meta = (ClampMin = 0.0, Units = "s"))
-    float TimeBudgetSeconds = 1.5f;
+    // How to search: depth, time, what it values, which moves each side has
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "AI|MinMax")
+    FConnectItMinMaxSearchSettings Search;
 
     // When the AI makes a "mistake" it picks uniformly among this many of
     // its best-scoring moves. 1 = never deviates from the best move.
@@ -51,27 +41,20 @@ public:
         meta = (ClampMin = 0.0, ClampMax = 1.0))
     float MistakeChance = 0.f;
 
-    // What the AI values in an unfinished position. Win/loss is always
-    // checked first, outside these.
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "AI|MinMax|Evaluation")
-    FConnectItMinMaxEvaluationWeights EvaluationWeights;
-
-    // Which moves to try first (speed only -- never changes which move wins)
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "AI|MinMax|Move Ordering")
-    FConnectItMinMaxOrderingWeights OrderingWeights;
+    virtual FGameplayTagContainer GetSupportedRequestTypes_Implementation() const override;
 
 protected:
 
     virtual void BeginDecision_Implementation(const FConnectItAIDecisionContext& Context) override;
     virtual void CancelDecision_Implementation() override;
 
-    // Which root move to play: normally the best (a random one among equal
+    // Which ranked move to play: normally the best (a random one among equal
     // best scores); with MistakeChance, a random one of the top
     // TopMovesConsidered.
-    int32 PickMoveIndex(const FConnectItMinMaxSearch::FResult& Result) const;
+    int32 PickMoveIndex(const FConnectItMinMaxSearchResult& Result) const;
 
 private:
 
-    // Shared with the running search task
+    // Shared with the running search task; null when none is running
     TSharedPtr<std::atomic<bool>, ESPMode::ThreadSafe> CancelFlag;
 };

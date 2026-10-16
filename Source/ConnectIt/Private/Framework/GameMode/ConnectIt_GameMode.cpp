@@ -136,6 +136,7 @@ void AConnectIt_GameMode::EnsureMatchSetupResolved()
     Rules = IsValid(Preset) ? Preset->Rules : FConnectItRuleSet();
     PlayerLoadout = IsValid(Preset) ? Preset->PlayerLoadout : nullptr;
     AIProfile = IsValid(Preset) ? Preset->AIProfile : nullptr;
+    AIDirectorTemplate = IsValid(Preset) ? Preset->AIDirector : nullptr;
 
     // Tweaks from the menu, on top of whichever preset plays
     if (bHasMatchSettings)

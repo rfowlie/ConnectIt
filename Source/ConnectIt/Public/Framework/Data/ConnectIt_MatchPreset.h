@@ -9,6 +9,7 @@
 
 class UActionLoadoutDataAsset;
 class UConnectIt_AIProfile;
+class UConnectIt_AIDirector;
 
 // A way to play a match -- its rules, what the player can do, and who the AI
 // is -- independent of the stage it is played on (the level config holds the
@@ -47,6 +48,11 @@ public:
     // can also choose one.
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "ConnectIt|AI")
     TObjectPtr<UConnectIt_AIProfile> AIProfile = nullptr;
+
+    // Optional: changes the AI's loadout / strategy as this match goes on
+    // (per turn, at win checkpoints). Applies whichever AI profile plays.
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Instanced, Category = "ConnectIt|AI")
+    TObjectPtr<UConnectIt_AIDirector> AIDirector = nullptr;
 
 #if WITH_EDITOR
     virtual EDataValidationResult IsDataValid(

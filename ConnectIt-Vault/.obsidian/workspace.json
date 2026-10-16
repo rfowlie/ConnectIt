@@ -4,9 +4,25 @@
     "type": "split",
     "children": [
       {
-        "id": "0c2e707b52e053aa",
+        "id": "4e56845dee73299d",
         "type": "tabs",
         "children": [
+          {
+            "id": "7e9d793cb5121f8b",
+            "type": "leaf",
+            "pinned": true,
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "BRAIN DUMP.md",
+                "mode": "source",
+                "source": false
+              },
+              "pinned": true,
+              "icon": "lucide-file",
+              "title": "BRAIN DUMP"
+            }
+          },
           {
             "id": "9529f203626984cd",
             "type": "leaf",
@@ -22,21 +38,13 @@
               "icon": "lucide-file",
               "title": "active"
             }
-          },
-          {
-            "id": "ed5589032063666b",
-            "type": "leaf",
-            "state": {
-              "type": "markdown",
-              "state": {
-                "file": "ConnectIt/_decisions/2026-09-20-legacy-action-system-removed-stage-3.md",
-                "mode": "source",
-                "source": false
-              },
-              "icon": "lucide-file",
-              "title": "2026-09-20-legacy-action-system-removed-stage-3"
-            }
-          },
+          }
+        ]
+      },
+      {
+        "id": "0c2e707b52e053aa",
+        "type": "tabs",
+        "children": [
           {
             "id": "d21229c17b1e2e8b",
             "type": "leaf",
@@ -51,8 +59,7 @@
               "title": "ai-turn"
             }
           }
-        ],
-        "currentTab": 2
+        ]
       }
     ],
     "direction": "vertical"
@@ -217,16 +224,24 @@
       "bases:Create new base": false
     }
   },
-  "active": "97e0ab6e321a7903",
+  "active": "7e9d793cb5121f8b",
   "lastOpenFiles": [
-    "ConnectIt/code/systems/__INDEX.md",
+    "ConnectIt/code/systems/ai-turn.md",
+    "ConnectIt/code/recipes/set-up-a-custom-ai-opponent.md.tmp.11808.a39c3dc11615",
+    "ConnectIt/_logs/2026-10-14-1605.md",
+    "ConnectIt/_decisions/2026-10-14-composable-ai.md",
+    "ConnectIt/code/recipes/direct-the-ai-during-a-match.md",
+    "ConnectIt/code/recipes/combine-ai-strategies.md",
+    "ConnectIt/design/composable-ai.md",
     "BRAIN DUMP.md",
+    "ConnectIt/_decisions/2026-09-20-legacy-action-system-removed-stage-3.md",
+    "ConnectIt/_tasks/active.md",
+    "ConnectIt/code/systems/__INDEX.md",
     "ConnectIt/_logs/2026-10-14-1500.md",
     "ConnectIt/_logs/2026-10-14-1500.md.tmp.20552.fff456794751",
     "ConnectIt/code/systems/__INDEX.md.tmp.20552.9dd57f9979ed",
     "ConnectIt/code/recipes/set-up-a-custom-ai-opponent.md",
     "ConnectIt/code/recipes/set-up-a-custom-ai-opponent.md.tmp.20552.a4b48728e5a1",
-    "ConnectIt/code/systems/ai-turn.md",
     "ConnectIt/_logs/2026-10-14-1355.md",
     "ConnectIt/_decisions/2026-10-14-stage-and-match-preset.md",
     "ConnectIt/design/stage-and-match-preset.md",
@@ -241,20 +256,11 @@
     "ConnectIt/_logs/2026-10-08-2000.md",
     "ConnectIt/design/player-and-ai-win-conditions.md",
     "ConnectIt/_decisions/2026-10-08-player-and-ai-win-conditions-on-rules.md",
-    "ConnectIt/_logs/2026-10-08-1900.md",
-    "ConnectIt/_decisions/2026-10-08-win-conditions-per-faction-and-no-pieces.md",
-    "ConnectIt/design/swap-puzzles.md",
-    "ConnectIt/_logs/2026-10-08-1810.md",
-    "ConnectIt/design/line-scoring-directions.md",
-    "ConnectIt/_logs/2026-10-08-1200.md",
-    "ConnectIt/design/adventure-levels-swap-heist-and-shift-puzzle.md",
-    "ConnectIt/_logs/2026-10-08-1100.md",
     "Portfolio/_discussions/__README.md.tmp.41572.7da243c4e254",
     "Portfolio/_discussions",
     "ConnectIt/design/sedf4wvaO",
     "ConnectIt/design/sedPjFYde",
     "CLAUDE.md.tmp.28224.6145a9452390",
-    "CLAUDE.md.tmp.28224.ffc171ec4eec",
     "Untitled.canvas"
   ]
 }

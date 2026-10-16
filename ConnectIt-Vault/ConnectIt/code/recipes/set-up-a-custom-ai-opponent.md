@@ -7,7 +7,7 @@ touches:
   - a Blueprint subclass of AConnectIt_AIController (only if you need one; see step 4)
   - the match preset (AI Profile, AI Win Groups), the level config (Default Match Preset), the level's GameMode (AI Controller Class)
 reconciled: 2026-10-14
-commit: ee45a98
+commit: 5262fc9
 ---
 
 # Recipe: set up a custom AI opponent
@@ -25,6 +25,8 @@ picks its moves, the controller only does the turn timing and submitting.**
 | An easier / harder / more mistake-prone classic opponent | A new **AI profile** using the MinMax strategy, different numbers | A |
 | An opponent with its own rules of thumb ("two random pieces per turn, only one may score") | A **Blueprint strategy** + a profile that uses it | B |
 | The opponent to swap or shift pieces | A **Blueprint strategy** (the built-in MinMax only places) + a loadout with those actions | B |
+| Several strategies at once (MinMax plus a fallback, a judge between them) | A **Coordinator** strategy | [[combine-ai-strategies]] |
+| The AI to change during the match (alternating moves, new moves at a checkpoint, tells) | An **AI director** on the match preset | [[direct-the-ai-during-a-match]] |
 | A different *thinking animation / extra component* on the opponent actor | A **Blueprint AI controller** | C |
 | To change how the AI times its turn, retries, or submits | Not possible in Blueprint today: ask for a C++ hook | C |
 
@@ -45,9 +47,11 @@ comes from the profile, not from the controller class.
 1. Content Browser: create a **Data Asset** of class `ConnectIt_AIProfile` (e.g. `AIP_Classic_Hard`).
 2. Fill it in: `Display Name` / `Description` (shown in menus), `Loadout` (the AI's action loadout), and `Strategy`: pick
    **MinMax (Classic)**.
-3. Set the MinMax numbers: `Max Depth` (how many plies it looks ahead), `Time Budget Seconds` (stops deepening when time runs
-   out), `Top Moves Considered` + `Mistake Chance` (how often it plays a deliberately weaker move), `Min Think Seconds`
-   (it never moves sooner than this), and the `Evaluation Weights` / `Ordering Weights` (what it values; ordering is speed only).
+3. Set the MinMax numbers. Under **Search**: `Max Depth` (how many moves it looks ahead), `Time Budget Seconds` (stops
+   deepening when time runs out), the `Evaluation Weights` / `Ordering Weights` (what it values; ordering is speed only), and
+   optionally `Own` / `Opponent Request Types` (empty = what each side may do). Then `Top Moves Considered` + `Mistake Chance`
+   (how often it plays a deliberately weaker move), `Min Think Seconds` (it never moves sooner than this) and `Max Candidates`
+   (how many fallback moves it hands over).
 4. Go to step 5.
 
 ### B. Make a Blueprint strategy
@@ -61,15 +65,23 @@ comes from the profile, not from the controller class.
      shift?".
    - `Turn Number`, and `Decision Index This Turn`: **0 for the first move of the AI's turn, 1 for the second...** Reset anything you
      remember between moves when it is 0.
+   - `Available Request Types`: **the kinds of move the AI may make right now** (its loadout allows them and they are usable this
+     decision). Only offer these; `Is Operation Available` checks one operation.
+   - `Time Budget Seconds`: set when your strategy runs under a coordinator; 0 = no limit.
 3. Pick a move. Useful nodes (all under **ConnectIt**):
    - **Get Placeable Positions (Board State)**: every tile a piece may go on right now.
    - **Simulate Operation**: "what would this move do?" (score gained, lines completed, resulting board) without making it. Pass
      it `Context > Rules` and `Context > Own Slot`.
    - The **Board State** getters: tile owner, multiplier, score, positions of a faction's pieces...
+   - **Find Best Moves (MinMax)**: the built-in search as a node -- pass the Context and a `MinMax Search Settings` (depth,
+     time, weights, which moves each side has); **On Complete** gives the ranked moves. **Make Decision From Search** turns them
+     into a decision. Change the settings on the fly (search deeper when losing, more moves for a comeback).
 4. Build the move as a board operation: **Make Instanced Struct**, struct type **Place Piece** (or Swap Pieces, Shift...), and
    set its `Position` (etc.). Leave `Faction` alone: the server stamps the real one.
-5. Hand it back: make a **ConnectIt AI Decision** struct (`Payload` = the instanced struct; `Summary` = a line for the log saying
-   why), then call **Finish Decision** with it. **Always call Finish Decision, on every path**, including "nothing good, take the first legal move".
+5. Hand it back: **Make Single Move Decision** (`Operation` = the instanced struct; `Summary` = a line for the log saying why),
+   or build a **ConnectIt AI Decision** with several **Candidates** (best first: each a `Payload` + `Summary`) so a rejected
+   move falls back to the next. Then call **Finish Decision**. **Always call Finish Decision, on every path**, including
+   "nothing good, take the first legal move". `Max Candidates` keeps the best N.
 6. If you use a **Delay** or other latent work, check **Is Decision Active** before finishing; a cancelled decision's late answer
    is ignored anyway. Optionally override **Cancel Decision** to stop your own work.
 7. Create the profile as in A, but pick your Blueprint class as the `Strategy`.
@@ -106,12 +118,16 @@ comes from the profile, not from the controller class.
 
 - **Never calling Finish Decision** (or finishing with an empty payload): the AI sits there until the turn timer runs out.
 - **`REJECTED`**: the AI's loadout has no action that produces that operation type, the action is out of uses / at its per-turn
-  cap, or the operation can't apply (occupied tile). The AI does not retry. Check the loadout first.
+  cap, or the operation can't apply (occupied tile). The controller then tries the decision's next candidate; if **all** are
+  rejected it logs an error and ends the AI's turn. Offer only `Available Request Types` and moves that apply to the board.
 - **Two moves per turn** is loadout configuration (the Place action's per-turn requirement / turn-end rule), not strategy: the
   controller simply asks again until the turn can end (at most 16 times). Use `Decision Index This Turn` to tell the moves apart.
 - **Strategy variables reset every match** and belong to one AI: each controller works on its own duplicate of the profile's
   strategy.
-- **The built-in MinMax only searches Place Piece.** Giving the AI swaps does nothing unless a strategy uses them.
+- **The built-in MinMax only searches Place Piece.** Giving the AI swaps does nothing unless a strategy uses them. The profile
+  warns when its loadout grants moves the strategy never plays, or none it does (`Get Supported Request Types`).
+- **Existing Blueprint strategies** written before candidate lists set `Payload` / `Summary` on the decision directly; rewire
+  them to Make Single Move Decision.
 - **No AI Win Groups** is the easy one to forget in a new preset: the AI then plays but cannot win.
 - Custom controllers do not change behaviour. If your change "had no effect", you almost certainly wanted a strategy.
 - Level scripting in Blueprint (a level script reacting to checkpoints) is separate: see
@@ -119,6 +135,7 @@ comes from the profile, not from the controller class.
 
 ## See also
 
+- Recipes: [[combine-ai-strategies]], [[direct-the-ai-during-a-match]]
 - Flow: [[ai-turn]]
 - Design: [blueprint-ai-strategy-surface](../../design/blueprint-ai-strategy-surface.md) (the exhaustion-AI recipe),
   [stage-and-match-preset](../../design/stage-and-match-preset.md),

@@ -13,6 +13,8 @@
 #include "Action/TurnBasedAction.h"
 #include "Turn/Participant/TurnBasedParticipantComponent.h"
 #include "AI/ConnectIt_AIProfile.h"
+#include "AI/ConnectIt_AIDirector.h"
+#include "Board/Events/ConnectIt_BoardEvents.h"
 #include "AI/ConnectIt_AIStrategy_MinMax.h"
 #include "ConnectIt_Structs.h"
 #include "TurnBasedMechanicsEnums.h"
@@ -60,6 +62,10 @@ void AConnectIt_AIController::EndPlay(const EEndPlayReason::Type EndPlayReason)
     if (IsValid(ParticipantComponent))
     {
         ParticipantComponent->OnTurnNotificationReceived_Native.Remove(TurnNotificationHandle);
+    }
+    if (UConnectIt_BoardStateComponent* BoardState = UConnectIt_GameUtilityLibrary::GetBoardStateComponent(this))
+    {
+        BoardState->OnBoardStateChanged.RemoveDynamic(this, &AConnectIt_AIController::HandleBoardStateChanged);
     }
     if (const UWorld* World = GetWorld())
     {
@@ -116,9 +122,15 @@ void AConnectIt_AIController::HandleTurnNotification(const FTurnNotification& No
         case ETurnPhase::TurnEnd:
         case ETurnPhase::TurnTimeout:
         case ETurnPhase::TurnSkipped:
+            bResumeOnUnpause = false;
+            CancelDecision();
+            OnMyTurnEnded(Notification.TurnNumber);
+            break;
+
         case ETurnPhase::GameOver:
             bResumeOnUnpause = false;
             CancelDecision();
+            bTurnInProgress = false;
             break;
 
         default:
@@ -203,8 +215,20 @@ void AConnectIt_AIController::InitialiseFromMatchSetup()
                  "a default MinMax strategy"));
         Strategy = NewObject<UConnectIt_AIStrategy_MinMax>(this);
     }
-    
-    Strategy->OnDecisionFinished.BindUObject(this, &AConnectIt_AIController::HandleDecisionFinished);
+
+    AdoptStrategy(Strategy);
+
+    // The match preset's AI director, if any -- duplicated like the strategy
+    const AConnectIt_GameMode* GameMode = GetWorld() ? Cast<AConnectIt_GameMode>(GetWorld()->GetAuthGameMode()) : nullptr;
+    if (const UConnectIt_AIDirector* DirectorTemplate = GameMode ? GameMode->GetAIDirectorTemplate() : nullptr)
+    {
+        Director = DuplicateObject<UConnectIt_AIDirector>(DirectorTemplate, this);
+        if (UConnectIt_BoardStateComponent* BoardState = UConnectIt_GameUtilityLibrary::GetBoardStateComponent(this))
+        {
+            BoardState->OnBoardStateChanged.AddUniqueDynamic(this, &AConnectIt_AIController::HandleBoardStateChanged);
+        }
+        UE_LOG(LogTemp, Log, TEXT("ConnectIt_AIController: AI director '%s'"), *GetNameSafe(Director));
+    }
 
     // Registration itself is NOT done here -- AConnectIt_GameMode::
     // SpawnAndRegisterAI already calls RegisterAIParticipant right after
@@ -238,6 +262,12 @@ void AConnectIt_AIController::OnMyTurnStarted()
     if (!HasAuthority()) return;
     if (CheckAndApplyForcedMove()) return;
 
+    bTurnInProgress = true;
+    if (IsValid(Director))
+    {
+        Director->OnAITurnStarted(LastStartedTurnNumber);
+    }
+
     DecisionsThisTurn = 0;
     BeginDecision();
 }
@@ -245,6 +275,13 @@ void AConnectIt_AIController::OnMyTurnStarted()
 void AConnectIt_AIController::BeginDecision()
 {
     CancelDecision();
+
+    // A strategy change waits for a decision boundary
+    if (IsValid(PendingStrategy))
+    {
+        AdoptStrategy(PendingStrategy);
+        PendingStrategy = nullptr;
+    }
 
     if (!IsValid(Strategy))
     {
@@ -304,6 +341,34 @@ void AConnectIt_AIController::BeginDecision()
     DecisionTurnNumber = GameState->GetActiveTurnNumber();
     Context.TurnNumber = DecisionTurnNumber;
     Context.DecisionIndexThisTurn = DecisionsThisTurn;
+
+    // The kinds of move this AI may make right now: produced by an action in
+    // its loadout that is usable this decision -- the same two checks the
+    // server's gate makes of a real request
+    if (const UActionLoadoutDataAsset* OwnLoadout = PS->GetLoadout())
+    {
+        const auto Consider = [&Context, PS](const TSubclassOf<UTurnBasedAction>& ActionClass)
+        {
+            const UTurnBasedAction* CDO = ActionClass ? ActionClass->GetDefaultObject<UTurnBasedAction>() : nullptr;
+            if (!IsValid(CDO) || !PS->CanUseAction(ActionClass)) return;
+
+            for (const FGameplayTag& RequestType : FConnectItBoardOperation::GetAllRequestTypes())
+            {
+                if (CDO->ProducesRequestType(RequestType))
+                {
+                    Context.AvailableRequestTypes.AddTag(RequestType);
+                }
+            }
+        };
+        for (const FPermanentActionConfig& Config : OwnLoadout->PermanentActions)
+        {
+            Consider(Config.ActionClass);
+        }
+        for (const FNumberedActionConfig& Config : OwnLoadout->NumberedActions)
+        {
+            Consider(Config.ActionClass);
+        }
+    }
     DecisionStartTime = FPlatformTime::Seconds();
 
     // May call HandleDecisionFinished before returning (a strategy that
@@ -324,7 +389,8 @@ void AConnectIt_AIController::HandleDecisionFinished(const FConnectItAIDecision&
         return;
     }
 
-    UE_LOG(LogTemp, Log, TEXT("ConnectIt_AIController: decided -- %s"), *Decision.Summary);
+    UE_LOG(LogTemp, Log, TEXT("ConnectIt_AIController: decided -- %d candidate(s), best: %s"),
+        Decision.Candidates.Num(), *Decision.Candidates[0].Summary);
 
     const double RemainingThink = Strategy->MinThinkSeconds
         - (FPlatformTime::Seconds() - DecisionStartTime);
@@ -341,6 +407,165 @@ void AConnectIt_AIController::HandleDecisionFinished(const FConnectItAIDecision&
     else
     {
         SubmitDecision(DecisionId, Decision);
+    }
+}
+
+bool AConnectIt_AIController::SubmitCandidate(const FConnectItAICandidate& Candidate, int32 Index)
+{
+    ATurnBasedPlayerState* PS = GetPlayerState<ATurnBasedPlayerState>();
+    UActionLoadoutDataAsset* Loadout = IsValid(PS) ? PS->GetLoadout() : nullptr;
+    if (!IsValid(Loadout))
+    {
+        UE_LOG(LogTemp, Error,
+            TEXT("ConnectIt_AIController: SubmitCandidate -- no PlayerState or "
+                 "loadout, cannot resolve which action to submit as"));
+        return false;
+    }
+
+    // What kind of request this is comes from the candidate's operation
+    const FConnectItBoardOperation* Operation = Candidate.Payload.GetPtr<FConnectItBoardOperation>();
+    if (!Operation)
+    {
+        UE_LOG(LogTemp, Error,
+            TEXT("ConnectIt_AIController: candidate %d's payload is not a board "
+                 "operation -- skipped"), Index);
+        return false;
+    }
+    const FGameplayTag RequestType = Operation->GetRequestType();
+
+    // Submit as the loadout action allowed to produce this request type --
+    // found by asking each configured class, not by hardcoding a reference
+    // (the class-keyed action-config convention: config references the
+    // class, the tag is derived from it). The Mediator gate checks the same.
+    TSubclassOf<UTurnBasedAction> ActionClass = nullptr;
+    auto ConsiderClass = [&ActionClass, &RequestType](const TSubclassOf<UTurnBasedAction>& Candidate)
+    {
+        if (ActionClass || !Candidate) return;
+        const UTurnBasedAction* CDO = Candidate->GetDefaultObject<UTurnBasedAction>();
+        if (IsValid(CDO) && CDO->ProducesRequestType(RequestType))
+        {
+            ActionClass = Candidate;
+        }
+    };
+    for (const FPermanentActionConfig& Config : Loadout->PermanentActions)
+    {
+        ConsiderClass(Config.ActionClass);
+    }
+    for (const FNumberedActionConfig& Config : Loadout->NumberedActions)
+    {
+        ConsiderClass(Config.ActionClass);
+    }
+
+    if (!ActionClass)
+    {
+        UE_LOG(LogTemp, Error,
+            TEXT("ConnectIt_AIController: candidate %d -- loadout '%s' has no "
+                 "configured action that produces '%s' requests"),
+            Index, *Loadout->LoadoutName, *RequestType.ToString());
+        return false;
+    }
+
+    AConnectIt_GameMode* GameMode = Cast<AConnectIt_GameMode>(GetWorld()->GetAuthGameMode());
+    if (!IsValid(GameMode))
+    {
+        UE_LOG(LogTemp, Error,
+            TEXT("ConnectIt_AIController: SubmitCandidate -- GameMode is not "
+                 "AConnectIt_GameMode"));
+        return false;
+    }
+
+    FTurnActionRequest Request;
+    Request.ActionTag = UTurnBasedAction::GetTagForClass(ActionClass);
+    Request.Payload = Candidate.Payload;
+
+    const bool bSucceeded = GameMode->ProcessBoardRequest(Request, PS->GetSlotIndex());
+
+    UE_LOG(LogTemp, Log,
+        TEXT("ConnectIt_AIController: candidate %d '%s' %s as %s -- %s"),
+        Index, *RequestType.ToString(), *Operation->Describe(), *ActionClass->GetName(),
+        bSucceeded ? TEXT("accepted") : TEXT("REJECTED"));
+
+    return bSucceeded;
+}
+
+void AConnectIt_AIController::AdoptStrategy(UConnectIt_AIStrategy* NewStrategy)
+{
+    if (!IsValid(NewStrategy)) return;
+
+    if (IsValid(Strategy) && Strategy != NewStrategy)
+    {
+        Strategy->StopDecision();
+        Strategy->OnDecisionFinished.Unbind();
+    }
+
+    Strategy = NewStrategy;
+    Strategy->OnDecisionFinished.BindUObject(this, &AConnectIt_AIController::HandleDecisionFinished);
+}
+
+void AConnectIt_AIController::ChangeStrategy(const UConnectIt_AIStrategy* StrategyTemplate)
+{
+    if (!HasAuthority() || !IsValid(StrategyTemplate)) return;
+
+    // Our own copy, used from the next decision on (one may be running now)
+    PendingStrategy = DuplicateObject<UConnectIt_AIStrategy>(StrategyTemplate, this);
+    UE_LOG(LogTemp, Log, TEXT("ConnectIt_AIController: strategy changes to %s from the next decision"),
+        *GetNameSafe(StrategyTemplate->GetClass()));
+}
+
+void AConnectIt_AIController::ChangeLoadout(UActionLoadoutDataAsset* Loadout)
+{
+    if (!HasAuthority()) return;
+
+    if (bTurnInProgress)
+    {
+        // Re-seeding mid-turn would reset this turn's use counts
+        PendingLoadout = Loadout;
+        bHasPendingLoadout = true;
+        UE_LOG(LogTemp, Log, TEXT("ConnectIt_AIController: loadout changes to '%s' when this turn ends"),
+            IsValid(Loadout) ? *Loadout->LoadoutName : TEXT("none"));
+        return;
+    }
+
+    SeedActionState(Loadout);
+}
+
+void AConnectIt_AIController::OnMyTurnEnded(int32 TurnNumber)
+{
+    if (!bTurnInProgress) return;
+    bTurnInProgress = false;
+
+    // A loadout change asked for during the turn
+    if (bHasPendingLoadout)
+    {
+        bHasPendingLoadout = false;
+        SeedActionState(PendingLoadout);
+        PendingLoadout = nullptr;
+    }
+
+    // Anything set here is what the AI plays its next turn with (and, being
+    // on the PlayerState, what the player can be shown in the meantime)
+    if (IsValid(Director))
+    {
+        Director->OnAITurnEnded(TurnNumber);
+    }
+}
+
+void AConnectIt_AIController::HandleBoardStateChanged()
+{
+    if (!IsValid(Director)) return;
+
+    const UConnectIt_BoardStateComponent* BoardState = UConnectIt_GameUtilityLibrary::GetBoardStateComponent(this);
+    const ATurnBasedPlayerState* PS = GetPlayerState<ATurnBasedPlayerState>();
+    if (!IsValid(BoardState)) return;
+
+    for (const FInstancedStruct& Entry : BoardState->GetChangeEvent().Events)
+    {
+        if (const FConnectItBoardEvent_WinCheckpointReached* Checkpoint =
+            Entry.GetPtr<FConnectItBoardEvent_WinCheckpointReached>())
+        {
+            const bool bIsAI = IsValid(PS) && Checkpoint->Faction == PS->GetSlotIndex();
+            Director->OnWinCheckpointReached(Checkpoint->Faction, bIsAI, Checkpoint->GroupIndex, Checkpoint->GroupName);
+        }
     }
 }
 
@@ -388,81 +613,27 @@ void AConnectIt_AIController::SubmitDecision(int32 DecisionId, FConnectItAIDecis
     }
 
     ATurnBasedPlayerState* PS = GetPlayerState<ATurnBasedPlayerState>();
-    UActionLoadoutDataAsset* Loadout = IsValid(PS) ? PS->GetLoadout() : nullptr;
-    if (!IsValid(Loadout))
+    if (!IsValid(PS)) return;
+
+    // Best first, until the server accepts one -- the AI's version of a human
+    // trying again after a rejected move. Nothing changes on the board
+    // between attempts, so the strategy needn't be asked again.
+    bool bSucceeded = false;
+    for (int32 Index = 0; Index < Decision.Candidates.Num() && !bSucceeded; Index++)
     {
-        UE_LOG(LogTemp, Error,
-            TEXT("ConnectIt_AIController: SubmitDecision -- no PlayerState or "
-                 "loadout, cannot resolve which action to submit as"));
-        return;
+        bSucceeded = SubmitCandidate(Decision.Candidates[Index], Index);
     }
-
-    // What kind of request this is comes from the decision's operation
-    const FConnectItBoardOperation* DecidedOperation = Decision.Payload.GetPtr<FConnectItBoardOperation>();
-    if (!DecidedOperation)
-    {
-        UE_LOG(LogTemp, Error,
-            TEXT("ConnectIt_AIController: SubmitDecision -- the decision's "
-                 "payload is not a board operation"));
-        return;
-    }
-    const FGameplayTag RequestType = DecidedOperation->GetRequestType();
-
-    // Submit as the loadout action allowed to produce this request type --
-    // found by asking each configured class, not by hardcoding a reference
-    // (the class-keyed action-config convention: config references the
-    // class, the tag is derived from it). The Mediator gate checks the same.
-    TSubclassOf<UTurnBasedAction> ActionClass = nullptr;
-    auto ConsiderClass = [&ActionClass, &RequestType](const TSubclassOf<UTurnBasedAction>& Candidate)
-    {
-        if (ActionClass || !Candidate) return;
-        const UTurnBasedAction* CDO = Candidate->GetDefaultObject<UTurnBasedAction>();
-        if (IsValid(CDO) && CDO->ProducesRequestType(RequestType))
-        {
-            ActionClass = Candidate;
-        }
-    };
-    for (const FPermanentActionConfig& Config : Loadout->PermanentActions)
-    {
-        ConsiderClass(Config.ActionClass);
-    }
-    for (const FNumberedActionConfig& Config : Loadout->NumberedActions)
-    {
-        ConsiderClass(Config.ActionClass);
-    }
-
-    if (!ActionClass)
-    {
-        UE_LOG(LogTemp, Error,
-            TEXT("ConnectIt_AIController: SubmitDecision -- loadout '%s' has "
-                 "no configured action that produces '%s' requests"),
-            *Loadout->LoadoutName, *RequestType.ToString());
-        return;
-    }
-
-    AConnectIt_GameMode* GameMode = Cast<AConnectIt_GameMode>(GetWorld()->GetAuthGameMode());
-    if (!IsValid(GameMode))
-    {
-        UE_LOG(LogTemp, Error,
-            TEXT("ConnectIt_AIController: SubmitDecision -- GameMode is not "
-                 "AConnectIt_GameMode"));
-        return;
-    }
-
-    FTurnActionRequest Request;
-    Request.ActionTag = UTurnBasedAction::GetTagForClass(ActionClass);
-    Request.Payload = Decision.Payload;
-
-    const bool bSucceeded = GameMode->ProcessBoardRequest(Request, PS->GetSlotIndex());
-
-    UE_LOG(LogTemp, Log,
-        TEXT("ConnectIt_AIController: '%s' as %s -- %s"),
-        *RequestType.ToString(), *ActionClass->GetName(),
-        bSucceeded ? TEXT("accepted") : TEXT("REJECTED"));
 
     if (!bSucceeded)
     {
-        // Stop rather than loop resubmitting the same rejection
+        UE_LOG(LogTemp, Error,
+            TEXT("ConnectIt_AIController: the server rejected all %d candidate(s) "
+                 "from strategy %s -- ending the AI's turn. The Mediator's log "
+                 "above says why each was refused; a strategy should only offer "
+                 "moves of Context.AvailableRequestTypes that can be applied to "
+                 "the board."),
+            Decision.Candidates.Num(), *GetNameSafe(Strategy));
+        ParticipantComponent->ServerSubmitTurnEnd();
         return;
     }
 

@@ -13,6 +13,7 @@ class AConnectIt_AIController;
 class ATurnBasedPlayerState;
 class UActionLoadoutDataAsset;
 class UConnectIt_AIProfile;
+class UConnectIt_AIDirector;
 class UTurnBasedParticipantManagerComponent;
 class UConnectIt_BoardRequestMediator;
 
@@ -128,6 +129,10 @@ public:
 
     // The AI opponent for this match (menu choice, else the level's default)
     const UConnectIt_AIProfile* GetAIProfile() const { return AIProfile; }
+
+    // The match preset's AI director template, if it has one (each AI
+    // controller duplicates it)
+    const UConnectIt_AIDirector* GetAIDirectorTemplate() const { return AIDirectorTemplate; }
 
     // The one way to change the match's rules after setup: Change edits this
     // GameMode's rule set, then the GameState mirror is refreshed (clients and
@@ -249,6 +254,9 @@ private:
 
     UPROPERTY()
     TObjectPtr<UConnectIt_AIProfile> AIProfile = nullptr;
+
+    UPROPERTY()
+    TObjectPtr<UConnectIt_AIDirector> AIDirectorTemplate = nullptr;
 
     bool bMatchSetupResolved = false;
 

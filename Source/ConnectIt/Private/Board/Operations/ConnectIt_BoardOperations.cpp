@@ -3,6 +3,8 @@
 #include "Board/Operations/ConnectIt_BoardOperations.h"
 #include "Board/Events/ConnectIt_BoardEvents.h"
 #include "ConnectIt_GameplayTags.h"
+#include "StructUtils/InstancedStruct.h"
+#include "UObject/UObjectIterator.h"
 
 
 namespace
@@ -16,6 +18,32 @@ namespace
     {
         if (OutWhyNot) *OutWhyNot = Reason;
     }
+}
+
+const TArray<FGameplayTag>& FConnectItBoardOperation::GetAllRequestTypes()
+{
+    // Built on first use (game thread, after modules have loaded). Blueprint
+    // structs can't derive from a C++ struct, so the set never changes at
+    // runtime.
+    static const TArray<FGameplayTag> RequestTypes = []()
+    {
+        TArray<FGameplayTag> Found;
+        const UScriptStruct* Base = FConnectItBoardOperation::StaticStruct();
+        for (TObjectIterator<UScriptStruct> It; It; ++It)
+        {
+            if (*It == Base || !It->IsChildOf(Base)) continue;
+
+            FInstancedStruct Instance;
+            Instance.InitializeAs(*It);
+            const FGameplayTag RequestType = Instance.Get<FConnectItBoardOperation>().GetRequestType();
+            if (RequestType.IsValid())
+            {
+                Found.AddUnique(RequestType);
+            }
+        }
+        return Found;
+    }();
+    return RequestTypes;
 }
 
 // ---------------------------------------------------------------------------

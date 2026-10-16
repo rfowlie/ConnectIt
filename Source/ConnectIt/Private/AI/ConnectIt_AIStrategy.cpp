@@ -5,6 +5,7 @@
 #include "Action/ActionConfig.h"
 #include "Action/ActionLoadoutDataAsset.h"
 #include "Action/TurnBasedAction.h"
+#include "Board/Operations/ConnectIt_BoardOperation.h"
 
 
 AConnectIt_AIController* UConnectIt_AIStrategy::GetOwningController() const
@@ -77,5 +78,38 @@ void UConnectIt_AIStrategy::FinishDecision(const FConnectItAIDecision& Decision)
     }
 
     ActiveDecisionId = INDEX_NONE;
-    if (OnDecisionFinished.IsBound()) { OnDecisionFinished.Execute(Decision); }
+    // Keep the best MaxCandidates
+    FConnectItAIDecision Trimmed = Decision;
+    const int32 Keep = FMath::Max(1, MaxCandidates);
+    if (Trimmed.Candidates.Num() > Keep)
+    {
+        Trimmed.Candidates.SetNum(Keep);
+    }
+
+    if (OnDecisionFinished.IsBound()) { OnDecisionFinished.Execute(Trimmed); }
+}
+
+FConnectItAIDecision UConnectIt_AIStrategy::MakeSingleMoveDecision(
+    const FInstancedStruct& Operation, const FString& Summary)
+{
+    FConnectItAIDecision Decision;
+    if (Operation.IsValid())
+    {
+        Decision.Candidates.Add({ Operation, Summary });
+    }
+    return Decision;
+}
+
+bool UConnectIt_AIStrategy::IsOperationAvailable(
+    const FConnectItAIDecisionContext& Context, const FInstancedStruct& Operation)
+{
+    const FConnectItBoardOperation* BoardOperation = Operation.GetPtr<FConnectItBoardOperation>();
+    return BoardOperation && Context.AvailableRequestTypes.HasTagExact(BoardOperation->GetRequestType());
+}
+
+UWorld* UConnectIt_AIStrategy::GetWorld() const
+{
+    if (HasAnyFlags(RF_ClassDefaultObject | RF_ArchetypeObject)) return nullptr;
+    const UObject* Outer = GetOuter();
+    return Outer ? Outer->GetWorld() : nullptr;
 }

@@ -6,13 +6,16 @@ spans:
   - Source/ConnectIt/Public/AI/ConnectIt_AIStrategy.h
   - Source/ConnectIt/Private/AI/ConnectIt_AIStrategy.cpp
   - Source/ConnectIt/Public/AI/ConnectIt_AIStrategy_MinMax.h
+  - Source/ConnectIt/Public/AI/ConnectIt_MinMaxSearch.h
+  - Source/ConnectIt/Public/AI/ConnectIt_AIStrategy_Coordinator.h
+  - Source/ConnectIt/Public/AI/ConnectIt_AIDirector.h
   - Source/ConnectIt/Public/AI/ConnectIt_AIProfile.h
   - Source/ConnectIt/Public/Framework/Data/ConnectIt_MatchPreset.h
   - Source/ConnectIt/Public/Framework/GameMode/ConnectIt_GameMode.h
   - Source/ConnectIt/Public/Board/ConnectIt_BoardRequestMediator.h
   - Plugins/UnrealTurnBasedMechanics/Source/UnrealTurnBasedMechanics/Public/Framework/Controller/TurnBasedAIController.h
 reconciled: 2026-10-14
-commit: ee45a98
+commit: 5262fc9
 ---
 
 # AI turn: who the opponent is, and how it takes a move
@@ -81,12 +84,17 @@ sequenceDiagram
    groups, including menu tweaks), `OwnLoadout`/`OpponentLoadout` (assets: game thread only), `TurnNumber`,
    `DecisionIndexThisTurn`.
 5. **Decide.** `UConnectIt_AIStrategy::StartDecision` calls the strategy's `BeginDecision` (override it: C++ or Blueprint). The
-   strategy answers with `FinishDecision`: now, or later from background work. A late answer after a cancel is ignored.
+   strategy answers with `FinishDecision`: a **ranked list of candidate moves** (best first, trimmed to its `MaxCandidates`),
+   now or later from background work. A late answer after a cancel is ignored. The context also carries
+   `AvailableRequestTypes` (what the loadout allows and is usable now) and `TimeBudgetSeconds` (set by a coordinator). A
+   **coordinator** strategy asks child strategies and judges between them; the MinMax search is a shared tool
+   (`ConnectItMinMaxSearch`, Blueprint node *Find Best Moves (MinMax)*) the MinMax strategy wraps.
 6. **Think time.** The controller holds the answer until `MinThinkSeconds` have passed since the decision began, so a fast AI
    still reads as thinking.
-7. **Submit.** `SubmitDecision` re-checks the decision is current (not superseded, same turn), reads the operation out of
-   `Decision.Payload`, finds the loadout action whose class `ProducesRequestType` that operation's request type, and calls
-   `GameMode->ProcessBoardRequest` as its own slot.
+7. **Submit.** `SubmitDecision` re-checks the decision is current (not superseded, same turn), then tries the candidates in
+   order (`SubmitCandidate`): reads the operation out of the candidate's payload, finds the loadout action whose class
+   `ProducesRequestType` that operation's request type, and calls `GameMode->ProcessBoardRequest` as its own slot. The first
+   accepted one wins; if every candidate is rejected it logs an error and ends the turn.
 8. **The gate.** [[UConnectIt_BoardRequestMediator]] holds the AI to the same rules as a human: the action must be in its loadout,
    produce that request type, be usable now (uses, per-turn cap, cooldown), and the operation must `CanApply` to the board. The
    requester's faction is supplied by the server, never by the payload.
@@ -97,8 +105,12 @@ sequenceDiagram
 
 - **A decision with no move stalls the turn.** If `FinishDecision` gets an empty payload (or the strategy never calls it), the
   controller logs a warning and does nothing: the turn then runs to its timer. Always finish with a real operation.
-- **A rejected request also stops the AI** (it logs `REJECTED` and does not retry). Usual causes: the loadout has no action
-  producing that operation type; the action's uses/caps are spent; the operation can't apply (occupied tile).
+- **A rejected candidate falls through to the next**; only when all are rejected does the AI log an error and end its turn.
+  Usual causes: the loadout has no action producing that operation type; the action's uses/caps are spent; the operation
+  can't apply (occupied tile).
+- **The match's AI director** (on the match preset) is told when the AI's turn starts and ends and when either side reaches a
+  win checkpoint (from the server-side board change). It may change the AI's loadout (deferred to the end of the AI's own
+  turn) or its strategy (from the next decision).
 - **Strategy state is per controller** (a duplicate of the profile's template), reset each match. Don't expect variables on the
   strategy to survive a new match or to be shared between two AIs.
 - **Threads.** `Rules` and `Board` in the context are plain data and safe to hand to a background task; `OwnLoadout`,

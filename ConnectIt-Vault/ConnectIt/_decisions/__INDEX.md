@@ -8,6 +8,7 @@ Newest first:
 
 | Date | Decision | Status |
 |---|---|---|
+| [2026-10-14-composable-ai](2026-10-14-composable-ai.md) | The AI is composable: side-effect-free strategies return ranked candidate lists the controller tries in order; MinMax is a search tool (Blueprint node); a coordinator strategy combines children; an AI director on the match preset changes the AI's loadout / strategy during a match | Active |
 | [2026-10-14-stage-and-match-preset](2026-10-14-stage-and-match-preset.md) | A level config is the stage only; how a match is played (rules, player loadout, AI) is a `UConnectIt_MatchPreset`; a level names its default preset and the main menu can pick another for the same level | Active |
 | [2026-10-13-win-condition-groups-as-ordered-stages](2026-10-13-win-condition-groups-as-ordered-stages.md) | Each side lists its win condition groups in order (`PlayerWinGroups` / `AIWinGroups`); completing a group is a checkpoint (`OnWinCheckpointReached`), completing the last is the win (`OnMatchWon`); progress lives on the board; the pre-commit hook and `SetWinConditions` were removed | Active |
 | [2026-10-08-win-condition-groups-and-piece-count](2026-10-08-win-condition-groups-and-piece-count.md) | A group of win conditions that must ALL hold (empty never wins); no AI fallback to the player's; No Pieces became Piece Count (comparison + count, progress from the board's starting counts); (one group per side and the pre-commit hook were replaced by ordered groups) | Partly superseded |

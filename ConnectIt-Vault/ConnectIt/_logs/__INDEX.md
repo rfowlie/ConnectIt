@@ -6,6 +6,9 @@ Vault-wide passes go in `_core/_logs/`.
 
 Newest first:
 
+- [2026-10-14-1605](2026-10-14-1605.md) — session — composable AI: candidate lists, MinMax search as a Blueprint node, coordinator strategy, AI director on
+  the match preset. Four stages, 30/30 tests; PIE pending; one Blueprint strategy needs rewiring.
+
 - [2026-10-14-1500](2026-10-14-1500.md) — session — AI turn flow page + designer recipe for setting up a custom AI opponent (profile, Blueprint strategy,
   Blueprint controller); restored a dropped `DecisionTurnNumber` assignment that made every AI decision look stale. Not compiled.
 

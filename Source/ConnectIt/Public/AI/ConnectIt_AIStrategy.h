@@ -58,26 +58,53 @@ struct FConnectItAIDecisionContext
     // resets them when this is 0.
     UPROPERTY(BlueprintReadOnly, Category = "AI")
     int32 DecisionIndexThisTurn = 0;
+
+    // The kinds of move (request types, e.g. ConnectIt_Game_PlacePiece) this
+    // AI may make RIGHT NOW: its loadout has an action that produces them, and
+    // that action is usable this decision (per-turn cap, cooldown, uses left).
+    // Offer only candidates of these types. The server still checks every
+    // move; this is so a strategy doesn't have to work it out.
+    UPROPERTY(BlueprintReadOnly, Category = "AI")
+    FGameplayTagContainer AvailableRequestTypes;
+
+    // How long this decision may take, in seconds; 0 = no limit. Set by a
+    // coordinator for its children; a strategy that searches should stop
+    // when it runs out (the MinMax search does).
+    UPROPERTY(BlueprintReadOnly, Category = "AI")
+    float TimeBudgetSeconds = 0.f;
 };
 
-// What a strategy decided: one board change. The controller finds the
-// loadout action allowed to send that kind of operation and submits it as
-// that action, as its own faction.
+// One move a strategy is willing to make
 USTRUCT(BlueprintType)
-struct FConnectItAIDecision
+struct FConnectItAICandidate
 {
     GENERATED_BODY()
 
     // The board change itself: a FConnectItBoardOperation, e.g.
-    // FConnectItBoardOperation_PlacePiece. Left empty = no move.
+    // FConnectItBoardOperation_PlacePiece (wrap it with Make Instanced Struct)
     UPROPERTY(BlueprintReadWrite, Category = "AI")
     FInstancedStruct Payload;
 
     // Free text for the log -- why this move
     UPROPERTY(BlueprintReadWrite, Category = "AI")
     FString Summary;
+};
 
-    bool HasMove() const { return Payload.IsValid(); }
+// What a strategy decided: the moves it is willing to make, best first. The
+// controller submits them in order -- each as the loadout action that
+// produces that kind of operation, as its own faction -- until the server
+// accepts one, the way a human tries again after a rejected move. If every
+// candidate is rejected it logs an error and ends the turn. No candidates =
+// no move.
+USTRUCT(BlueprintType)
+struct FConnectItAIDecision
+{
+    GENERATED_BODY()
+
+    UPROPERTY(BlueprintReadWrite, Category = "AI")
+    TArray<FConnectItAICandidate> Candidates;
+
+    bool HasMove() const { return !Candidates.IsEmpty(); }
 };
 
 DECLARE_DELEGATE_OneParam(FOnConnectItAIDecisionFinished, const FConnectItAIDecision&);
@@ -106,6 +133,11 @@ public:
         meta = (ClampMin = 0.0, Units = "s"))
     float MinThinkSeconds = 0.6f;
 
+    // At most this many candidates are kept from a decision (the best ones):
+    // enough fallbacks for a rejected move, short enough to read in a log.
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "AI", meta = (ClampMin = 1))
+    int32 MaxCandidates = 5;
+
     // Controller-facing entry points -- not overridable, they keep the
     // "is a decision active" bookkeeping honest around the hooks below.
     void StartDecision(const FConnectItAIDecisionContext& Context);
@@ -120,11 +152,32 @@ public:
     UFUNCTION(BlueprintPure, Category = "AI")
     AConnectIt_AIController* GetOwningController() const;
 
+    // The world of whoever owns this strategy (its controller, or the
+    // coordinator holding it) -- for timers and Blueprint world-context nodes
+    virtual UWorld* GetWorld() const override;
+
     // Whether Loadout has an action that may send RequestType (e.g.
     // ConnectIt_Game_PlacePiece) -- the same question the server's gate asks
     // of a real request. Says nothing about use limits. Game thread only.
     UFUNCTION(BlueprintPure, Category = "AI")
     static bool LoadoutGrantsRequestType(const UActionLoadoutDataAsset* Loadout, FGameplayTag RequestType);
+
+    // A decision with a single move -- the common case
+    UFUNCTION(BlueprintPure, Category = "AI")
+    static FConnectItAIDecision MakeSingleMoveDecision(const FInstancedStruct& Operation, const FString& Summary);
+
+    // The kinds of move (request types) this strategy can ever offer. Used to
+    // check an AI profile: its loadout and its strategy should overlap.
+    // Empty (the default) = not declared, no check.
+    UFUNCTION(BlueprintNativeEvent, BlueprintPure, Category = "AI")
+    FGameplayTagContainer GetSupportedRequestTypes() const;
+    virtual FGameplayTagContainer GetSupportedRequestTypes_Implementation() const { return FGameplayTagContainer(); }
+
+    // Whether Operation (a board operation struct) is a kind of move the AI
+    // may make right now (Context.AvailableRequestTypes). False if it isn't a
+    // board operation.
+    UFUNCTION(BlueprintPure, Category = "AI")
+    static bool IsOperationAvailable(const FConnectItAIDecisionContext& Context, const FInstancedStruct& Operation);
 
 protected:
 

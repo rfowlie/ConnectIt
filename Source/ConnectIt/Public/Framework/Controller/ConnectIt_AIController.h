@@ -12,6 +12,7 @@
 
 class UActionLoadoutDataAsset;
 class UConnectIt_AIProfile;
+class UConnectIt_AIDirector;
 
 
 // The ConnectIt AI opponent. Owns turn timing and submitting; WHO it is --
@@ -42,6 +43,18 @@ public:
 
     UFUNCTION(BlueprintPure, Category = "ConnectIt|AI")
     UConnectIt_AIStrategy* GetStrategy() const { return Strategy; }
+
+    UFUNCTION(BlueprintPure, Category = "ConnectIt|AI")
+    UConnectIt_AIDirector* GetDirector() const { return Director; }
+
+    // --- Changing the AI during a match (what the match's AI director calls) ---
+
+    // A new loadout for this AI. During its own turn the change waits until
+    // the turn ends, so it can't hand itself extra moves mid-turn.
+    void ChangeLoadout(UActionLoadoutDataAsset* Loadout);
+
+    // A new strategy (a copy of StrategyTemplate), from the next decision on
+    void ChangeStrategy(const UConnectIt_AIStrategy* StrategyTemplate);
 
 protected:
 
@@ -92,6 +105,10 @@ private:
     // Re-checks the decision is still current, then submits it
     void SubmitDecision(int32 DecisionId, FConnectItAIDecision Decision);
 
+    // Submits one candidate as the loadout action that produces its kind of
+    // operation. True if the server accepted it.
+    bool SubmitCandidate(const FConnectItAICandidate& Candidate, int32 Index);
+
     // True while DecisionId is the latest decision, and it is still this
     // controller's turn in the turn it was started on.
     bool IsDecisionStillCurrent(int32 DecisionId) const;
@@ -103,6 +120,30 @@ private:
     // This controller's own copy of the profile's strategy template
     UPROPERTY()
     TObjectPtr<UConnectIt_AIStrategy> Strategy = nullptr;
+
+    // Set by ChangeStrategy; becomes Strategy when the next decision starts
+    UPROPERTY()
+    TObjectPtr<UConnectIt_AIStrategy> PendingStrategy = nullptr;
+
+    // Set by ChangeLoadout during the AI's own turn; applied when it ends
+    UPROPERTY()
+    TObjectPtr<UActionLoadoutDataAsset> PendingLoadout = nullptr;
+    bool bHasPendingLoadout = false;
+
+    // This controller's own copy of the match preset's AI director, if any
+    UPROPERTY()
+    TObjectPtr<UConnectIt_AIDirector> Director = nullptr;
+
+    // Between this AI's turn start and its end
+    bool bTurnInProgress = false;
+
+    void AdoptStrategy(UConnectIt_AIStrategy* NewStrategy);
+    void OnMyTurnEnded(int32 TurnNumber);
+
+    // Server-side: every committed board change, to pass win checkpoints to
+    // the director
+    UFUNCTION()
+    void HandleBoardStateChanged();
 
     FDelegateHandle TurnNotificationHandle;
     FDelegateHandle MatchPhaseHandle;

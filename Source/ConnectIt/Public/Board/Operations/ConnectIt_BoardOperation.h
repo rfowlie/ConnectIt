@@ -79,4 +79,10 @@ struct CONNECTIT_API FConnectItBoardOperation
 
     // Short text for logs, e.g. "(3,2)"
     virtual FString Describe() const { return FString(); }
+
+    // The request type of every kind of board operation there is (every
+    // C++ struct deriving from this one), found once by reflection. Lets
+    // code ask "which kinds of move can this action produce?" of an action,
+    // which can only answer yes or no per type (ProducesRequestType).
+    static const TArray<FGameplayTag>& GetAllRequestTypes();
 };

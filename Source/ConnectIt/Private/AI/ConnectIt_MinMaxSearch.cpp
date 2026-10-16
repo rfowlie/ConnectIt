@@ -1,0 +1,222 @@
+// Fill out your copyright notice in the Description page of Project Settings.
+
+#include "AI/ConnectIt_MinMaxSearch.h"
+#include "ConnectIt_GameplayTags.h"
+
+
+namespace MinMax = GameIntelligence::Search::MinMax;
+
+FString FConnectItMinMaxSearchResult::Describe() const
+{
+    return FString::Printf(TEXT("MinMax depth %d%s, %lld nodes in %.0f ms"),
+        DepthReached, bOutOfTime ? TEXT(" (out of time)") : TEXT(""),
+        NodesVisited, ElapsedSeconds * 1000.0);
+}
+
+FGameplayTagContainer ConnectItMinMaxSearch::GetModelledRequestTypes()
+{
+    // FConnectItMinMaxMove lists the operations the search can model; it
+    // assumes every move ends the turn and has no use limit -- true of
+    // placing a piece only. Widening this is the task "Explore letting MinMax
+    // use moves other than PlacePiece".
+    return FGameplayTagContainer(ConnectIt_Game_PlacePiece);
+}
+
+bool ConnectItMinMaxSearch::Prepare(
+    const FConnectItAIDecisionContext& Context,
+    const FConnectItMinMaxSearchSettings& Settings,
+    FPrepared& OutPrepared,
+    FString* OutWhyNot)
+{
+    // Negamax is a two-player search
+    if (Context.Board.ScoreBoard.Num() != 2 || !Context.Board.ScoreBoard.IsValidIndex(Context.OwnSlot))
+    {
+        if (OutWhyNot)
+        {
+            *OutWhyNot = FString::Printf(TEXT("supports exactly 2 factions (board has %d, own slot %d)"),
+                Context.Board.ScoreBoard.Num(), Context.OwnSlot);
+        }
+        return false;
+    }
+
+    const FGameplayTagContainer Modelled = GetModelledRequestTypes();
+
+    // Each side's kinds of move: the settings' if given, else what the
+    // context says -- limited to what the search can model
+    const FGameplayTagContainer& OwnSource =
+        Settings.OwnRequestTypes.IsEmpty() ? Context.AvailableRequestTypes : Settings.OwnRequestTypes;
+    const FGameplayTagContainer OwnRequestTypes = OwnSource.FilterExact(Modelled);
+
+    FGameplayTagContainer OpponentRequestTypes;
+    if (Settings.OpponentRequestTypes.IsEmpty())
+    {
+        for (const FGameplayTag& RequestType : Modelled)
+        {
+            if (UConnectIt_AIStrategy::LoadoutGrantsRequestType(Context.OpponentLoadout, RequestType))
+            {
+                OpponentRequestTypes.AddTag(RequestType);
+            }
+        }
+    }
+    else
+    {
+        OpponentRequestTypes = Settings.OpponentRequestTypes.FilterExact(Modelled);
+    }
+
+    if (OwnRequestTypes.IsEmpty())
+    {
+        if (OutWhyNot)
+        {
+            *OutWhyNot = TEXT("the searching side has no move the search can model (it needs Place Piece)");
+        }
+        return false;
+    }
+
+    if (Settings.EvaluationWeights.IsAllZero())
+    {
+        UE_LOG(LogTemp, Warning,
+            TEXT("ConnectIt_MinMaxSearch: every evaluation weight is 0 -- every "
+                 "non-winning position looks equal, only wins and losses count"));
+    }
+
+    const bool bOwnIsSlot0 = Context.OwnSlot == 0;
+    OutPrepared.Rules = MakeShared<const FConnectItMinMaxRules, ESPMode::ThreadSafe>(
+        Context.Board,
+        Context.Rules,
+        Settings.EvaluationWeights,
+        Settings.OrderingWeights,
+        bOwnIsSlot0 ? OwnRequestTypes : OpponentRequestTypes,
+        bOwnIsSlot0 ? OpponentRequestTypes : OwnRequestTypes);
+
+    OutPrepared.Root = OutPrepared.Rules->MakeRoot(Context.Board, Context.OwnSlot);
+    OutPrepared.Params = MinMax::FParams();
+    OutPrepared.Params.MaxDepth = FMath::Max(1, Settings.MaxDepth);
+    // The tighter of the settings' budget and the decision's (a coordinator
+    // gives its children a share of its own); 0 = no limit
+    float TimeBudget = FMath::Max(0.f, Settings.TimeBudgetSeconds);
+    if (Context.TimeBudgetSeconds > 0.f)
+    {
+        TimeBudget = TimeBudget > 0.f ? FMath::Min(TimeBudget, Context.TimeBudgetSeconds) : Context.TimeBudgetSeconds;
+    }
+    OutPrepared.Params.TimeBudgetSeconds = TimeBudget;
+    return true;
+}
+
+FConnectItMinMaxSearchResult ConnectItMinMaxSearch::ToResult(const FConnectItMinMaxSearch::FResult& Raw)
+{
+    FConnectItMinMaxSearchResult Result;
+    Result.DepthReached = Raw.DepthReached;
+    Result.NodesVisited = Raw.NodesVisited;
+    Result.ElapsedSeconds = static_cast<float>(Raw.ElapsedSeconds);
+    Result.bOutOfTime = Raw.bOutOfTime;
+
+    Result.RankedMoves.Reserve(Raw.RootScores.Num());
+    for (const auto& Scored : Raw.RootScores)
+    {
+        FConnectItMinMaxRankedMove& Ranked = Result.RankedMoves.AddDefaulted_GetRef();
+        Ranked.Score = Scored.Score;
+        Visit([&Ranked](const auto& Operation)
+        {
+            Ranked.Operation = FInstancedStruct::Make(Operation);
+        }, Scored.Move);
+    }
+    return Result;
+}
+
+bool ConnectItMinMaxSearch::Launch(
+    const FConnectItAIDecisionContext& Context,
+    const FConnectItMinMaxSearchSettings& Settings,
+    GameIntelligence::Search::FCancelFlag CancelFlag,
+    TUniqueFunction<void(FConnectItMinMaxSearchResult&& Result, bool bCancelled)> OnComplete,
+    FString* OutWhyNot)
+{
+    FPrepared Prepared;
+    if (!Prepare(Context, Settings, Prepared, OutWhyNot)) return false;
+
+    MinMax::LaunchAlphaBetaAsync<FConnectItMinMaxRules>(
+        Prepared.Rules.ToSharedRef(), MoveTemp(Prepared.Root), Prepared.Params, CancelFlag,
+        [OnComplete = MoveTemp(OnComplete)](FConnectItMinMaxSearch::FResult&& Raw) mutable
+        {
+            const bool bCancelled = Raw.bCancelled;
+            OnComplete(ToResult(Raw), bCancelled);
+        });
+    return true;
+}
+
+// --- Blueprint node ---
+
+UConnectIt_FindBestMovesAsync* UConnectIt_FindBestMovesAsync::FindBestMoves(
+    UObject* WorldContextObject,
+    const FConnectItAIDecisionContext& Context,
+    const FConnectItMinMaxSearchSettings& Settings)
+{
+    UConnectIt_FindBestMovesAsync* Action = NewObject<UConnectIt_FindBestMovesAsync>();
+    Action->Context = Context;
+    Action->Settings = Settings;
+    Action->RegisterWithGameInstance(WorldContextObject);
+    return Action;
+}
+
+void UConnectIt_FindBestMovesAsync::Activate()
+{
+    const GameIntelligence::Search::FCancelFlag Flag = GameIntelligence::Search::MakeCancelFlag();
+    CancelFlag = Flag;
+
+    TWeakObjectPtr<UConnectIt_FindBestMovesAsync> WeakThis(this);
+    FString WhyNot;
+    const bool bLaunched = ConnectItMinMaxSearch::Launch(Context, Settings, Flag,
+        [WeakThis](FConnectItMinMaxSearchResult&& Result, bool bCancelled)
+        {
+            if (UConnectIt_FindBestMovesAsync* Self = WeakThis.Get())
+            {
+                Self->Finish(Result, !bCancelled);
+            }
+        },
+        &WhyNot);
+
+    if (!bLaunched)
+    {
+        UE_LOG(LogTemp, Warning, TEXT("Find Best Moves (MinMax): can't search -- %s"), *WhyNot);
+        Finish(FConnectItMinMaxSearchResult(), false);
+    }
+}
+
+void UConnectIt_FindBestMovesAsync::Cancel()
+{
+    if (CancelFlag.IsValid())
+    {
+        CancelFlag->store(true);
+    }
+    Finish(FConnectItMinMaxSearchResult(), false);
+}
+
+void UConnectIt_FindBestMovesAsync::Finish(const FConnectItMinMaxSearchResult& Result, bool bSucceeded)
+{
+    if (bFinished) return;
+    bFinished = true;
+
+    if (bSucceeded)
+    {
+        OnComplete.Broadcast(Result);
+    }
+    else
+    {
+        OnFailed.Broadcast(Result);
+    }
+    SetReadyToDestroy();
+}
+
+FConnectItAIDecision UConnectIt_FindBestMovesAsync::MakeDecisionFromSearch(
+    const FConnectItMinMaxSearchResult& Result, int32 MaxCandidates)
+{
+    FConnectItAIDecision Decision;
+    const int32 Count = FMath::Min(FMath::Max(1, MaxCandidates), Result.RankedMoves.Num());
+    for (int32 Index = 0; Index < Count; Index++)
+    {
+        const FConnectItMinMaxRankedMove& Ranked = Result.RankedMoves[Index];
+        Decision.Candidates.Add({ Ranked.Operation,
+            FString::Printf(TEXT("%s -- rank %d of %d, score %d"),
+                *Result.Describe(), Index + 1, Result.RankedMoves.Num(), Ranked.Score) });
+    }
+    return Decision;
+}
