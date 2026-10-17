@@ -1596,6 +1596,144 @@ bool FConnectItMinMaxSearchProgressTest::RunTest(const FString& Parameters)
     return true;
 }
 
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FConnectItAIBestSoFarTest,
+    "ConnectIt.AI.BestSoFar", TestFlags)
+
+bool FConnectItAIBestSoFarTest::RunTest(const FString& Parameters)
+{
+    const auto MakeDecision = [](int32 NumCandidates)
+    {
+        FConnectItAIDecision Decision;
+        for (int32 Index = 0; Index < NumCandidates; Index++)
+        {
+            FConnectItBoardOperation_PlacePiece Operation;
+            Operation.Position = FGridPosition(0, Index);
+            Decision.Candidates.Add({ FInstancedStruct::Make(Operation), FString::FromInt(Index) });
+        }
+        return Decision;
+    };
+
+    UConnectIt_TestAIStrategy_Silent* Strategy = NewObject<UConnectIt_TestAIStrategy_Silent>();
+    Strategy->MaxCandidates = 2;
+
+    Strategy->StartDecision(FConnectItAIDecisionContext());
+    TestFalse(TEXT("nothing so far"), Strategy->GetBestSoFar().HasMove());
+
+    Strategy->Publish(MakeDecision(4));
+    TestEqual(TEXT("a published answer is the best so far, trimmed"), Strategy->GetBestSoFar().Candidates.Num(), 2);
+    TestFalse(TEXT("publishing isn't finishing"), Strategy->IsDecisionFinished());
+    TestEqual(TEXT("candidates are labelled with the class name"),
+        Strategy->GetBestSoFar().Candidates[0].SourceLabel, FName(TEXT("ConnectIt_TestAIStrategy_Silent")));
+
+    Strategy->StopDecision();
+    TestTrue(TEXT("the published answer outlives the cancel"), Strategy->GetBestSoFar().HasMove());
+    Strategy->Publish(MakeDecision(1));
+    TestEqual(TEXT("publishing after a cancel is ignored"), Strategy->GetBestSoFar().Candidates.Num(), 2);
+
+    Strategy->Label = TEXT("Slow");
+    Strategy->StartDecision(FConnectItAIDecisionContext());
+    TestFalse(TEXT("a new decision clears the old answer"), Strategy->GetBestSoFar().HasMove());
+    Strategy->AnswerLate(MakeDecision(1));
+    TestTrue(TEXT("finishing marks it finished"), Strategy->IsDecisionFinished());
+    TestEqual(TEXT("the final answer is the best so far"), Strategy->GetBestSoFar().Candidates.Num(), 1);
+    TestEqual(TEXT("an explicit label wins"), Strategy->GetBestSoFar().Candidates[0].SourceLabel, FName(TEXT("Slow")));
+
+    // A label the strategy set itself is kept
+    FConnectItAIDecision Labelled = MakeDecision(1);
+    Labelled.Candidates[0].SourceLabel = TEXT("Mine");
+    Strategy->StartDecision(FConnectItAIDecisionContext());
+    Strategy->AnswerLate(Labelled);
+    TestEqual(TEXT("a candidate's own label is kept"), Strategy->GetBestSoFar().Candidates[0].SourceLabel, FName(TEXT("Mine")));
+
+    TestFalse(TEXT("no confidence by default"), UConnectIt_AIStrategy::CandidateHasConfidence(FConnectItAICandidate()));
+    return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FConnectItMinMaxConfidenceTest,
+    "ConnectIt.AI.MinMax.Confidence", TestFlags)
+
+bool FConnectItMinMaxConfidenceTest::RunTest(const FString& Parameters)
+{
+    const auto Ranked = [](std::initializer_list<int32> Scores)
+    {
+        TArray<FConnectItMinMaxRankedMove> Moves;
+        for (const int32 Score : Scores)
+        {
+            FConnectItMinMaxRankedMove& Move = Moves.AddDefaulted_GetRef();
+            Move.Operation = FInstancedStruct::Make(FConnectItBoardOperation_PlacePiece());
+            Move.Score = Score;
+        }
+        return Moves;
+    };
+
+    const int32 Win = FConnectItMinMaxRules::WinValue - 1;
+    const TArray<float> Mixed = ConnectItMinMaxSearch::ComputeConfidences(Ranked({ Win, 30, 20, 10, -Win }));
+    if (!TestEqual(TEXT("one per move"), Mixed.Num(), 5)) return false;
+    TestEqual(TEXT("a forced win is certain"), Mixed[0], 1.f);
+    TestEqual(TEXT("the best ordinary move is 1"), Mixed[1], 1.f);
+    TestEqual(TEXT("the middle one is halfway"), Mixed[2], 0.5f);
+    TestEqual(TEXT("the worst ordinary move is 0"), Mixed[3], 0.f);
+    TestEqual(TEXT("a forced loss is 0"), Mixed[4], 0.f);
+
+    TestTrue(TEXT("a single move is 1"), ConnectItMinMaxSearch::ComputeConfidences(Ranked({ 7 })) == TArray<float>({ 1.f }));
+    TestTrue(TEXT("all equal are 1"), ConnectItMinMaxSearch::ComputeConfidences(Ranked({ 5, 5, 5 })) == TArray<float>({ 1.f, 1.f, 1.f }));
+
+    const FConnectItAIDecision Decision = ConnectItMinMaxSearch::MakeDecision(Ranked({ 30, 20, 10 }), TEXT("test"), 2);
+    if (!TestEqual(TEXT("capped at MaxCandidates"), Decision.Candidates.Num(), 2)) return false;
+    TestEqual(TEXT("raw score kept"), Decision.Candidates[1].StrategyScore, 20.f);
+    TestEqual(TEXT("confidence across the whole ranking"), Decision.Candidates[1].Confidence, 0.5f);
+    TestTrue(TEXT("it has a confidence"), UConnectIt_AIStrategy::CandidateHasConfidence(Decision.Candidates[0]));
+    return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FConnectItMinMaxStrategyPartialTest,
+    "ConnectIt.AI.MinMax.StrategyPartialAnswer", TestFlags)
+
+bool FConnectItMinMaxStrategyPartialTest::RunTest(const FString& Parameters)
+{
+    // A MinMax strategy asked before its search finishes answers with the
+    // deepest ranking completed so far. The search runs on a background task,
+    // so wait (bounded) for depth 1 to arrive.
+    FConnectItBoardState Board = MakeBoard(7);
+    Place(Board, 3, 0, 0);
+    Place(Board, 3, 1, 0);
+    Place(Board, 3, 2, 0);
+
+    FConnectItAIDecisionContext Context;
+    Context.Board = Board;
+    Context.OwnSlot = 0;
+    Context.Rules = RulesWonAt(4.f);
+    Context.AvailableRequestTypes.AddTag(ConnectIt_Game_PlacePiece);
+
+    UConnectIt_AIStrategy_MinMax* Strategy = NewObject<UConnectIt_AIStrategy_MinMax>();
+    Strategy->Search.MaxDepth = 10;
+    Strategy->Search.TimeBudgetSeconds = 0.f;
+    Strategy->Search.OpponentRequestTypes = PlaceOnly();
+    Strategy->MaxCandidates = 3;
+
+    Strategy->StartDecision(Context);
+
+    FConnectItAIDecision Partial;
+    const double GiveUpAt = FPlatformTime::Seconds() + 10.0;
+    while (!Partial.HasMove() && FPlatformTime::Seconds() < GiveUpAt)
+    {
+        FPlatformProcess::Sleep(0.005f);
+        Partial = Strategy->GetBestSoFar();
+    }
+    TestFalse(TEXT("a depth-10 search on an open 7x7 board hasn't finished yet"), Strategy->IsDecisionFinished());
+    Strategy->StopDecision();
+
+    if (!TestEqual(TEXT("a partial answer, trimmed"), Partial.Candidates.Num(), 3)) return false;
+    const FConnectItBoardOperation_PlacePiece* Best = Partial.Candidates[0].Payload.GetPtr<FConnectItBoardOperation_PlacePiece>();
+    TestTrue(TEXT("its best move is already the immediate win at (3,3)"), Best && Best->Position == FGridPosition(3, 3));
+    TestEqual(TEXT("a forced win is certain"), Partial.Candidates[0].Confidence, 1.f);
+    TestEqual(TEXT("labelled as the MinMax strategy"),
+        Partial.Candidates[0].SourceLabel, FName(TEXT("ConnectIt_AIStrategy_MinMax")));
+    TestTrue(TEXT("the summary says the search wasn't finished"),
+        Partial.Candidates[0].Summary.Contains(TEXT("not finished")));
+    return true;
+}
+
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FConnectItAICoordinatorTest,
     "ConnectIt.AI.Coordinator", TestFlags)
 

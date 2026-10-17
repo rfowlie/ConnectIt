@@ -43,6 +43,9 @@ public:
 
     virtual FGameplayTagContainer GetSupportedRequestTypes_Implementation() const override;
 
+    // While the search runs: its deepest completed ranking so far
+    virtual FConnectItAIDecision GetBestSoFar() const override;
+
 protected:
 
     virtual void BeginDecision_Implementation(const FConnectItAIDecisionContext& Context) override;
@@ -57,4 +60,8 @@ private:
 
     // Shared with the running search task; null when none is running
     TSharedPtr<std::atomic<bool>, ESPMode::ThreadSafe> CancelFlag;
+
+    // The current decision's search progress (written by the search task);
+    // null if the search couldn't start
+    FConnectItMinMaxSearchProgressPtr Progress;
 };

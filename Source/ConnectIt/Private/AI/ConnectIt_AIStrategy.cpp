@@ -44,6 +44,8 @@ void UConnectIt_AIStrategy::StartDecision(const FConnectItAIDecisionContext& Con
     }
 
     ActiveDecisionId = NextDecisionId++;
+    BestSoFar = FConnectItAIDecision();
+    bDecisionFinished = false;
     BeginDecision(Context);
 }
 
@@ -78,15 +80,53 @@ void UConnectIt_AIStrategy::FinishDecision(const FConnectItAIDecision& Decision)
     }
 
     ActiveDecisionId = INDEX_NONE;
+    BestSoFar = PrepareDecision(Decision);
+    bDecisionFinished = true;
+
+    if (OnDecisionFinished.IsBound()) { OnDecisionFinished.Execute(BestSoFar); }
+}
+
+void UConnectIt_AIStrategy::PublishBestSoFar(const FConnectItAIDecision& Decision)
+{
+    if (!IsDecisionActive()) return;
+
+    BestSoFar = PrepareDecision(Decision);
+}
+
+FConnectItAIDecision UConnectIt_AIStrategy::GetBestSoFar() const
+{
+    return BestSoFar;
+}
+
+FConnectItAIDecision UConnectIt_AIStrategy::PrepareDecision(const FConnectItAIDecision& Decision) const
+{
     // Keep the best MaxCandidates
-    FConnectItAIDecision Trimmed = Decision;
+    FConnectItAIDecision Prepared = Decision;
     const int32 Keep = FMath::Max(1, MaxCandidates);
-    if (Trimmed.Candidates.Num() > Keep)
+    if (Prepared.Candidates.Num() > Keep)
     {
-        Trimmed.Candidates.SetNum(Keep);
+        Prepared.Candidates.SetNum(Keep);
     }
 
-    if (OnDecisionFinished.IsBound()) { OnDecisionFinished.Execute(Trimmed); }
+    const FName SourceLabel = GetSourceLabel();
+    for (FConnectItAICandidate& Candidate : Prepared.Candidates)
+    {
+        if (Candidate.SourceLabel.IsNone())
+        {
+            Candidate.SourceLabel = SourceLabel;
+        }
+    }
+    return Prepared;
+}
+
+FName UConnectIt_AIStrategy::GetSourceLabel() const
+{
+    if (!Label.IsNone()) return Label;
+
+    // A Blueprint class's generated name ends in _C
+    FString ClassName = GetClass()->GetName();
+    ClassName.RemoveFromEnd(TEXT("_C"));
+    return FName(*ClassName);
 }
 
 FConnectItAIDecision UConnectIt_AIStrategy::MakeSingleMoveDecision(

@@ -13,6 +13,7 @@ void UConnectIt_AIStrategy_MinMax::BeginDecision_Implementation(
 {
     const GameIntelligence::Search::FCancelFlag Flag = GameIntelligence::Search::MakeCancelFlag();
     CancelFlag = Flag;
+    Progress = MakeShared<FConnectItMinMaxSearchProgress, ESPMode::ThreadSafe>();
 
     const int32 DecisionId = GetActiveDecisionId();
     TWeakObjectPtr<UConnectIt_AIStrategy_MinMax> WeakThis(this);
@@ -40,34 +41,47 @@ void UConnectIt_AIStrategy_MinMax::BeginDecision_Implementation(
 
             // The chosen move first, then the rest in rank order as fallbacks
             // for a rejected move (FinishDecision keeps the best MaxCandidates)
+            FConnectItAIDecision Decision = ConnectItMinMaxSearch::MakeDecision(
+                Result.RankedMoves, Result.Describe(), Result.RankedMoves.Num());
             const int32 PickIndex = Self->PickMoveIndex(Result);
-            TArray<int32> Order;
-            Order.Add(PickIndex);
-            for (int32 Index = 0; Index < Result.RankedMoves.Num() && Order.Num() < Self->MaxCandidates; Index++)
+            if (PickIndex > 0)
             {
-                if (Index != PickIndex) Order.Add(Index);
-            }
-
-            FConnectItAIDecision Decision;
-            for (const int32 Index : Order)
-            {
-                const FConnectItMinMaxRankedMove& Ranked = Result.RankedMoves[Index];
-                Decision.Candidates.Add({ Ranked.Operation,
-                    FString::Printf(TEXT("%s -- score %d (rank %d of %d, best %d)"),
-                        *Result.Describe(), Ranked.Score,
-                        Index + 1, Result.RankedMoves.Num(), Result.RankedMoves[0].Score) });
+                const FConnectItAICandidate Picked = Decision.Candidates[PickIndex];
+                Decision.Candidates.RemoveAt(PickIndex);
+                Decision.Candidates.Insert(Picked, 0);
             }
 
             Self->FinishDecision(Decision);
         },
-        &WhyNot);
+        &WhyNot,
+        Progress);
 
     if (!bLaunched)
     {
         UE_LOG(LogTemp, Error, TEXT("ConnectIt_AIStrategy_MinMax: can't search -- %s -- no move"), *WhyNot);
         CancelFlag.Reset();
+        Progress.Reset();
         FinishDecision(FConnectItAIDecision());
     }
+}
+
+FConnectItAIDecision UConnectIt_AIStrategy_MinMax::GetBestSoFar() const
+{
+    if (IsDecisionFinished() || !Progress.IsValid())
+    {
+        return Super::GetBestSoFar();
+    }
+
+    // Still searching (or stopped early): the deepest ranking completed
+    int32 DepthReached = 0;
+    const TArray<FConnectItMinMaxRankedMove> RankedMoves = Progress->GetRankedMoves(&DepthReached);
+    if (RankedMoves.IsEmpty())
+    {
+        return Super::GetBestSoFar();
+    }
+
+    return PrepareDecision(ConnectItMinMaxSearch::MakeDecision(RankedMoves,
+        FString::Printf(TEXT("MinMax depth %d (search not finished)"), DepthReached), MaxCandidates));
 }
 
 void UConnectIt_AIStrategy_MinMax::CancelDecision_Implementation()

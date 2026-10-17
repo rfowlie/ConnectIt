@@ -155,6 +155,20 @@ namespace ConnectItMinMaxSearch
     CONNECTIT_API TArray<FConnectItMinMaxRankedMove> ToRankedMoves(
         const FConnectItMinMaxSearchProgress::FScoredMoves& RootScores);
 
+    // A confidence (0..1) per ranked move, comparable across strategies: a
+    // forced win is 1 and a forced loss 0; the rest are placed between the
+    // worst (0) and best (1) of the other scores. All equal, or a single
+    // move, is 1.
+    CONNECTIT_API TArray<float> ComputeConfidences(const TArray<FConnectItMinMaxRankedMove>& RankedMoves);
+
+    // The ranked moves (best first) as a decision of at most MaxCandidates:
+    // each with its score as StrategyScore, a confidence, and a summary
+    // starting with SearchDescription.
+    CONNECTIT_API FConnectItAIDecision MakeDecision(
+        const TArray<FConnectItMinMaxRankedMove>& RankedMoves,
+        const FString& SearchDescription,
+        int32 MaxCandidates);
+
     // Prepare, then search on a background task; OnComplete runs on the game
     // thread (not if Prepare failed -- the return value says so). Setting
     // CancelFlag stops it; OnComplete then gets bCancelled = true. Progress,
@@ -192,7 +206,8 @@ public:
         const FConnectItAIDecisionContext& Context,
         const FConnectItMinMaxSearchSettings& Settings);
 
-    // Turns the best moves into a decision (best first, at most MaxCandidates)
+    // Turns the best moves into a decision (best first, at most
+    // MaxCandidates), with each move's score and a confidence
     UFUNCTION(BlueprintPure, Category = "ConnectIt|AI")
     static FConnectItAIDecision MakeDecisionFromSearch(const FConnectItMinMaxSearchResult& Result, int32 MaxCandidates = 5);
 

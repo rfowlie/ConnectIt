@@ -88,6 +88,30 @@ struct FConnectItAICandidate
     // Free text for the log -- why this move
     UPROPERTY(BlueprintReadWrite, Category = "AI")
     FString Summary;
+
+    // The rest is optional: a strategy fills what it knows, and a selector
+    // that reads a field copes with it missing.
+
+    // How sure the strategy is that this move is good, 0 (a guess) to 1
+    // (certain, e.g. a forced win). Meant to be comparable across strategies,
+    // so only as good as each strategy's calibration -- treat it as a hint.
+    // Below 0 (the default -1) = not given; see CandidateHasConfidence.
+    UPROPERTY(BlueprintReadWrite, Category = "AI", meta = (ClampMin = -1.0, ClampMax = 1.0))
+    float Confidence = -1.f;
+
+    // The strategy's own raw score for the move (MinMax: its search score).
+    // Only comparable between candidates of the same strategy.
+    UPROPERTY(BlueprintReadWrite, Category = "AI")
+    float StrategyScore = 0.f;
+
+    // What kind of move the strategy thinks it is (e.g. attack, block, setup)
+    UPROPERTY(BlueprintReadWrite, Category = "AI")
+    FGameplayTagContainer Tags;
+
+    // Which strategy proposed it, for logs. Left empty, it is filled with the
+    // strategy's label when the strategy publishes or finishes.
+    UPROPERTY(BlueprintReadWrite, Category = "AI")
+    FName SourceLabel;
 };
 
 // What a strategy decided: the moves it is willing to make, best first. The
@@ -120,6 +144,11 @@ DECLARE_DELEGATE_OneParam(FOnConnectItAIDecisionFinished, const FConnectItAIDeci
 // FinishDecision, which reaches the controller through OnDecisionFinished.
 // StopDecision cancels: CancelDecision runs and any later FinishDecision is
 // ignored.
+//
+// Best so far: a strategy that improves its answer over time (a search) may
+// call PublishBestSoFar whenever it has a better one. Whoever runs it can
+// read GetBestSoFar at any time -- e.g. when its time is up -- and gets the
+// last published (or finished) answer.
 UCLASS(Abstract, Blueprintable, BlueprintType, EditInlineNew, DefaultToInstanced)
 class CONNECTIT_API UConnectIt_AIStrategy : public UObject
 {
@@ -138,6 +167,12 @@ public:
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "AI", meta = (ClampMin = 1))
     int32 MaxCandidates = 5;
 
+    // Name stamped on this strategy's candidates (their SourceLabel) so logs
+    // say who proposed a move. Empty = the class's name; give two strategies
+    // of the same class different labels to tell them apart.
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "AI")
+    FName Label;
+
     // Controller-facing entry points -- not overridable, they keep the
     // "is a decision active" bookkeeping honest around the hooks below.
     void StartDecision(const FConnectItAIDecisionContext& Context);
@@ -145,6 +180,23 @@ public:
 
     // Bound by the owning controller
     FOnConnectItAIDecisionFinished OnDecisionFinished;
+
+    // The current decision's best answer so far: the final one once
+    // finished, else the last published (empty if none yet). Kept after the
+    // decision stops, until the next one starts. Game thread.
+    virtual FConnectItAIDecision GetBestSoFar() const;
+
+    // The current decision was answered with FinishDecision
+    UFUNCTION(BlueprintPure, Category = "AI")
+    bool IsDecisionFinished() const { return bDecisionFinished; }
+
+    // Label, or the class's name when Label is empty
+    UFUNCTION(BlueprintPure, Category = "AI")
+    FName GetSourceLabel() const;
+
+    // Whether the strategy gave Candidate a confidence (0..1)
+    UFUNCTION(BlueprintPure, Category = "AI")
+    static bool CandidateHasConfidence(const FConnectItAICandidate& Candidate) { return Candidate.Confidence >= 0.f; }
 
     // The controller this strategy decides for (its outer -- the controller
     // duplicates the level's template with itself as outer). For reading
@@ -195,6 +247,16 @@ protected:
     UFUNCTION(BlueprintCallable, Category = "AI")
     void FinishDecision(const FConnectItAIDecision& Decision);
 
+    // A better answer than the last, while still working on the decision --
+    // what GetBestSoFar returns until the next publish or FinishDecision.
+    // Ignored unless a decision is active.
+    UFUNCTION(BlueprintCallable, Category = "AI")
+    void PublishBestSoFar(const FConnectItAIDecision& Decision);
+
+    // Decision as this strategy hands it over: the best MaxCandidates, empty
+    // SourceLabels filled with GetSourceLabel
+    FConnectItAIDecision PrepareDecision(const FConnectItAIDecision& Decision) const;
+
     UFUNCTION(BlueprintPure, Category = "AI")
     bool IsDecisionActive() const { return ActiveDecisionId != INDEX_NONE; }
 
@@ -210,4 +272,7 @@ private:
 
     int32 ActiveDecisionId = INDEX_NONE;
     int32 NextDecisionId = 0;
+
+    FConnectItAIDecision BestSoFar;
+    bool bDecisionFinished = false;
 };

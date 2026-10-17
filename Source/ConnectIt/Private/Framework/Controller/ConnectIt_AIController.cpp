@@ -389,8 +389,8 @@ void AConnectIt_AIController::HandleDecisionFinished(const FConnectItAIDecision&
         return;
     }
 
-    UE_LOG(LogTemp, Log, TEXT("ConnectIt_AIController: decided -- %d candidate(s), best: %s"),
-        Decision.Candidates.Num(), *Decision.Candidates[0].Summary);
+    UE_LOG(LogTemp, Log, TEXT("ConnectIt_AIController: decided -- %d candidate(s), best: [%s] %s"),
+        Decision.Candidates.Num(), *Decision.Candidates[0].SourceLabel.ToString(), *Decision.Candidates[0].Summary);
 
     const double RemainingThink = Strategy->MinThinkSeconds
         - (FPlatformTime::Seconds() - DecisionStartTime);

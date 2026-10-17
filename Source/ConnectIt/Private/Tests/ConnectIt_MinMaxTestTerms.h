@@ -68,6 +68,9 @@ public:
     // Answers now, as a late search would
     void AnswerLate(const FConnectItAIDecision& Decision) { FinishDecision(Decision); }
 
+    // A better answer so far, as a search would publish one
+    void Publish(const FConnectItAIDecision& Decision) { PublishBestSoFar(Decision); }
+
 protected:
 
     virtual void BeginDecision_Implementation(const FConnectItAIDecisionContext& Context) override {}

@@ -159,6 +159,66 @@ TArray<FConnectItMinMaxRankedMove> ConnectItMinMaxSearch::ToRankedMoves(
     return RankedMoves;
 }
 
+TArray<float> ConnectItMinMaxSearch::ComputeConfidences(const TArray<FConnectItMinMaxRankedMove>& RankedMoves)
+{
+    const auto IsForced = [](int32 Score)
+    {
+        return FMath::Abs(Score) > FConnectItMinMaxRules::WinValue / 2;
+    };
+
+    // The range of the scores that aren't forced wins / losses
+    int32 Best = TNumericLimits<int32>::Lowest();
+    int32 Worst = TNumericLimits<int32>::Max();
+    for (const FConnectItMinMaxRankedMove& Ranked : RankedMoves)
+    {
+        if (IsForced(Ranked.Score)) continue;
+        Best = FMath::Max(Best, Ranked.Score);
+        Worst = FMath::Min(Worst, Ranked.Score);
+    }
+
+    TArray<float> Confidences;
+    Confidences.Reserve(RankedMoves.Num());
+    for (const FConnectItMinMaxRankedMove& Ranked : RankedMoves)
+    {
+        if (IsForced(Ranked.Score))
+        {
+            Confidences.Add(Ranked.Score > 0 ? 1.f : 0.f);
+        }
+        else if (Best > Worst)
+        {
+            Confidences.Add(static_cast<float>(
+                static_cast<double>(Ranked.Score - Worst) / static_cast<double>(Best - Worst)));
+        }
+        else
+        {
+            Confidences.Add(1.f);
+        }
+    }
+    return Confidences;
+}
+
+FConnectItAIDecision ConnectItMinMaxSearch::MakeDecision(
+    const TArray<FConnectItMinMaxRankedMove>& RankedMoves,
+    const FString& SearchDescription,
+    int32 MaxCandidates)
+{
+    const TArray<float> Confidences = ComputeConfidences(RankedMoves);
+
+    FConnectItAIDecision Decision;
+    const int32 Count = FMath::Min(FMath::Max(1, MaxCandidates), RankedMoves.Num());
+    for (int32 Index = 0; Index < Count; Index++)
+    {
+        const FConnectItMinMaxRankedMove& Ranked = RankedMoves[Index];
+        FConnectItAICandidate& Candidate = Decision.Candidates.AddDefaulted_GetRef();
+        Candidate.Payload = Ranked.Operation;
+        Candidate.Summary = FString::Printf(TEXT("%s -- rank %d of %d, score %d"),
+            *SearchDescription, Index + 1, RankedMoves.Num(), Ranked.Score);
+        Candidate.StrategyScore = static_cast<float>(Ranked.Score);
+        Candidate.Confidence = Confidences[Index];
+    }
+    return Decision;
+}
+
 bool ConnectItMinMaxSearch::Launch(
     const FConnectItAIDecisionContext& Context,
     const FConnectItMinMaxSearchSettings& Settings,
@@ -257,14 +317,5 @@ void UConnectIt_FindBestMovesAsync::Finish(const FConnectItMinMaxSearchResult& R
 FConnectItAIDecision UConnectIt_FindBestMovesAsync::MakeDecisionFromSearch(
     const FConnectItMinMaxSearchResult& Result, int32 MaxCandidates)
 {
-    FConnectItAIDecision Decision;
-    const int32 Count = FMath::Min(FMath::Max(1, MaxCandidates), Result.RankedMoves.Num());
-    for (int32 Index = 0; Index < Count; Index++)
-    {
-        const FConnectItMinMaxRankedMove& Ranked = Result.RankedMoves[Index];
-        Decision.Candidates.Add({ Ranked.Operation,
-            FString::Printf(TEXT("%s -- rank %d of %d, score %d"),
-                *Result.Describe(), Index + 1, Result.RankedMoves.Num(), Ranked.Score) });
-    }
-    return Decision;
+    return ConnectItMinMaxSearch::MakeDecision(Result.RankedMoves, Result.Describe(), MaxCandidates);
 }

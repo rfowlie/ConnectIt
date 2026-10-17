@@ -164,8 +164,7 @@ FConnectItAIDecision UConnectIt_AIStrategy_Coordinator::RankCandidates_Implement
                 [&Candidate](const FConnectItAICandidate& Existing) { return Existing.Payload == Candidate.Payload; });
             if (!bRepeat)
             {
-                FConnectItAICandidate& Added = Ranked.Candidates.Add_GetRef(Candidate);
-                Added.Summary = FString::Printf(TEXT("[%s] %s"), *GetNameSafe(Entry.Child), *Candidate.Summary);
+                Ranked.Candidates.Add(Candidate);
             }
         }
     }
