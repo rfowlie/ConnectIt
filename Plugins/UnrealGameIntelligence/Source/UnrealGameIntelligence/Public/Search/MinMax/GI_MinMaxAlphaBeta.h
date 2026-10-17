@@ -116,7 +116,15 @@ namespace GameIntelligence::Search::MinMax
         using FMove = typename TGame::FMove;
         using FResult = TResult<FMove>;
 
-        static FResult Run(const TGame& Game, const FState& Root, const FParams& Params)
+        // Called on the searching thread after each completed depth, with that
+        // depth's full ranking -- what RootScores would be if the search
+        // stopped there. Lets a caller read a best-so-far answer while deeper
+        // iterations run; anything it touches must be safe to write from the
+        // searching thread.
+        using FOnDepthCompleted = TFunction<void(const TArray<TScoredMove<FMove>>& RootScores, int32 Depth)>;
+
+        static FResult Run(const TGame& Game, const FState& Root, const FParams& Params,
+            const FOnDepthCompleted& OnDepthCompleted = nullptr)
         {
             FContext Context;
             Context.Params = Params;
@@ -173,6 +181,11 @@ namespace GameIntelligence::Search::MinMax
 
                 Result.RootScores = DepthScores;
                 Result.DepthReached = Depth;
+
+                if (OnDepthCompleted)
+                {
+                    OnDepthCompleted(Result.RootScores, Depth);
+                }
 
                 // History Heuristic 
                 // The best move so far is searched first, which tightens the inner windows soonest
@@ -326,22 +339,25 @@ namespace GameIntelligence::Search::MinMax
     // The task holds Game and CancelFlag by shared reference and Root by
     // value, so all three stay alive for the whole search whatever the
     // caller does next. OnComplete runs on the game thread, cancelled or not
-    // (check Result.bCancelled).
+    // (check Result.bCancelled). OnDepthCompleted, if set, runs on the
+    // background task after each completed depth (see TAlphaBeta::FOnDepthCompleted).
     template<typename TGame> requires c_game<TGame>
     void LaunchAlphaBetaAsync(
         TSharedRef<const TGame, ESPMode::ThreadSafe> Game,
         typename TGame::FState Root,
         FParams Params,
         FCancelFlag CancelFlag,
-        TUniqueFunction<void(TResult<typename TGame::FMove>&&)> OnComplete)
+        TUniqueFunction<void(TResult<typename TGame::FMove>&&)> OnComplete,
+        typename TAlphaBeta<TGame>::FOnDepthCompleted OnDepthCompleted = nullptr)
     {
         using FResultType = TResult<typename TGame::FMove>;
 
         LaunchAsync<FResultType>(
-            [Game, Root = MoveTemp(Root), Params, CancelFlag]() mutable -> FResultType
+            [Game, Root = MoveTemp(Root), Params, CancelFlag,
+                OnDepthCompleted = MoveTemp(OnDepthCompleted)]() mutable -> FResultType
             {
                 Params.CancelFlag = &CancelFlag.Get();
-                return TAlphaBeta<TGame>::Run(*Game, Root, Params);
+                return TAlphaBeta<TGame>::Run(*Game, Root, Params, OnDepthCompleted);
             },
             MoveTemp(OnComplete));
     }

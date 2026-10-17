@@ -97,6 +97,34 @@ struct CONNECTIT_API FConnectItMinMaxSearchResult
     FString Describe() const;
 };
 
+// The best-so-far ranking of a running search: the search thread publishes
+// each depth it completes, and the game thread reads the latest whenever it
+// likes -- e.g. when a strategy is asked for its answer before its search
+// has finished. Shared between the two through FConnectItMinMaxSearchProgressPtr.
+class CONNECTIT_API FConnectItMinMaxSearchProgress
+{
+public:
+
+    using FScoredMoves = TArray<GameIntelligence::Search::MinMax::TScoredMove<FConnectItMinMaxRules::FMove>>;
+
+    // Search thread, after each completed depth
+    void Publish(const FScoredMoves& RootScores, int32 Depth);
+
+    // The latest completed depth's ranking, best first. Empty (and depth 0)
+    // until depth 1 completes.
+    TArray<FConnectItMinMaxRankedMove> GetRankedMoves(int32* OutDepthReached = nullptr) const;
+
+    int32 GetDepthReached() const;
+
+private:
+
+    mutable FCriticalSection Lock;
+    FScoredMoves RootScores;
+    int32 DepthReached = 0;
+};
+
+using FConnectItMinMaxSearchProgressPtr = TSharedPtr<FConnectItMinMaxSearchProgress, ESPMode::ThreadSafe>;
+
 // The search, in three steps so tests can run it synchronously:
 // Prepare (game thread) -> FConnectItMinMaxSearch::Run (any thread) ->
 // ToResult (game thread). Launch does all three asynchronously.
@@ -123,15 +151,21 @@ namespace ConnectItMinMaxSearch
 
     CONNECTIT_API FConnectItMinMaxSearchResult ToResult(const FConnectItMinMaxSearch::FResult& Raw);
 
+    // The search's moves as board operations, in the order given
+    CONNECTIT_API TArray<FConnectItMinMaxRankedMove> ToRankedMoves(
+        const FConnectItMinMaxSearchProgress::FScoredMoves& RootScores);
+
     // Prepare, then search on a background task; OnComplete runs on the game
     // thread (not if Prepare failed -- the return value says so). Setting
-    // CancelFlag stops it; OnComplete then gets bCancelled = true.
+    // CancelFlag stops it; OnComplete then gets bCancelled = true. Progress,
+    // if given, receives each completed depth's ranking as the search runs.
     CONNECTIT_API bool Launch(
         const FConnectItAIDecisionContext& Context,
         const FConnectItMinMaxSearchSettings& Settings,
         GameIntelligence::Search::FCancelFlag CancelFlag,
         TUniqueFunction<void(FConnectItMinMaxSearchResult&& Result, bool bCancelled)> OnComplete,
-        FString* OutWhyNot = nullptr);
+        FString* OutWhyNot = nullptr,
+        FConnectItMinMaxSearchProgressPtr Progress = nullptr);
 }
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(

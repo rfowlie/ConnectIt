@@ -1510,6 +1510,92 @@ bool FConnectItMinMaxSearchToolTest::RunTest(const FString& Parameters)
     return true;
 }
 
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FConnectItMinMaxDepthProgressTest,
+    "ConnectIt.AI.MinMax.DepthProgress", TestFlags)
+
+bool FConnectItMinMaxDepthProgressTest::RunTest(const FString& Parameters)
+{
+    // The search reports each completed depth's ranking as it goes; the last
+    // report is exactly the final result
+    FConnectItBoardState Board = MakeBoard(5);
+    Place(Board, 1, 1, 0);
+    Place(Board, 3, 3, 1);
+
+    const FConnectItMinMaxRules Rules(Board, RulesWonAt(100.f), DefaultEvaluationWeights(), DefaultOrderingWeights(), PlaceOnly(), PlaceOnly());
+    const auto Root = Rules.MakeRoot(Board, 0);
+
+    TArray<int32> DepthsReported;
+    FConnectItMinMaxSearchProgress::FScoredMoves LastReported;
+    const auto Result = FConnectItMinMaxSearch::Run(Rules, Root, Depth(3),
+        [&](const FConnectItMinMaxSearchProgress::FScoredMoves& RootScores, int32 ReportedDepth)
+        {
+            DepthsReported.Add(ReportedDepth);
+            LastReported = RootScores;
+        });
+
+    TestTrue(TEXT("one report per depth, in order"), DepthsReported == TArray<int32>({ 1, 2, 3 }));
+    if (!TestEqual(TEXT("the last report ranks every move"), LastReported.Num(), Result.RootScores.Num())) return false;
+    for (int32 Index = 0; Index < LastReported.Num(); Index++)
+    {
+        TestTrue(FString::Printf(TEXT("rank %d matches the result"), Index),
+            PlacePosition(LastReported[Index].Move) == PlacePosition(Result.RootScores[Index].Move)
+            && LastReported[Index].Score == Result.RootScores[Index].Score);
+    }
+    return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FConnectItMinMaxSearchProgressTest,
+    "ConnectIt.AI.MinMax.SearchProgress", TestFlags)
+
+bool FConnectItMinMaxSearchProgressTest::RunTest(const FString& Parameters)
+{
+    // A progress holder keeps the deepest completed ranking even when the
+    // search is then stopped -- the case a strategy asked early relies on
+    FConnectItBoardState Board = MakeBoard(7);
+    Place(Board, 3, 0, 0);
+    Place(Board, 3, 1, 0);
+    Place(Board, 3, 2, 0);
+
+    FConnectItAIDecisionContext Context;
+    Context.Board = Board;
+    Context.OwnSlot = 0;
+    Context.Rules = RulesWonAt(4.f);
+    Context.AvailableRequestTypes.AddTag(ConnectIt_Game_PlacePiece);
+
+    FConnectItMinMaxSearchSettings Settings;
+    Settings.MaxDepth = 3;
+    Settings.TimeBudgetSeconds = 0.f;
+    Settings.OpponentRequestTypes = PlaceOnly();
+
+    ConnectItMinMaxSearch::FPrepared Prepared;
+    if (!TestTrue(TEXT("prepared"), ConnectItMinMaxSearch::Prepare(Context, Settings, Prepared))) return false;
+
+    FConnectItMinMaxSearchProgress Progress;
+    TestEqual(TEXT("nothing published before depth 1"), Progress.GetRankedMoves().Num(), 0);
+
+    // Stop the search as soon as depth 1 is reported
+    std::atomic<bool> Cancelled(false);
+    Prepared.Params.CancelFlag = &Cancelled;
+    const auto Raw = FConnectItMinMaxSearch::Run(*Prepared.Rules, Prepared.Root, Prepared.Params,
+        [&](const FConnectItMinMaxSearchProgress::FScoredMoves& RootScores, int32 ReportedDepth)
+        {
+            Progress.Publish(RootScores, ReportedDepth);
+            Cancelled = true;
+        });
+
+    TestTrue(TEXT("the search itself was cancelled"), Raw.bCancelled);
+    TestEqual(TEXT("a cancelled search returns nothing"), Raw.RootScores.Num(), 0);
+
+    int32 DepthReached = 0;
+    const TArray<FConnectItMinMaxRankedMove> Ranked = Progress.GetRankedMoves(&DepthReached);
+    TestEqual(TEXT("the holder kept depth 1"), DepthReached, 1);
+    TestEqual(TEXT("depth reached getter agrees"), Progress.GetDepthReached(), 1);
+    if (!TestEqual(TEXT("the holder ranks every move"), Ranked.Num(), 49 - 3)) return false;
+    const FConnectItBoardOperation_PlacePiece* Best = Ranked[0].Operation.GetPtr<FConnectItBoardOperation_PlacePiece>();
+    TestTrue(TEXT("its best move is the immediate win at (3,3)"), Best && Best->Position == FGridPosition(3, 3));
+    return true;
+}
+
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FConnectItAICoordinatorTest,
     "ConnectIt.AI.Coordinator", TestFlags)
 

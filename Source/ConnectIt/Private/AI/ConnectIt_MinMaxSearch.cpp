@@ -13,6 +13,35 @@ FString FConnectItMinMaxSearchResult::Describe() const
         NodesVisited, ElapsedSeconds * 1000.0);
 }
 
+void FConnectItMinMaxSearchProgress::Publish(const FScoredMoves& InRootScores, int32 Depth)
+{
+    FScopeLock ScopeLock(&Lock);
+    RootScores = InRootScores;
+    DepthReached = Depth;
+}
+
+TArray<FConnectItMinMaxRankedMove> FConnectItMinMaxSearchProgress::GetRankedMoves(int32* OutDepthReached) const
+{
+    // Copy under the lock, convert outside it: the search thread only ever
+    // waits for the copy
+    FScoredMoves Snapshot;
+    {
+        FScopeLock ScopeLock(&Lock);
+        Snapshot = RootScores;
+        if (OutDepthReached)
+        {
+            *OutDepthReached = DepthReached;
+        }
+    }
+    return ConnectItMinMaxSearch::ToRankedMoves(Snapshot);
+}
+
+int32 FConnectItMinMaxSearchProgress::GetDepthReached() const
+{
+    FScopeLock ScopeLock(&Lock);
+    return DepthReached;
+}
+
 FGameplayTagContainer ConnectItMinMaxSearch::GetModelledRequestTypes()
 {
     // FConnectItMinMaxMove lists the operations the search can model; it
@@ -109,18 +138,25 @@ FConnectItMinMaxSearchResult ConnectItMinMaxSearch::ToResult(const FConnectItMin
     Result.NodesVisited = Raw.NodesVisited;
     Result.ElapsedSeconds = static_cast<float>(Raw.ElapsedSeconds);
     Result.bOutOfTime = Raw.bOutOfTime;
+    Result.RankedMoves = ToRankedMoves(Raw.RootScores);
+    return Result;
+}
 
-    Result.RankedMoves.Reserve(Raw.RootScores.Num());
-    for (const auto& Scored : Raw.RootScores)
+TArray<FConnectItMinMaxRankedMove> ConnectItMinMaxSearch::ToRankedMoves(
+    const FConnectItMinMaxSearchProgress::FScoredMoves& RootScores)
+{
+    TArray<FConnectItMinMaxRankedMove> RankedMoves;
+    RankedMoves.Reserve(RootScores.Num());
+    for (const auto& Scored : RootScores)
     {
-        FConnectItMinMaxRankedMove& Ranked = Result.RankedMoves.AddDefaulted_GetRef();
+        FConnectItMinMaxRankedMove& Ranked = RankedMoves.AddDefaulted_GetRef();
         Ranked.Score = Scored.Score;
         Visit([&Ranked](const auto& Operation)
         {
             Ranked.Operation = FInstancedStruct::Make(Operation);
         }, Scored.Move);
     }
-    return Result;
+    return RankedMoves;
 }
 
 bool ConnectItMinMaxSearch::Launch(
@@ -128,10 +164,21 @@ bool ConnectItMinMaxSearch::Launch(
     const FConnectItMinMaxSearchSettings& Settings,
     GameIntelligence::Search::FCancelFlag CancelFlag,
     TUniqueFunction<void(FConnectItMinMaxSearchResult&& Result, bool bCancelled)> OnComplete,
-    FString* OutWhyNot)
+    FString* OutWhyNot,
+    FConnectItMinMaxSearchProgressPtr Progress)
 {
     FPrepared Prepared;
     if (!Prepare(Context, Settings, Prepared, OutWhyNot)) return false;
+
+    FConnectItMinMaxSearch::FOnDepthCompleted OnDepthCompleted;
+    if (Progress.IsValid())
+    {
+        // Runs on the search thread; the progress holder locks
+        OnDepthCompleted = [Progress](const FConnectItMinMaxSearchProgress::FScoredMoves& RootScores, int32 Depth)
+        {
+            Progress->Publish(RootScores, Depth);
+        };
+    }
 
     MinMax::LaunchAlphaBetaAsync<FConnectItMinMaxRules>(
         Prepared.Rules.ToSharedRef(), MoveTemp(Prepared.Root), Prepared.Params, CancelFlag,
@@ -139,7 +186,8 @@ bool ConnectItMinMaxSearch::Launch(
         {
             const bool bCancelled = Raw.bCancelled;
             OnComplete(ToResult(Raw), bCancelled);
-        });
+        },
+        MoveTemp(OnDepthCompleted));
     return true;
 }
 
