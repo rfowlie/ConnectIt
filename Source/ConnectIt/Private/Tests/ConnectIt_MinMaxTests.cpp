@@ -7,6 +7,7 @@
 #include "Framework/Data/ConnectIt_MatchPreset.h"
 #include "AI/ConnectIt_AIStrategy_Coordinator.h"
 #include "AI/ConnectIt_MinMaxSearch.h"
+#include "AI/ConnectIt_AISelector.h"
 #include "ConnectIt_MinMaxTestTerms.h"
 #include "Board/Rules/ConnectIt_RuleSet.h"
 #include "Framework/Library/ConnectIt_BoardStateLibrary.h"
@@ -1731,6 +1732,176 @@ bool FConnectItMinMaxStrategyPartialTest::RunTest(const FString& Parameters)
         Partial.Candidates[0].SourceLabel, FName(TEXT("ConnectIt_AIStrategy_MinMax")));
     TestTrue(TEXT("the summary says the search wasn't finished"),
         Partial.Candidates[0].Summary.Contains(TEXT("not finished")));
+    return true;
+}
+
+namespace ConnectItMinMaxTests
+{
+    FConnectItAICandidate PlaceCandidate(int32 X, int32 Y, float Confidence = -1.f)
+    {
+        FConnectItBoardOperation_PlacePiece Operation;
+        Operation.Position = FGridPosition(X, Y);
+        FConnectItAICandidate Candidate;
+        Candidate.Payload = FInstancedStruct::Make(Operation);
+        Candidate.Summary = FString::Printf(TEXT("%d,%d"), X, Y);
+        Candidate.Confidence = Confidence;
+        return Candidate;
+    }
+
+    FConnectItAIStrategyAnswer Answer(int32 StrategyIndex, const TArray<FConnectItAICandidate>& Candidates)
+    {
+        FConnectItAIStrategyAnswer Result;
+        Result.StrategyIndex = StrategyIndex;
+        Result.bFinished = true;
+        Result.Decision.Candidates = Candidates;
+        return Result;
+    }
+
+    // "X,Y" of a place candidate, comparable with TestEqual
+    FString CandidatePosition(const FConnectItAICandidate& Candidate)
+    {
+        const FConnectItBoardOperation_PlacePiece* Place = Candidate.Payload.GetPtr<FConnectItBoardOperation_PlacePiece>();
+        return Place ? FString::Printf(TEXT("%d,%d"), Place->Position.X, Place->Position.Y) : FString(TEXT("none"));
+    }
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FConnectItAISelectorEndorseTest,
+    "ConnectIt.AI.Selector.Endorse", TestFlags)
+
+bool FConnectItAISelectorEndorseTest::RunTest(const FString& Parameters)
+{
+    // Given out of order: strategy 1 then strategy 0
+    const TArray<FConnectItAIStrategyAnswer> Answers = {
+        Answer(1, { PlaceCandidate(5, 5), PlaceCandidate(1, 1) }),
+        Answer(0, { PlaceCandidate(1, 1), PlaceCandidate(2, 2), PlaceCandidate(2, 2) }),
+    };
+
+    const TArray<FConnectItAIEndorsedCandidate> Endorsed = UConnectIt_AISelector::Endorse(Answers);
+    if (!TestEqual(TEXT("three distinct moves"), Endorsed.Num(), 3)) return false;
+    TestEqual(TEXT("priority order: strategy 0's first move first"), CandidatePosition(Endorsed[0].Candidate), TEXT("1,1"));
+    TestEqual(TEXT("proposed by both strategies"), Endorsed[0].Endorsements, 2);
+    TestEqual(TEXT("kept as the higher-priority strategy gave it"), Endorsed[0].FirstStrategyIndex, 0);
+    TestEqual(TEXT("then strategy 0's second"), CandidatePosition(Endorsed[1].Candidate), TEXT("2,2"));
+    TestEqual(TEXT("listed twice by one strategy is one endorsement"), Endorsed[1].Endorsements, 1);
+    TestEqual(TEXT("then strategy 1's own"), CandidatePosition(Endorsed[2].Candidate), TEXT("5,5"));
+    TestEqual(TEXT("from strategy 1"), Endorsed[2].FirstStrategyIndex, 1);
+
+    // First Available: that order, trimmed
+    UConnectIt_AISelector_FirstAvailable* First = NewObject<UConnectIt_AISelector_FirstAvailable>();
+    First->MaxCandidates = 2;
+    const FConnectItAIDecision Decision = First->Select(FConnectItAIDecisionContext(), Answers);
+    if (!TestEqual(TEXT("trimmed to MaxCandidates"), Decision.Candidates.Num(), 2)) return false;
+    TestEqual(TEXT("first available is the top-priority move"), CandidatePosition(Decision.Candidates[0]), TEXT("1,1"));
+    TestFalse(TEXT("no answers, no move"), First->Select(FConnectItAIDecisionContext(), {}).HasMove());
+    return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FConnectItAISelectorTopNTest,
+    "ConnectIt.AI.Selector.TopN", TestFlags)
+
+bool FConnectItAISelectorTopNTest::RunTest(const FString& Parameters)
+{
+    const TArray<FConnectItAIStrategyAnswer> Answers = {
+        Answer(0, { PlaceCandidate(0, 0), PlaceCandidate(0, 1), PlaceCandidate(0, 2), PlaceCandidate(0, 3) }) };
+
+    UConnectIt_AISelector_TopN* Selector = NewObject<UConnectIt_AISelector_TopN>();
+    Selector->TopMovesConsidered = 3;
+
+    Selector->MistakeChance = 0.f;
+    TestEqual(TEXT("no mistakes: the best move"),
+        CandidatePosition(Selector->Select(FConnectItAIDecisionContext(), Answers).Candidates[0]), TEXT("0,0"));
+
+    // Always a mistake: one of ranks 2..3, never the best, never rank 4; both seen
+    Selector->MistakeChance = 1.f;
+    bool bSawRank2 = false, bSawRank3 = false;
+    for (int32 Seed = 1; Seed <= 50; Seed++)
+    {
+        Selector->RandomSeed = Seed;
+        const FConnectItAIDecision Decision = Selector->Select(FConnectItAIDecisionContext(), Answers);
+        const FString Picked = CandidatePosition(Decision.Candidates[0]);
+        TestTrue(TEXT("a mistake is rank 2 or 3"), Picked == TEXT("0,1") || Picked == TEXT("0,2"));
+        bSawRank2 |= Picked == TEXT("0,1");
+        bSawRank3 |= Picked == TEXT("0,2");
+        TestEqual(TEXT("every move is still offered as a fallback"), Decision.Candidates.Num(), 4);
+    }
+    TestTrue(TEXT("both mistakes happen"), bSawRank2 && bSawRank3);
+
+    Selector->RandomSeed = 7;
+    const FString FirstRun = CandidatePosition(Selector->Select(FConnectItAIDecisionContext(), Answers).Candidates[0]);
+    TestEqual(TEXT("a fixed seed repeats"),
+        CandidatePosition(Selector->Select(FConnectItAIDecisionContext(), Answers).Candidates[0]), FirstRun);
+
+    Selector->TopMovesConsidered = 1;
+    TestEqual(TEXT("top 1: no room for a mistake"),
+        CandidatePosition(Selector->Select(FConnectItAIDecisionContext(), Answers).Candidates[0]), TEXT("0,0"));
+    return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FConnectItAISelectorGreedyTest,
+    "ConnectIt.AI.Selector.GreedyScorer", TestFlags)
+
+bool FConnectItAISelectorGreedyTest::RunTest(const FString& Parameters)
+{
+    // Faction 0 completes a 4-line at (3,3); (0,6) scores nothing; (3,0) is occupied
+    FConnectItBoardState Board = MakeBoard(7);
+    Place(Board, 3, 0, 0);
+    Place(Board, 3, 1, 0);
+    Place(Board, 3, 2, 0);
+
+    FConnectItAIDecisionContext Context;
+    Context.Board = Board;
+    Context.OwnSlot = 0;
+    Context.Rules = RulesWonAt(100.f);
+
+    const TArray<FConnectItAIStrategyAnswer> Answers = {
+        Answer(0, { PlaceCandidate(3, 0), PlaceCandidate(0, 6), PlaceCandidate(3, 3), PlaceCandidate(6, 6) }) };
+
+    UConnectIt_AISelector_GreedyScorer* Selector = NewObject<UConnectIt_AISelector_GreedyScorer>();
+    const FConnectItAIDecision Decision = Selector->Select(Context, Answers);
+    if (!TestEqual(TEXT("every candidate ranked"), Decision.Candidates.Num(), 4)) return false;
+    TestEqual(TEXT("the scoring move first"), CandidatePosition(Decision.Candidates[0]), TEXT("3,3"));
+    TestEqual(TEXT("equal gains keep priority order"), CandidatePosition(Decision.Candidates[1]), TEXT("0,6"));
+    TestEqual(TEXT("then the next"), CandidatePosition(Decision.Candidates[2]), TEXT("6,6"));
+    TestEqual(TEXT("an impossible move last"), CandidatePosition(Decision.Candidates[3]), TEXT("3,0"));
+    return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FConnectItAISelectorWeightedTest,
+    "ConnectIt.AI.Selector.WeightedByConfidence", TestFlags)
+
+bool FConnectItAISelectorWeightedTest::RunTest(const FString& Parameters)
+{
+    const TArray<FConnectItAIStrategyAnswer> Answers = {
+        Answer(0, { PlaceCandidate(0, 0, 0.1f), PlaceCandidate(0, 1, 0.9f), PlaceCandidate(0, 2) }) };
+
+    UConnectIt_AISelector_WeightedByConfidence* Selector = NewObject<UConnectIt_AISelector_WeightedByConfidence>();
+
+    // Cold: the most confident move every time
+    Selector->Temperature = 0.01f;
+    for (int32 Seed = 1; Seed <= 30; Seed++)
+    {
+        Selector->RandomSeed = Seed;
+        const FConnectItAIDecision Decision = Selector->Select(FConnectItAIDecisionContext(), Answers);
+        TestEqual(TEXT("cold picks the most confident"), CandidatePosition(Decision.Candidates[0]), TEXT("0,1"));
+        TestEqual(TEXT("the rest stay as fallbacks"), Decision.Candidates.Num(), 3);
+    }
+
+    // A missing confidence counts as MissingConfidence
+    Selector->MissingConfidence = 1.f;
+    Selector->RandomSeed = 3;
+    TestEqual(TEXT("missing confidence set high wins when cold"),
+        CandidatePosition(Selector->Select(FConnectItAIDecisionContext(), Answers).Candidates[0]), TEXT("0,2"));
+
+    // Hot: every move gets picked sometimes
+    Selector->MissingConfidence = 0.5f;
+    Selector->Temperature = 10.f;
+    TSet<FString> Seen;
+    for (int32 Seed = 1; Seed <= 200; Seed++)
+    {
+        Selector->RandomSeed = Seed;
+        Seen.Add(CandidatePosition(Selector->Select(FConnectItAIDecisionContext(), Answers).Candidates[0]));
+    }
+    TestEqual(TEXT("hot picks every move at some point"), Seen.Num(), 3);
     return true;
 }
 
