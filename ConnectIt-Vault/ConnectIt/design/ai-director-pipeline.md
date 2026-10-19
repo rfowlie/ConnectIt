@@ -1,5 +1,10 @@
 # Plan: AI director pipeline + win conditions as data assets
 
+> **Status: built** 2026-10-16..19 in stages 0-7, each built and tested (40/40 at the end); not yet played in PIE. Log:
+> [_logs/2026-10-16-1700](../_logs/2026-10-16-1700.md); decision:
+> [_decisions/2026-10-16-ai-director-pipeline](../_decisions/2026-10-16-ai-director-pipeline.md). Deviations from the plan below
+> are listed in the log.
+
 ## Context
 
 The composable AI from 2026-10-14 works and tests pass (30/30), but the follow-up design talks settled a cleaner split of jobs:

@@ -1,7 +1,7 @@
 ---
 Date: 2026-10-14
-status: Active
-superseded by:
+status: Partly superseded
+superseded by: "[2026-10-16-ai-director-pipeline](2026-10-16-ai-director-pipeline.md) (the coordinator is no longer a strategy; mistake chance moved to selectors; the director owns the whole AI setup; the AI profile is gone)"
 tags:
   - ai
   - architecture

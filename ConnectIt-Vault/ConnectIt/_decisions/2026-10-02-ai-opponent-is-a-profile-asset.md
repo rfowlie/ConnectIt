@@ -1,7 +1,7 @@
 ---
 Date: 2026-10-02
-status: Active
-superseded by:
+status: Superseded
+superseded by: "[2026-10-16-ai-director-pipeline](2026-10-16-ai-director-pipeline.md) (the AI profile was removed: the match preset's AI director holds the loadout and strategies)"
 tags:
   - ai
   - data

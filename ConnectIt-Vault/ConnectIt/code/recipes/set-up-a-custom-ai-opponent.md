@@ -1,73 +1,81 @@
 ---
 schema: recipes
-task: Give a level an AI opponent that plays differently -- a tuned built-in one, a Blueprint-made strategy, or a Blueprint AI controller -- and wire it into a match preset.
+task: Give a match an AI opponent that plays the way you designed -- a tuned built-in one, a Blueprint-made strategy, several strategies with a selector, or a Blueprint AI controller -- through the match preset's AI director.
 touches:
-  - a UConnectIt_AIProfile asset (loadout + strategy)
+  - the match preset (AI Director, Rules > AI Win Conditions), the level config (Default Match Preset), the level's GameMode (Match Type, AI Controller Class)
+  - a Blueprint subclass of UConnectIt_AIDirector (only to change the AI during a match)
   - a Blueprint subclass of UConnectIt_AIStrategy (only for a bespoke strategy)
-  - a Blueprint subclass of AConnectIt_AIController (only if you need one; see step 4)
-  - the match preset (AI Profile, AI Win Groups), the level config (Default Match Preset), the level's GameMode (AI Controller Class)
-reconciled: 2026-10-14
-commit: 5262fc9
+  - a Blueprint subclass of AConnectIt_AIController (only if you need one; see C)
+reconciled: 2026-10-19
+commit: fd369a4
 ---
 
 # Recipe: set up a custom AI opponent
 
 ## Goal
 
-A level whose opponent behaves the way you designed, for designers working in the editor. Read
-[[ai-turn]] first if you want the flow behind it; the short version is: **the profile says who the opponent is, the strategy
-picks its moves, the controller only does the turn timing and submitting.**
+A match whose opponent behaves the way you designed, for designers working in the editor. Read [[ai-turn]] first if you want
+the flow behind it; the short version is: **the match preset's AI director says who the opponent is (its loadout, its
+strategies, its selector), the strategies propose moves, the selector picks one, the controller only does the timing and
+submitting.**
 
 ## First, which of these do you actually need?
 
 | I want... | Do this | Section |
 |---|---|---|
-| An easier / harder / more mistake-prone classic opponent | A new **AI profile** using the MinMax strategy, different numbers | A |
-| An opponent with its own rules of thumb ("two random pieces per turn, only one may score") | A **Blueprint strategy** + a profile that uses it | B |
+| An easier / harder / more mistake-prone classic opponent | The **AI director** with MinMax, different numbers, a Top N selector | A |
+| An opponent with its own rules of thumb ("two random pieces per turn, only one may score") | A **Blueprint strategy** in the director's Strategies | B |
 | The opponent to swap or shift pieces | A **Blueprint strategy** (the built-in MinMax only places) + a loadout with those actions | B |
-| Several strategies at once (MinMax plus a fallback, a judge between them) | A **Coordinator** strategy | [[combine-ai-strategies]] |
-| The AI to change during the match (alternating moves, new moves at a checkpoint, tells) | An **AI director** on the match preset | [[direct-the-ai-during-a-match]] |
+| Several strategies at once, or a different way of picking among their moves | More **Strategies** + a **Selector** | [[combine-ai-strategies]] |
+| The AI to change during the match (alternating moves, new moves at a checkpoint, tells) | A **Blueprint director** | [[direct-the-ai-during-a-match]] |
+| Several opponents for the menu ("Classic Easy", "Classic Hard") | One **match preset** per opponent, each with its own director | A, step 5 |
 | A different *thinking animation / extra component* on the opponent actor | A **Blueprint AI controller** | C |
 | To change how the AI times its turn, retries, or submits | Not possible in Blueprint today: ask for a C++ hook | C |
 
-Most levels need A or B. **You rarely need a custom controller**: its decisions are not overridable, and which opponent plays
-comes from the profile, not from the controller class.
+**You rarely need a custom controller**: its decisions are not overridable, and which opponent plays comes from the preset's
+director, not from the controller class.
 
 ## Prerequisites
 
-- A level with a match preset that is played as **Adventure** (the GameMode's `Match Type` is Adventure, which is what spawns the AI).
+- A level whose match is played as **Adventure** (the GameMode's `Match Type` is Adventure, which is what spawns the AI).
+- A **match preset** for it (Data Asset of class `ConnectIt_MatchPreset`; the level config's `Default Match Preset` names it).
 - An **action loadout** for the AI (an asset like a player's): the AI may only do what its loadout's actions allow, and the server
   holds it to that exactly like a human. A Place Piece action to place, a Swap action to swap, and so on, with the per-turn
   limits and turn-end requirements you want.
+- **Win condition assets** for the AI's goals ([[add-a-win-condition]]).
 
 ## Steps
 
-### A. Tune the built-in opponent (no Blueprint)
+### A. The built-in opponent, tuned (no Blueprint)
 
-1. Content Browser: create a **Data Asset** of class `ConnectIt_AIProfile` (e.g. `AIP_Classic_Hard`).
-2. Fill it in: `Display Name` / `Description` (shown in menus), `Loadout` (the AI's action loadout), and `Strategy`: pick
-   **MinMax (Classic)**.
-3. Set the MinMax numbers. Under **Search**: `Max Depth` (how many moves it looks ahead), `Time Budget Seconds` (stops
+1. Open the match preset. **AI Director**: pick **ConnectIt AI Director** (the base class). As it comes it is the classic
+   opponent: one **MinMax (Classic)** strategy and the **First Available** selector.
+2. **Starting Loadout**: the AI's action loadout.
+3. Under **Strategies > MinMax (Classic) > Search**: `Max Depth` (how many moves it looks ahead), `Time Budget Seconds` (stops
    deepening when time runs out), the `Evaluation Weights` / `Ordering Weights` (what it values; ordering is speed only), and
-   optionally `Own` / `Opponent Request Types` (empty = what each side may do). Then `Top Moves Considered` + `Mistake Chance`
-   (how often it plays a deliberately weaker move), `Min Think Seconds` (it never moves sooner than this) and `Max Candidates`
-   (how many fallback moves it hands over).
-4. Go to step 5.
+   optionally `Own` / `Opponent Request Types` (empty = what each side may do). `Max Candidates` = how many fallback moves it
+   hands over; `Label` = its name in logs.
+4. **Mistakes**: set **Selector** to **Top N (Mistake Chance)**: `Top Moves Considered` + `Mistake Chance` (how often it plays
+   one of the 2nd..Nth best moves on purpose). Or **Weighted by Confidence** for a smoother feel (`Temperature`: near 0 =
+   almost always best, higher = more random).
+5. Think time on the director: `Think Time Budget Seconds` (how long the strategies may think per move; MinMax is told
+   `x Strategy Budget Share` of it), `Min Think Seconds` (it never moves sooner than this).
+6. Several difficulties for the menu: duplicate the preset (e.g. `MP_Classic_Easy`, `MP_Classic_Hard`), change the numbers,
+   and list the presets in the level catalog's **Match Presets**. Go to step 7.
 
 ### B. Make a Blueprint strategy
 
-1. Content Browser: **Blueprint Class** with parent `ConnectIt_AIStrategy` (e.g. `BPAIS_TwoRandomPieces`). Set `Min Think
-   Seconds` in Class Defaults.
+1. Content Browser: **Blueprint Class** with parent `ConnectIt_AIStrategy` (e.g. `BPAIS_TwoRandomPieces`).
 2. Open **Functions > Override > Begin Decision**. It receives the **Context**:
    - `Board`: a copy of the current board state; `Own Slot`: your faction slot.
-   - `Rules`: the match's rules (scoring and win groups), a copy.
+   - `Rules`: the match's rules (scoring and the goals), a copy.
    - `Own Loadout` / `Opponent Loadout`: what each side may do. `Loadout Grants Request Type` answers "can this side place / swap /
      shift?".
    - `Turn Number`, and `Decision Index This Turn`: **0 for the first move of the AI's turn, 1 for the second...** Reset anything you
      remember between moves when it is 0.
    - `Available Request Types`: **the kinds of move the AI may make right now** (its loadout allows them and they are usable this
      decision). Only offer these; `Is Operation Available` checks one operation.
-   - `Time Budget Seconds`: set when your strategy runs under a coordinator; 0 = no limit.
+   - `Time Budget Seconds`: how long you have (0 = no limit). When it runs out your best answer so far is used.
 3. Pick a move. Useful nodes (all under **ConnectIt**):
    - **Get Placeable Positions (Board State)**: every tile a piece may go on right now.
    - **Simulate Operation**: "what would this move do?" (score gained, lines completed, resulting board) without making it. Pass
@@ -75,69 +83,72 @@ comes from the profile, not from the controller class.
    - The **Board State** getters: tile owner, multiplier, score, positions of a faction's pieces...
    - **Find Best Moves (MinMax)**: the built-in search as a node -- pass the Context and a `MinMax Search Settings` (depth,
      time, weights, which moves each side has); **On Complete** gives the ranked moves. **Make Decision From Search** turns them
-     into a decision. Change the settings on the fly (search deeper when losing, more moves for a comeback).
+     into a decision (with scores and confidences). Change the settings on the fly (search deeper when losing...).
 4. Build the move as a board operation: **Make Instanced Struct**, struct type **Place Piece** (or Swap Pieces, Shift...), and
    set its `Position` (etc.). Leave `Faction` alone: the server stamps the real one.
 5. Hand it back: **Make Single Move Decision** (`Operation` = the instanced struct; `Summary` = a line for the log saying why),
-   or build a **ConnectIt AI Decision** with several **Candidates** (best first: each a `Payload` + `Summary`) so a rejected
-   move falls back to the next. Then call **Finish Decision**. **Always call Finish Decision, on every path**, including
-   "nothing good, take the first legal move". `Max Candidates` keeps the best N.
-6. If you use a **Delay** or other latent work, check **Is Decision Active** before finishing; a cancelled decision's late answer
+   or build a **ConnectIt AI Decision** with several **Candidates** (best first: each a `Payload` + `Summary`, and optionally
+   `Confidence` 0..1, `Strategy Score`, `Tags`) so a rejected move falls back to the next. Then call **Finish Decision**.
+   **Always call Finish Decision, on every path**, including "nothing good, take the first legal move".
+6. Slow work (a **Delay**, a search): call **Publish Best So Far** whenever you have a better answer, so there is something to
+   play if the think time runs out first. Check **Is Decision Active** before finishing; a cancelled decision's late answer
    is ignored anyway. Optionally override **Cancel Decision** to stop your own work.
-7. Create the profile as in A, but pick your Blueprint class as the `Strategy`.
+7. Put it in the director: **AI Director > Strategies**, add an entry, pick your Blueprint class.
 
 ### C. Make a Blueprint AI controller (only if you need one)
 
 1. Content Browser: **Blueprint Class** with parent `ConnectIt_AIController`.
 2. In Class Defaults set **AI Display Name** (the name the opponent shows). You can add components and event-graph logic to it
    (for instance, a "thinking" indicator that starts when its turn does), **but the turn logic itself (timing, deciding,
-   submitting) is C++ and cannot be overridden**. `Get Strategy` returns the controller's own copy of the strategy if you need to
-   read it.
+   submitting) is C++ and cannot be overridden**. `Get Director` returns the controller's own copy of the director.
 3. Open the level's **GameMode** Blueprint, Class Defaults, **ConnectIt > Config > AI Controller Class**: pick your controller.
    (The level must actually use that GameMode: World Settings > GameMode Override.)
-4. Which opponent it is does not change: the profile (step 5) still supplies the loadout and the strategy.
+4. Which opponent it is does not change: the preset's director still supplies the loadout, strategies and selector.
 
 ### Wire it into the level (all variants)
 
-5. Open the **match preset** the level plays as (the level config's `Default Match Preset`; menus can offer others) and set:
-   - **AI Profile**: the profile from A or B (the menu's own AI choice overrides it, if the menu offers one).
-   - **Rules > AI Win Groups**: **the AI's goals**, in order. Set them: the AI never borrows the player's, and a preset with none
-     means the AI can never win (you get a warning). Also check **Player Win Groups** and **Player Loadout**.
-6. Confirm the level config's `Default Match Preset` points at that preset, and the GameMode's `Match Type` is **Adventure**.
+7. In the **match preset** also set **Rules > AI Win Conditions**: **the AI's goals**, in order. Set them: the AI never borrows
+   the player's, and a preset with none means the AI can never win (you get a warning). Also check **Player Win Conditions**
+   and **Player Loadout**.
+8. Confirm the level config's `Default Match Preset` points at that preset, and the GameMode's `Match Type` is **Adventure**.
+9. Right-click the preset > **Asset Actions > Validate**: it checks the director too (a starting loadout, at least one strategy,
+   a loadout that grants moves the strategies play).
 
 ## Verify
 
-- Play in editor and watch the Output Log, filter `ConnectIt_AIController`. A healthy turn reads: `using AI profile '...'`,
-  `seeded action state from loadout '...'`, then each turn `decided -- <your Summary>` and `'<request type>' as <action> --
-  accepted`.
-- Warnings that mean something is not set up: `no AI profile`, `AI profile has no Strategy` (it falls back to a default MinMax),
-  `strategy ... returned no move`, `REJECTED`, `decision is stale`, `hit the per-turn decision cap`, and from the GameMode
-  `no AI Win Groups`.
+- Play in editor and watch the Output Log, filter `ConnectIt_AIController`. A healthy turn reads: `AI director '...'`,
+  `seeded action state from loadout '...'`, then each turn `decided -- N candidate(s), best: [<label>] <summary>` and
+  `'<request type>' ... -- accepted`.
+- Warnings that mean something is not set up: `the match preset has no AI Director` (the default director has no loadout, so
+  every move is rejected), `no AI loadout`, `no strategy of director ... proposed a move`, `REJECTED`, `decision is stale`,
+  `hit the per-turn decision cap`, from the coordinator `think time is up but no strategy has a move yet`, and from the
+  GameMode `no AI Win Conditions`.
 
 ## Pitfalls
 
-- **Never calling Finish Decision** (or finishing with an empty payload): the AI sits there until the turn timer runs out.
+- **Never calling Finish Decision** (and never publishing): the AI waits for that strategy until it answers. With other
+  strategies in the list, their moves are used when the think time ends; alone, the turn runs to its timer.
 - **`REJECTED`**: the AI's loadout has no action that produces that operation type, the action is out of uses / at its per-turn
-  cap, or the operation can't apply (occupied tile). The controller then tries the decision's next candidate; if **all** are
-  rejected it logs an error and ends the AI's turn. Offer only `Available Request Types` and moves that apply to the board.
+  cap, or the operation can't apply (occupied tile). The controller then tries the next candidate; if **all** are rejected it
+  logs an error and ends the AI's turn. Offer only `Available Request Types` and moves that apply to the board.
 - **Two moves per turn** is loadout configuration (the Place action's per-turn requirement / turn-end rule), not strategy: the
   controller simply asks again until the turn can end (at most 16 times). Use `Decision Index This Turn` to tell the moves apart.
-- **Strategy variables reset every match** and belong to one AI: each controller works on its own duplicate of the profile's
+- **Strategy variables reset every match** and belong to one AI: each controller works on its own duplicate of the director,
+  strategies included.
+- **The built-in MinMax only searches Place Piece.** Giving the AI swaps does nothing unless a strategy uses them. Validation
+  warns when the loadout grants moves no strategy plays, or none they do (`Get Supported Request Types`).
+- **MinMax's think time is the smaller of its own `Time Budget Seconds` and the director's share.** A long search setting with a
+  short director budget is cut off; its deepest finished ranking is used.
+- **No AI Win Conditions** is the easy one to forget in a new preset: the AI then plays but cannot win.
+- Custom controllers do not change behaviour. If your change "had no effect", you almost certainly wanted the director or a
   strategy.
-- **The built-in MinMax only searches Place Piece.** Giving the AI swaps does nothing unless a strategy uses them. The profile
-  warns when its loadout grants moves the strategy never plays, or none it does (`Get Supported Request Types`).
-- **Existing Blueprint strategies** written before candidate lists set `Payload` / `Summary` on the decision directly; rewire
-  them to Make Single Move Decision.
-- **No AI Win Groups** is the easy one to forget in a new preset: the AI then plays but cannot win.
-- Custom controllers do not change behaviour. If your change "had no effect", you almost certainly wanted a strategy.
-- Level scripting in Blueprint (a level script reacting to checkpoints) is separate: see
-  [win-condition-stages](../../design/win-condition-stages.md).
 
 ## See also
 
-- Recipes: [[combine-ai-strategies]], [[direct-the-ai-during-a-match]]
+- Recipes: [[combine-ai-strategies]], [[direct-the-ai-during-a-match]], [[add-a-win-condition]]
 - Flow: [[ai-turn]]
-- Design: [blueprint-ai-strategy-surface](../../design/blueprint-ai-strategy-surface.md) (the exhaustion-AI recipe),
+- Design: [ai-director-pipeline](../../design/ai-director-pipeline.md),
+  [blueprint-ai-strategy-surface](../../design/blueprint-ai-strategy-surface.md) (the exhaustion-AI recipe),
   [stage-and-match-preset](../../design/stage-and-match-preset.md),
   [swap-puzzles](../../design/swap-puzzles.md) (a level that gives the AI its own goal)
 - [[add-a-board-request-type]] (if the AI should be able to play a new kind of move)

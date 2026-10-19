@@ -6,11 +6,12 @@ Vault-wide passes go in `_core/_logs/`.
 
 Newest first:
 
-- [2026-10-16-1700](2026-10-16-1700.md) — session — AI director pipeline (in progress): plan moved into the vault; Stage 1, MinMax
+- [2026-10-16-1700](2026-10-16-1700.md) — session — AI director pipeline, built in stages 0-7 (2026-10-16..19): plan moved into the vault; Stage 1, MinMax
   publishes each completed depth to a thread-safe progress holder; Stage 2, candidate confidence / score / tags / label and
   strategies' best-so-far answers; Stage 3, four selectors;
   Stage 4, coordinator pipeline + director owns the AI setup;
-  Stage 5, AI profile removed; Stage 6, win conditions as data assets. 40/40 tests.
+  Stage 5, AI profile removed; Stage 6, win conditions as data assets;
+  Stage 7, recipes / ai-turn / design notes / decision. 40/40 tests; PIE pending after owner-side asset work.
 
 - [2026-10-14-1605](2026-10-14-1605.md) — session — composable AI: candidate lists, MinMax search as a Blueprint node, coordinator strategy, AI director on
   the match preset. Four stages, 30/30 tests; PIE pending; one Blueprint strategy needs rewiring.

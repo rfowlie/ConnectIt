@@ -1,7 +1,7 @@
 ---
 Date: 2026-10-13
-status: Active
-superseded by:
+status: Partly superseded
+superseded by: "[2026-10-16-ai-director-pipeline](2026-10-16-ai-director-pipeline.md) (goals are authored as win condition assets, copied into the groups at match start; ordering, checkpoints and the win are unchanged)"
 tags:
   - rules
   - win-conditions
