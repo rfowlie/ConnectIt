@@ -10,6 +10,7 @@ class AConnectIt_AIController;
 class UActionLoadoutDataAsset;
 class UConnectIt_AIStrategy;
 class UConnectIt_AISelector;
+class UConnectIt_WinConditionAsset;
 
 // The AI opponent of a match, and how it changes as the match goes on. Lives
 // on a match preset (UConnectIt_MatchPreset::AIDirector): one per adventure
@@ -100,12 +101,14 @@ public:
     void OnOpponentTurnStarted(int32 TurnNumber);
     virtual void OnOpponentTurnStarted_Implementation(int32 TurnNumber) {}
 
-    // A faction completed one of its win groups (not its last). bIsAI: it
-    // was the AI's. GroupIndex / GroupName: which one, as in the preset's
-    // rules (PlayerWinGroups or AIWinGroups).
+    // A faction completed one of its goals (not its last). bIsAI: it was the
+    // AI's. Goal: the win condition asset reached -- compare against your own
+    // asset references. GroupIndex: its position in that side's list in the
+    // preset's rules (PlayerWinConditions or AIWinConditions); GroupName: the
+    // asset's name.
     UFUNCTION(BlueprintNativeEvent, Category = "AI|Director")
-    void OnWinCheckpointReached(int32 Faction, bool bIsAI, int32 GroupIndex, FName GroupName);
-    virtual void OnWinCheckpointReached_Implementation(int32 Faction, bool bIsAI, int32 GroupIndex, FName GroupName) {}
+    void OnWinCheckpointReached(int32 Faction, bool bIsAI, UConnectIt_WinConditionAsset* Goal, int32 GroupIndex, FName GroupName);
+    virtual void OnWinCheckpointReached_Implementation(int32 Faction, bool bIsAI, UConnectIt_WinConditionAsset* Goal, int32 GroupIndex, FName GroupName) {}
 
     // --- For the controller ---
 

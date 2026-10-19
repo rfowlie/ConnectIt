@@ -4,11 +4,38 @@
 #include "Board/Rules/ConnectIt_LineScoringRule.h"
 #include "Board/Events/ConnectIt_BoardEvents.h"
 #include "Board/Operations/ConnectIt_BoardOperation.h"
+#include "Board/Rules/ConnectIt_WinConditionAsset.h"
 
 
 FConnectItRuleSet::FConnectItRuleSet()
 {
     ScoringRule = TInstancedStruct<FConnectItScoringRule>::Make<FConnectItScoringRule_Lines>();
+}
+
+void FConnectItRuleSet::ResolveWinGroups()
+{
+    const auto Resolve = [](const TCHAR* Side,
+        const TArray<TObjectPtr<UConnectIt_WinConditionAsset>>& Assets, TArray<FConnectItWinConditionGroup>& OutGroups)
+    {
+        OutGroups.Reset();
+        for (int32 Index = 0; Index < Assets.Num(); Index++)
+        {
+            UConnectIt_WinConditionAsset* Asset = Assets[Index];
+            if (!IsValid(Asset))
+            {
+                UE_LOG(LogTemp, Warning,
+                    TEXT("ConnectIt_RuleSet: %s win condition %d is empty -- skipped"), Side, Index);
+                continue;
+            }
+
+            FConnectItWinConditionGroup& Group = OutGroups.AddDefaulted_GetRef();
+            Group.Name = Asset->GetFName();
+            Group.Conditions = Asset->Conditions;
+            Group.Source = Asset;
+        }
+    };
+    Resolve(TEXT("Player"), PlayerWinConditions, PlayerWinGroups);
+    Resolve(TEXT("AI"), AIWinConditions, AIWinGroups);
 }
 
 const TArray<FConnectItWinConditionGroup>& FConnectItRuleSet::GetWinGroupsFor(int32 Faction) const
@@ -90,6 +117,7 @@ void FConnectItRuleSet::AdvanceWinGroups(
                 Checkpoint.Faction = Faction;
                 Checkpoint.GroupIndex = Completed - 1;
                 Checkpoint.GroupName = Group.Name;
+                Checkpoint.Asset = Group.Source;
                 OutEvents->Add(Checkpoint);
             }
         }

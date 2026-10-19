@@ -10,7 +10,7 @@ Newest first:
   publishes each completed depth to a thread-safe progress holder; Stage 2, candidate confidence / score / tags / label and
   strategies' best-so-far answers; Stage 3, four selectors;
   Stage 4, coordinator pipeline + director owns the AI setup;
-  Stage 5, AI profile removed. 39/39 tests.
+  Stage 5, AI profile removed; Stage 6, win conditions as data assets. 40/40 tests.
 
 - [2026-10-14-1605](2026-10-14-1605.md) — session — composable AI: candidate lists, MinMax search as a Blueprint node, coordinator strategy, AI director on
   the match preset. Four stages, 30/30 tests; PIE pending; one Blueprint strategy needs rewiring.

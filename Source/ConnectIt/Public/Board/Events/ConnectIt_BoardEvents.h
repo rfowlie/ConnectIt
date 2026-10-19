@@ -8,6 +8,8 @@
 #include "GridMechanicsBaseStructs.h"
 #include "ConnectIt_BoardEvents.generated.h"
 
+class UConnectIt_WinConditionAsset;
+
 // One thing that happened to the board, as its own small struct holding only
 // what describes it. A board change (FConnectItBoardChangeEvent) is an
 // ordered list of these, in the order they happened -- e.g. a piece was
@@ -229,8 +231,8 @@ struct CONNECTIT_API FConnectItBoardEvent_Scored : public FConnectItBoardResultE
 // A faction just completed one of its win condition groups, and it was not the
 // last one (completing the last is the win: see GameWon). One per group
 // completed, in order -- a move that completes two in a row produces two. The
-// match's win groups are listed in the rule set
-// (FConnectItRuleSet::PlayerWinGroups / AIWinGroups).
+// match's goals are listed in the rule set
+// (FConnectItRuleSet::PlayerWinConditions / AIWinConditions).
 USTRUCT(BlueprintType, meta = (DisplayName = "Win Checkpoint Reached"))
 struct CONNECTIT_API FConnectItBoardEvent_WinCheckpointReached : public FConnectItBoardResultEvent
 {
@@ -243,7 +245,11 @@ struct CONNECTIT_API FConnectItBoardEvent_WinCheckpointReached : public FConnect
     UPROPERTY(BlueprintReadOnly, Category = "Event")
     int32 GroupIndex = -1;
 
-    // That group's Name, as authored
+    // The goal reached: its win condition asset (null for a group built in code)
+    UPROPERTY(BlueprintReadOnly, Category = "Event")
+    TObjectPtr<UConnectIt_WinConditionAsset> Asset = nullptr;
+
+    // That group's Name (the asset's name)
     UPROPERTY(BlueprintReadOnly, Category = "Event")
     FName GroupName;
 

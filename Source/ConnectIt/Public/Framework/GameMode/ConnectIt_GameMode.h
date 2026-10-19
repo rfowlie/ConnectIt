@@ -13,6 +13,7 @@ class AConnectIt_AIController;
 class ATurnBasedPlayerState;
 class UActionLoadoutDataAsset;
 class UConnectIt_AIDirector;
+class UConnectIt_WinConditionAsset;
 class UTurnBasedParticipantManagerComponent;
 class UConnectIt_BoardRequestMediator;
 
@@ -53,11 +54,11 @@ enum class EConnectItLoadoutTiming : uint8
     Immediately     UMETA(DisplayName = "Immediately")
 };
 
-// A faction completed one of its win condition groups, and it was not its last.
+// A faction completed one of its goals, and it was not its last.
 // See AConnectIt_GameMode::OnWinCheckpointReached. (Parameters are named
 // PlayerRole, not Role: AActor already has a Role.)
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_FourParams(FOnWinCheckpointReached,
-    EConnectItRole, PlayerRole, int32, Faction, int32, GroupIndex, FName, GroupName);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_FiveParams(FOnWinCheckpointReached,
+    EConnectItRole, PlayerRole, int32, Faction, UConnectIt_WinConditionAsset*, Goal, int32, GroupIndex, FName, GroupName);
 
 // A faction completed all of its win condition groups: the match is won. See
 // AConnectIt_GameMode::OnMatchWon.
@@ -139,11 +140,12 @@ public:
     // --- Reacting to the match's goals (for a level Blueprint) ---
     // The GameMode exists only on the server, so a level Blueprint reaches
     // these through "Get Game Mode" (null on clients) -- gate on that.
-    // The goals themselves are the rule set's win groups, authored on the level
-    // config (FConnectItRuleSet::PlayerWinGroups / AIWinGroups).
+    // The goals themselves are the rule set's win condition assets, listed on
+    // the match preset (FConnectItRuleSet::PlayerWinConditions / AIWinConditions).
 
-    // A side completed one of its win groups and it was not its last (GroupIndex
-    // counts from 0 in that side's list; GroupName is the group's own label).
+    // A side completed one of its goals and it was not its last (Goal is the
+    // win condition asset; GroupIndex counts from 0 in that side's list;
+    // GroupName is the asset's name).
     // Fires after the move's scoring visuals. The place to change that side's
     // loadout for the next stage (SetLoadout). Server only; keep the listener
     // light: it can run inside the move that completed the group.

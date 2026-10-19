@@ -3,6 +3,7 @@
 #include "Framework/Data/ConnectIt_MatchPreset.h"
 #include "Action/ActionLoadoutDataAsset.h"
 #include "AI/ConnectIt_AIDirector.h"
+#include "Board/Rules/ConnectIt_WinConditionAsset.h"
 #include "Misc/DataValidation.h"
 
 
@@ -32,41 +33,49 @@ EDataValidationResult UConnectIt_MatchPreset::IsDataValid(
     }
 
     // No defaults and no borrowing between roles: each preset sets its own.
-    if (Rules.PlayerWinGroups.IsEmpty())
+    if (Rules.PlayerWinConditions.IsEmpty())
     {
         Context.AddWarning(FText::FromString(TEXT(
-            "ConnectIt_MatchPreset: No Rules > Player Win Groups set -- "
+            "ConnectIt_MatchPreset: No Rules > Player Win Conditions set -- "
             "the player can never win.")));
         Result = EDataValidationResult::Invalid;
     }
 
     // Not invalid: versus presets have no AI -- but if one plays, an empty
     // list means it cannot win.
-    if (Rules.AIWinGroups.IsEmpty())
+    if (Rules.AIWinConditions.IsEmpty())
     {
         Context.AddWarning(FText::FromString(TEXT(
-            "ConnectIt_MatchPreset: No Rules > AI Win Groups set -- an AI "
+            "ConnectIt_MatchPreset: No Rules > AI Win Conditions set -- an AI "
             "opponent playing this preset can never win. Set them if it can be "
             "played against an AI.")));
     }
 
-    // A group with no conditions is never satisfied, so it blocks every group after it
-    const auto CheckGroups = [&Context, &Result](const TCHAR* Side, const TArray<FConnectItWinConditionGroup>& Groups)
+    // A goal that is unset or has no conditions is never satisfied, so it
+    // blocks every goal after it
+    const auto CheckGoals = [&Context, &Result](const TCHAR* Side,
+        const TArray<TObjectPtr<UConnectIt_WinConditionAsset>>& Goals)
     {
-        for (int32 Index = 0; Index < Groups.Num(); Index++)
+        for (int32 Index = 0; Index < Goals.Num(); Index++)
         {
-            if (Groups[Index].IsEmpty())
+            if (!IsValid(Goals[Index]))
             {
                 Context.AddWarning(FText::FromString(FString::Printf(TEXT(
-                    "ConnectIt_MatchPreset: %s win group %d ('%s') has no conditions -- "
+                    "ConnectIt_MatchPreset: %s win condition %d is empty -- it is skipped."),
+                    Side, Index)));
+            }
+            else if (Goals[Index]->Conditions.IsEmpty())
+            {
+                Context.AddWarning(FText::FromString(FString::Printf(TEXT(
+                    "ConnectIt_MatchPreset: %s win condition %d ('%s') has no conditions -- "
                     "it can never be completed, so that side can never win."),
-                    Side, Index, *Groups[Index].Name.ToString())));
+                    Side, Index, *Goals[Index]->GetName())));
                 Result = EDataValidationResult::Invalid;
             }
         }
     };
-    CheckGroups(TEXT("Player"), Rules.PlayerWinGroups);
-    CheckGroups(TEXT("AI"), Rules.AIWinGroups);
+    CheckGoals(TEXT("Player"), Rules.PlayerWinConditions);
+    CheckGoals(TEXT("AI"), Rules.AIWinConditions);
 
     return Result;
 }

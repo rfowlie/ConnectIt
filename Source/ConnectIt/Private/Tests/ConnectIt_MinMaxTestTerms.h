@@ -7,6 +7,7 @@
 #include "AI/ConnectIt_AIStrategy.h"
 #include "AI/ConnectIt_AIDirector.h"
 #include "AI/ConnectIt_AISelector.h"
+#include "Board/Rules/ConnectIt_WinConditionAsset.h"
 #include "Board/Operations/ConnectIt_BoardOperations.h"
 #include "ConnectIt_MinMaxTestTerms.generated.h"
 
@@ -116,9 +117,9 @@ protected:
     {
         Log += FString::Printf(TEXT("end %d; "), TurnNumber);
     }
-    virtual void OnWinCheckpointReached_Implementation(int32 Faction, bool bIsAI, int32 GroupIndex, FName GroupName) override
+    virtual void OnWinCheckpointReached_Implementation(int32 Faction, bool bIsAI, UConnectIt_WinConditionAsset* Goal, int32 GroupIndex, FName GroupName) override
     {
-        Log += FString::Printf(TEXT("checkpoint %d %s %d %s; "),
-            Faction, bIsAI ? TEXT("AI") : TEXT("player"), GroupIndex, *GroupName.ToString());
+        Log += FString::Printf(TEXT("checkpoint %d %s %s %d %s; "),
+            Faction, bIsAI ? TEXT("AI") : TEXT("player"), *GetNameSafe(Goal), GroupIndex, *GroupName.ToString());
     }
 };

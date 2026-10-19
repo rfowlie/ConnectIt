@@ -7,33 +7,38 @@
 #include "Board/Rules/ConnectIt_WinCondition.h"
 #include "ConnectIt_WinConditionGroup.generated.h"
 
+class UConnectIt_WinConditionAsset;
 
-// One goal, made of one or more win conditions that must ALL hold at the same
-// time (e.g. Piece Count Equal 0 AND Score Threshold 4: clear the board, having
-// scored). A group with no conditions is never satisfied -- "nothing to
-// satisfy" is not a win. (All-of is the only way conditions combine today; any
-// other way would be a setting on the group, not a change to how groups are
-// listed.)
+// One goal during a match: the copy of a UConnectIt_WinConditionAsset's
+// conditions that the rule set plays with (FConnectItRuleSet::ResolveWinGroups
+// makes it). One or more win conditions that must ALL hold at the same time. A
+// group with no conditions is never satisfied -- "nothing to satisfy" is not a
+// win. (All-of is the only way conditions combine today; any other way would
+// be a setting on the asset, not a change to how goals are listed.)
 //
-// A rule set lists a side's groups in the order they must be completed (see
+// A rule set holds a side's groups in the order they must be completed (see
 // FConnectItRuleSet::PlayerWinGroups): each completed group is a checkpoint,
 // and completing the last one is the win.
 //
 // A plain thread-safe struct like the conditions it holds (see the note at the
-// top of ConnectIt_ScoringRule.h).
+// top of ConnectIt_ScoringRule.h). Source is only carried along, never
+// dereferenced off the game thread.
 USTRUCT(BlueprintType)
 struct CONNECTIT_API FConnectItWinConditionGroup
 {
     GENERATED_BODY()
 
-    // Optional label for this goal ("Score 20", "Clear the board"): carried by
-    // the checkpoint event and delegate and shown in logs, so a level
-    // Blueprint can tell checkpoints apart without counting.
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Win Conditions")
+    // The goal's label for logs and the checkpoint event: the source asset's
+    // name
+    UPROPERTY(BlueprintReadOnly, Category = "Win Conditions")
     FName Name;
 
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Win Conditions", meta = (ExcludeBaseStruct))
+    UPROPERTY(BlueprintReadOnly, Category = "Win Conditions")
     TArray<TInstancedStruct<FConnectItWinCondition>> Conditions;
+
+    // The asset the conditions were copied from (null for a group built in code)
+    UPROPERTY(BlueprintReadOnly, Category = "Win Conditions")
+    TObjectPtr<UConnectIt_WinConditionAsset> Source = nullptr;
 
     bool IsEmpty() const { return Conditions.IsEmpty(); }
 

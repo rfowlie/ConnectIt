@@ -10,6 +10,7 @@
 #include "AI/ConnectIt_AISelector.h"
 #include "ConnectIt_MinMaxTestTerms.h"
 #include "Board/Rules/ConnectIt_RuleSet.h"
+#include "Board/Rules/ConnectIt_WinConditionAsset.h"
 #include "Framework/Library/ConnectIt_BoardStateLibrary.h"
 #include "Board/Rules/ConnectIt_LineScoringRule.h"
 #include "Board/Rules/ConnectIt_ScoreThresholdWinCondition.h"
@@ -1899,6 +1900,82 @@ bool FConnectItAISelectorWeightedTest::RunTest(const FString& Parameters)
     return true;
 }
 
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FConnectItWinConditionAssetsTest,
+    "ConnectIt.Board.WinConditions.Assets", TestFlags)
+
+bool FConnectItWinConditionAssetsTest::RunTest(const FString& Parameters)
+{
+    // Goals as assets: the rule set copies their conditions out at match
+    // start, in order, and a checkpoint names the asset reached
+    UConnectIt_WinConditionAsset* ScoreGoal = NewObject<UConnectIt_WinConditionAsset>(
+        GetTransientPackage(), TEXT("WC_Test_Score4"));
+    ScoreGoal->Conditions.Add(TInstancedStruct<FConnectItWinCondition>::Make<FConnectItWinCondition_ScoreThreshold>(ScoreAtLeast(4.f)));
+    UConnectIt_WinConditionAsset* ClearGoal = NewObject<UConnectIt_WinConditionAsset>(
+        GetTransientPackage(), TEXT("WC_Test_Clear"));
+    ClearGoal->Conditions.Add(TInstancedStruct<FConnectItWinCondition>::Make<FConnectItWinCondition_PieceCount>(PiecesIs(EConnectItPieceCountComparison::Equal, 0)));
+
+    FConnectItRuleSet Rules;
+    Rules.PlayerWinConditions = { ScoreGoal, nullptr, ClearGoal };
+    Rules.AIWinConditions = { ScoreGoal };
+    TestEqual(TEXT("nothing to play with before resolving"), Rules.PlayerWinGroups.Num(), 0);
+
+    AddExpectedError(TEXT("Player win condition 1 is empty"), EAutomationExpectedErrorFlags::Contains, 1);
+    Rules.ResolveWinGroups();
+    if (!TestEqual(TEXT("one group per goal, the empty one skipped"), Rules.PlayerWinGroups.Num(), 2)) return false;
+    TestTrue(TEXT("in order, with their source"),
+        Rules.PlayerWinGroups[0].Source == ScoreGoal && Rules.PlayerWinGroups[1].Source == ClearGoal);
+    TestEqual(TEXT("named after the asset"), Rules.PlayerWinGroups[1].Name, FName(TEXT("WC_Test_Clear")));
+    TestEqual(TEXT("the conditions copied"), Rules.PlayerWinGroups[0].Conditions.Num(), 1);
+    TestEqual(TEXT("the AI's too"), Rules.AIWinGroups.Num(), 1);
+
+    // A copy: changing the match's target leaves the asset alone
+    TestTrue(TEXT("a target can be set"), Rules.SetTargetScore(9.f));
+    float AssetTarget = 0.f;
+    TestTrue(TEXT("the asset still says 4"),
+        ScoreGoal->Conditions[0].GetPtr()->GetTargetScore(AssetTarget) && AssetTarget == 4.f);
+
+    // Reaching the first goal is a checkpoint naming its asset
+    FConnectItBoardState Board = MakeBoard(5);
+    Place(Board, 0, 0, 0);
+    Board.StartingPieces = { 1, 1 };
+    Board.ScoreBoard = { 4.f, 0.f };
+    FConnectItBoardChangeEvent Change;
+    Rules.StampWinState(Board, &Change);
+    if (const auto* Checkpoint = OnlyEvent<FConnectItBoardEvent_WinCheckpointReached>(Change))
+    {
+        TestTrue(TEXT("the checkpoint carries the asset"), Checkpoint->Asset == ScoreGoal);
+        TestEqual(TEXT("and its name"), Checkpoint->GroupName, FName(TEXT("WC_Test_Score4")));
+    }
+    else
+    {
+        AddError(TEXT("expected exactly one WinCheckpointReached event"));
+    }
+
+    // The search plays resolved goals exactly like the same groups built in code
+    FConnectItRuleSet AssetRules;
+    AssetRules.PlayerWinConditions = { ScoreGoal };
+    AssetRules.ResolveWinGroups();
+    const FConnectItRuleSet InlineRules = RulesWonAt(4.f);
+
+    FConnectItBoardState SearchBoard = MakeBoard(7);
+    Place(SearchBoard, 3, 0, 0);
+    Place(SearchBoard, 3, 1, 0);
+    Place(SearchBoard, 3, 2, 0);
+    const FConnectItMinMaxRules FromAssets(SearchBoard, AssetRules, DefaultEvaluationWeights(), DefaultOrderingWeights(), PlaceOnly(), PlaceOnly());
+    const FConnectItMinMaxRules FromCode(SearchBoard, InlineRules, DefaultEvaluationWeights(), DefaultOrderingWeights(), PlaceOnly(), PlaceOnly());
+    const auto AssetResult = FConnectItMinMaxSearch::Run(FromAssets, FromAssets.MakeRoot(SearchBoard, 0), Depth(2));
+    const auto CodeResult = FConnectItMinMaxSearch::Run(FromCode, FromCode.MakeRoot(SearchBoard, 0), Depth(2));
+    if (!TestEqual(TEXT("same number of moves"), AssetResult.RootScores.Num(), CodeResult.RootScores.Num())) return false;
+    bool bSame = true;
+    for (int32 Index = 0; Index < AssetResult.RootScores.Num(); Index++)
+    {
+        bSame &= PlacePosition(AssetResult.RootScores[Index].Move) == PlacePosition(CodeResult.RootScores[Index].Move)
+            && AssetResult.RootScores[Index].Score == CodeResult.RootScores[Index].Score;
+    }
+    TestTrue(TEXT("same ranking, same scores"), bSame);
+    return true;
+}
+
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FConnectItAICoordinatorTest,
     "ConnectIt.AI.Coordinator", TestFlags)
 
@@ -2066,9 +2143,9 @@ bool FConnectItAIDirectorTest::RunTest(const FString& Parameters)
     Director->OnAITurnStarted(3);
     Director->OnAITurnEnded(3);
     Director->OnOpponentTurnStarted(4);
-    Director->OnWinCheckpointReached(1, true, 0, TEXT("Stage 1"));
+    Director->OnWinCheckpointReached(1, true, nullptr, 0, TEXT("Stage 1"));
     TestEqual(TEXT("events reach the director"), Director->Log,
-        FString(TEXT("match; start 3; end 3; opponent 4; checkpoint 1 AI 0 Stage 1; ")));
+        FString(TEXT("match; start 3; end 3; opponent 4; checkpoint 1 AI None 0 Stage 1; ")));
 
     // Strategy and selector changes wait for the next decision, as copies
     UConnectIt_AIStrategy* const OriginalStrategy = Director->Strategies[0];

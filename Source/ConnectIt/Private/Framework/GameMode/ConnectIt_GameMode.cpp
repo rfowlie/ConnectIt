@@ -134,6 +134,8 @@ void AConnectIt_GameMode::EnsureMatchSetupResolved()
                  "rules, loadout or AI."));
     }
     Rules = IsValid(Preset) ? Preset->Rules : FConnectItRuleSet();
+    // The goal assets' conditions, copied into the plain groups the match plays with
+    Rules.ResolveWinGroups();
     PlayerLoadout = IsValid(Preset) ? Preset->PlayerLoadout : nullptr;
     AIDirectorTemplate = IsValid(Preset) ? Preset->AIDirector : nullptr;
 
@@ -260,7 +262,7 @@ void AConnectIt_GameMode::HandleWinCheckpoint(FGameplayTag Tag)
 
     OnWinCheckpointReached.Broadcast(
         RoleOfFaction(Checkpoint->Faction), Checkpoint->Faction,
-        Checkpoint->GroupIndex, Checkpoint->GroupName);
+        Checkpoint->Asset, Checkpoint->GroupIndex, Checkpoint->GroupName);
 }
 
 void AConnectIt_GameMode::ApplyLoadout(ATurnBasedPlayerState* PlayerState, UActionLoadoutDataAsset* Loadout)
@@ -294,7 +296,7 @@ void AConnectIt_GameMode::WarnAboutMissingWinConditions() const
     if (Rules.PlayerWinGroups.IsEmpty())
     {
         UE_LOG(LogTemp, Warning,
-            TEXT("ConnectIt_GameMode: this level has no Player Win Groups -- "
+            TEXT("ConnectIt_GameMode: this match has no Player Win Conditions -- "
                  "the player can never win"));
     }
 
@@ -302,7 +304,7 @@ void AConnectIt_GameMode::WarnAboutMissingWinConditions() const
     if (Rules.AIFaction != INDEX_NONE && Rules.AIWinGroups.IsEmpty())
     {
         UE_LOG(LogTemp, Warning,
-            TEXT("ConnectIt_GameMode: this level has no AI Win Groups -- "
+            TEXT("ConnectIt_GameMode: this match has no AI Win Conditions -- "
                  "the AI opponent can never win (it does not borrow the player's)"));
     }
 
@@ -314,7 +316,7 @@ void AConnectIt_GameMode::WarnAboutMissingWinConditions() const
             if (Groups[Index].IsEmpty())
             {
                 UE_LOG(LogTemp, Warning,
-                    TEXT("ConnectIt_GameMode: %s win group %d ('%s') has no conditions -- "
+                    TEXT("ConnectIt_GameMode: %s win condition %d ('%s') has no conditions -- "
                          "it can never be completed, so that side can never win"),
                     Side, Index, *Groups[Index].Name.ToString());
             }

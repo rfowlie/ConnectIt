@@ -524,7 +524,7 @@ void AConnectIt_AIController::HandleBoardStateChanged()
             Entry.GetPtr<FConnectItBoardEvent_WinCheckpointReached>())
         {
             const bool bIsAI = IsValid(PS) && Checkpoint->Faction == PS->GetSlotIndex();
-            Director->OnWinCheckpointReached(Checkpoint->Faction, bIsAI, Checkpoint->GroupIndex, Checkpoint->GroupName);
+            Director->OnWinCheckpointReached(Checkpoint->Faction, bIsAI, Checkpoint->Asset, Checkpoint->GroupIndex, Checkpoint->GroupName);
         }
     }
 }
