@@ -18,7 +18,6 @@ class UGridHoverSubsystem;
 class UGridTileRegistryBase;
 class UGridPieceRegistryBase;
 class UActionLoadoutDataAsset;
-class UConnectIt_AIProfile;
 class AConnectIt_GridPiece;
 struct FConnectItRuleSet;
 
@@ -132,11 +131,6 @@ public:
     UFUNCTION(BlueprintPure, Category = "ConnectIt|Match",
         meta = (WorldContext = "WorldContextObject"))
     static bool GetMatchRules(const UObject* WorldContextObject, FConnectItRuleSet& OutRules);
-
-    // The AI opponent being played, or null (online match / not known yet)
-    UFUNCTION(BlueprintPure, Category = "ConnectIt|Match",
-        meta = (WorldContext = "WorldContextObject"))
-    static UConnectIt_AIProfile* GetOpponentProfile(const UObject* WorldContextObject);
 
     // The local player's current loadout (from their PlayerState), or null
     // until it has replicated

@@ -10,7 +10,6 @@
 #include "ConnectIt_GameState.generated.h"
 
 class UConnectIt_BoardStateComponent;
-class UConnectIt_AIProfile;
 
 
 // Why the match ended
@@ -110,17 +109,12 @@ public:
     UFUNCTION(BlueprintPure, Category = "ConnectIt|Match")
     const FConnectItRuleSet& GetMatchRules() const { return MatchRules; }
 
-    // The AI opponent being played; null in an online match
-    UFUNCTION(BlueprintPure, Category = "ConnectIt|Match")
-    UConnectIt_AIProfile* GetOpponentProfile() const { return OpponentProfile; }
-
     // The rules changed (or first arrived) -- on the server and on clients
     UPROPERTY(BlueprintAssignable, Category = "ConnectIt|Match")
     FOnMatchRulesChanged OnMatchRulesChanged;
 
     // Server only -- called by the GameMode
     void SetMatchRules(const FConnectItRuleSet& InRules);
-    void SetOpponentProfile(UConnectIt_AIProfile* InProfile);
 
     // --- Board State ---
     // Owned here, not on the board actor -- board state genuinely needs to
@@ -196,9 +190,6 @@ private:
 
     UPROPERTY(ReplicatedUsing = OnRep_MatchRules)
     FConnectItRuleSet MatchRules;
-
-    UPROPERTY(Replicated)
-    TObjectPtr<UConnectIt_AIProfile> OpponentProfile = nullptr;
 
     UFUNCTION()
     void OnRep_MatchRules();

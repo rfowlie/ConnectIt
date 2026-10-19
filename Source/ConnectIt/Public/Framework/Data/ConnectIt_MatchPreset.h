@@ -8,12 +8,13 @@
 #include "ConnectIt_MatchPreset.generated.h"
 
 class UActionLoadoutDataAsset;
-class UConnectIt_AIProfile;
 class UConnectIt_AIDirector;
 
 // A way to play a match -- its rules, what the player can do, and who the AI
-// is -- independent of the stage it is played on (the level config holds the
-// stage: board layout, registries, pieces).
+// is (its director) -- independent of the stage it is played on (the level
+// config holds the stage: board layout, registries, pieces). A "mode" of
+// playing against the AI (Classic Easy, Classic Hard...) is a preset naming
+// its director.
 //
 // A level config names the preset it plays as by default (its Adventure
 // setup, say). The main menu can pick a different one for the same level
@@ -42,12 +43,6 @@ public:
     // The actions human players get
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "ConnectIt|Loadout")
     TObjectPtr<UActionLoadoutDataAsset> PlayerLoadout = nullptr;
-
-    // The AI opponent (strategy + loadout) when the match is played against
-    // the AI. Unset for presets meant only for human-vs-human; the main menu
-    // can also choose one.
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "ConnectIt|AI")
-    TObjectPtr<UConnectIt_AIProfile> AIProfile = nullptr;
 
     // The AI opponent when the match is played against the AI: its loadout,
     // strategies and selector, and how they change as the match goes on.

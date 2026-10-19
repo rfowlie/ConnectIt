@@ -6,7 +6,6 @@
 #include "Subsystems/GameInstanceSubsystem.h"
 #include "ConnectIt_MatchSetupSubsystem.generated.h"
 
-class UConnectIt_AIProfile;
 class UConnectIt_MatchPreset;
 class UConnectIt_LevelCatalog;
 
@@ -21,21 +20,18 @@ struct FConnectItMatchSettings
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Match")
     TSoftObjectPtr<UWorld> Level;
 
-    // How to play it; unset = the level's own DefaultMatchPreset. The values
-    // below are tweaks applied on top of whichever preset plays.
+    // How to play it, including who the AI is (the preset's director); unset
+    // = the level's own DefaultMatchPreset. The values below are tweaks
+    // applied on top of whichever preset plays.
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Match")
     TObjectPtr<UConnectIt_MatchPreset> MatchPreset = nullptr;
-
-    // Opponent for a vs-AI match; unset = the preset's AIProfile
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Match")
-    TObjectPtr<UConnectIt_AIProfile> AIProfile = nullptr;
 
     // Score needed to win; 0 = the level's own win condition value
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Match", meta = (ClampMin = 0.0))
     float TargetScore = 0.f;
 };
 
-// Carries the main menu's match choices (level, AI opponent, target score)
+// Carries the main menu's match choices (level, match preset, target score)
 // into the match. Lives on the GameInstance, so it survives OpenLevel.
 //
 // The menu builds an FConnectItMatchSettings (options from GetLevelCatalog)

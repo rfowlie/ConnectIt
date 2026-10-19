@@ -5,6 +5,9 @@
 #include "AI/ConnectIt_AISelector.h"
 #include "Framework/Controller/ConnectIt_AIController.h"
 #include "Framework/PlayerState/TurnBasedPlayerState.h"
+#include "Action/ActionLoadoutDataAsset.h"
+#include "Board/Operations/ConnectIt_BoardOperation.h"
+#include "Misc/DataValidation.h"
 
 
 UConnectIt_AIDirector::UConnectIt_AIDirector(const FObjectInitializer& ObjectInitializer)
@@ -26,6 +29,83 @@ UWorld* UConnectIt_AIDirector::GetWorld() const
     const UObject* Outer = GetOuter();
     return Outer ? Outer->GetWorld() : nullptr;
 }
+
+#if WITH_EDITOR
+EDataValidationResult UConnectIt_AIDirector::IsDataValid(FDataValidationContext& Context) const
+{
+    EDataValidationResult Result = Super::IsDataValid(Context);
+
+    if (!IsValid(StartingLoadout))
+    {
+        Context.AddError(FText::FromString(TEXT(
+            "ConnectIt_AIDirector: No Starting Loadout set -- every move this AI makes "
+            "would be rejected.")));
+        Result = EDataValidationResult::Invalid;
+    }
+
+    FGameplayTagContainer Supported;
+    bool bAnyStrategy = false;
+    for (const UConnectIt_AIStrategy* Strategy : Strategies)
+    {
+        if (!IsValid(Strategy)) continue;
+        bAnyStrategy = true;
+        Supported.AppendTags(Strategy->GetSupportedRequestTypes());
+    }
+    if (!bAnyStrategy)
+    {
+        Context.AddError(FText::FromString(TEXT(
+            "ConnectIt_AIDirector: No Strategies -- this AI never proposes a move.")));
+        Result = EDataValidationResult::Invalid;
+    }
+
+    if (!IsValid(Selector))
+    {
+        Context.AddWarning(FText::FromString(TEXT(
+            "ConnectIt_AIDirector: No Selector -- First Available is used.")));
+    }
+
+    // Does what the strategies can play match what the loadout allows?
+    // (Strategies that don't declare their moves are not checked.)
+    if (IsValid(StartingLoadout) && !Supported.IsEmpty())
+    {
+        FGameplayTagContainer Granted;
+        for (const FGameplayTag& RequestType : FConnectItBoardOperation::GetAllRequestTypes())
+        {
+            if (UConnectIt_AIStrategy::LoadoutGrantsRequestType(StartingLoadout, RequestType))
+            {
+                Granted.AddTag(RequestType);
+            }
+        }
+
+        if (!Granted.HasAnyExact(Supported))
+        {
+            Context.AddError(FText::FromString(FString::Printf(TEXT(
+                "ConnectIt_AIDirector: the strategies only play %s, and the starting loadout "
+                "grants none of it -- this AI can never move."),
+                *Supported.ToStringSimple())));
+            Result = EDataValidationResult::Invalid;
+        }
+
+        FGameplayTagContainer NeverPlayed;
+        for (const FGameplayTag& RequestType : Granted)
+        {
+            if (!Supported.HasTagExact(RequestType))
+            {
+                NeverPlayed.AddTag(RequestType);
+            }
+        }
+        if (!NeverPlayed.IsEmpty())
+        {
+            Context.AddWarning(FText::FromString(FString::Printf(TEXT(
+                "ConnectIt_AIDirector: the starting loadout grants %s, which no strategy "
+                "plays."),
+                *NeverPlayed.ToStringSimple())));
+        }
+    }
+
+    return Result;
+}
+#endif
 
 void UConnectIt_AIDirector::ApplyPendingChanges()
 {

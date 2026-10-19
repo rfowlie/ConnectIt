@@ -119,6 +119,12 @@ public:
 
     virtual UWorld* GetWorld() const override;
 
+#if WITH_EDITOR
+    // The setup can play: a starting loadout, strategies, and a loadout that
+    // grants moves the strategies play (checked by the match preset holding it)
+    virtual EDataValidationResult IsDataValid(FDataValidationContext& Context) const override;
+#endif
+
 protected:
 
     // Gives the AI a different loadout. During the AI's own turn the change

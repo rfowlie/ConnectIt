@@ -11,7 +11,6 @@
 #include "Framework/Data/ConnectIt_LevelConfigDataAsset.h"
 #include "Framework/Data/ConnectIt_LevelConfigSettings.h"
 #include "Framework/Data/ConnectIt_MatchPreset.h"
-#include "AI/ConnectIt_AIProfile.h"
 #include "Framework/Subsystem/ConnectIt_MatchSetupSubsystem.h"
 #include "Framework/GameState/ConnectIt_GameState.h"
 #include "Framework/GameState/TurnBasedGameState.h"
@@ -22,6 +21,7 @@
 #include "Framework/Library/ConnectIt_BoardEventLibrary.h"
 #include "Tile/GridTileRegistryBase.h"
 #include "Turn/Participant/TurnBasedParticipantManagerComponent.h"
+#include "AI/ConnectIt_AIDirector.h"
 
 
 AConnectIt_GameMode::AConnectIt_GameMode()
@@ -135,17 +135,11 @@ void AConnectIt_GameMode::EnsureMatchSetupResolved()
     }
     Rules = IsValid(Preset) ? Preset->Rules : FConnectItRuleSet();
     PlayerLoadout = IsValid(Preset) ? Preset->PlayerLoadout : nullptr;
-    AIProfile = IsValid(Preset) ? Preset->AIProfile : nullptr;
     AIDirectorTemplate = IsValid(Preset) ? Preset->AIDirector : nullptr;
 
     // Tweaks from the menu, on top of whichever preset plays
     if (bHasMatchSettings)
     {
-        if (IsValid(MatchSettings.AIProfile))
-        {
-            AIProfile = MatchSettings.AIProfile;
-        }
-
         if (MatchSettings.TargetScore > 0.f)
         {
             if (Rules.SetTargetScore(MatchSettings.TargetScore))
@@ -167,10 +161,11 @@ void AConnectIt_GameMode::EnsureMatchSetupResolved()
 
     UE_LOG(LogTemp, Log,
         TEXT("ConnectIt_GameMode: match setup resolved -- preset '%s', player "
-             "loadout '%s', AI profile '%s', target score %.0f"),
+             "loadout '%s', AI director '%s', target score %.0f"),
         *GetNameSafe(Preset),
         IsValid(PlayerLoadout) ? *PlayerLoadout->LoadoutName : TEXT("none"),
-        *GetNameSafe(AIProfile), Rules.GetTargetScore());
+        IsValid(AIDirectorTemplate) ? *AIDirectorTemplate->GetClass()->GetName() : TEXT("none"),
+        Rules.GetTargetScore());
 
     PublishMatchSetup();
 }
@@ -187,9 +182,6 @@ void AConnectIt_GameMode::PublishMatchSetup()
     }
 
     GS->SetMatchRules(Rules);
-
-    // Only an Adventure match has an AI opponent to show
-    GS->SetOpponentProfile(MatchType == EConnectItMatchType::Adventure ? AIProfile.Get() : nullptr);
 }
 
 void AConnectIt_GameMode::ModifyRules(const TFunctionRef<void(FConnectItRuleSet&)>& Change)

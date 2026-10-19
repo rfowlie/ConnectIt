@@ -7,7 +7,6 @@
 #include "Subsystem/GridHoverSubsystem.h"
 #include "Framework/Data/ConnectIt_LevelConfigSettings.h"
 #include "Framework/Data/ConnectIt_LevelConfigDataAsset.h"
-#include "AI/ConnectIt_AIProfile.h"
 #include "Action/ActionLoadoutDataAsset.h"
 #include "Board/Rules/ConnectIt_RuleSet.h"
 #include "Grid/ConnectIt_GridPiece.h"
@@ -199,12 +198,6 @@ bool UConnectIt_GameUtilityLibrary::GetMatchRules(
 
     OutRules = GameState->GetMatchRules();
     return true;
-}
-
-UConnectIt_AIProfile* UConnectIt_GameUtilityLibrary::GetOpponentProfile(const UObject* WorldContextObject)
-{
-    const AConnectIt_GameState* GameState = GetConnectItGameState(WorldContextObject);
-    return IsValid(GameState) ? GameState->GetOpponentProfile() : nullptr;
 }
 
 UActionLoadoutDataAsset* UConnectIt_GameUtilityLibrary::GetLocalPlayerLoadout(const UObject* WorldContextObject)

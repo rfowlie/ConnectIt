@@ -17,6 +17,7 @@
 #include "Board/Operations/ConnectIt_BoardOperations.h"
 #include "Board/Events/ConnectIt_BoardEvents.h"
 #include "ConnectIt_GameplayTags.h"
+#include "Misc/DataValidation.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
 
@@ -2095,6 +2096,16 @@ bool FConnectItAIDirectorTest::RunTest(const FString& Parameters)
     Director->TrySetStrategies({});
     Director->ApplyPendingChanges();
     TestEqual(TEXT("an empty list empties it"), Director->Strategies.Num(), 0);
+
+#if WITH_EDITOR
+    // Validation (run by the preset holding it): no loadout and no strategies can't play
+    {
+        FDataValidationContext Validation;
+        TestTrue(TEXT("no starting loadout, no strategies: invalid"),
+            Director->IsDataValid(Validation) == EDataValidationResult::Invalid);
+        TestEqual(TEXT("both reported"), static_cast<int32>(Validation.GetNumErrors()), 2);
+    }
+#endif
 
     AddExpectedError(TEXT("has no AI controller"), EAutomationExpectedErrorFlags::Contains, 1);
     Director->TrySetLoadout(nullptr);

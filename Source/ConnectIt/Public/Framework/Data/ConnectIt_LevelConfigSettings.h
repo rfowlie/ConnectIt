@@ -36,7 +36,7 @@ public:
     //   * world bootstrap that needs fixed level setup before anything has
     //     replicated (UConnectIt_BoardRegistrySubsystem).
     // Everything else reads live data: UConnectIt_GameUtilityLibrary's
-    // GetMatchRules / GetLocalPlayerLoadout / GetOpponentProfile, or its
+    // GetMatchRules / GetLocalPlayerLoadout, or its
     // fixed-setup accessors (GetPieceActorClass, ...).
     static UConnectIt_LevelConfigDataAsset* FindLevelConfig(const UObject* WorldContextObject);
 

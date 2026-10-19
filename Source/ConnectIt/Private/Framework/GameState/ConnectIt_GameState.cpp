@@ -5,7 +5,6 @@
 #include "Net/UnrealNetwork.h"
 #include "TurnBasedMechanicsStructs.h"
 #include "Board/ConnectIt_BoardStateComponent.h"
-#include "AI/ConnectIt_AIProfile.h"
 #include "Framework/Library/ConnectIt_GameUtilityLibrary.h"
 #include "Turn/Participant/TurnBasedParticipantManagerComponent.h"
 
@@ -25,7 +24,6 @@ void AConnectIt_GameState::GetLifetimeReplicatedProps(
     Super::GetLifetimeReplicatedProps(OutLifetimeProps);
     DOREPLIFETIME(AConnectIt_GameState, MatchResult);
     DOREPLIFETIME(AConnectIt_GameState, MatchRules);
-    DOREPLIFETIME(AConnectIt_GameState, OpponentProfile);
 }
 
 // --- Server API ---
@@ -36,13 +34,6 @@ void AConnectIt_GameState::SetMatchRules(const FConnectItRuleSet& InRules)
 
     MatchRules = InRules;
     OnMatchRulesChanged.Broadcast();
-}
-
-void AConnectIt_GameState::SetOpponentProfile(UConnectIt_AIProfile* InProfile)
-{
-    if (!HasAuthority()) return;
-
-    OpponentProfile = InProfile;
 }
 
 void AConnectIt_GameState::OnRep_MatchRules()

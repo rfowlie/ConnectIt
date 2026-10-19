@@ -2,7 +2,6 @@
 
 #include "Framework/Data/ConnectIt_MatchPreset.h"
 #include "Action/ActionLoadoutDataAsset.h"
-#include "AI/ConnectIt_AIProfile.h"
 #include "AI/ConnectIt_AIDirector.h"
 #include "Misc/DataValidation.h"
 
@@ -20,13 +19,16 @@ EDataValidationResult UConnectIt_MatchPreset::IsDataValid(
         Result = EDataValidationResult::Invalid;
     }
 
-    // Not an error: versus presets have no AI. Vs-AI matches can also get a
-    // profile from the main menu's match setup.
-    if (!IsValid(AIProfile))
+    // Not an error: versus presets have no AI
+    if (!IsValid(AIDirector))
     {
         Context.AddWarning(FText::FromString(TEXT(
-            "ConnectIt_MatchPreset: No AIProfile set -- this preset has no "
-            "default AI opponent.")));
+            "ConnectIt_MatchPreset: No AI Director set -- played against the AI, this "
+            "preset gets the default director, which has no loadout.")));
+    }
+    else if (AIDirector->IsDataValid(Context) == EDataValidationResult::Invalid)
+    {
+        Result = EDataValidationResult::Invalid;
     }
 
     // No defaults and no borrowing between roles: each preset sets its own.
@@ -38,8 +40,8 @@ EDataValidationResult UConnectIt_MatchPreset::IsDataValid(
         Result = EDataValidationResult::Invalid;
     }
 
-    // Not invalid: versus presets have no AI, and an AI can also be chosen in
-    // match setup -- but if one plays, an empty list means it cannot win.
+    // Not invalid: versus presets have no AI -- but if one plays, an empty
+    // list means it cannot win.
     if (Rules.AIWinGroups.IsEmpty())
     {
         Context.AddWarning(FText::FromString(TEXT(

@@ -12,7 +12,6 @@
 class AConnectIt_AIController;
 class ATurnBasedPlayerState;
 class UActionLoadoutDataAsset;
-class UConnectIt_AIProfile;
 class UConnectIt_AIDirector;
 class UTurnBasedParticipantManagerComponent;
 class UConnectIt_BoardRequestMediator;
@@ -126,9 +125,6 @@ public:
 
     // The loadout human players are seeded with
     UActionLoadoutDataAsset* GetPlayerLoadout() const { return PlayerLoadout; }
-
-    // The AI opponent for this match (menu choice, else the level's default)
-    const UConnectIt_AIProfile* GetAIProfile() const { return AIProfile; }
 
     // The match preset's AI director template, if it has one (each AI
     // controller duplicates it)
@@ -251,9 +247,6 @@ private:
 
     UPROPERTY()
     TObjectPtr<UActionLoadoutDataAsset> PlayerLoadout = nullptr;
-
-    UPROPERTY()
-    TObjectPtr<UConnectIt_AIProfile> AIProfile = nullptr;
 
     UPROPERTY()
     TObjectPtr<UConnectIt_AIDirector> AIDirectorTemplate = nullptr;

@@ -1,7 +1,7 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 #include "Framework/Subsystem/ConnectIt_MatchSetupSubsystem.h"
-#include "AI/ConnectIt_AIProfile.h"
+#include "Framework/Data/ConnectIt_MatchPreset.h"
 #include "Framework/Data/ConnectIt_LevelCatalog.h"
 #include "Framework/Data/ConnectIt_LevelConfigSettings.h"
 #include "Engine/GameInstance.h"
@@ -22,9 +22,9 @@ bool UConnectIt_MatchSetupSubsystem::StartMatch(
     SetMatchSettings(InSettings);
 
     UE_LOG(LogTemp, Log,
-        TEXT("ConnectIt_MatchSetupSubsystem: starting '%s' (AI profile '%s', "
+        TEXT("ConnectIt_MatchSetupSubsystem: starting '%s' (preset '%s', "
              "target score %.0f)"),
-        *InSettings.Level.GetAssetName(), *GetNameSafe(InSettings.AIProfile),
+        *InSettings.Level.GetAssetName(), *GetNameSafe(InSettings.MatchPreset),
         InSettings.TargetScore);
 
     UGameplayStatics::OpenLevelBySoftObjectPtr(GetGameInstance(), InSettings.Level, true, Options);
