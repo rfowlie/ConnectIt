@@ -6,6 +6,7 @@
 #include "Board/Rules/ConnectIt_WinCondition.h"
 #include "AI/ConnectIt_AIStrategy.h"
 #include "AI/ConnectIt_AIDirector.h"
+#include "AI/ConnectIt_AISelector.h"
 #include "Board/Operations/ConnectIt_BoardOperations.h"
 #include "ConnectIt_MinMaxTestTerms.generated.h"
 
@@ -39,10 +40,14 @@ public:
     // Which board row its moves are on
     int32 Row = 0;
 
+    // The budget the last decision was given
+    float LastTimeBudget = -1.f;
+
 protected:
 
     virtual void BeginDecision_Implementation(const FConnectItAIDecisionContext& Context) override
     {
+        LastTimeBudget = Context.TimeBudgetSeconds;
         FConnectItAIDecision Decision;
         for (int32 Index = 0; Index < NumCandidates; Index++)
         {
@@ -88,10 +93,20 @@ public:
     FString Log;
 
     void TrySetLoadout(UActionLoadoutDataAsset* Loadout) { SetAILoadout(Loadout); }
-    void TrySetStrategy(UConnectIt_AIStrategy* Strategy) { SetAIStrategy(Strategy); }
+    void TrySetStrategies(const TArray<UConnectIt_AIStrategy*>& Templates) { SetAIStrategies(Templates); }
+    void TrySetSelector(UConnectIt_AISelector* Template) { SetAISelector(Template); }
     UActionLoadoutDataAsset* TryGetLoadout() const { return GetAILoadout(); }
 
 protected:
+
+    virtual void OnMatchStarted_Implementation() override
+    {
+        Log += TEXT("match; ");
+    }
+    virtual void OnOpponentTurnStarted_Implementation(int32 TurnNumber) override
+    {
+        Log += FString::Printf(TEXT("opponent %d; "), TurnNumber);
+    }
 
     virtual void OnAITurnStarted_Implementation(int32 TurnNumber) override
     {

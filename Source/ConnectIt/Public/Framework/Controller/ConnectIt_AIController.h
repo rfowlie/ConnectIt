@@ -11,14 +11,14 @@
 #include "ConnectIt_AIController.generated.h"
 
 class UActionLoadoutDataAsset;
-class UConnectIt_AIProfile;
 class UConnectIt_AIDirector;
+class UConnectIt_AICoordinator;
 
 
 // The ConnectIt AI opponent. Owns turn timing and submitting; WHO it is --
-// how it picks a move (a UConnectIt_AIStrategy, e.g. MinMax for Classic, or a
-// bespoke strategy) and what it may do (a loadout) -- comes from a
-// UConnectIt_AIProfile, so this controller never changes per level.
+// what it may do (a loadout), what proposes its moves (strategies) and how
+// one is picked (a selector) -- comes from the match preset's AI director,
+// so this controller never changes per level.
 // Server-only -- AI controllers never exist on clients.
 //
 // Handles its own turn directly (no actions component -- that machinery is
@@ -27,10 +27,11 @@ class UConnectIt_AIDirector;
 // ATurnBasedPlayerState::CanEndTurn + ServerSubmitTurnEnd end the turn.
 //
 // Turn start -> BeginDecision (reads the board and rules, game thread) ->
-// Strategy->StartDecision -> ... -> HandleDecisionFinished (stale check,
-// minimum think time) -> SubmitDecision (as the loadout action producing the
-// decision's request type, straight to the GameMode's Mediator) -> end turn,
-// or decide again if the turn-end requirements aren't met yet.
+// Coordinator->Begin (the director's strategies, then its selector) -> ... ->
+// HandleCoordinatorConcluded (stale check, minimum think time) ->
+// SubmitDecision (each candidate in order as the loadout action producing its
+// request type, straight to the GameMode's Mediator, until one is accepted)
+// -> end turn, or decide again if the turn-end requirements aren't met yet.
 UCLASS(Blueprintable, BlueprintType)
 class CONNECTIT_API AConnectIt_AIController : public ATurnBasedAIController
 {
@@ -41,20 +42,18 @@ public:
     explicit AConnectIt_AIController(
         const FObjectInitializer& ObjectInitializer = FObjectInitializer::Get());
 
-    UFUNCTION(BlueprintPure, Category = "ConnectIt|AI")
-    UConnectIt_AIStrategy* GetStrategy() const { return Strategy; }
-
+    // This AI's own copy of the match preset's director
     UFUNCTION(BlueprintPure, Category = "ConnectIt|AI")
     UConnectIt_AIDirector* GetDirector() const { return Director; }
 
-    // --- Changing the AI during a match (what the match's AI director calls) ---
-
-    // A new loadout for this AI. During its own turn the change waits until
-    // the turn ends, so it can't hand itself extra moves mid-turn.
+    // A new loadout for this AI (what the director's Set AI Loadout calls).
+    // During its own turn the change waits until the turn ends, so it can't
+    // hand itself extra moves mid-turn.
     void ChangeLoadout(UActionLoadoutDataAsset* Loadout);
 
-    // A new strategy (a copy of StrategyTemplate), from the next decision on
-    void ChangeStrategy(const UConnectIt_AIStrategy* StrategyTemplate);
+    // The coordinator's picked candidates, best first. Called by
+    // UConnectIt_AICoordinator only.
+    void HandleCoordinatorConcluded(const FConnectItAIDecision& Decision);
 
 protected:
 
@@ -63,13 +62,9 @@ protected:
 
 private:
 
-    // Takes its profile (loadout + strategy) from the GameMode's live match
-    // setup and seeds its PlayerState.
+    // Duplicates the match preset's AI director (or a default one), seeds the
+    // PlayerState from its starting loadout, tells it the match started.
     void InitialiseFromMatchSetup();
-
-    // The AI profile this match uses, as resolved by the GameMode (the main
-    // menu's choice if there is one, otherwise the level's default).
-    const UConnectIt_AIProfile* ResolveAIProfile() const;
 
     // Seeds the PlayerState's action state (uses, caps, turn-end tree) from
     // the AI's loadout -- what the GameMode does for humans in PostLogin.
@@ -93,14 +88,12 @@ private:
     // always false; Classic ConnectIt has no forced moves.
     bool CheckAndApplyForcedMove();
 
-    // Snapshots the board and rules into a context and hands it to the
-    // strategy. Called from OnMyTurnStarted, then again from SubmitDecision
-    // for as long as this turn's requirements aren't satisfied (a loadout
-    // needing more than one move per turn).
+    // Snapshots the board and rules into a context and starts the
+    // coordinator with the director's strategies and selector. Called from
+    // OnMyTurnStarted, then again from SubmitDecision for as long as this
+    // turn's requirements aren't satisfied (a loadout needing more than one
+    // move per turn).
     void BeginDecision();
-
-    // Bound to Strategy->OnDecisionFinished
-    void HandleDecisionFinished(const FConnectItAIDecision& Decision);
 
     // Re-checks the decision is still current, then submits it
     void SubmitDecision(int32 DecisionId, FConnectItAIDecision Decision);
@@ -113,32 +106,32 @@ private:
     // controller's turn in the turn it was started on.
     bool IsDecisionStillCurrent(int32 DecisionId) const;
 
-    // Stops the strategy's decision in progress and any pending think timer;
-    // any late result is dropped.
+    // Stops the decision in progress and any pending think timer; any late
+    // result is dropped.
     void CancelDecision();
 
-    // This controller's own copy of the profile's strategy template
+    // Runs each decision (strategies + selector)
     UPROPERTY()
-    TObjectPtr<UConnectIt_AIStrategy> Strategy = nullptr;
-
-    // Set by ChangeStrategy; becomes Strategy when the next decision starts
-    UPROPERTY()
-    TObjectPtr<UConnectIt_AIStrategy> PendingStrategy = nullptr;
+    TObjectPtr<UConnectIt_AICoordinator> Coordinator = nullptr;
 
     // Set by ChangeLoadout during the AI's own turn; applied when it ends
     UPROPERTY()
     TObjectPtr<UActionLoadoutDataAsset> PendingLoadout = nullptr;
     bool bHasPendingLoadout = false;
 
-    // This controller's own copy of the match preset's AI director, if any
+    // This controller's own copy of the match preset's AI director (or of
+    // the default one)
     UPROPERTY()
     TObjectPtr<UConnectIt_AIDirector> Director = nullptr;
 
     // Between this AI's turn start and its end
     bool bTurnInProgress = false;
 
-    void AdoptStrategy(UConnectIt_AIStrategy* NewStrategy);
     void OnMyTurnEnded(int32 TurnNumber);
+
+    // ParticipantComponent: another participant's turn has started
+    void HandleOpponentTurnStarted(int32 ActiveSlotIndex);
+    FDelegateHandle OpponentTurnHandle;
 
     // Server-side: every committed board change, to pass win checkpoints to
     // the director

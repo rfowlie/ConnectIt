@@ -1,10 +1,19 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 #include "AI/ConnectIt_AIDirector.h"
-#include "AI/ConnectIt_AIStrategy.h"
+#include "AI/ConnectIt_AIStrategy_MinMax.h"
+#include "AI/ConnectIt_AISelector.h"
 #include "Framework/Controller/ConnectIt_AIController.h"
 #include "Framework/PlayerState/TurnBasedPlayerState.h"
 
+
+UConnectIt_AIDirector::UConnectIt_AIDirector(const FObjectInitializer& ObjectInitializer)
+    : Super(ObjectInitializer)
+{
+    // The classic opponent until configured otherwise
+    Strategies.Add(CreateDefaultSubobject<UConnectIt_AIStrategy_MinMax>(TEXT("MinMax")));
+    Selector = CreateDefaultSubobject<UConnectIt_AISelector_FirstAvailable>(TEXT("FirstAvailable"));
+}
 
 AConnectIt_AIController* UConnectIt_AIDirector::GetOwningController() const
 {
@@ -16,6 +25,21 @@ UWorld* UConnectIt_AIDirector::GetWorld() const
     if (HasAnyFlags(RF_ClassDefaultObject | RF_ArchetypeObject)) return nullptr;
     const UObject* Outer = GetOuter();
     return Outer ? Outer->GetWorld() : nullptr;
+}
+
+void UConnectIt_AIDirector::ApplyPendingChanges()
+{
+    if (bHasPendingStrategies)
+    {
+        bHasPendingStrategies = false;
+        Strategies = MoveTemp(PendingStrategies);
+        PendingStrategies.Reset();
+    }
+    if (IsValid(PendingSelector))
+    {
+        Selector = PendingSelector;
+        PendingSelector = nullptr;
+    }
 }
 
 void UConnectIt_AIDirector::SetAILoadout(UActionLoadoutDataAsset* Loadout)
@@ -30,21 +54,35 @@ void UConnectIt_AIDirector::SetAILoadout(UActionLoadoutDataAsset* Loadout)
     }
 }
 
-void UConnectIt_AIDirector::SetAIStrategy(UConnectIt_AIStrategy* StrategyTemplate)
-{
-    if (AConnectIt_AIController* Controller = GetOwningController())
-    {
-        Controller->ChangeStrategy(StrategyTemplate);
-    }
-    else
-    {
-        UE_LOG(LogTemp, Warning, TEXT("ConnectIt_AIDirector: %s has no AI controller -- strategy not changed"), *GetName());
-    }
-}
-
 UActionLoadoutDataAsset* UConnectIt_AIDirector::GetAILoadout() const
 {
     const AConnectIt_AIController* Controller = GetOwningController();
     const ATurnBasedPlayerState* PS = Controller ? Controller->GetPlayerState<ATurnBasedPlayerState>() : nullptr;
     return PS ? PS->GetLoadout() : nullptr;
+}
+
+void UConnectIt_AIDirector::SetAIStrategies(const TArray<UConnectIt_AIStrategy*>& StrategyTemplates)
+{
+    // Our own copies: a decision may be running on the current ones
+    PendingStrategies.Reset();
+    for (const UConnectIt_AIStrategy* Template : StrategyTemplates)
+    {
+        if (IsValid(Template))
+        {
+            PendingStrategies.Add(DuplicateObject<UConnectIt_AIStrategy>(Template, this));
+        }
+    }
+    bHasPendingStrategies = true;
+
+    UE_LOG(LogTemp, Log, TEXT("ConnectIt_AIDirector: %d strateg%s from the next decision"),
+        PendingStrategies.Num(), PendingStrategies.Num() == 1 ? TEXT("y") : TEXT("ies"));
+}
+
+void UConnectIt_AIDirector::SetAISelector(UConnectIt_AISelector* SelectorTemplate)
+{
+    if (!IsValid(SelectorTemplate)) return;
+
+    PendingSelector = DuplicateObject<UConnectIt_AISelector>(SelectorTemplate, this);
+    UE_LOG(LogTemp, Log, TEXT("ConnectIt_AIDirector: selector changes to %s from the next decision"),
+        *GetNameSafe(SelectorTemplate->GetClass()));
 }

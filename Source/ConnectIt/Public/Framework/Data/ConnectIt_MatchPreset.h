@@ -49,8 +49,9 @@ public:
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "ConnectIt|AI")
     TObjectPtr<UConnectIt_AIProfile> AIProfile = nullptr;
 
-    // Optional: changes the AI's loadout / strategy as this match goes on
-    // (per turn, at win checkpoints). Applies whichever AI profile plays.
+    // The AI opponent when the match is played against the AI: its loadout,
+    // strategies and selector, and how they change as the match goes on.
+    // Unset = the default director (MinMax, no loadout -- set one).
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Instanced, Category = "ConnectIt|AI")
     TObjectPtr<UConnectIt_AIDirector> AIDirector = nullptr;
 

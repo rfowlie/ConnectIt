@@ -8,7 +8,8 @@ Newest first:
 
 - [2026-10-16-1700](2026-10-16-1700.md) — session — AI director pipeline (in progress): plan moved into the vault; Stage 1, MinMax
   publishes each completed depth to a thread-safe progress holder; Stage 2, candidate confidence / score / tags / label and
-  strategies' best-so-far answers; Stage 3, four selectors. 39/39 tests.
+  strategies' best-so-far answers; Stage 3, four selectors;
+  Stage 4, coordinator pipeline + director owns the AI setup. 39/39 tests.
 
 - [2026-10-14-1605](2026-10-14-1605.md) — session — composable AI: candidate lists, MinMax search as a Blueprint node, coordinator strategy, AI director on
   the match preset. Four stages, 30/30 tests; PIE pending; one Blueprint strategy needs rewiring.

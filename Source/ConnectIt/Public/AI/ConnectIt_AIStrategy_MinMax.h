@@ -13,10 +13,12 @@
 // with the "Find Best Moves (MinMax)" node), then its best moves as the
 // decision's candidates. Two factions; it can only plan with Place Piece.
 //
-// Strength comes from the search settings (depth, time, what it values);
-// TopMovesConsidered + MistakeChance let it deliberately play a
-// weaker-but-reasonable move. All editor data, so a different-feeling MinMax
-// opponent is different numbers, not a new class.
+// Strength comes from the search settings (depth, time, what it values).
+// Its candidates are the search's ranking, best first (a random one of
+// equally-best moves first, for variety); deliberate mistakes are the
+// selector's job (Top N). While the search runs, its best answer so far is
+// the deepest ranking completed. All editor data, so a different-feeling
+// MinMax opponent is different numbers, not a new class.
 UCLASS(Blueprintable, BlueprintType, EditInlineNew, DefaultToInstanced,
     meta = (DisplayName = "MinMax (Classic)"))
 class CONNECTIT_API UConnectIt_AIStrategy_MinMax : public UConnectIt_AIStrategy
@@ -29,18 +31,6 @@ public:
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "AI|MinMax")
     FConnectItMinMaxSearchSettings Search;
 
-    // When the AI makes a "mistake" it picks uniformly among this many of
-    // its best-scoring moves. 1 = never deviates from the best move.
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "AI|MinMax",
-        meta = (ClampMin = 1))
-    int32 TopMovesConsidered = 1;
-
-    // Chance per decision of picking among TopMovesConsidered instead of the
-    // best move
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "AI|MinMax",
-        meta = (ClampMin = 0.0, ClampMax = 1.0))
-    float MistakeChance = 0.f;
-
     virtual FGameplayTagContainer GetSupportedRequestTypes_Implementation() const override;
 
     // While the search runs: its deepest completed ranking so far
@@ -51,10 +41,8 @@ protected:
     virtual void BeginDecision_Implementation(const FConnectItAIDecisionContext& Context) override;
     virtual void CancelDecision_Implementation() override;
 
-    // Which ranked move to play: normally the best (a random one among equal
-    // best scores); with MistakeChance, a random one of the top
-    // TopMovesConsidered.
-    int32 PickMoveIndex(const FConnectItMinMaxSearchResult& Result) const;
+    // Which ranked move goes first: a random one among the equal best scores
+    int32 PickBestIndex(const FConnectItMinMaxSearchResult& Result) const;
 
 private:
 

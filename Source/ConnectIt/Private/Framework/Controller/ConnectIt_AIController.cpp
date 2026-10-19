@@ -12,10 +12,9 @@
 #include "Action/ActionLoadoutDataAsset.h"
 #include "Action/TurnBasedAction.h"
 #include "Turn/Participant/TurnBasedParticipantComponent.h"
-#include "AI/ConnectIt_AIProfile.h"
 #include "AI/ConnectIt_AIDirector.h"
+#include "AI/ConnectIt_AICoordinator.h"
 #include "Board/Events/ConnectIt_BoardEvents.h"
-#include "AI/ConnectIt_AIStrategy_MinMax.h"
 #include "ConnectIt_Structs.h"
 #include "TurnBasedMechanicsEnums.h"
 #include "TurnBasedMechanicsStructs.h"
@@ -46,6 +45,8 @@ void AConnectIt_AIController::BeginPlay()
     {
         TurnNotificationHandle = ParticipantComponent->OnTurnNotificationReceived_Native.AddUObject(
             this, &AConnectIt_AIController::HandleTurnNotification);
+        OpponentTurnHandle = ParticipantComponent->OnOpponentTurnStarted_Native.AddUObject(
+            this, &AConnectIt_AIController::HandleOpponentTurnStarted);
     }
 
     if (ATurnBasedGameState* GameState = GetWorld()->GetGameState<ATurnBasedGameState>())
@@ -62,6 +63,7 @@ void AConnectIt_AIController::EndPlay(const EEndPlayReason::Type EndPlayReason)
     if (IsValid(ParticipantComponent))
     {
         ParticipantComponent->OnTurnNotificationReceived_Native.Remove(TurnNotificationHandle);
+        ParticipantComponent->OnOpponentTurnStarted_Native.Remove(OpponentTurnHandle);
     }
     if (UConnectIt_BoardStateComponent* BoardState = UConnectIt_GameUtilityLibrary::GetBoardStateComponent(this))
     {
@@ -184,51 +186,33 @@ bool AConnectIt_AIController::IsMyTurnNow() const
 
 void AConnectIt_AIController::InitialiseFromMatchSetup()
 {
-    const UConnectIt_AIProfile* Profile = ResolveAIProfile();
-    if (!IsValid(Profile))
-    {
-        UE_LOG(LogTemp, Error,
-            TEXT("ConnectIt_AIController: no AI profile (set AIProfile on the "
-                 "level config, or pick one in the match setup) -- no loadout, "
-                 "so every move will be rejected"));
-    }
-    else
-    {
-        UE_LOG(LogTemp, Log,
-            TEXT("ConnectIt_AIController: using AI profile '%s'"), *Profile->GetName());
-    }
-
-    SeedActionState(IsValid(Profile) ? Profile->Loadout.Get() : nullptr);
-
-    // The profile's strategy is a template inside a shared, loaded-once
-    // asset -- duplicate it so this controller's decision state is its own
-    // (same reason UConnectIt_BoardRegistrySubsystem duplicates the
-    // registry templates).
-    if (IsValid(Profile) && IsValid(Profile->Strategy))
-    {
-        Strategy = DuplicateObject<UConnectIt_AIStrategy>(Profile->Strategy, this);
-    }
-    else
-    {
-        UE_LOG(LogTemp, Warning,
-            TEXT("ConnectIt_AIController: AI profile has no Strategy -- using "
-                 "a default MinMax strategy"));
-        Strategy = NewObject<UConnectIt_AIStrategy_MinMax>(this);
-    }
-
-    AdoptStrategy(Strategy);
-
-    // The match preset's AI director, if any -- duplicated like the strategy
+    // The match preset's director is a template inside a shared, loaded-once
+    // asset -- duplicate it (and with it its strategies and selector) so this
+    // controller's decision state is its own (same reason
+    // UConnectIt_BoardRegistrySubsystem duplicates the registry templates).
     const AConnectIt_GameMode* GameMode = GetWorld() ? Cast<AConnectIt_GameMode>(GetWorld()->GetAuthGameMode()) : nullptr;
     if (const UConnectIt_AIDirector* DirectorTemplate = GameMode ? GameMode->GetAIDirectorTemplate() : nullptr)
     {
         Director = DuplicateObject<UConnectIt_AIDirector>(DirectorTemplate, this);
-        if (UConnectIt_BoardStateComponent* BoardState = UConnectIt_GameUtilityLibrary::GetBoardStateComponent(this))
-        {
-            BoardState->OnBoardStateChanged.AddUniqueDynamic(this, &AConnectIt_AIController::HandleBoardStateChanged);
-        }
-        UE_LOG(LogTemp, Log, TEXT("ConnectIt_AIController: AI director '%s'"), *GetNameSafe(Director));
+        UE_LOG(LogTemp, Log, TEXT("ConnectIt_AIController: AI director '%s'"), *GetNameSafe(DirectorTemplate->GetClass()));
     }
+    else
+    {
+        Director = NewObject<UConnectIt_AIDirector>(this);
+        UE_LOG(LogTemp, Warning,
+            TEXT("ConnectIt_AIController: the match preset has no AI Director -- using the default one "
+                 "(MinMax, First Available), which has no loadout: set an AI Director with a Starting Loadout"));
+    }
+
+    Coordinator = NewObject<UConnectIt_AICoordinator>(this);
+
+    if (UConnectIt_BoardStateComponent* BoardState = UConnectIt_GameUtilityLibrary::GetBoardStateComponent(this))
+    {
+        BoardState->OnBoardStateChanged.AddUniqueDynamic(this, &AConnectIt_AIController::HandleBoardStateChanged);
+    }
+
+    SeedActionState(Director->StartingLoadout);
+    Director->OnMatchStarted();
 
     // Registration itself is NOT done here -- AConnectIt_GameMode::
     // SpawnAndRegisterAI already calls RegisterAIParticipant right after
@@ -237,16 +221,6 @@ void AConnectIt_AIController::InitialiseFromMatchSetup()
     // RegisterAIParticipant guards against a literal duplicate by taking the
     // "reconnect" branch instead, which is the wrong branch for a controller
     // that was never disconnected. One registration, one call site.
-}
-
-const UConnectIt_AIProfile* AConnectIt_AIController::ResolveAIProfile() const
-{
-    // The GameMode owns the live match setup (menu choice, else the level's
-    // default) -- this controller only ever exists on the server, next to it.
-    const UWorld* World = GetWorld();
-    const AConnectIt_GameMode* GameMode =
-        World ? Cast<AConnectIt_GameMode>(World->GetAuthGameMode()) : nullptr;
-    return IsValid(GameMode) ? GameMode->GetAIProfile() : nullptr;
 }
 
 bool AConnectIt_AIController::CheckAndApplyForcedMove()
@@ -276,20 +250,16 @@ void AConnectIt_AIController::BeginDecision()
 {
     CancelDecision();
 
-    // A strategy change waits for a decision boundary
-    if (IsValid(PendingStrategy))
-    {
-        AdoptStrategy(PendingStrategy);
-        PendingStrategy = nullptr;
-    }
-
-    if (!IsValid(Strategy))
+    if (!IsValid(Director) || !IsValid(Coordinator))
     {
         UE_LOG(LogTemp, Error,
-            TEXT("ConnectIt_AIController: BeginDecision -- no strategy "
-                 "(level config not resolved?), cannot decide"));
+            TEXT("ConnectIt_AIController: BeginDecision -- no director "
+                 "(match setup not resolved?), cannot decide"));
         return;
     }
+
+    // Strategy / selector changes wait for a decision boundary
+    Director->ApplyPendingChanges();
 
     AConnectIt_GameMode* GameMode = Cast<AConnectIt_GameMode>(GetWorld()->GetAuthGameMode());
     const ATurnBasedGameState* GameState = GetWorld()->GetGameState<ATurnBasedGameState>();
@@ -371,12 +341,18 @@ void AConnectIt_AIController::BeginDecision()
     }
     DecisionStartTime = FPlatformTime::Seconds();
 
-    // May call HandleDecisionFinished before returning (a strategy that
-    // decides synchronously) -- all state above is already set.
-    Strategy->StartDecision(Context);
+    // May call HandleCoordinatorConcluded before returning (strategies that
+    // decide synchronously) -- all state above is already set.
+    TArray<UConnectIt_AIStrategy*> Strategies;
+    for (UConnectIt_AIStrategy* Strategy : Director->Strategies)
+    {
+        Strategies.Add(Strategy);
+    }
+    Coordinator->Begin(Context, Strategies, Director->Selector,
+        Director->ThinkTimeBudgetSeconds, Director->StrategyBudgetShare);
 }
 
-void AConnectIt_AIController::HandleDecisionFinished(const FConnectItAIDecision& Decision)
+void AConnectIt_AIController::HandleCoordinatorConcluded(const FConnectItAIDecision& Decision)
 {
     const int32 DecisionId = CurrentDecisionId;
     if (!IsDecisionStillCurrent(DecisionId)) return;
@@ -384,15 +360,15 @@ void AConnectIt_AIController::HandleDecisionFinished(const FConnectItAIDecision&
     if (!Decision.HasMove())
     {
         UE_LOG(LogTemp, Warning,
-            TEXT("ConnectIt_AIController: strategy %s returned no move"),
-            *GetNameSafe(Strategy));
+            TEXT("ConnectIt_AIController: no strategy of director %s proposed a move"),
+            *GetNameSafe(Director));
         return;
     }
 
     UE_LOG(LogTemp, Log, TEXT("ConnectIt_AIController: decided -- %d candidate(s), best: [%s] %s"),
         Decision.Candidates.Num(), *Decision.Candidates[0].SourceLabel.ToString(), *Decision.Candidates[0].Summary);
 
-    const double RemainingThink = Strategy->MinThinkSeconds
+    const double RemainingThink = (IsValid(Director) ? Director->MinThinkSeconds : 0.f)
         - (FPlatformTime::Seconds() - DecisionStartTime);
 
     if (RemainingThink > 0.0)
@@ -488,30 +464,6 @@ bool AConnectIt_AIController::SubmitCandidate(const FConnectItAICandidate& Candi
     return bSucceeded;
 }
 
-void AConnectIt_AIController::AdoptStrategy(UConnectIt_AIStrategy* NewStrategy)
-{
-    if (!IsValid(NewStrategy)) return;
-
-    if (IsValid(Strategy) && Strategy != NewStrategy)
-    {
-        Strategy->StopDecision();
-        Strategy->OnDecisionFinished.Unbind();
-    }
-
-    Strategy = NewStrategy;
-    Strategy->OnDecisionFinished.BindUObject(this, &AConnectIt_AIController::HandleDecisionFinished);
-}
-
-void AConnectIt_AIController::ChangeStrategy(const UConnectIt_AIStrategy* StrategyTemplate)
-{
-    if (!HasAuthority() || !IsValid(StrategyTemplate)) return;
-
-    // Our own copy, used from the next decision on (one may be running now)
-    PendingStrategy = DuplicateObject<UConnectIt_AIStrategy>(StrategyTemplate, this);
-    UE_LOG(LogTemp, Log, TEXT("ConnectIt_AIController: strategy changes to %s from the next decision"),
-        *GetNameSafe(StrategyTemplate->GetClass()));
-}
-
 void AConnectIt_AIController::ChangeLoadout(UActionLoadoutDataAsset* Loadout)
 {
     if (!HasAuthority()) return;
@@ -542,12 +494,20 @@ void AConnectIt_AIController::OnMyTurnEnded(int32 TurnNumber)
         PendingLoadout = nullptr;
     }
 
-    // Anything set here is what the AI plays its next turn with (and, being
-    // on the PlayerState, what the player can be shown in the meantime)
     if (IsValid(Director))
     {
         Director->OnAITurnEnded(TurnNumber);
     }
+}
+
+void AConnectIt_AIController::HandleOpponentTurnStarted(int32 ActiveSlotIndex)
+{
+    if (!IsValid(Director)) return;
+
+    // Anything set here is what the AI plays its next turn with (and, being
+    // on the PlayerState, what the player can be shown in the meantime)
+    const ATurnBasedGameState* GameState = GetWorld() ? GetWorld()->GetGameState<ATurnBasedGameState>() : nullptr;
+    Director->OnOpponentTurnStarted(IsValid(GameState) ? GameState->GetActiveTurnNumber() : INDEX_NONE);
 }
 
 void AConnectIt_AIController::HandleBoardStateChanged()
@@ -591,9 +551,9 @@ void AConnectIt_AIController::CancelDecision()
     // Invalidates any in-flight result or pending think timer
     CurrentDecisionId++;
 
-    if (IsValid(Strategy))
+    if (IsValid(Coordinator))
     {
-        Strategy->StopDecision();
+        Coordinator->Cancel();
     }
 
     if (const UWorld* World = GetWorld())
@@ -628,11 +588,10 @@ void AConnectIt_AIController::SubmitDecision(int32 DecisionId, FConnectItAIDecis
     {
         UE_LOG(LogTemp, Error,
             TEXT("ConnectIt_AIController: the server rejected all %d candidate(s) "
-                 "from strategy %s -- ending the AI's turn. The Mediator's log "
-                 "above says why each was refused; a strategy should only offer "
-                 "moves of Context.AvailableRequestTypes that can be applied to "
-                 "the board."),
-            Decision.Candidates.Num(), *GetNameSafe(Strategy));
+                 "-- ending the AI's turn. The Mediator's log above says why each "
+                 "was refused; a strategy should only offer moves of "
+                 "Context.AvailableRequestTypes that can be applied to the board."),
+            Decision.Candidates.Num());
         ParticipantComponent->ServerSubmitTurnEnd();
         return;
     }

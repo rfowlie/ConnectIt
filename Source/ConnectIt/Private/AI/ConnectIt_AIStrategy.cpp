@@ -10,7 +10,7 @@
 
 AConnectIt_AIController* UConnectIt_AIStrategy::GetOwningController() const
 {
-    return Cast<AConnectIt_AIController>(GetOuter());
+    return GetTypedOuter<AConnectIt_AIController>();
 }
 
 bool UConnectIt_AIStrategy::LoadoutGrantsRequestType(
@@ -82,8 +82,6 @@ void UConnectIt_AIStrategy::FinishDecision(const FConnectItAIDecision& Decision)
     ActiveDecisionId = INDEX_NONE;
     BestSoFar = PrepareDecision(Decision);
     bDecisionFinished = true;
-
-    if (OnDecisionFinished.IsBound()) { OnDecisionFinished.Execute(BestSoFar); }
 }
 
 void UConnectIt_AIStrategy::PublishBestSoFar(const FConnectItAIDecision& Decision)

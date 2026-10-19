@@ -39,11 +39,11 @@ void UConnectIt_AIStrategy_MinMax::BeginDecision_Implementation(
                 return;
             }
 
-            // The chosen move first, then the rest in rank order as fallbacks
-            // for a rejected move (FinishDecision keeps the best MaxCandidates)
+            // One of the equally-best moves first, then the rest in rank order
+            // (FinishDecision keeps the best MaxCandidates)
             FConnectItAIDecision Decision = ConnectItMinMaxSearch::MakeDecision(
                 Result.RankedMoves, Result.Describe(), Result.RankedMoves.Num());
-            const int32 PickIndex = Self->PickMoveIndex(Result);
+            const int32 PickIndex = Self->PickBestIndex(Result);
             if (PickIndex > 0)
             {
                 const FConnectItAICandidate Picked = Decision.Candidates[PickIndex];
@@ -93,15 +93,9 @@ void UConnectIt_AIStrategy_MinMax::CancelDecision_Implementation()
     }
 }
 
-int32 UConnectIt_AIStrategy_MinMax::PickMoveIndex(const FConnectItMinMaxSearchResult& Result) const
+int32 UConnectIt_AIStrategy_MinMax::PickBestIndex(const FConnectItMinMaxSearchResult& Result) const
 {
     const TArray<FConnectItMinMaxRankedMove>& Moves = Result.RankedMoves;
-
-    const int32 TopMoves = FMath::Min(TopMovesConsidered, Moves.Num());
-    if (TopMoves > 1 && MistakeChance > 0.f && FMath::FRand() < MistakeChance)
-    {
-        return FMath::RandRange(0, TopMoves - 1);
-    }
 
     int32 NumTiedBest = 1;
     while (NumTiedBest < Moves.Num() && Moves[NumTiedBest].Score == Moves[0].Score)

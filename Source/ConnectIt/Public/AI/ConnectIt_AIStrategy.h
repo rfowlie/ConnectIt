@@ -67,8 +67,8 @@ struct FConnectItAIDecisionContext
     UPROPERTY(BlueprintReadOnly, Category = "AI")
     FGameplayTagContainer AvailableRequestTypes;
 
-    // How long this decision may take, in seconds; 0 = no limit. Set by a
-    // coordinator for its children; a strategy that searches should stop
+    // How long this decision may take, in seconds; 0 = no limit. Set by the
+    // coordinator from the director's think time; a strategy that searches should stop
     // when it runs out (the MinMax search does).
     UPROPERTY(BlueprintReadOnly, Category = "AI")
     float TimeBudgetSeconds = 0.f;
@@ -131,36 +131,26 @@ struct FConnectItAIDecision
     bool HasMove() const { return !Candidates.IsEmpty(); }
 };
 
-DECLARE_DELEGATE_OneParam(FOnConnectItAIDecisionFinished, const FConnectItAIDecision&);
-
-// How an AI opponent picks its moves -- configured inline on a
-// UConnectIt_AIProfile asset (the same inline-instanced pattern as the
-// level's scoring / win / placeable rules).
-// AConnectIt_AIController owns turn timing and submitting; the strategy only
-// decides. Subclass in C++ (see UConnectIt_AIStrategy_MinMax) or Blueprint.
+// One way of proposing the AI's moves -- configured inline in an AI
+// director's Strategies (the same inline-instanced pattern as the level's
+// scoring / win / placeable rules). A strategy only decides: the coordinator
+// runs all of the director's strategies at once, the director's selector
+// picks among their answers, and the controller submits. Subclass in C++
+// (see UConnectIt_AIStrategy_MinMax) or Blueprint.
 //
-// Flow: the controller calls StartDecision -> BeginDecision runs; when the
-// strategy has an answer (now, or later from an async task) it calls
-// FinishDecision, which reaches the controller through OnDecisionFinished.
-// StopDecision cancels: CancelDecision runs and any later FinishDecision is
-// ignored.
-//
-// Best so far: a strategy that improves its answer over time (a search) may
-// call PublishBestSoFar whenever it has a better one. Whoever runs it can
-// read GetBestSoFar at any time -- e.g. when its time is up -- and gets the
-// last published (or finished) answer.
+// Flow: the coordinator calls StartDecision -> BeginDecision runs; when the
+// strategy has its answer (now, or later from an async task) it calls
+// FinishDecision. A strategy that improves its answer over time (a search)
+// may also call PublishBestSoFar whenever it has a better one. The
+// coordinator reads GetBestSoFar -- when every strategy has finished, or
+// when the think time runs out. StopDecision cancels: CancelDecision runs and
+// any later answer is ignored.
 UCLASS(Abstract, Blueprintable, BlueprintType, EditInlineNew, DefaultToInstanced)
 class CONNECTIT_API UConnectIt_AIStrategy : public UObject
 {
     GENERATED_BODY()
 
 public:
-
-    // The AI never moves sooner than this after it starts deciding, so a
-    // fast decision still reads as "thinking". Applied by the controller.
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "AI",
-        meta = (ClampMin = 0.0, Units = "s"))
-    float MinThinkSeconds = 0.6f;
 
     // At most this many candidates are kept from a decision (the best ones):
     // enough fallbacks for a rejected move, short enough to read in a log.
@@ -173,13 +163,10 @@ public:
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "AI")
     FName Label;
 
-    // Controller-facing entry points -- not overridable, they keep the
+    // Coordinator-facing entry points -- not overridable, they keep the
     // "is a decision active" bookkeeping honest around the hooks below.
     void StartDecision(const FConnectItAIDecisionContext& Context);
     void StopDecision();
-
-    // Bound by the owning controller
-    FOnConnectItAIDecisionFinished OnDecisionFinished;
 
     // The current decision's best answer so far: the final one once
     // finished, else the last published (empty if none yet). Kept after the
@@ -198,14 +185,14 @@ public:
     UFUNCTION(BlueprintPure, Category = "AI")
     static bool CandidateHasConfidence(const FConnectItAICandidate& Candidate) { return Candidate.Confidence >= 0.f; }
 
-    // The controller this strategy decides for (its outer -- the controller
-    // duplicates the level's template with itself as outer). For reading
-    // anything beyond the shared context, on the game thread.
+    // The controller this strategy decides for (it lives in that
+    // controller's AI director). For reading anything beyond the shared
+    // context, on the game thread.
     UFUNCTION(BlueprintPure, Category = "AI")
     AConnectIt_AIController* GetOwningController() const;
 
-    // The world of whoever owns this strategy (its controller, or the
-    // coordinator holding it) -- for timers and Blueprint world-context nodes
+    // The world of whoever owns this strategy (its director, and so its
+    // controller) -- for timers and Blueprint world-context nodes
     virtual UWorld* GetWorld() const override;
 
     // Whether Loadout has an action that may send RequestType (e.g.
@@ -219,7 +206,7 @@ public:
     static FConnectItAIDecision MakeSingleMoveDecision(const FInstancedStruct& Operation, const FString& Summary);
 
     // The kinds of move (request types) this strategy can ever offer. Used to
-    // check an AI profile: its loadout and its strategy should overlap.
+    // check an AI setup: the loadout and the strategies should overlap.
     // Empty (the default) = not declared, no check.
     UFUNCTION(BlueprintNativeEvent, BlueprintPure, Category = "AI")
     FGameplayTagContainer GetSupportedRequestTypes() const;

@@ -5,7 +5,7 @@
 #include "AI/ConnectIt_AIStrategy_MinMax.h"
 #include "AI/ConnectIt_AIDirector.h"
 #include "Framework/Data/ConnectIt_MatchPreset.h"
-#include "AI/ConnectIt_AIStrategy_Coordinator.h"
+#include "AI/ConnectIt_AICoordinator.h"
 #include "AI/ConnectIt_MinMaxSearch.h"
 #include "AI/ConnectIt_AISelector.h"
 #include "ConnectIt_MinMaxTestTerms.h"
@@ -1405,16 +1405,9 @@ bool FConnectItAICandidatesTest::RunTest(const FString& Parameters)
     Strategy->NumCandidates = 8;
     Strategy->MaxCandidates = 3;
 
-    FConnectItAIDecision Received;
-    int32 TimesFinished = 0;
-    Strategy->OnDecisionFinished.BindLambda([&Received, &TimesFinished](const FConnectItAIDecision& Decision)
-    {
-        Received = Decision;
-        TimesFinished++;
-    });
-
     Strategy->StartDecision(FConnectItAIDecisionContext());
-    TestEqual(TEXT("the decision reached the controller once"), TimesFinished, 1);
+    TestTrue(TEXT("answered at once"), Strategy->IsDecisionFinished());
+    const FConnectItAIDecision Received = Strategy->GetBestSoFar();
     if (TestEqual(TEXT("trimmed to MaxCandidates"), Received.Candidates.Num(), 3))
     {
         TestEqual(TEXT("best first"), Received.Candidates[0].Summary, FString(TEXT("0")));
@@ -1423,7 +1416,7 @@ bool FConnectItAICandidatesTest::RunTest(const FString& Parameters)
 
     Strategy->NumCandidates = 2;
     Strategy->StartDecision(FConnectItAIDecisionContext());
-    TestEqual(TEXT("fewer than the cap are all kept"), Received.Candidates.Num(), 2);
+    TestEqual(TEXT("fewer than the cap are all kept"), Strategy->GetBestSoFar().Candidates.Num(), 2);
 
     // The single-move helper
     FConnectItBoardOperation_PlacePiece Place;
@@ -1910,116 +1903,145 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(FConnectItAICoordinatorTest,
 
 bool FConnectItAICoordinatorTest::RunTest(const FString& Parameters)
 {
+    // No world here, so no timers: the test polls and ends the budget by hand
     using FFixed = UConnectIt_TestAIStrategy_FixedCandidates;
+    using FSilent = UConnectIt_TestAIStrategy_Silent;
 
-    // A coordinator answering into Received
-    FConnectItAIDecision Received;
-    int32 TimesFinished = 0;
-    const auto MakeCoordinator = [&Received, &TimesFinished]()
+    const auto Fixed = [](int32 Row, int32 NumCandidates)
     {
-        UConnectIt_AIStrategy_Coordinator* Coordinator = NewObject<UConnectIt_AIStrategy_Coordinator>();
-        Coordinator->MaxCandidates = 10;
-        Coordinator->OnDecisionFinished.BindLambda([&Received, &TimesFinished](const FConnectItAIDecision& Decision)
-        {
-            Received = Decision;
-            TimesFinished++;
-        });
-        return Coordinator;
-    };
-    const auto AddFixed = [](UConnectIt_AIStrategy_Coordinator* Coordinator, int32 Row, int32 NumCandidates)
-    {
-        FFixed* Child = NewObject<FFixed>(Coordinator);
-        Child->Row = Row;
-        Child->NumCandidates = NumCandidates;
-        Coordinator->Children.Add(Child);
-        return Child;
+        FFixed* Strategy = NewObject<FFixed>();
+        Strategy->Row = Row;
+        Strategy->NumCandidates = NumCandidates;
+        Strategy->MaxCandidates = 10;
+        return Strategy;
     };
     const auto RowOf = [](const FConnectItAICandidate& Candidate)
     {
         const FConnectItBoardOperation_PlacePiece* Place = Candidate.Payload.GetPtr<FConnectItBoardOperation_PlacePiece>();
         return Place ? Place->Position.X : INDEX_NONE;
     };
+    UConnectIt_AISelector_FirstAvailable* First = NewObject<UConnectIt_AISelector_FirstAvailable>();
+    First->MaxCandidates = 10;
 
-    // Two children answering at once: priority order
+    // Strategies answering at once: concluded straight away, priority order
     {
-        UConnectIt_AIStrategy_Coordinator* Coordinator = MakeCoordinator();
-        AddFixed(Coordinator, 0, 2);
-        AddFixed(Coordinator, 1, 2);
-        TimesFinished = 0;
-        Coordinator->StartDecision(FConnectItAIDecisionContext());
+        UConnectIt_AICoordinator* Coordinator = NewObject<UConnectIt_AICoordinator>();
+        FFixed* A = Fixed(0, 2);
+        FFixed* B = Fixed(1, 2);
+        Coordinator->Begin(FConnectItAIDecisionContext(), { A, B }, First, 2.f, 0.5f);
 
-        TestEqual(TEXT("answers once every child has"), TimesFinished, 1);
-        if (TestEqual(TEXT("all four candidates"), Received.Candidates.Num(), 4))
+        TestFalse(TEXT("concluded once every strategy finished"), Coordinator->IsRunning());
+        const FConnectItAIDecision& Decision = Coordinator->GetLastDecision();
+        if (TestEqual(TEXT("all four candidates"), Decision.Candidates.Num(), 4))
         {
-            TestEqual(TEXT("the first child's first"), RowOf(Received.Candidates[0]), 0);
-            TestEqual(TEXT("then the second child's"), RowOf(Received.Candidates[2]), 1);
+            TestEqual(TEXT("the first strategy's first"), RowOf(Decision.Candidates[0]), 0);
+            TestEqual(TEXT("then the second's"), RowOf(Decision.Candidates[2]), 1);
+            TestEqual(TEXT("labelled by strategy"), Decision.Candidates[2].SourceLabel,
+                FName(TEXT("ConnectIt_TestAIStrategy_FixedCandidates")));
         }
+        TestEqual(TEXT("each strategy gets the budget x share"), A->LastTimeBudget, 1.f);
     }
 
-    // The same move from two children is offered once
+    // A slow strategy: waits while it works; the budget ending concludes with what there is
     {
-        UConnectIt_AIStrategy_Coordinator* Coordinator = MakeCoordinator();
-        AddFixed(Coordinator, 0, 2);
-        AddFixed(Coordinator, 0, 3);
-        TimesFinished = 0;
-        Coordinator->StartDecision(FConnectItAIDecisionContext());
-        TestEqual(TEXT("repeats removed"), Received.Candidates.Num(), 3);
-    }
-
-    // A slow child: the budget running out concludes with what has arrived
-    {
-        UConnectIt_AIStrategy_Coordinator* Coordinator = MakeCoordinator();
-        UConnectIt_TestAIStrategy_Silent* Slow = NewObject<UConnectIt_TestAIStrategy_Silent>(Coordinator);
-        Coordinator->Children.Add(Slow);
-        AddFixed(Coordinator, 1, 2);
-        TimesFinished = 0;
-        Coordinator->StartDecision(FConnectItAIDecisionContext());
-        TestEqual(TEXT("waits while a child is still working"), TimesFinished, 0);
+        UConnectIt_AICoordinator* Coordinator = NewObject<UConnectIt_AICoordinator>();
+        FSilent* Slow = NewObject<FSilent>();
+        Coordinator->Begin(FConnectItAIDecisionContext(), { Slow, Fixed(1, 2) }, First, 2.f, 0.8f);
+        Coordinator->Poll();
+        TestTrue(TEXT("waits while a strategy is still working"), Coordinator->IsRunning());
 
         Coordinator->EndTimeBudget();
-        TestEqual(TEXT("the budget running out concludes"), TimesFinished, 1);
-        TestEqual(TEXT("with the answer that arrived"), Received.Candidates.Num(), 2);
-        TestEqual(TEXT("the slow child is cancelled"), Slow->TimesCancelled, 1);
+        TestFalse(TEXT("the budget running out concludes"), Coordinator->IsRunning());
+        TestEqual(TEXT("with the answer that arrived"), Coordinator->GetLastDecision().Candidates.Num(), 2);
+        TestEqual(TEXT("the slow strategy is stopped"), Slow->TimesCancelled, 1);
     }
 
-    // Nothing in by the budget: wait for the first answer
+    // A slow strategy's best so far is used, at its priority
     {
-        UConnectIt_AIStrategy_Coordinator* Coordinator = MakeCoordinator();
-        UConnectIt_TestAIStrategy_Silent* SlowA = NewObject<UConnectIt_TestAIStrategy_Silent>(Coordinator);
-        UConnectIt_TestAIStrategy_Silent* SlowB = NewObject<UConnectIt_TestAIStrategy_Silent>(Coordinator);
-        Coordinator->Children.Add(SlowA);
-        Coordinator->Children.Add(SlowB);
-        TimesFinished = 0;
-        Coordinator->StartDecision(FConnectItAIDecisionContext());
+        UConnectIt_AICoordinator* Coordinator = NewObject<UConnectIt_AICoordinator>();
+        FSilent* Slow = NewObject<FSilent>();
+        Coordinator->Begin(FConnectItAIDecisionContext(), { Slow, Fixed(1, 2) }, First, 2.f, 0.8f);
+
+        FConnectItBoardOperation_PlacePiece Place;
+        Place.Position = FGridPosition(7, 7);
+        Slow->Publish(UConnectIt_AIStrategy::MakeSingleMoveDecision(FInstancedStruct::Make(Place), TEXT("so far")));
+        Coordinator->Poll();
+        TestTrue(TEXT("a published answer doesn't end the wait"), Coordinator->IsRunning());
+
         Coordinator->EndTimeBudget();
-        TestEqual(TEXT("nothing in yet: keeps waiting"), TimesFinished, 0);
+        const FConnectItAIDecision& Decision = Coordinator->GetLastDecision();
+        TestTrue(TEXT("the slow strategy's best so far comes first"),
+            Decision.Candidates.Num() == 3 && RowOf(Decision.Candidates[0]) == 7);
+    }
+
+    // Nothing in by the budget: wait (warning) for the first answer
+    {
+        UConnectIt_AICoordinator* Coordinator = NewObject<UConnectIt_AICoordinator>();
+        FSilent* SlowA = NewObject<FSilent>();
+        FSilent* SlowB = NewObject<FSilent>();
+        SlowA->Label = TEXT("SlowA");
+        SlowB->Label = TEXT("SlowB");
+        Coordinator->Begin(FConnectItAIDecisionContext(), { SlowA, SlowB }, First, 2.f, 0.8f);
+
+        AddExpectedError(TEXT("Still working: SlowA, SlowB"), EAutomationExpectedErrorFlags::Contains, 1);
+        Coordinator->EndTimeBudget();
+        TestTrue(TEXT("nothing in yet: keeps waiting"), Coordinator->IsRunning());
 
         FConnectItBoardOperation_PlacePiece Place;
         Place.Position = FGridPosition(5, 5);
         SlowB->AnswerLate(UConnectIt_AIStrategy::MakeSingleMoveDecision(FInstancedStruct::Make(Place), TEXT("late")));
-        TestEqual(TEXT("the first answer concludes"), TimesFinished, 1);
-        TestTrue(TEXT("with that answer"), Received.Candidates.Num() == 1 && RowOf(Received.Candidates[0]) == 5);
-        TestEqual(TEXT("the other child is cancelled"), SlowA->TimesCancelled, 1);
+        Coordinator->Poll();
+        TestFalse(TEXT("the first answer concludes"), Coordinator->IsRunning());
+        TestTrue(TEXT("with that answer"),
+            Coordinator->GetLastDecision().Candidates.Num() == 1 && RowOf(Coordinator->GetLastDecision().Candidates[0]) == 5);
+        TestEqual(TEXT("the other strategy is stopped"), SlowA->TimesCancelled, 1);
     }
 
-    // Cancelling the coordinator cancels its children
+    // No budget: waits for everyone
     {
-        UConnectIt_AIStrategy_Coordinator* Coordinator = MakeCoordinator();
-        UConnectIt_TestAIStrategy_Silent* Slow = NewObject<UConnectIt_TestAIStrategy_Silent>(Coordinator);
-        Coordinator->Children.Add(Slow);
-        TimesFinished = 0;
-        Coordinator->StartDecision(FConnectItAIDecisionContext());
-        Coordinator->StopDecision();
-        TestEqual(TEXT("a cancelled coordinator cancels its children"), Slow->TimesCancelled, 1);
-        TestEqual(TEXT("and doesn't answer"), TimesFinished, 0);
+        UConnectIt_AICoordinator* Coordinator = NewObject<UConnectIt_AICoordinator>();
+        FSilent* Slow = NewObject<FSilent>();
+        Coordinator->Begin(FConnectItAIDecisionContext(), { Slow, Fixed(1, 2) }, First, 0.f, 0.8f);
+        Coordinator->Poll();
+        TestTrue(TEXT("no budget: still waiting"), Coordinator->IsRunning());
+        Slow->AnswerLate(FConnectItAIDecision());
+        Coordinator->Poll();
+        TestFalse(TEXT("everyone finished"), Coordinator->IsRunning());
     }
 
-    // What a coordinator can play is what its children can
+    // Cancelling stops the strategies; no answer
     {
-        UConnectIt_AIStrategy_Coordinator* Coordinator = MakeCoordinator();
-        Coordinator->Children.Add(NewObject<UConnectIt_AIStrategy_MinMax>(Coordinator));
-        TestTrue(TEXT("supported moves come from the children"),
-            Coordinator->GetSupportedRequestTypes().HasTagExact(ConnectIt_Game_PlacePiece));
+        UConnectIt_AICoordinator* Coordinator = NewObject<UConnectIt_AICoordinator>();
+        FSilent* Slow = NewObject<FSilent>();
+        Coordinator->Begin(FConnectItAIDecisionContext(), { Slow }, First, 2.f, 0.8f);
+        Coordinator->Cancel();
+        TestEqual(TEXT("a cancel stops the strategies"), Slow->TimesCancelled, 1);
+        TestFalse(TEXT("and ends the decision"), Coordinator->IsRunning());
+        TestFalse(TEXT("without an answer"), Coordinator->GetLastDecision().HasMove());
+    }
+
+    // The selector decides; none = first available
+    {
+        UConnectIt_AICoordinator* Coordinator = NewObject<UConnectIt_AICoordinator>();
+        UConnectIt_AISelector_TopN* TopN = NewObject<UConnectIt_AISelector_TopN>();
+        TopN->TopMovesConsidered = 2;
+        TopN->MistakeChance = 1.f;
+        Coordinator->Begin(FConnectItAIDecisionContext(), { Fixed(0, 3) }, TopN, 2.f, 0.8f);
+        TestEqual(TEXT("the selector's pick comes first"),
+            Coordinator->GetLastDecision().Candidates[0].Summary, FString(TEXT("1")));
+
+        Coordinator->Begin(FConnectItAIDecisionContext(), { Fixed(0, 3) }, nullptr, 2.f, 0.8f);
+        TestEqual(TEXT("no selector: first available"),
+            Coordinator->GetLastDecision().Candidates[0].Summary, FString(TEXT("0")));
+    }
+
+    // No strategies: an empty answer
+    {
+        UConnectIt_AICoordinator* Coordinator = NewObject<UConnectIt_AICoordinator>();
+        AddExpectedError(TEXT("has no strategies"), EAutomationExpectedErrorFlags::Contains, 1);
+        Coordinator->Begin(FConnectItAIDecisionContext(), {}, First, 2.f, 0.8f);
+        TestFalse(TEXT("no strategies, no move"), Coordinator->GetLastDecision().HasMove());
+        TestFalse(TEXT("and done"), Coordinator->IsRunning());
     }
     return true;
 }
@@ -2029,19 +2051,53 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(FConnectItAIDirectorTest,
 
 bool FConnectItAIDirectorTest::RunTest(const FString& Parameters)
 {
-    // What can be checked without a running match: events reach a director
-    // subclass, and a director with no AI controller changes nothing (and
-    // doesn't crash). Turn and checkpoint wiring is covered in PIE.
+    // What can be checked without a running match: the default setup, events
+    // reach a director subclass, changes wait for the next decision, and a
+    // director with no AI controller changes no loadout. Turn and checkpoint
+    // wiring is covered in PIE.
     UConnectIt_TestAIDirector* Director = NewObject<UConnectIt_TestAIDirector>();
+
+    TestTrue(TEXT("the default director runs one MinMax"),
+        Director->Strategies.Num() == 1 && Director->Strategies[0] && Director->Strategies[0]->IsA<UConnectIt_AIStrategy_MinMax>());
+    TestTrue(TEXT("with First Available"), Director->Selector && Director->Selector->IsA<UConnectIt_AISelector_FirstAvailable>());
+
+    Director->OnMatchStarted();
     Director->OnAITurnStarted(3);
     Director->OnAITurnEnded(3);
+    Director->OnOpponentTurnStarted(4);
     Director->OnWinCheckpointReached(1, true, 0, TEXT("Stage 1"));
     TestEqual(TEXT("events reach the director"), Director->Log,
-        FString(TEXT("start 3; end 3; checkpoint 1 AI 0 Stage 1; ")));
+        FString(TEXT("match; start 3; end 3; opponent 4; checkpoint 1 AI 0 Stage 1; ")));
 
-    AddExpectedError(TEXT("has no AI controller"), EAutomationExpectedErrorFlags::Contains, 2);
+    // Strategy and selector changes wait for the next decision, as copies
+    UConnectIt_AIStrategy* const OriginalStrategy = Director->Strategies[0];
+    UConnectIt_TestAIStrategy_FixedCandidates* StrategyTemplate = NewObject<UConnectIt_TestAIStrategy_FixedCandidates>();
+    UConnectIt_TestAIStrategy_Silent* SecondTemplate = NewObject<UConnectIt_TestAIStrategy_Silent>();
+    UConnectIt_AISelector_GreedyScorer* SelectorTemplate = NewObject<UConnectIt_AISelector_GreedyScorer>();
+    Director->TrySetStrategies({ StrategyTemplate, nullptr, SecondTemplate });
+    Director->TrySetSelector(SelectorTemplate);
+    TestTrue(TEXT("not before the next decision"), Director->Strategies[0] == OriginalStrategy);
+
+    Director->ApplyPendingChanges();
+    if (TestEqual(TEXT("the new strategies, nulls skipped"), Director->Strategies.Num(), 2))
+    {
+        TestTrue(TEXT("in order"), Director->Strategies[0]->IsA<UConnectIt_TestAIStrategy_FixedCandidates>()
+            && Director->Strategies[1]->IsA<UConnectIt_TestAIStrategy_Silent>());
+        TestTrue(TEXT("copies, not the templates"), Director->Strategies[0] != StrategyTemplate);
+        TestTrue(TEXT("owned by the director"), Director->Strategies[0]->GetOuter() == Director);
+    }
+    TestTrue(TEXT("the new selector, copied"),
+        Director->Selector && Director->Selector->IsA<UConnectIt_AISelector_GreedyScorer>() && Director->Selector != SelectorTemplate);
+
+    Director->ApplyPendingChanges();
+    TestEqual(TEXT("applying again changes nothing"), Director->Strategies.Num(), 2);
+
+    Director->TrySetStrategies({});
+    Director->ApplyPendingChanges();
+    TestEqual(TEXT("an empty list empties it"), Director->Strategies.Num(), 0);
+
+    AddExpectedError(TEXT("has no AI controller"), EAutomationExpectedErrorFlags::Contains, 1);
     Director->TrySetLoadout(nullptr);
-    Director->TrySetStrategy(NewObject<UConnectIt_AIStrategy_MinMax>());
     TestNull(TEXT("no controller, no loadout"), Director->TryGetLoadout());
 
     // A match preset can carry one
