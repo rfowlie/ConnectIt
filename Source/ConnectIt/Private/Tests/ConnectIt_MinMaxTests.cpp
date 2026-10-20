@@ -1466,7 +1466,7 @@ bool FConnectItMinMaxSearchToolTest::RunTest(const FString& Parameters)
 
     FConnectItMinMaxSearchSettings Settings;
     Settings.MaxDepth = 1;
-    Settings.TimeBudgetSeconds = 0.f;
+    Settings.DefaultTimeBudgetSeconds = 0.f;
     Settings.OpponentRequestTypes = PlaceOnly();
 
     ConnectItMinMaxSearch::FPrepared Prepared;
@@ -1500,6 +1500,20 @@ bool FConnectItMinMaxSearchToolTest::RunTest(const FString& Parameters)
     FConnectItAIDecisionContext ThreeFactions = Context;
     ThreeFactions.Board.ScoreBoard = { 0.f, 0.f, 0.f };
     TestFalse(TEXT("only two factions"), ConnectItMinMaxSearch::Prepare(ThreeFactions, Settings, Prepared, &WhyNot));
+
+    // Time: the decision's budget when it has one, else the settings' default
+    FConnectItMinMaxSearchSettings Timed = Settings;
+    Timed.DefaultTimeBudgetSeconds = 1.5f;
+    if (ConnectItMinMaxSearch::Prepare(Context, Timed, Prepared, &WhyNot))
+    {
+        TestEqual(TEXT("no decision budget: the default"), Prepared.Params.TimeBudgetSeconds, 1.5);
+    }
+    FConnectItAIDecisionContext Budgeted = Context;
+    Budgeted.TimeBudgetSeconds = 3.f;
+    if (ConnectItMinMaxSearch::Prepare(Budgeted, Timed, Prepared, &WhyNot))
+    {
+        TestEqual(TEXT("a decision budget wins, even over a smaller default"), Prepared.Params.TimeBudgetSeconds, 3.0);
+    }
 
     TestTrue(TEXT("the MinMax strategy declares place moves"),
         GetDefault<UConnectIt_AIStrategy_MinMax>()->GetSupportedRequestTypes().HasTagExact(ConnectIt_Game_PlacePiece));
@@ -1560,7 +1574,7 @@ bool FConnectItMinMaxSearchProgressTest::RunTest(const FString& Parameters)
 
     FConnectItMinMaxSearchSettings Settings;
     Settings.MaxDepth = 3;
-    Settings.TimeBudgetSeconds = 0.f;
+    Settings.DefaultTimeBudgetSeconds = 0.f;
     Settings.OpponentRequestTypes = PlaceOnly();
 
     ConnectItMinMaxSearch::FPrepared Prepared;
@@ -1703,7 +1717,7 @@ bool FConnectItMinMaxStrategyPartialTest::RunTest(const FString& Parameters)
 
     UConnectIt_AIStrategy_MinMax* Strategy = NewObject<UConnectIt_AIStrategy_MinMax>();
     Strategy->Search.MaxDepth = 10;
-    Strategy->Search.TimeBudgetSeconds = 0.f;
+    Strategy->Search.DefaultTimeBudgetSeconds = 0.f;
     Strategy->Search.OpponentRequestTypes = PlaceOnly();
     Strategy->MaxCandidates = 3;
 

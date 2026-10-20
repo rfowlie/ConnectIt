@@ -120,14 +120,11 @@ bool ConnectItMinMaxSearch::Prepare(
     OutPrepared.Root = OutPrepared.Rules->MakeRoot(Context.Board, Context.OwnSlot);
     OutPrepared.Params = MinMax::FParams();
     OutPrepared.Params.MaxDepth = FMath::Max(1, Settings.MaxDepth);
-    // The tighter of the settings' budget and the decision's (a coordinator
-    // gives its children a share of its own); 0 = no limit
-    float TimeBudget = FMath::Max(0.f, Settings.TimeBudgetSeconds);
-    if (Context.TimeBudgetSeconds > 0.f)
-    {
-        TimeBudget = TimeBudget > 0.f ? FMath::Min(TimeBudget, Context.TimeBudgetSeconds) : Context.TimeBudgetSeconds;
-    }
-    OutPrepared.Params.TimeBudgetSeconds = TimeBudget;
+    // The decision's budget (the director's think time share) when it has
+    // one, else the settings' default; 0 = no limit
+    OutPrepared.Params.TimeBudgetSeconds = Context.TimeBudgetSeconds > 0.f
+        ? Context.TimeBudgetSeconds
+        : FMath::Max(0.f, Settings.DefaultTimeBudgetSeconds);
     return true;
 }
 
