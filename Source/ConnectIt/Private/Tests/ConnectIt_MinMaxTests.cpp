@@ -10,11 +10,11 @@
 #include "AI/ConnectIt_AISelector.h"
 #include "ConnectIt_MinMaxTestTerms.h"
 #include "Board/Rules/ConnectIt_RuleSet.h"
-#include "Board/Rules/ConnectIt_WinConditionAsset.h"
+#include "Board/Rules/ConnectIt_MatchConditionAsset.h"
 #include "Framework/Library/ConnectIt_BoardStateLibrary.h"
 #include "Board/Rules/ConnectIt_LineScoringRule.h"
-#include "Board/Rules/ConnectIt_ScoreThresholdWinCondition.h"
-#include "Board/Rules/ConnectIt_PieceCountWinCondition.h"
+#include "Board/Rules/ConnectIt_ScoreThresholdCondition.h"
+#include "Board/Rules/ConnectIt_PieceCountCondition.h"
 #include "Board/Operations/ConnectIt_BoardOperations.h"
 #include "Board/Events/ConnectIt_BoardEvents.h"
 #include "ConnectIt_GameplayTags.h"
@@ -72,30 +72,30 @@ namespace ConnectItMinMaxTests
     }
 
     template<typename TCondition>
-    void AddCondition(FConnectItWinConditionGroup& Group, const TCondition& Condition)
+    void AddCondition(FConnectItMatchConditionGroup& Group, const TCondition& Condition)
     {
-        Group.Conditions.Add(TInstancedStruct<FConnectItWinCondition>::Make<TCondition>(Condition));
+        Group.Conditions.Add(TInstancedStruct<FConnectItMatchCondition>::Make<TCondition>(Condition));
     }
 
-    FConnectItWinCondition_ScoreThreshold ScoreAtLeast(float Threshold)
+    FConnectItMatchCondition_ScoreThreshold ScoreAtLeast(float Threshold)
     {
-        FConnectItWinCondition_ScoreThreshold Condition;
+        FConnectItMatchCondition_ScoreThreshold Condition;
         Condition.WinScoreThreshold = Threshold;
         return Condition;
     }
 
-    FConnectItWinCondition_PieceCount PiecesIs(EConnectItPieceCountComparison Comparison, int32 Count)
+    FConnectItMatchCondition_PieceCount PiecesIs(EConnectItPieceCountComparison Comparison, int32 Count)
     {
-        FConnectItWinCondition_PieceCount Condition;
+        FConnectItMatchCondition_PieceCount Condition;
         Condition.Comparison = Comparison;
         Condition.Count = Count;
         return Condition;
     }
 
     // A new, empty win group at the end of Groups (valid until Groups changes)
-    FConnectItWinConditionGroup& AddGroup(TArray<FConnectItWinConditionGroup>& Groups, FName Name = NAME_None)
+    FConnectItMatchConditionGroup& AddGroup(TArray<FConnectItMatchConditionGroup>& Groups, FName Name = NAME_None)
     {
-        FConnectItWinConditionGroup& Group = Groups.AddDefaulted_GetRef();
+        FConnectItMatchConditionGroup& Group = Groups.AddDefaulted_GetRef();
         Group.Name = Name;
         return Group;
     }
@@ -382,7 +382,7 @@ bool FConnectItMinMaxWinConditionTest::RunTest(const FString& Parameters)
     // changes -- and scores it as a win, not via the evaluation terms.
     const FConnectItBoardState Board = MakeBoard(5);
     FConnectItRuleSet CornerRules;
-    AddCondition(AddGroup(CornerRules.PlayerWinGroups), FConnectItWinCondition_TestCorner());
+    AddCondition(AddGroup(CornerRules.PlayerWinGroups), FConnectItMatchCondition_TestCorner());
 
     const FConnectItMinMaxRules Rules(Board, CornerRules,
         DefaultEvaluationWeights(), DefaultOrderingWeights(), PlaceOnly(), PlaceOnly());
@@ -397,7 +397,7 @@ bool FConnectItMinMaxWinConditionTest::RunTest(const FString& Parameters)
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FConnectItPieceCountWinTest,
-    "ConnectIt.Board.WinConditions.PieceCount", TestFlags)
+    "ConnectIt.Board.Conditions.PieceCount", TestFlags)
 
 bool FConnectItPieceCountWinTest::RunTest(const FString& Parameters)
 {
@@ -423,7 +423,7 @@ bool FConnectItPieceCountWinTest::RunTest(const FString& Parameters)
         PiecesIs(EConnectItPieceCountComparison::Equal, 0).GetWinningFaction(Board), static_cast<int32>(INDEX_NONE));
 
     // Progress is measured from the starting count the board remembers
-    const FConnectItWinCondition_PieceCount ClearAll = PiecesIs(EConnectItPieceCountComparison::Equal, 0);
+    const FConnectItMatchCondition_PieceCount ClearAll = PiecesIs(EConnectItPieceCountComparison::Equal, 0);
     TestEqual(TEXT("no progress yet (2 of 2 left)"), ClearAll.GetProgress(Board, 0), 0.f);
     Board.GetTileDataMutable(FGridPosition(0, 0))->SetFactionPiece(-1);
     TestEqual(TEXT("half way (1 of 2 left)"), ClearAll.GetProgress(Board, 0), 0.5f);
@@ -450,7 +450,7 @@ bool FConnectItPieceCountWinTest::RunTest(const FString& Parameters)
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FConnectItRuleSetWinConditionsTest,
-    "ConnectIt.Board.WinConditions.RuleSet", TestFlags)
+    "ConnectIt.Board.Conditions.RuleSet", TestFlags)
 
 bool FConnectItRuleSetWinConditionsTest::RunTest(const FString& Parameters)
 {
@@ -458,7 +458,7 @@ bool FConnectItRuleSetWinConditionsTest::RunTest(const FString& Parameters)
     // AFTER scoring 4 (one group); the AI (faction 1) by reaching 8 points.
     FConnectItRuleSet Rules;
     {
-        FConnectItWinConditionGroup& Goal = AddGroup(Rules.PlayerWinGroups);
+        FConnectItMatchConditionGroup& Goal = AddGroup(Rules.PlayerWinGroups);
         AddCondition(Goal, PiecesIs(EConnectItPieceCountComparison::Equal, 0));
         AddCondition(Goal, ScoreAtLeast(4.f));
     }
@@ -538,7 +538,7 @@ bool FConnectItRuleSetWinConditionsTest::RunTest(const FString& Parameters)
 
     // A group with a cleared slot can't be satisfied, rather than skipping it
     FConnectItRuleSet HalfSet = RulesWonAt(1.f);
-    HalfSet.PlayerWinGroups[0].Conditions.Add(TInstancedStruct<FConnectItWinCondition>());
+    HalfSet.PlayerWinGroups[0].Conditions.Add(TInstancedStruct<FConnectItMatchCondition>());
     Other.ScoreBoard = { 50.f, 0.f };
     TestFalse(TEXT("an empty slot in the group blocks the win"), HasWon(HalfSet, Other, 0));
 
@@ -561,7 +561,7 @@ bool FConnectItRuleSetWinConditionsTest::RunTest(const FString& Parameters)
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FConnectItWinStagesTest,
-    "ConnectIt.Board.WinConditions.Stages", TestFlags)
+    "ConnectIt.Board.Conditions.Stages", TestFlags)
 
 bool FConnectItWinStagesTest::RunTest(const FString& Parameters)
 {
@@ -1914,19 +1914,19 @@ bool FConnectItAISelectorWeightedTest::RunTest(const FString& Parameters)
     return true;
 }
 
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(FConnectItWinConditionAssetsTest,
-    "ConnectIt.Board.WinConditions.Assets", TestFlags)
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FConnectItMatchConditionAssetsTest,
+    "ConnectIt.Board.Conditions.Assets", TestFlags)
 
-bool FConnectItWinConditionAssetsTest::RunTest(const FString& Parameters)
+bool FConnectItMatchConditionAssetsTest::RunTest(const FString& Parameters)
 {
     // Goals as assets: the rule set copies their conditions out at match
     // start, in order, and a checkpoint names the asset reached
-    UConnectIt_WinConditionAsset* ScoreGoal = NewObject<UConnectIt_WinConditionAsset>(
+    UConnectIt_MatchConditionAsset* ScoreGoal = NewObject<UConnectIt_MatchConditionAsset>(
         GetTransientPackage(), TEXT("WC_Test_Score4"));
-    ScoreGoal->Conditions.Add(TInstancedStruct<FConnectItWinCondition>::Make<FConnectItWinCondition_ScoreThreshold>(ScoreAtLeast(4.f)));
-    UConnectIt_WinConditionAsset* ClearGoal = NewObject<UConnectIt_WinConditionAsset>(
+    ScoreGoal->Conditions.Add(TInstancedStruct<FConnectItMatchCondition>::Make<FConnectItMatchCondition_ScoreThreshold>(ScoreAtLeast(4.f)));
+    UConnectIt_MatchConditionAsset* ClearGoal = NewObject<UConnectIt_MatchConditionAsset>(
         GetTransientPackage(), TEXT("WC_Test_Clear"));
-    ClearGoal->Conditions.Add(TInstancedStruct<FConnectItWinCondition>::Make<FConnectItWinCondition_PieceCount>(PiecesIs(EConnectItPieceCountComparison::Equal, 0)));
+    ClearGoal->Conditions.Add(TInstancedStruct<FConnectItMatchCondition>::Make<FConnectItMatchCondition_PieceCount>(PiecesIs(EConnectItPieceCountComparison::Equal, 0)));
 
     FConnectItRuleSet Rules;
     Rules.PlayerWinConditions = { ScoreGoal, nullptr, ClearGoal };

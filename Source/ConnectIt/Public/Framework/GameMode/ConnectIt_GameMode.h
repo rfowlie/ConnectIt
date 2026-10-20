@@ -13,7 +13,7 @@ class AConnectIt_AIController;
 class ATurnBasedPlayerState;
 class UActionLoadoutDataAsset;
 class UConnectIt_AIDirector;
-class UConnectIt_WinConditionAsset;
+class UConnectIt_MatchConditionAsset;
 class UTurnBasedParticipantManagerComponent;
 class UConnectIt_BoardRequestMediator;
 
@@ -58,7 +58,7 @@ enum class EConnectItLoadoutTiming : uint8
 // See AConnectIt_GameMode::OnWinCheckpointReached. (Parameters are named
 // PlayerRole, not Role: AActor already has a Role.)
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_FiveParams(FOnWinCheckpointReached,
-    EConnectItRole, PlayerRole, int32, Faction, UConnectIt_WinConditionAsset*, Goal, int32, GroupIndex, FName, GroupName);
+    EConnectItRole, PlayerRole, int32, Faction, UConnectIt_MatchConditionAsset*, Goal, int32, GroupIndex, FName, GroupName);
 
 // A faction completed all of its win condition groups: the match is won. See
 // AConnectIt_GameMode::OnMatchWon.

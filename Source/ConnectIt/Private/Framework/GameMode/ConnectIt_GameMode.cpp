@@ -309,7 +309,7 @@ void AConnectIt_GameMode::WarnAboutMissingWinConditions() const
     }
 
     // A group that can never be satisfied blocks every group after it
-    auto WarnAboutEmptyGroups = [](const TCHAR* Side, const TArray<FConnectItWinConditionGroup>& Groups)
+    auto WarnAboutEmptyGroups = [](const TCHAR* Side, const TArray<FConnectItMatchConditionGroup>& Groups)
     {
         for (int32 Index = 0; Index < Groups.Num(); Index++)
         {

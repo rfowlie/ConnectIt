@@ -5,11 +5,11 @@
 #include "CoreMinimal.h"
 #include "Engine/DataAsset.h"
 #include "StructUtils/InstancedStruct.h"
-#include "Board/Rules/ConnectIt_WinCondition.h"
-#include "ConnectIt_WinConditionAsset.generated.h"
+#include "Board/Rules/ConnectIt_MatchCondition.h"
+#include "ConnectIt_MatchConditionAsset.generated.h"
 
 
-// One goal of a match, as an asset: one or more win conditions that must ALL
+// One goal of a match, as an asset: one or more conditions that must ALL
 // hold at the same time (e.g. Piece Count Equal 0 AND Score Threshold 4: clear
 // the board, having scored). A match preset's rules list a side's goals as
 // these assets, in the order they must be completed (see
@@ -23,20 +23,20 @@
 // itself only travels along as the goal's identity (e.g. on the
 // WinCheckpointReached event).
 UCLASS(BlueprintType)
-class CONNECTIT_API UConnectIt_WinConditionAsset : public UPrimaryDataAsset
+class CONNECTIT_API UConnectIt_MatchConditionAsset : public UPrimaryDataAsset
 {
     GENERATED_BODY()
 
 public:
 
     // What UI shows for this goal ("Score 20", "Clear the board")
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Win Conditions")
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Conditions")
     FText DisplayName;
 
     // All must hold at once. None = never satisfied ("nothing to satisfy" is
     // not a win), so it blocks every goal after it.
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Win Conditions", meta = (ExcludeBaseStruct))
-    TArray<TInstancedStruct<FConnectItWinCondition>> Conditions;
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Conditions", meta = (ExcludeBaseStruct))
+    TArray<TInstancedStruct<FConnectItMatchCondition>> Conditions;
 
 #if WITH_EDITOR
     virtual EDataValidationResult IsDataValid(FDataValidationContext& Context) const override;

@@ -8,7 +8,7 @@
 #include "GridMechanicsBaseStructs.h"
 #include "ConnectIt_BoardEvents.generated.h"
 
-class UConnectIt_WinConditionAsset;
+class UConnectIt_MatchConditionAsset;
 
 // One thing that happened to the board, as its own small struct holding only
 // what describes it. A board change (FConnectItBoardChangeEvent) is an
@@ -247,7 +247,7 @@ struct CONNECTIT_API FConnectItBoardEvent_WinCheckpointReached : public FConnect
 
     // The goal reached: its win condition asset (null for a group built in code)
     UPROPERTY(BlueprintReadOnly, Category = "Event")
-    TObjectPtr<UConnectIt_WinConditionAsset> Asset = nullptr;
+    TObjectPtr<UConnectIt_MatchConditionAsset> Asset = nullptr;
 
     // That group's Name (the asset's name)
     UPROPERTY(BlueprintReadOnly, Category = "Event")

@@ -3,11 +3,11 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "Board/Rules/ConnectIt_WinCondition.h"
+#include "Board/Rules/ConnectIt_MatchCondition.h"
 #include "AI/ConnectIt_AIStrategy.h"
 #include "AI/ConnectIt_AIDirector.h"
 #include "AI/ConnectIt_AISelector.h"
-#include "Board/Rules/ConnectIt_WinConditionAsset.h"
+#include "Board/Rules/ConnectIt_MatchConditionAsset.h"
 #include "Board/Operations/ConnectIt_BoardOperations.h"
 #include "ConnectIt_MinMaxTestTerms.generated.h"
 
@@ -16,7 +16,7 @@
 // not score-based -- whoever owns the (0,0) corner has won. Not meant for real
 // levels.
 USTRUCT(meta = (Hidden, DisplayName = "(Test) Corner Owner Wins"))
-struct FConnectItWinCondition_TestCorner : public FConnectItWinCondition
+struct FConnectItMatchCondition_TestCorner : public FConnectItMatchCondition
 {
     GENERATED_BODY()
 
@@ -117,7 +117,7 @@ protected:
     {
         Log += FString::Printf(TEXT("end %d; "), TurnNumber);
     }
-    virtual void OnWinCheckpointReached_Implementation(int32 Faction, bool bIsAI, UConnectIt_WinConditionAsset* Goal, int32 GroupIndex, FName GroupName) override
+    virtual void OnWinCheckpointReached_Implementation(int32 Faction, bool bIsAI, UConnectIt_MatchConditionAsset* Goal, int32 GroupIndex, FName GroupName) override
     {
         Log += FString::Printf(TEXT("checkpoint %d %s %s %d %s; "),
             Faction, bIsAI ? TEXT("AI") : TEXT("player"), *GetNameSafe(Goal), GroupIndex, *GroupName.ToString());

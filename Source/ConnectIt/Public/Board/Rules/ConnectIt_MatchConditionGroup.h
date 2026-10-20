@@ -4,12 +4,12 @@
 
 #include "CoreMinimal.h"
 #include "StructUtils/InstancedStruct.h"
-#include "Board/Rules/ConnectIt_WinCondition.h"
-#include "ConnectIt_WinConditionGroup.generated.h"
+#include "Board/Rules/ConnectIt_MatchCondition.h"
+#include "ConnectIt_MatchConditionGroup.generated.h"
 
-class UConnectIt_WinConditionAsset;
+class UConnectIt_MatchConditionAsset;
 
-// One goal during a match: the copy of a UConnectIt_WinConditionAsset's
+// One goal during a match: the copy of a UConnectIt_MatchConditionAsset's
 // conditions that the rule set plays with (FConnectItRuleSet::ResolveWinGroups
 // makes it). One or more win conditions that must ALL hold at the same time. A
 // group with no conditions is never satisfied -- "nothing to satisfy" is not a
@@ -24,21 +24,21 @@ class UConnectIt_WinConditionAsset;
 // top of ConnectIt_ScoringRule.h). Source is only carried along, never
 // dereferenced off the game thread.
 USTRUCT(BlueprintType)
-struct CONNECTIT_API FConnectItWinConditionGroup
+struct CONNECTIT_API FConnectItMatchConditionGroup
 {
     GENERATED_BODY()
 
     // The goal's label for logs and the checkpoint event: the source asset's
     // name
-    UPROPERTY(BlueprintReadOnly, Category = "Win Conditions")
+    UPROPERTY(BlueprintReadOnly, Category = "Conditions")
     FName Name;
 
-    UPROPERTY(BlueprintReadOnly, Category = "Win Conditions")
-    TArray<TInstancedStruct<FConnectItWinCondition>> Conditions;
+    UPROPERTY(BlueprintReadOnly, Category = "Conditions")
+    TArray<TInstancedStruct<FConnectItMatchCondition>> Conditions;
 
     // The asset the conditions were copied from (null for a group built in code)
-    UPROPERTY(BlueprintReadOnly, Category = "Win Conditions")
-    TObjectPtr<UConnectIt_WinConditionAsset> Source = nullptr;
+    UPROPERTY(BlueprintReadOnly, Category = "Conditions")
+    TObjectPtr<UConnectIt_MatchConditionAsset> Source = nullptr;
 
     bool IsEmpty() const { return Conditions.IsEmpty(); }
 
@@ -47,9 +47,9 @@ struct CONNECTIT_API FConnectItWinConditionGroup
     {
         if (Conditions.IsEmpty()) return false;
 
-        for (const TInstancedStruct<FConnectItWinCondition>& Entry : Conditions)
+        for (const TInstancedStruct<FConnectItMatchCondition>& Entry : Conditions)
         {
-            const FConnectItWinCondition* Condition = Entry.GetPtr();
+            const FConnectItMatchCondition* Condition = Entry.GetPtr();
             // A cleared slot can't be satisfied, so it blocks the win rather
             // than being skipped (skipping would let a half-set group win).
             if (!Condition || !Condition->HasFactionWon(Board, Faction)) return false;
@@ -64,9 +64,9 @@ struct CONNECTIT_API FConnectItWinConditionGroup
         if (Conditions.IsEmpty()) return 0.f;
 
         float Total = 0.f;
-        for (const TInstancedStruct<FConnectItWinCondition>& Entry : Conditions)
+        for (const TInstancedStruct<FConnectItMatchCondition>& Entry : Conditions)
         {
-            const FConnectItWinCondition* Condition = Entry.GetPtr();
+            const FConnectItMatchCondition* Condition = Entry.GetPtr();
             Total += Condition ? Condition->GetProgress(Board, Faction) : 0.f;
         }
         return Total / Conditions.Num();
@@ -75,9 +75,9 @@ struct CONNECTIT_API FConnectItWinConditionGroup
     // The first score-based condition's target. False if none is score-based.
     bool GetTargetScore(float& OutTargetScore) const
     {
-        for (const TInstancedStruct<FConnectItWinCondition>& Entry : Conditions)
+        for (const TInstancedStruct<FConnectItMatchCondition>& Entry : Conditions)
         {
-            const FConnectItWinCondition* Condition = Entry.GetPtr();
+            const FConnectItMatchCondition* Condition = Entry.GetPtr();
             if (Condition && Condition->GetTargetScore(OutTargetScore)) return true;
         }
         return false;
@@ -87,9 +87,9 @@ struct CONNECTIT_API FConnectItWinConditionGroup
     bool SetTargetScore(float NewTargetScore)
     {
         bool bAnySet = false;
-        for (TInstancedStruct<FConnectItWinCondition>& Entry : Conditions)
+        for (TInstancedStruct<FConnectItMatchCondition>& Entry : Conditions)
         {
-            if (FConnectItWinCondition* Condition = Entry.GetMutablePtr())
+            if (FConnectItMatchCondition* Condition = Entry.GetMutablePtr())
             {
                 bAnySet |= Condition->SetTargetScore(NewTargetScore);
             }

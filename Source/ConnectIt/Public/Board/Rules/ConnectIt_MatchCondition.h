@@ -4,22 +4,24 @@
 
 #include "CoreMinimal.h"
 #include "ConnectIt_Structs.h"
-#include "ConnectIt_WinCondition.generated.h"
+#include "ConnectIt_MatchCondition.generated.h"
 
 
-// How a match is won. A plain, thread-safe rule struct (see the note at the
-// top of ConnectIt_ScoringRule.h) -- the server's Mediator and the AI's search
-// ask the same instance.
+// Something that holds, or doesn't, for a faction on a board -- the building
+// block of a match's goals (and, later, of its losses and level triggers).
+// Formerly FConnectItWinCondition. A plain, thread-safe rule struct (see the
+// note at the top of ConnectIt_ScoringRule.h) -- the server's Mediator and the
+// AI's search ask the same instance.
 //
-// The base is generic on purpose: "who has won" and "how close is each
+// The base is generic on purpose: "does it hold" and "how close is each
 // faction", nothing about scores. Score-based conditions additionally answer
 // GetTargetScore / SetTargetScore.
 USTRUCT(BlueprintType)
-struct CONNECTIT_API FConnectItWinCondition
+struct CONNECTIT_API FConnectItMatchCondition
 {
     GENERATED_BODY()
 
-    virtual ~FConnectItWinCondition() = default;
+    virtual ~FConnectItMatchCondition() = default;
 
     // The faction slot that has won on Board, or INDEX_NONE if nobody has.
     // If more than one faction satisfies the condition at once, the lowest

@@ -3,8 +3,8 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "Board/Rules/ConnectIt_WinCondition.h"
-#include "ConnectIt_PieceCountWinCondition.generated.h"
+#include "Board/Rules/ConnectIt_MatchCondition.h"
+#include "ConnectIt_PieceCountCondition.generated.h"
 
 
 UENUM(BlueprintType)
@@ -25,7 +25,7 @@ enum class EConnectItPieceCountComparison : uint8
 // scoring first, and give the AI its own conditions rather than letting it
 // share an "Equal 0".
 USTRUCT(BlueprintType, meta = (DisplayName = "Piece Count"))
-struct CONNECTIT_API FConnectItWinCondition_PieceCount : public FConnectItWinCondition
+struct CONNECTIT_API FConnectItMatchCondition_PieceCount : public FConnectItMatchCondition
 {
     GENERATED_BODY()
 

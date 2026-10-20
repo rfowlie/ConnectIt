@@ -3,7 +3,7 @@
 #include "Framework/Data/ConnectIt_MatchPreset.h"
 #include "Action/ActionLoadoutDataAsset.h"
 #include "AI/ConnectIt_AIDirector.h"
-#include "Board/Rules/ConnectIt_WinConditionAsset.h"
+#include "Board/Rules/ConnectIt_MatchConditionAsset.h"
 #include "Misc/DataValidation.h"
 
 
@@ -54,7 +54,7 @@ EDataValidationResult UConnectIt_MatchPreset::IsDataValid(
     // A goal that is unset or has no conditions is never satisfied, so it
     // blocks every goal after it
     const auto CheckGoals = [&Context, &Result](const TCHAR* Side,
-        const TArray<TObjectPtr<UConnectIt_WinConditionAsset>>& Goals)
+        const TArray<TObjectPtr<UConnectIt_MatchConditionAsset>>& Goals)
     {
         for (int32 Index = 0; Index < Goals.Num(); Index++)
         {

@@ -5,12 +5,12 @@
 #include "CoreMinimal.h"
 #include "StructUtils/InstancedStruct.h"
 #include "Board/Rules/ConnectIt_ScoringRule.h"
-#include "Board/Rules/ConnectIt_WinCondition.h"
-#include "Board/Rules/ConnectIt_WinConditionGroup.h"
+#include "Board/Rules/ConnectIt_MatchCondition.h"
+#include "Board/Rules/ConnectIt_MatchConditionGroup.h"
 #include "ConnectIt_RuleSet.generated.h"
 
 struct FConnectItBoardOperation;
-class UConnectIt_WinConditionAsset;
+class UConnectIt_MatchConditionAsset;
 
 
 // The rules of one match: how pieces score and how the match is won.
@@ -45,20 +45,20 @@ struct CONNECTIT_API FConnectItRuleSet
     // The player's goals, in order. Also the goals of every faction in a match
     // with no AI (Online).
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Rules")
-    TArray<TObjectPtr<UConnectIt_WinConditionAsset>> PlayerWinConditions;
+    TArray<TObjectPtr<UConnectIt_MatchConditionAsset>> PlayerWinConditions;
 
     // The AI's goals, in order. Set them whenever the match has an AI: an empty
     // list means the AI cannot win (it does not borrow the player's).
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Rules")
-    TArray<TObjectPtr<UConnectIt_WinConditionAsset>> AIWinConditions;
+    TArray<TObjectPtr<UConnectIt_MatchConditionAsset>> AIWinConditions;
 
     // What the match plays with: the goals above as plain groups, copied by
     // ResolveWinGroups when the match starts (empty before). Not authored.
     UPROPERTY(Transient, BlueprintReadOnly, Category = "Rules")
-    TArray<FConnectItWinConditionGroup> PlayerWinGroups;
+    TArray<FConnectItMatchConditionGroup> PlayerWinGroups;
 
     UPROPERTY(Transient, BlueprintReadOnly, Category = "Rules")
-    TArray<FConnectItWinConditionGroup> AIWinGroups;
+    TArray<FConnectItMatchConditionGroup> AIWinGroups;
 
     // The faction slot the AI plays, set by the GameMode once it has
     // registered the AI (the slot isn't known until then). INDEX_NONE = no AI,
@@ -80,7 +80,7 @@ struct CONNECTIT_API FConnectItRuleSet
 
     // The goals Faction has to complete: the AI's if Faction is the AI's slot,
     // else the player's. No fallback between them.
-    const TArray<FConnectItWinConditionGroup>& GetWinGroupsFor(int32 Faction) const;
+    const TArray<FConnectItMatchConditionGroup>& GetWinGroupsFor(int32 Faction) const;
 
     // The scoring rule if it is a T (e.g. FConnectItScoringRule_Lines), else
     // null -- for code that only makes sense under one kind of scoring.

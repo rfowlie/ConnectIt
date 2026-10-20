@@ -96,7 +96,7 @@ struct FConnectItBoardState
     float TargetScore = 0.f;
 
     // How close each faction slot is to winning, 0 to 1, under whatever the
-    // match's win condition is (FConnectItWinCondition::GetProgress).
+    // match's win condition is (FConnectItMatchCondition::GetProgress).
     // Stamped alongside TargetScore after every move; empty until the first.
     UPROPERTY(BlueprintReadOnly)
     TArray<float> WinProgress;

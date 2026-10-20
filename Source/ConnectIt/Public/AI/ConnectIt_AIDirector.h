@@ -10,7 +10,7 @@ class AConnectIt_AIController;
 class UActionLoadoutDataAsset;
 class UConnectIt_AIStrategy;
 class UConnectIt_AISelector;
-class UConnectIt_WinConditionAsset;
+class UConnectIt_MatchConditionAsset;
 
 // The AI opponent of a match, and how it changes as the match goes on. Lives
 // on a match preset (UConnectIt_MatchPreset::AIDirector): one per adventure
@@ -107,8 +107,8 @@ public:
     // preset's rules (PlayerWinConditions or AIWinConditions); GroupName: the
     // asset's name.
     UFUNCTION(BlueprintNativeEvent, Category = "AI|Director")
-    void OnWinCheckpointReached(int32 Faction, bool bIsAI, UConnectIt_WinConditionAsset* Goal, int32 GroupIndex, FName GroupName);
-    virtual void OnWinCheckpointReached_Implementation(int32 Faction, bool bIsAI, UConnectIt_WinConditionAsset* Goal, int32 GroupIndex, FName GroupName) {}
+    void OnWinCheckpointReached(int32 Faction, bool bIsAI, UConnectIt_MatchConditionAsset* Goal, int32 GroupIndex, FName GroupName);
+    virtual void OnWinCheckpointReached_Implementation(int32 Faction, bool bIsAI, UConnectIt_MatchConditionAsset* Goal, int32 GroupIndex, FName GroupName) {}
 
     // --- For the controller ---
 

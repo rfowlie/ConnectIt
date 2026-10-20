@@ -4,7 +4,7 @@
 #include "Board/Rules/ConnectIt_LineScoringRule.h"
 #include "Board/Events/ConnectIt_BoardEvents.h"
 #include "Board/Operations/ConnectIt_BoardOperation.h"
-#include "Board/Rules/ConnectIt_WinConditionAsset.h"
+#include "Board/Rules/ConnectIt_MatchConditionAsset.h"
 
 
 FConnectItRuleSet::FConnectItRuleSet()
@@ -15,12 +15,12 @@ FConnectItRuleSet::FConnectItRuleSet()
 void FConnectItRuleSet::ResolveWinGroups()
 {
     const auto Resolve = [](const TCHAR* Side,
-        const TArray<TObjectPtr<UConnectIt_WinConditionAsset>>& Assets, TArray<FConnectItWinConditionGroup>& OutGroups)
+        const TArray<TObjectPtr<UConnectIt_MatchConditionAsset>>& Assets, TArray<FConnectItMatchConditionGroup>& OutGroups)
     {
         OutGroups.Reset();
         for (int32 Index = 0; Index < Assets.Num(); Index++)
         {
-            UConnectIt_WinConditionAsset* Asset = Assets[Index];
+            UConnectIt_MatchConditionAsset* Asset = Assets[Index];
             if (!IsValid(Asset))
             {
                 UE_LOG(LogTemp, Warning,
@@ -28,7 +28,7 @@ void FConnectItRuleSet::ResolveWinGroups()
                 continue;
             }
 
-            FConnectItWinConditionGroup& Group = OutGroups.AddDefaulted_GetRef();
+            FConnectItMatchConditionGroup& Group = OutGroups.AddDefaulted_GetRef();
             Group.Name = Asset->GetFName();
             Group.Conditions = Asset->Conditions;
             Group.Source = Asset;
@@ -38,7 +38,7 @@ void FConnectItRuleSet::ResolveWinGroups()
     Resolve(TEXT("AI"), AIWinConditions, AIWinGroups);
 }
 
-const TArray<FConnectItWinConditionGroup>& FConnectItRuleSet::GetWinGroupsFor(int32 Faction) const
+const TArray<FConnectItMatchConditionGroup>& FConnectItRuleSet::GetWinGroupsFor(int32 Faction) const
 {
     return (Faction != INDEX_NONE && Faction == AIFaction) ? AIWinGroups : PlayerWinGroups;
 }
@@ -102,12 +102,12 @@ void FConnectItRuleSet::AdvanceWinGroups(
 
     for (int32 Faction = 0; Faction < Board.GroupsCompleted.Num(); Faction++)
     {
-        const TArray<FConnectItWinConditionGroup>& Groups = GetWinGroupsFor(Faction);
+        const TArray<FConnectItMatchConditionGroup>& Groups = GetWinGroupsFor(Faction);
         int32& Completed = Board.GroupsCompleted[Faction];
 
         while (Completed < Groups.Num() && Groups[Completed].HasFactionWon(Board, Faction))
         {
-            const FConnectItWinConditionGroup& Group = Groups[Completed];
+            const FConnectItMatchConditionGroup& Group = Groups[Completed];
             Completed++;
 
             // Completing the last group is the win, not a checkpoint
@@ -144,7 +144,7 @@ int32 FConnectItRuleSet::GetWinningFaction(const FConnectItBoardState& Board) co
 
 float FConnectItRuleSet::GetProgress(const FConnectItBoardState& Board, int32 Faction) const
 {
-    const TArray<FConnectItWinConditionGroup>& Groups = GetWinGroupsFor(Faction);
+    const TArray<FConnectItMatchConditionGroup>& Groups = GetWinGroupsFor(Faction);
     if (Groups.IsEmpty()) return 0.f;
 
     const int32 Completed = Board.GroupsCompleted.IsValidIndex(Faction) ? Board.GroupsCompleted[Faction] : 0;
@@ -157,7 +157,7 @@ float FConnectItRuleSet::GetTargetScore(const FConnectItBoardState& Board) const
 {
     for (int32 Faction = 0; Faction < Board.ScoreBoard.Num(); Faction++)
     {
-        const TArray<FConnectItWinConditionGroup>& Groups = GetWinGroupsFor(Faction);
+        const TArray<FConnectItMatchConditionGroup>& Groups = GetWinGroupsFor(Faction);
         if (Groups.IsEmpty()) continue;
 
         // The group being worked on (the last one, once all are done)

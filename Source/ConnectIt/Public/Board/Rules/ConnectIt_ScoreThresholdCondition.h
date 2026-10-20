@@ -3,14 +3,14 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "Board/Rules/ConnectIt_WinCondition.h"
-#include "ConnectIt_ScoreThresholdWinCondition.generated.h"
+#include "Board/Rules/ConnectIt_MatchCondition.h"
+#include "ConnectIt_ScoreThresholdCondition.generated.h"
 
 
 // The classic condition: the first faction to reach WinScoreThreshold points
 // wins.
 USTRUCT(BlueprintType, meta = (DisplayName = "Score Threshold"))
-struct CONNECTIT_API FConnectItWinCondition_ScoreThreshold : public FConnectItWinCondition
+struct CONNECTIT_API FConnectItMatchCondition_ScoreThreshold : public FConnectItMatchCondition
 {
     GENERATED_BODY()
 
