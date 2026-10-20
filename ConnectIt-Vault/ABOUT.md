@@ -21,7 +21,7 @@ vault; see [`_core/CLAUDE.md`](_core/CLAUDE.md).
 
 - **`_core/`** is the one non-domain folder — everything structural.
 - Every other top-level folder is a **domain**: one area of work, its own stand-alone
-  `CLAUDE.md` router, opting into the sections it uses. The 7 `Unreal*` plugins and
+  `CLAUDE.md` router, opting into the sections it uses. The 8 `Unreal*` plugins and
   `ConnectIt` (the game module) are **flat sibling domains** — each is independently
   reusable / extractable, so none nests under another.
 - A **section** is a bare-named subfolder (`code/`, `logs/`, `decisions/`) governed by
@@ -35,20 +35,21 @@ vault; see [`_core/CLAUDE.md`](_core/CLAUDE.md).
 | Section | Purpose | Instances in this vault |
 |---|---|---|
 | `_core` | Spec, templates, vault-wide section instances | `_core/` (fixed) |
-| `code` | Per-type pages + `systems/` flows + `recipes/` tasks + an index/map; git-anchored provenance, no `raw/`; `## Changes` history per page | every domain (8) |
+| `code` | Per-type pages + `systems/` flows + `recipes/` tasks + an index/map; git-anchored provenance, no `raw/`; `## Changes` history per page | every domain (9) |
 | `logs` | Append-only machine-written maintenance history, one dated note per run | `_core/_logs/` (vault) · `ConnectIt/_logs/` |
 | `decisions` | One dated note per non-obvious settled call | `ConnectIt/_decisions/` · `optimal-co-developer/_decisions/` |
 | `skills` | Reusable procedures, authored here, mirrored to `.claude/skills/` — **every skill gets both, no exceptions** | `_core/_skills/` (vault) · `Development/_skills/` (Development-wide) · `board-of-advisors/_skills/` · `optimal-co-developer/_skills/` |
 | `sessions` | One dated note per work session, Open/Close halves | `ConnectIt/_sessions/` (schema defined, no note yet) |
 | `atomic` | Single-idea Zettelkasten pool — **single instance, `_core/_atomic/` only** | `_core/_atomic/` |
 | `clippings` | Unprocessed capture dump; empty is the goal | `_core/_clippings/` |
-| `tasks` | Status tables (`active`/`suspended`/`complete`) | `_core/_tasks/` (vault) · `optimal-co-developer/_tasks/` |
+| `tasks` | Status tables (`active`/`suspended`/`complete`) | `_core/_tasks/` (vault) · `optimal-co-developer/_tasks/` · `Portfolio/_tasks/` |
 | `questions` | One note per open, unresolved question | `_core/_questions/` (vault) · `optimal-co-developer/_questions/` · `ConnectIt/_questions/` |
 | `meetings` | One dated note per meeting or session | `optimal-co-developer/_meetings/` |
-| `discussions` | One dated note per discussion; topics link to their most recent prior mention instead of a folder hierarchy | schema defined, no note yet (`ConnectIt/_discussions/` empty) |
+| `discussions` | One dated note per discussion; topics link to their most recent prior mention instead of a folder hierarchy | `ConnectIt/_discussions/` · `Portfolio/_discussions/` |
 | `daily` | One free-form note per day | `optimal-co-developer/_daily/` |
 | `ask-vault` `attachments` | Vault-level instances | `_core/_*/` |
-| `data` `user` `people` `maps` | Available, not yet used | — |
+| `data` | `raw/` (verbatim, still templateless) + `wiki/` (`[[TSchemaWiki]]`, tracks `atomic-summary`); `/process-atomic` sweeps `wiki/` into `atomic` | not yet used — no `_data/` folder exists yet |
+| `user` `people` `maps` | Available, not yet used | — |
 
 Full rulebook per section: `_core/_schema/_<section>.md`.
 
@@ -117,6 +118,58 @@ Full rulebook per section: `_core/_schema/_<section>.md`.
 
 ## Changelog
 
+- **2026-10-07** — `Portfolio` gained `_discussions/` and its first note (advertising-strategy interview), plus
+  `advertising-strategy.md` (platform roles, media matrix, weekly devlog loop, rollout) and 5 new tasks.
+  Logs: `_core/_logs/2026-10-07-1200.md`, `2026-10-07-1330.md`.
+- **2026-09-30** — New non-code domain **`Portfolio`** (career presentation for the
+  technical-artist → gameplay-programmer pivot): `Portfolio/CLAUDE.md` router,
+  `portfolio-plan.md` (moved in from `~/.claude/plans/` — plans now live in the repo, not the
+  user-level plans folder), and a seeded `_tasks/` (`active` / `suspended` / `complete`).
+  Registered in the vault `CLAUDE.md` Domains table. `tasks` section instances gain
+  `Portfolio/_tasks/`. Flagged: the main repo is public and contains `Development/` (see the
+  domain's first task). Log: `_core/_logs/2026-09-30-1200.md`.
+- **2026-09-18** — New plugin domain **`UnrealSkinMechanics`** (player-selectable skin
+  system, slice 1: scaffold + `USkinSettings` + row/selection types + `USkinDataAsset`
+  base; no subsystem yet). Registered in the root `CLAUDE.md` Domains table; `code`
+  section instance count 8 → 9. Design + decisions under `ConnectIt/design/skin-system.md`
+  and `ConnectIt/_decisions/2026-09-18-skin-*`.
+- **2026-09-18** — `/process` gained a step-0 branch check: compares the current git branch
+  to the `Status:` line in the game domain's `CLAUDE.md` and corrects it on mismatch (the
+  label had drifted to a branch two names back). Authored copy and mirror updated. Log:
+  `_core/_logs/2026-09-18-1305.md`.
+
+- **2026-09-17** — Retired `improve-system` (vault-wide skill, `_core/_skills/` +
+  `.claude/skills/` mirror both deleted): confirmed via `_logs/` (no entry anywhere has
+  `source: improve-system`) that it had never actually run once in this vault's history.
+  Its one genuinely unique capability — routing session output into
+  `Development/board-of-advisors/` — targeted a sub-project that's stayed dormant; its
+  link-checking duplicated `/fix-links`; its game-domain routing table never covered
+  `_decisions/`/`_questions/`/`_discussions/` at all, a gap `/session-close`'s new routing
+  step (see the `2026-09-17-1502` entry below it) now actually closes for the domain in
+  active use. `Development/CLAUDE.md`'s "Where new information goes" table kept as plain
+  manual-reference documentation, reworded to drop the "used by `improve-system`" framing;
+  `Development/board-of-advisors/CLAUDE.md`'s `_logs/` row reworded to match (folder still
+  empty, still created-on-first-use, no longer attributed to a skill that never wrote
+  there). `_core/_skills/__INDEX.md` entry removed.
+- **2026-09-16** — Wired `_data/` → `_atomic/` extraction (previously nothing did this —
+  atomic notes were purely manual):
+  - New `TSchemaWiki` template for `_data/wiki/<slug>.md` — `source:`, `updated:`, and
+    `atomic-summary` (`true`/`false`, default `false`), plus a `## Atomic notes swept`
+    section. `_schema/_data.md` and `_schema/__README.md` updated to reference it (`raw/`
+    stays templateless).
+  - `process-atomic.md` gained a Pass 2: sweep every `_data/wiki/` note not yet marked
+    `atomic-summary: true`, extract genuinely atomic-note-worthy ideas, link to / update
+    an existing `_core/_atomic/` note or create a new one, then mark the wiki note swept.
+    Pass 1 (duplicate-folder consolidation) unchanged. Re-mirrored.
+  - `process.md` now states `process-data`-before-`process-atomic` as a fixed dependency
+    (Pass 2 reads `atomic-summary`, which needs `process-data` to have run first) rather
+    than incidental list order.
+  - Atomic-note word cap raised 500 → 1000 words (`_schema/_atomic.md`,
+    `TSchemaAtomic.md`, `_atomic/how this vault writes atomic notes.md`).
+  - No `_data/` folder exists in the vault yet, so this is new plumbing, not a backfill —
+    see `_core/_logs/2026-09-16-1610.md` for the full rationale and flags (including that
+    `Development/board-of-advisors/_knowledge/raw+wiki`'s separate, older schema is
+    explicitly out of scope here).
 - **2026-09-12** — Reconciled the repo-root `.claude/skills/` open question (removed the
   "vault-wide skill needs no authored mirror" exception entirely — every skill now gets
   both an authored copy and a `.claude/skills/` mirror, no exceptions):

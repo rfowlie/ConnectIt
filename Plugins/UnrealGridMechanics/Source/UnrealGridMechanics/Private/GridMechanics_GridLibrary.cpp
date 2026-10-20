@@ -8,16 +8,20 @@
 
 DEFINE_LOG_CATEGORY_STATIC(LogGridMechanics, Log, All);
 
+// Grid convention follows Unreal's world axes: +X is forward (Up) and +Y is
+// right (Right). The vector's first field ("Row") is the X step and its second
+// ("Column") is the Y step -- every consumer applies them that way. The 8
+// entries run clockwise from Up.
 const TMap<EGridDirection, FGridDirectionVector> UGridMechanics_GridLibrary::GridDirectionVectors =
 {
-	{ EGridDirection::Up,        {  0,  1 } },
+	{ EGridDirection::Up,        {  1,  0 } },
 	{ EGridDirection::UpRight,   {  1,  1 } },
-	{ EGridDirection::Right,     {  1,  0 } },
-	{ EGridDirection::DownRight, {  1, -1 } },
-	{ EGridDirection::Down,      {  0, -1 } },
+	{ EGridDirection::Right,     {  0,  1 } },
+	{ EGridDirection::DownRight, {  -1, 1 } },
+	{ EGridDirection::Down,      {  -1, 0 } },
 	{ EGridDirection::DownLeft,  { -1, -1 } },
-	{ EGridDirection::Left,      { -1,  0 } },
-	{ EGridDirection::UpLeft,    { -1,  1 } }
+	{ EGridDirection::Left,      { 0,  -1 } },
+	{ EGridDirection::UpLeft,    { 1,  -1 } }
 };
 
 // ============================================================
@@ -36,6 +40,15 @@ FGridDirectionVector UGridMechanics_GridLibrary::GetGridDirectionVector(EGridDir
 	// than a crash, but it means lookup failures are silent - callers relying on a "real" direction
 	// should validate Direction != EGridDirection::Max first.
 	return GridDirectionVectors.FindRef(Direction);
+}
+
+EGridDirection UGridMechanics_GridLibrary::RotateGridDirection(
+	const EGridDirection InDirection, const int32 RotationAmount)
+{
+	// Wrap around the 8-way compass rather than letting the sum overflow past EGridDirection::UpLeft.
+	constexpr int32 NumDirections = 8;
+	const int32 Rotated = (static_cast<int32>(InDirection) + RotationAmount) % NumDirections;
+	return static_cast<EGridDirection>(Rotated);
 }
 
 EGridDirection UGridMechanics_GridLibrary::GetGridDirectionFromDegrees(float InDegrees)

@@ -9,35 +9,36 @@
 
 class UInputAction;
 
-// One configured input trigger, dispatched by BindingTag through
-// UInputTagBinder::OnInputTagTriggered -- adding a new bound input is
-// purely data: pick an InputAction, name it with BindingTag, add one case
-// wherever the consumer switches on BindingTag. No new C++ required per
-// binding.
+
+DECLARE_DYNAMIC_DELEGATE(FInputActionDelegate);
+DECLARE_DYNAMIC_DELEGATE_OneParam(FInputActionInstanceDelegate, const FInputActionInstance&, Instance);
+
+// One configured input trigger. Adding a new bound input is purely data:
+// pick an InputAction, a TriggerEvent, a Key, then bind InputActionDelegate
+// (e.g. via BindDynamic in ConstructInputBindings()) to whatever should run
+// when it fires -- UInputTagBinder dispatches straight to that per-binding
+// delegate, no shared switch/consumer needed.
 USTRUCT(BlueprintType)
 struct UNREALGAMEMECHANICS_API FInputTagBinding
 {
     GENERATED_BODY()
 
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input")
-    FGameplayTag BindingTag;
-
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input")
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Input")
     TObjectPtr<UInputAction> InputAction = nullptr;
 
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input")
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Input")
     ETriggerEvent TriggerEvent = ETriggerEvent::Triggered;
 
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input")
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Input")
     FKey Key;
+
+    // the delegate to fire when this input is triggered
+    UPROPERTY(BlueprintReadWrite, Category = "Input")
+    FInputActionDelegate InputActionDelegate;
+
+    // UPROPERTY(BlueprintReadWrite, Category = "Input")
+    // FInputActionInstanceDelegate InputActionInstanceDelegate;
+    
 };
 
-// TODO: figure out if we do not need to pass the tag but just use the FInputActionInstance to branch
-// Fired by UInputTagBinder whenever any configured FInputTagBinding's
-// InputAction triggers -- carries that entry's BindingTag so one shared
-// handler can dispatch by tag instead of needing one bound function per
-// input.
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(
-    FOnInputTriggered, const FInputActionInstance&, Instance);
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(
-    FOnInputTagTriggered, const FInputActionInstance&, Instance, FGameplayTag, BindingTag);
+

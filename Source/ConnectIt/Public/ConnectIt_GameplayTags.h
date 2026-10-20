@@ -21,6 +21,7 @@ UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_Game_SwapPieces);
 UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_Game_ForcePlacePiece);
 UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_Game_ToggleTileActive);
 UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_Game_CapturePiece);
+UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_Game_Shift);
 
 UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_Tile_ValidHover);
 UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_Tile_InvalidHover);
@@ -31,8 +32,14 @@ UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_Tile_Default);
 // UGameEventTaskManager registry, used to gate visual sequencing so piece
 // placement, scoring, and win visuals run fully in order instead of at once
 UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_Event_PiecePlaced);
-UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_Event_LineScored);
+// Fired once when the board is initialised from the level -- react to it to
+// create visuals for any designer-placed starting pieces
+UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_Event_BoardSeeded);
+UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_Event_Scored);
 UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_Event_PlayerWin);
+// A faction completed a win condition group that was not its last (see
+// FConnectItBoardEvent_WinCheckpointReached)
+UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_Event_WinCheckpointReached);
 UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_Event_TurnEnd);
 
 // Board event tags for the new mutation types -- ForcePlacePiece
@@ -43,3 +50,4 @@ UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_Event_PieceRemoved);
 UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_Event_PiecesSwapped);
 UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_Event_TileActiveToggled);
 UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_Event_PieceCaptured);
+UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_Event_BoardShifted);

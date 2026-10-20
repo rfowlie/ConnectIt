@@ -5,8 +5,8 @@ role: primary
 source:
   - Source/ConnectIt/Public/Framework/GameMode/ConnectIt_GameMode.h
   - Source/ConnectIt/Private/Framework/GameMode/ConnectIt_GameMode.cpp
-reconciled: 2026-09-14
-commit: 131609f
+reconciled: 2026-09-21
+commit: aa8373e
 ---
 
 # AConnectIt_GameMode
@@ -33,7 +33,7 @@ for board-change requests.
 - `ProcessBoardRequest(const FTurnActionRequest&) → bool` — **the** board-request entry
   point; forwards to `BoardRequestMediator->ProcessRequest`. Callers depend on GameMode's
   surface, not the mediator directly.
-- **Overrides:** `PostLogin`, `HandleMatchHasStarted` (→ `SpawnAndRegisterAI`,
+- **Overrides:** `PostLogin` (→ `SeedActionStateForPlayer`), `HandleMatchHasStarted` (→ `SpawnAndRegisterAI`,
   `InitialiseBoard`), `HandleMatchHasEnded`.
 - **Bound handlers:** `HandleGameOver(FGameplayTag)` (on the `ConnectIt_Event_PlayerWin`
   tag completing — reads winner from `BoardStateComponent` persistent state, not the tag
@@ -53,15 +53,19 @@ for board-change requests.
   `OnWorldBeginPlay` — always ready by the time `InitialiseBoard` runs off
   `HandleMatchHasStarted`).
 - `AConnectIt_PlayerController::ServerRouteBoardChangeRequest` → `ProcessBoardRequest`.
-- **`HandleMatchHasStarted`** also grants each `AConnectIt_PlayerState` in
-  `GameState->PlayerArray` its match-lifetime SWAP budget (`SwapUsesRemaining = 3`),
-  stamped explicitly rather than relied on as a UPROPERTY default — see
-  [[AConnectIt_PlayerState|AConnectIt_PlayerState]] (stub — covered here) and
-  `UConnectIt_BoardRequestMediator::HandleSwapPiecesRequest`, the only server-side
-  consumer of that budget.
+- **`PostLogin`** seeds each human's `ATurnBasedPlayerState` action state from the level config's
+  `PlayerLoadout` (`SeedActionStateForPlayer`); the legacy match-lifetime swap budget
+  (`SwapUsesRemaining`) that `HandleMatchHasStarted` used to stamp is gone — uses and caps now live in
+  the loadout's `NumberedActions` and are spent by the mediator gate, see
+  [[UConnectIt_BoardRequestMediator|UConnectIt_BoardRequestMediator]].
 
 ## Gotchas
 
+- **Humans' action state is seeded here, on the server.** `SeedActionStateForPlayer` runs from
+  `PostLogin` and calls `PS->InitialiseActionState(LevelConfig->PlayerLoadout)` (skipped if
+  `HasActionConfig()` already). `AConnectIt_PlayerController::BeginPlay` returns early for non-local
+  controllers, so nothing else ever seeds a remote human, and without it the mediator gate rejects
+  every request. The AI seeds itself (it has authority).
 - **Structurally server-only.** `GetWorld()->GetAuthGameMode()` is null on every client,
   so this object (and the mediator/rules it owns) simply doesn't exist client-side — the
   old `if (!HasAuthority()) return false;` guards were removed, not replaced.
@@ -78,6 +82,9 @@ payload struct, and `FConnectItBoardChangeEvent` fields — see
 
 ## Changes
 
+- 2026-09-21 — `SeedActionStateForPlayer` added (server seeding of human PlayerState action state from
+  `PostLogin`), part of the loadout / turn-end redesign; `HandleMatchHasStarted` no longer needs to grant
+  swap budgets (legacy `SwapUsesRemaining` removed).
 - 2026-09-14 — `PlayerStateClass` fixed to `AConnectIt_PlayerState` (was silently dead
   code — every `PlayerState` was a plugin `ATurnBasedPlayerState`, see
   [[ConnectIt/_discussions/2026-09-14-swap-implementation-qa|_discussions/2026-09-14-swap-implementation-qa]]);

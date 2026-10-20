@@ -5,8 +5,8 @@ touches:
   - a new UObject implementing IConnectIt_ScoringRule
   - Source/ConnectIt/Public/Board/Rules/ConnectIt_BoardRules.h (assign the strategy, or leave default)
   - FConnectItBoardChangeEvent fields (only if the rule produces new per-move result data)
-reconciled: 2026-09-10
-commit: 668872e
+reconciled: 2026-09-18
+commit: 5047e21
 ---
 
 # Recipe: add a scoring rule
@@ -71,6 +71,12 @@ component.
   `UConnectIt_BoardRules`.
 - Assuming one line — `ScoringLinePositions` is the union across simultaneously completed
   lines.
+- **Incomplete positions reaching the scoring-line visual update** — if the action that
+  triggered the score mutated more than one position (a swap's two positions, plus the
+  piece that completed the line), every one of them must reach the visual update. Miss
+  one and the completing piece's visual can vanish while board state keeps it: the tile
+  looks empty, can't be placed on, and a later line scores "from 3 in a row." See
+  [scoring-line visuals must cover all mutated positions](../../_decisions/2026-09-18-scoring-line-visuals-must-cover-all-mutated-positions.md).
 - `ApplyScoring` is single-position by contract; multi-position effects (like a swap)
   don't have a clean call here (see the mediator's `HandleSwapPiecesRequest` gap).
 

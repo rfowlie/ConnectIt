@@ -27,7 +27,7 @@ public:
 	static bool GridPositionIsEqual(const FGridPosition& A, const FGridPosition& B);
 	
 	// ============================================================
-	// Direction <-> Vector / Rotation
+	// Grid Direction Math
 	// ============================================================
 
 	/** Static lookup of the 8 grid directions to their (Row, Column) unit vectors, in clockwise order starting at Up. */
@@ -41,6 +41,12 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Grid Mechanics | Library | Direction")
 	static FGridDirectionVector GetGridDirectionVector(EGridDirection Direction);
 
+	/*
+	 * Rotates around the enums with modulus
+	 */
+	UFUNCTION(BlueprintPure, Category = "Grid Mechanics | Library | Direction")
+	static EGridDirection RotateGridDirection(const EGridDirection InDirection, const int32 RotationAmount);
+	
 	/**
 	 * Converts a yaw angle in degrees into the nearest 8-way grid direction.
 	 * Values are normalized into [0, 360) before being bucketed into 45-degree segments.

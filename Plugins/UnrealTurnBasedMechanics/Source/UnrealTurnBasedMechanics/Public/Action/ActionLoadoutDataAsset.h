@@ -6,6 +6,8 @@
 #include "Engine/DataAsset.h"
 #include "GameplayTagContainer.h"
 #include "TurnBasedAction.h"
+#include "Action/ActionConfig.h"
+#include "Action/TurnEndRequirement.h"
 #include "ActionLoadoutDataAsset.generated.h"
 
 
@@ -62,17 +64,30 @@ public:
     TSubclassOf<UTurnBasedSpectatorAction> AwaitingConfirmationActionClass = nullptr;
 
     // --- Turn Actions ---
-    // Instanced inline -- designer configures each entry directly
-    // Accessed by component via GetPermittedActions()
+    // The turn actions this loadout offers, split by lifecycle. An action
+    // class belongs in exactly one of the two arrays. The actions component
+    // builds one instance per entry (NewObject from the class), and each
+    // player's PlayerState holds the live budget/cooldown state seeded from
+    // these entries.
 
-    UPROPERTY(EditAnywhere, Instanced, BlueprintReadOnly,
-        Category = "Loadout|Turn Actions")
-    TArray<TObjectPtr<UTurnBasedAction>> Actions;
-
-    // Tags of actions banned in this level or context
     UPROPERTY(EditAnywhere, BlueprintReadOnly,
         Category = "Loadout|Turn Actions")
-    FGameplayTagContainer BannedActionTags;
+    TArray<FPermanentActionConfig> PermanentActions;
+
+    UPROPERTY(EditAnywhere, BlueprintReadOnly,
+        Category = "Loadout|Turn Actions")
+    TArray<FNumberedActionConfig> NumberedActions;
+
+    // --- Turn End ---
+    // Root of the requirement tree deciding when a turn can end (a Group or
+    // Action Used node, nested as deep as needed). Left unset, no action
+    // contributes to turn end: the turn can be ended at any time.
+
+    UPROPERTY(EditAnywhere, Instanced, BlueprintReadOnly, Category = "Loadout|Turn End")
+    TObjectPtr<UTurnEndRequirementNode> TurnEndRequirements = nullptr;
+
+    UFUNCTION(BlueprintPure, Category = "Loadout")
+    bool HasTurnEndRequirements() const { return IsValid(TurnEndRequirements); }
 
     // --- System Action Vending ---
     // Each function creates a new instance owned by Outer
@@ -94,20 +109,6 @@ public:
     UFUNCTION(BlueprintCallable, Category = "Loadout")
     UTurnBasedSpectatorAction* GetAwaitingConfirmationAction(UObject* Outer) const;
 
-    // --- Turn Action Accessors ---
-
-    UFUNCTION(BlueprintPure, Category = "Loadout")
-    TArray<UTurnBasedAction*> GetPermittedActions() const;
-
-    UFUNCTION(BlueprintPure, Category = "Loadout")
-    TArray<UTurnBasedAction*> GetRequiredActions() const;
-
-    UFUNCTION(BlueprintPure, Category = "Loadout")
-    TArray<UTurnBasedAction*> GetOptionalActions() const;
-
-    UFUNCTION(BlueprintPure, Category = "Loadout")
-    bool IsActionPermitted(FGameplayTag ActionTag) const;
-
 #if WITH_EDITOR
     virtual EDataValidationResult IsDataValid(
         FDataValidationContext& Context) const override;
@@ -123,7 +124,4 @@ private:
         if (!Class || !IsValid(Outer)) return nullptr;
         return NewObject<T>(Outer, Class);
     }
-
-    // Shared by GetRequiredActions/GetOptionalActions
-    TArray<UTurnBasedAction*> FilterPermittedActionsByRequired(bool bRequired) const;
 };

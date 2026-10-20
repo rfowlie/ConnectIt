@@ -4,14 +4,15 @@
 
 #include "CoreMinimal.h"
 #include "GameplayTagContainer.h"
-#include "InputTriggers.h"
 #include "Styling/SlateBrush.h"
 #include "TurnBasedMechanicsStructs.h"
 #include "Action/TurnBasedActionBase.h"
 #include "Input/InputTagBinder.h"
+#include "Action/ActionConfig.h"
 #include "TurnBasedAction.generated.h"
 
 class UTurnBasedAction;
+class ATurnBasedPlayerState;
 class AGridTileBase;
 class UGridHoverSubsystem;
 class UEnhancedInputComponent;
@@ -39,9 +40,10 @@ class UNREALTURNBASEDMECHANICS_API UTurnBasedAction : public UTurnBasedActionBas
 public:
 
     // --- Designer Config ---
-
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Action|Config")
-    bool bIsRequired = false;
+    // Budgets, per-turn caps, cooldowns and turn-end contribution are NOT
+    // configured here -- they live in the loadout's PermanentActions /
+    // NumberedActions (FPermanentActionConfig / FNumberedActionConfig) and its
+    // TurnEndRequirements tree, and their live state on ATurnBasedPlayerState.
 
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Action|Config")
     bool bIsCancellable = true;
@@ -49,60 +51,34 @@ public:
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Action|Config")
     bool bRequiresSelection = false;
 
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Action|Config")
-    bool bAllowsOptionalInterrupt = true;
-
-    // Maximum completions per turn -- 0 = unlimited
-    // Checked against CompletionsThisTurn on CanActivate
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Action|Config",
-        meta = (ClampMin = 0))
-    int32 MaxCompletionsPerTurn = 1;
-
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Action|Config",
-        meta = (ClampMin = 0))
-    int32 CooldownTurns = 0;
-
-    // TODO: no need for a default input action, each action will be super customized and actions will be set
-    // UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Action|Config")
-    // TObjectPtr<UInputAction> SelectionInputAction = nullptr;
-    //
-    // // Key mapped to SelectionInputAction on InputTagBinder's mapping
-    // // context (see InitialiseAction) -- SelectionInputAction has no
-    // // InputBindings entry of its own, so it needs its own key here.
-    // UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Action|Config")
-    // FKey SelectionInputKey;
-
-    // Additional named input triggers beyond SelectionInputAction -- see
-    // FInputTagBinding (UnrealGameMechanics/Input). Bound/unbound alongside
-    // SelectionInputAction by BindInput/UnbindInput, dispatched through
-    // InputTagBinder.
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Action|Config")
-    TArray<FInputTagBinding> InputBindings;
-
     // --- Presentation ---
     // Purely for UI -- the action itself never reads these. Without them an
     // action bar has nothing to label a button with (ActionTag is an
     // identifier, not a display string).
 
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Action|Presentation")
+    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Action|Presentation")
     FText DisplayName;
 
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Action|Presentation",
+    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Action|Presentation",
         meta = (MultiLine = true))
     FText Description;
 
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Action|Presentation")
+    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Action|Presentation")
     FSlateBrush Icon;
 
-    // --- Runtime State ---
+    // The tag an action class identifies itself with, read from its default
+    // object -- lets config reference an action by class alone instead of a
+    // separately typed tag. Invalid tag if the class is null or its
+    // GetActionTag isn't implemented.
+    static FGameplayTag GetTagForClass(TSubclassOf<UTurnBasedAction> ActionClass);
 
-    // Only incremented on Complete() -- not on Activate or Cancel
-    // Reset at start of each turn
-    UPROPERTY(BlueprintReadOnly, Category = "Action|State")
-    int32 CompletionsThisTurn = 0;
-
-    UPROPERTY(BlueprintReadOnly, Category = "Action|State")
-    int32 TurnsUntilAvailable = 0;
+    // Whether this action is allowed to produce a request of this type.
+    // The server checks it against a request's client-supplied ActionTag so
+    // one action can't spend its budget while sending another action's
+    // request. Default true (unrestricted); project actions override it.
+    UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "Action")
+    bool ProducesRequestType(FGameplayTag RequestType) const;
+    virtual bool ProducesRequestType_Implementation(FGameplayTag RequestType) const { return true; }
 
     // --- Lifecycle ---
 
@@ -111,30 +87,48 @@ public:
         UEnhancedInputComponent* InInputComponent,
         UEnhancedInputLocalPlayerSubsystem* InLocalPlayerSubsystem);
 
-    // Natural completion -- increments CompletionsThisTurn
+    // Natural completion. Uses are counted by the server on the player's
+    // PlayerState when the request commits, not here.
     UFUNCTION(BlueprintCallable, Category = "Action")
     void Complete();
 
-    // Player cancel -- no CompletionsThisTurn increment
+    // Player cancel
     UFUNCTION(BlueprintCallable, Category = "Action")
     void Cancel();
 
-    // System interrupt -- inherited from base, no increment
+    // System interrupt -- inherited from base
     // ForceDeactivate() also unbinds selection input
 
+    // Client-side convenience for UI/selection: asks the owner's PlayerState
+    // whether this action's uses, per-turn cap and cooldown allow it. The
+    // server re-checks every request regardless (see the Mediator gate).
     UFUNCTION(BlueprintPure, Category = "Action")
     bool CanActivate() const;
 
-    UFUNCTION(BlueprintPure, Category = "Action")
-    bool IsComplete() const
-    {
-        return CompletionsThisTurn > 0;
-    }
+    // --- Runtime state (read-only) ---
+    // The action instance holds NO budget/cap/cooldown state of its own -- it
+    // lives on the owner's PlayerState and is read from there on every call, so
+    // it can never disagree with the authoritative copy. Each returns 0/false
+    // if the owner has no PlayerState or no entry for this action's class.
 
-    void TickCooldown(bool bIsMyTurn);
+    // Copy of this action's state if it is a permanent action
+    UFUNCTION(BlueprintPure, Category = "Action|State")
+    bool GetPermanentRuntimeState(FPermanentActionRuntimeState& OutState) const;
 
-    // Resets CompletionsThisTurn -- called at turn start
-    void ResetTurnState();
+    // Copy of this action's state if it is a numbered action
+    UFUNCTION(BlueprintPure, Category = "Action|State")
+    bool GetNumberedRuntimeState(FNumberedActionRuntimeState& OutState) const;
+
+    UFUNCTION(BlueprintPure, Category = "Action|State")
+    int32 GetUsesThisTurn() const;
+
+    // Current effective per-turn cap (0 = unlimited or unknown)
+    UFUNCTION(BlueprintPure, Category = "Action|State")
+    int32 GetMaxUsesPerTurn() const;
+
+    // Uses left in the match -- numbered actions only (0 otherwise)
+    UFUNCTION(BlueprintPure, Category = "Action|State")
+    int32 GetUsesRemaining() const;
 
     // --- Board Change ---
 
@@ -168,6 +162,9 @@ public:
     
 protected:
 
+    // The owner's PlayerState (null if there is no owner/PlayerState yet)
+    ATurnBasedPlayerState* GetOwnerPlayerState() const;
+
     // --- Virtual Lifecycle Hooks ---
 
     virtual void Activate_Internal_Implementation() override;
@@ -180,9 +177,22 @@ protected:
     UFUNCTION(BlueprintNativeEvent, Category = "Action")
     void OnCompleted();
 
+    // --- Input ---
+
+    // Populated by ConstructInputBindings() -- each entry's InputActionDelegate
+    // is bound directly to whatever this action wants that input to do, no
+    // shared tag-switch consumer needed. Bound/unbound alongside selection
+    // input by BindInput/UnbindInput, dispatched through InputTagBinder.
+    UPROPERTY(BlueprintReadWrite, Category = "Action|Config")
+    TArray<FInputTagBinding> InputBindings;
+
+    // Set the values in InputBindings
+    UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "Action|Config")
+    void ConstructInputBindings();
+    
     // --- Selection Hooks ---
 
-    UFUNCTION(BlueprintNativeEvent, Category = "Action|Selection")
+    UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "Action|Selection")
     bool IsValidHoverTile(AGridTileBase* Tile) const;
     virtual bool IsValidHoverTile_Implementation(AGridTileBase* Tile) const;
 
@@ -206,25 +216,11 @@ protected:
     void ClearSelectionState();
     virtual void ClearSelectionState_Implementation();
 
-    // --- Bound Input ---
-
-    // Fires when any InputBindings entry triggers, carrying that entry's
-    // BindingTag. Default implementation is a no-op -- subclasses (usually
-    // in Blueprint) switch on BindingTag to route to actual behaviour.
-    // SelectionInputAction/OnSelectionInputTriggered stays separate since
-    // it's tied to CurrentHoveredTile, not a generic named trigger.
-    UFUNCTION(BlueprintNativeEvent, Category = "Action|Input")
-    void OnBoundInputTriggered(FGameplayTag BindingTag);
-    virtual void OnBoundInputTriggered_Implementation(FGameplayTag BindingTag);
-
-    // --- Cooldown Hook ---
-
-    UFUNCTION(BlueprintNativeEvent, Category = "Action|Cooldown")
-    bool ShouldTickCooldown(bool bIsMyTurn) const;
-    virtual bool ShouldTickCooldown_Implementation(bool bIsMyTurn) const;
-
-    // Fires OnChangeRequested -- subclasses call from HandleValidSelection
-    void RequestBoardChange(const FTurnActionRequest& Request);
+    // Asks the server for a board change. Payload is the project's own struct
+    // describing the change; it is wrapped in a FTurnActionRequest stamped
+    // with this action's tag and sent on via OnChangeRequested. Subclasses
+    // call it from HandleValidSelection.
+    void RequestBoardChange(const FInstancedStruct& Payload);
 
     UPROPERTY(BlueprintReadOnly)
     TObjectPtr<AGridTileBase> CurrentHoveredTile = nullptr;
@@ -257,10 +253,8 @@ private:
     UPROPERTY()
     TObjectPtr<UEnhancedInputLocalPlayerSubsystem> LocalPlayerSubsystem = nullptr;
 
-    // Owns InputBindings' mapping context + dispatch -- see
-    // UnrealGameMechanics/Input/InputTagBinder.h. SelectionInputAction
-    // piggybacks one extra key mapping onto this same context (see
-    // InitialiseAction) rather than standing up a second one.
+    // Owns InputBindings' mapping context + per-binding dispatch -- see
+    // UnrealGameMechanics/Input/InputTagBinder.h.
     UPROPERTY()
     TObjectPtr<UInputTagBinder> InputTagBinder = nullptr;
 
@@ -270,9 +264,4 @@ private:
 
     UFUNCTION()
     void OnGridTileHoverChanged(AGridTileBase* NewTile);
-
-    // Bound to InputTagBinder->OnInputTagTriggered -- forwards to the
-    // BlueprintNativeEvent hook
-    UFUNCTION()
-    void HandleInputTagTriggered(const FInputActionInstance& InputActionInstance, FGameplayTag BindingTag);
 };

@@ -6,8 +6,8 @@ source:
   - Source/ConnectIt/Public/Board/ConnectIt_BoardStateComponent.h
   - Source/ConnectIt/Private/Board/ConnectIt_BoardStateComponent.cpp
   - Source/ConnectIt/Public/ConnectIt_Structs.h
-reconciled: 2026-09-14
-commit: 131609f
+reconciled: 2026-09-21
+commit: aa8373e
 ---
 
 # UConnectIt_BoardStateComponent
@@ -28,7 +28,13 @@ visual system on both server and client.
 
 - **Server (board request handlers only):**
   `InitialiseBoardState(TileRegistry, PieceRegistry, NumFactions, InitialMultiplier,
-  InTargetScore)` — once at game start; stamps `TargetScore` up front.
+  InTargetScore)` — once at game start; stamps `TargetScore` up front. Builds each tile's data
+  from the registry's tiles; any tile actor implementing `IConnectIt_TileDataProvider`
+  (`GetInitialTileData` → `FConnectItTileInitialData`: `Multiplier`, `bIsActive`, `bCanShift`,
+  `StartingFactionPiece`) supplies designer values, otherwise defaults (`InitialMultiplier`, active,
+  shiftable, empty). A `StartingFactionPiece` outside `0..NumFactions-1` is ignored with a warning.
+  Ends by setting a `ChangeEvent` with `bBoardSeeded = true` and enqueuing the tags, so Blueprint can
+  spawn visuals for starting pieces (it no longer relies on a silent, unbroadcast initial state).
   `SetBoardState(NewState, ChangeEvent)` — captures current→previous, applies new, stores
   the change event, fires `OnBoardStateChanged` on server, then `EnqueueBoardEventTags()`.
 - **Reads:** `GetCurrentState()`, `GetPreviousState()`, `GetChangeEvent()` (payload for
@@ -53,7 +59,9 @@ visual system on both server and client.
   `bTileMultiplierDestroyed` → `…TileMultiplierDestroyed`, `bTileActiveToggled` →
   `…TileActiveToggled` (this last one has no ordering relationship with the others — a
   disjoint kind of change). Then, independently, the two "knock-on" tags:
-  `bLineScored` → `…LineScored`, `bGameWon` → `…PlayerWin`.
+  `bLineScored` → `…LineScored`, `bGameWon` → `…PlayerWin`. Also `bBoardShifted` →
+  `ConnectIt_Event_BoardShifted` and `bBoardSeeded` → `ConnectIt_Event_BoardSeeded` (the initial
+  snapshot only).
 - Written by
   [[UConnectIt_BoardRequestMediator|UConnectIt_BoardRequestMediator]] handlers
   via `SetBoardState`.
@@ -80,6 +88,9 @@ the fields. UI reading the snapshot (`AConnectIt_GameState` wrappers, debug widg
 
 ## Changes
 
+- 2026-09-21 — designer tile data (`IConnectIt_TileDataProvider`) and starting pieces read at
+  `InitialiseBoardState`; `bBoardSeeded` event + `ConnectIt_Event_BoardSeeded` tag added. See
+  [designer tile data decision](../_decisions/2026-09-20-designer-tile-data-via-blueprint-interface.md).
 - 2026-09-14 — corrected the Collaborators event-tag list: it previously described a
   three-tag "shift/piece-placed → line-scored → player-win" fixed order that no longer
   matches the source — six independent concrete-change tags now exist (including

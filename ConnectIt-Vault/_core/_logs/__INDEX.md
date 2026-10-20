@@ -8,6 +8,67 @@ in `<domain>/_logs/`, not here.
 
 Newest first:
 
+- [2026-10-07-1330](2026-10-07-1330.md) — by hand — advertising-strategy interview + plan for `Portfolio`
+  (hub-and-spoke, weekly devlog); first `Portfolio/_discussions/` note.
+
+- [2026-10-07-1200](2026-10-07-1200.md) — by hand — `Portfolio/_discussions/` section created.
+
+- [2026-09-30-1200](2026-09-30-1200.md) — by hand — new `Portfolio` domain (router, plan moved in from
+  `~/.claude/plans/`, seeded `_tasks/`); flagged the public repo containing `Development/`.
+
+- [2026-09-24-1530](2026-09-24-1530.md) — meeting-open + meeting-closed — 2026-09-24 ConnectIt
+  check-in: bugs/redesign confirmed landed, `Priority` column added to `ConnectIt/_tasks/`,
+  MinMax/AI split decided (Classic keeps MinMax, Adventure gets bespoke controllers). Ended early
+  into `/session-open` + plan mode.
+
+- [2026-09-21-0230](2026-09-21-0230.md) — /process — 5 complete tasks filed; 12 drifted code pages refreshed
+  (action loadout/turn-end redesign, mediator gate, tile data, UE-axis grid); stale recipe/system pages flagged.
+
+- [2026-09-18-1305](2026-09-18-1305.md) — by hand — corrected the stale branch label in
+  `ConnectIt/CLAUDE.md`; `/process` gained a step-0 branch check; documented the Board Shift
+  holes wishlist and the swap scoring-line visual bug (new decision + recipe pitfall).
+
+- [2026-09-18-0154](2026-09-18-0154.md) — process — full sweep: `process-code` refreshed
+  21 drifted pages (4+ days of undocumented Board Shift/SWAP/action-refactor drift across
+  ConnectIt + 3 plugins); `process-data`/`process-tasks`/`process-atomic`/`process-skills`
+  all clean, nothing to do. Flagged a concurrent `BlueprintImplementableEvent` conflict on
+  `ConnectIt_PieceRegistry.h` found mid-sweep.
+- [2026-09-18-0048](2026-09-18-0048.md) — process-tasks — filed 2 `complete` rows from
+  `ConnectIt/_tasks/active.md` to `complete.md` (`DefaultLevelConfig`, Actions UI HUD
+  wiring); other two `_tasks/` folders had nothing to move
+- [2026-09-18-0038](2026-09-18-0038.md) — session — filed the check-in's task candidates
+  to `ConnectIt/_tasks/active.md` (2 complete, 3 updated/rewritten, 3 added) and
+  `optimal-co-developer/_tasks/active.md` (networking outreach, its first row); updated
+  `action-gameplay-tags.md`'s Current thinking
+- [2026-09-18-0035](2026-09-18-0035.md) — meeting-closed — filed the 2026-09-18 check-in
+  (`Development/optimal-co-developer/_meetings/`) + 4 `ConnectIt/_decisions/` notes:
+  registry mapping refresh, LoadOut reference on PlayerState, the generic turn-end
+  requirement system, visual-reactions-in-Blueprint convention
+- [2026-09-17-1511](2026-09-17-1511.md) — session — retired `improve-system` (never once
+  run — confirmed via `_logs/`, no entry anywhere has `source: improve-system`); cleaned
+  up every reference (`_core/_skills/__INDEX.md`, `Development/CLAUDE.md`'s routing table
+  and log-row, `Development/board-of-advisors/CLAUDE.md`'s `_logs/` row), `ABOUT.md`
+  updated
+- [2026-09-17-1502](2026-09-17-1502.md) — session — `/session-close` extended with a
+  "route decisions, questions, and discussions" step (decisions written directly,
+  questions/discussions offered as candidates) — closes the gap where neither
+  `/session-close` nor `/improve-system` actually populated a game domain's `_decisions/`/
+  `_questions/`/`_discussions/` on their own
+
+- [2026-09-16-1610](2026-09-16-1610.md) — session — wired `_data/` → `_atomic/`
+  extraction: `process-atomic` gained a Pass 2 that sweeps un-swept `_data/wiki/` notes
+  into `_core/_atomic/`; new `TSchemaWiki` template with `atomic-summary` tracking;
+  `process-data`-before-`process-atomic` made an explicit dependency; atomic word cap
+  500 → 1000
+- [2026-09-16-1609](2026-09-16-1609.md) — session — `/session-open`'s map output rewritten
+  to bullet-list-per-block (owner preference) — 5 blocks + the session-note template +
+  `.claude/skills/` mirror updated; `/session-close` intentionally left untouched pending
+  the owner confirming whether the same preference extends there
+- [2026-09-16-1557](2026-09-16-1557.md) — session — removed 6 stale repo-root
+  `.claude/skills/` mirrors (staged, uncommitted); added a permanent guardrail to
+  `ConnectIt/CLAUDE.md` against ever re-adding a "Current state" section; rewrote
+  `session-open`/`session-close` (+ mirrors) to source state from `_tasks/active.md` +
+  `_meetings/` + `_decisions/` instead of `CLAUDE.md` fields
 - [2026-09-14-0204](2026-09-14-0204.md) — meeting-closed — closed the first
   `Development/optimal-co-developer/_meetings/` note (2026-09-14 check-in); filed 3
   `ConnectIt/_decisions/` notes (action-state-on-PlayerState/ActionsComponent-as-builder,

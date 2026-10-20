@@ -7,7 +7,7 @@
 #include "ConnectIt_GameRulesLibrary.generated.h"
 
 // NOTE: ConnectIt_Score_Max/IsGameOver below happen to share a value with
-// UConnectIt_ScoreThresholdWinCondition::WinScoreThreshold (both default to
+// FConnectItWinCondition_ScoreThreshold::WinScoreThreshold (both default to
 // 100) but are NOT the same source of truth as production UI's win-target
 // display -- see FConnectItBoardState::TargetScore /
 // UConnectIt_BoardRulesComponent::GetTargetScore for that. This constant is

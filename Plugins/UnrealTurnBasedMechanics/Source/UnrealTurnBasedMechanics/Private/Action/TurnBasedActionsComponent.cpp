@@ -6,7 +6,10 @@
 #include "Action/TurnBasedAction.h"
 #include "Action/TurnBasedSpectatorAction.h"
 #include "Action/ActionLoadoutDataAsset.h"
+#include "Framework/PlayerState/TurnBasedPlayerState.h"
 #include "GameFramework/Controller.h"
+#include "Engine/World.h"
+#include "TimerManager.h"
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
 #include "Net/UnrealNetwork.h"
@@ -41,6 +44,14 @@ void UTurnBasedActionsComponent::InitialiseFromLoadout(UActionLoadoutDataAsset* 
     CreateSystemActions();
     bIsInitialised = true;
 
+    // This component never seeds the PlayerState's action state: the game's
+    // server-side setup does (the GameMode for humans), and a controller
+    // builds this component FROM its PlayerState's loadout -- seeding here
+    // would loop.
+
+    // Bind now if the PlayerState is already here; otherwise NotifyTurnStarted will
+    EnsureBoundToPlayerState();
+
     UE_LOG(LogTurnBasedMechanics, Log,
         TEXT("TurnBasedActionsComponent: %s initialised — "
              "loadout '%s', %d runtime actions "
@@ -49,15 +60,15 @@ void UTurnBasedActionsComponent::InitialiseFromLoadout(UActionLoadoutDataAsset* 
         *InLoadout->LoadoutName,
         RuntimeActions.Num(),
         IsValid(RootAction)
-            ? *RootAction->ActionTag.ToString() : TEXT("none"),
+            ? *RootAction->GetActionTag().ToString() : TEXT("none"),
         IsValid(IdleViewerAction)
-            ? *IdleViewerAction->ActionTag.ToString() : TEXT("none"),
+            ? *IdleViewerAction->GetActionTag().ToString() : TEXT("none"),
         IsValid(SpectatorViewerAction)
-            ? *SpectatorViewerAction->ActionTag.ToString() : TEXT("none"),
+            ? *SpectatorViewerAction->GetActionTag().ToString() : TEXT("none"),
         IsValid(PauseViewerAction)
-            ? *PauseViewerAction->ActionTag.ToString() : TEXT("none"),
+            ? *PauseViewerAction->GetActionTag().ToString() : TEXT("none"),
         IsValid(AwaitingConfirmationAction)
-            ? *AwaitingConfirmationAction->ActionTag.ToString() : TEXT("none"));
+            ? *AwaitingConfirmationAction->GetActionTag().ToString() : TEXT("none"));
 }
 
 void UTurnBasedActionsComponent::CloneActionsFromLoadout()
@@ -80,25 +91,58 @@ void UTurnBasedActionsComponent::CloneActionsFromLoadout()
         ? ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(PC->GetLocalPlayer())
         : nullptr;
 
-    for (UTurnBasedAction* Source : Loadout->GetPermittedActions())
+    auto RegisterAction = [&](UTurnBasedAction* Action, const TCHAR* Origin)
     {
-        if (!IsValid(Source)) continue;
-
-        UTurnBasedAction* Clone = DuplicateObject<UTurnBasedAction>(Source, this);
-        if (!IsValid(Clone)) continue;
-
-        Clone->InitialiseAction(Controller, EIC, EILP);
-        BindActionDelegates(Clone);
-        RuntimeActions.Add(Clone);
+        Action->InitialiseAction(Controller, EIC, EILP);
+        BindActionDelegates(Action);
+        RuntimeActions.Add(Action);
 
         UE_LOG(LogTurnBasedMechanics, Log,
-            TEXT("TurnBasedActionsComponent: Cloned '%s' "
-                 "(Required: %s, Cancellable: %s, "
-                 "AllowsOptionalInterrupt: %s)"),
-            *Clone->ActionTag.ToString(),
-            Clone->bIsRequired ? TEXT("Yes") : TEXT("No"),
-            Clone->bIsCancellable ? TEXT("Yes") : TEXT("No"),
-            Clone->bAllowsOptionalInterrupt ? TEXT("Yes") : TEXT("No"));
+            TEXT("TurnBasedActionsComponent: %s '%s' (Cancellable: %s)"),
+            Origin,
+            *Action->GetActionTag().ToString(),
+            Action->bIsCancellable ? TEXT("Yes") : TEXT("No"));
+    };
+
+    // One instance per config entry, built from its class. Budgets, per-turn
+    // caps and cooldowns are not copied onto the instance -- they live in the
+    // entry and on the owner's PlayerState.
+    for (const FPermanentActionConfig& Config : Loadout->PermanentActions)
+    {
+        if (!Config.ActionClass)
+        {
+            UE_LOG(LogTurnBasedMechanics, Warning,
+                TEXT("TurnBasedActionsComponent: skipped a PermanentActions "
+                     "entry with no ActionClass on loadout '%s'"),
+                *Loadout->LoadoutName);
+            continue;
+        }
+
+        RegisterAction(NewObject<UTurnBasedAction>(this, Config.ActionClass),
+            TEXT("Built permanent"));
+    }
+
+    for (const FNumberedActionConfig& Config : Loadout->NumberedActions)
+    {
+        if (!Config.ActionClass)
+        {
+            UE_LOG(LogTurnBasedMechanics, Warning,
+                TEXT("TurnBasedActionsComponent: skipped a NumberedActions "
+                     "entry with no ActionClass on loadout '%s'"),
+                *Loadout->LoadoutName);
+            continue;
+        }
+
+        RegisterAction(NewObject<UTurnBasedAction>(this, Config.ActionClass),
+            TEXT("Built numbered"));
+    }
+
+    if (RuntimeActions.IsEmpty())
+    {
+        UE_LOG(LogTurnBasedMechanics, Warning,
+            TEXT("TurnBasedActionsComponent: loadout '%s' has no PermanentActions "
+                 "or NumberedActions -- %s will have no turn actions"),
+            *Loadout->LoadoutName, *GetOwner()->GetName());
     }
 }
 
@@ -230,14 +274,15 @@ void UTurnBasedActionsComponent::NotifyTurnStarted(const FTurnStartContext& Cont
 {
     CurrentTurnNumber = Context.TurnNumber;
 
-    // Tick cooldowns -- it is our turn
-    TickCooldowns(true);
+    // The PlayerState is certain to exist by the time a turn starts -- make
+    // sure limbo's update listener is bound to it (no-op if already bound)
+    EnsureBoundToPlayerState();
 
-    // Reset completions on all runtime actions
-    for (UTurnBasedAction* Action : RuntimeActions)
-    {
-        if (IsValid(Action)) Action->ResetTurnState();
-    }
+    // A turn boundary always ends any limbo without checking turn end
+    ExitStateSyncLimbo(false);
+
+    // Per-turn counters and cooldowns are authoritative on the PlayerState and
+    // are reset/ticked by the server when the turn starts.
 
     // Fire designer hook -- default clears stack and pushes root
     OnTurnStarted(Context);
@@ -253,9 +298,6 @@ void UTurnBasedActionsComponent::NotifyTurnStarted(const FTurnStartContext& Cont
 
 void UTurnBasedActionsComponent::NotifyOpponentTurnStarted(const FTurnStartContext& Context)
 {
-    // Tick cooldowns -- not our turn
-    TickCooldowns(false);
-
     // Fire designer hook -- default clears stack and pushes spectator
     OnOpponentTurnStarted(Context);
 
@@ -271,6 +313,8 @@ void UTurnBasedActionsComponent::NotifyOpponentTurnStarted(const FTurnStartConte
 
 void UTurnBasedActionsComponent::NotifyTurnEnded()
 {
+    ExitStateSyncLimbo(false);
+
     if (!IsValid(IdleViewerAction))
     {
         UE_LOG(LogTurnBasedMechanics, Warning,
@@ -321,12 +365,14 @@ void UTurnBasedActionsComponent::NotifyUnpaused()
         TEXT("TurnBasedActionsComponent: Unpaused on %s "
              "— popped '%s', stack depth: %d"),
         *GetOwner()->GetName(),
-        IsValid(Popped) ? *Popped->ActionTag.ToString() : TEXT("null"),
+        IsValid(Popped) ? *Popped->GetActionTag().ToString() : TEXT("null"),
         ActionStack.Num());
 }
 
 void UTurnBasedActionsComponent::NotifyMatchEnded()
 {
+    ExitStateSyncLimbo(false);
+
     // Clear stack -- push idle as safe non-empty end state
     if (IsValid(IdleViewerAction))
     {
@@ -342,14 +388,6 @@ void UTurnBasedActionsComponent::NotifyMatchEnded()
         TEXT("TurnBasedActionsComponent: Match ended on %s "
              "— stack cleared"),
         *GetOwner()->GetName());
-}
-
-void UTurnBasedActionsComponent::TickCooldowns(bool bIsMyTurn)
-{
-    for (UTurnBasedAction* Action : RuntimeActions)
-    {
-        if (IsValid(Action)) Action->TickCooldown(bIsMyTurn);
-    }
 }
 
 // --- Stack Control ---
@@ -383,12 +421,12 @@ void UTurnBasedActionsComponent::PushAction(UTurnBasedActionBase* Action)
     ActionStack.Add(Action);
     Action->Activate(GetOwningController());
     OnActionPushed.Broadcast(Action);
-    OnActionPushedSafe.Broadcast(FTurnActionSnapshot{ Action->ActionTag });
+    OnActionPushedSafe.Broadcast(FTurnActionSnapshot{ Action->GetActionTag() });
 
     UE_LOG(LogTurnBasedMechanics, Log,
         TEXT("TurnBasedActionsComponent: Pushed '%s' "
              "— stack depth: %d"),
-        *Action->ActionTag.ToString(),
+        *Action->GetActionTag().ToString(),
         ActionStack.Num());
 }
 
@@ -421,7 +459,7 @@ UTurnBasedActionBase* UTurnBasedActionsComponent::SafePopAction()
 
     OnActionPopped.Broadcast(Popped);
     OnActionPoppedSafe.Broadcast(
-        FTurnActionSnapshot{ IsValid(Popped) ? Popped->ActionTag : FGameplayTag() });
+        FTurnActionSnapshot{ IsValid(Popped) ? Popped->GetActionTag() : FGameplayTag() });
 
     // Reactivate new top
     if (ActionStack.Num() > 0 && IsValid(ActionStack.Last()))
@@ -432,10 +470,10 @@ UTurnBasedActionBase* UTurnBasedActionsComponent::SafePopAction()
     UE_LOG(LogTurnBasedMechanics, Log,
         TEXT("TurnBasedActionsComponent: Popped '%s' "
              "— stack depth: %d, new top: '%s'"),
-        IsValid(Popped) ? *Popped->ActionTag.ToString() : TEXT("null"),
+        IsValid(Popped) ? *Popped->GetActionTag().ToString() : TEXT("null"),
         ActionStack.Num(),
         (ActionStack.Num() > 0 && IsValid(ActionStack.Last()))
-            ? *ActionStack.Last()->ActionTag.ToString()
+            ? *ActionStack.Last()->GetActionTag().ToString()
             : TEXT("none"));
 
     return Popped;
@@ -481,12 +519,12 @@ void UTurnBasedActionsComponent::ClearAndPush(UTurnBasedActionBase* NewRoot)
     ActionStack.Add(NewRoot);
     NewRoot->Activate(GetOwningController());
     OnActionPushed.Broadcast(NewRoot);
-    OnActionPushedSafe.Broadcast(FTurnActionSnapshot{ NewRoot->ActionTag });
+    OnActionPushedSafe.Broadcast(FTurnActionSnapshot{ NewRoot->GetActionTag() });
     
     UE_LOG(LogTurnBasedMechanics, Log,
         TEXT("TurnBasedActionsComponent: Stack cleared and '%s' pushed "
              "as new root on %s"),
-        *NewRoot->ActionTag.ToString(),
+        *NewRoot->GetActionTag().ToString(),
         *GetOwner()->GetName());
 }
 
@@ -506,13 +544,25 @@ bool UTurnBasedActionsComponent::TryPushActionByClass(TSubclassOf<UTurnBasedActi
         });
 
     if (!Found) return false;
-   
-    TryPushActionByRef(*Found);
-    return true;
+
+    // Report whether the push actually happened -- it can be refused (limbo,
+    // awaiting confirmation, CanActivate) and the caller needs to know.
+    return TryPushActionByRef(*Found);
 }
 
 bool UTurnBasedActionsComponent::TryPushActionByRef(UTurnBasedAction* Action)
 {
+    // Post-completion limbo: no new player-initiated action until the
+    // updated state has arrived -- stops accidental repeat requests.
+    if (bAwaitingRuntimeState)
+    {
+        UE_LOG(LogTurnBasedMechanics, Log,
+            TEXT("TurnBasedActionsComponent: TryPushActionByRef blocked -- "
+                 "waiting on PlayerState action state on %s"),
+            *GetOwner()->GetName());
+        return false;
+    }
+
     if (bAwaitingRequestConfirmation)
     {
         UE_LOG(LogTurnBasedMechanics, Warning,
@@ -535,33 +585,9 @@ bool UTurnBasedActionsComponent::TryPushActionByRef(UTurnBasedAction* Action)
     {
         UE_LOG(LogTurnBasedMechanics, Log,
             TEXT("TurnBasedActionsComponent: '%s' cannot activate "
-                 "— completions: %d/%d, cooldown: %d"),
-            *Action->ActionTag.ToString(),
-            Action->CompletionsThisTurn,
-            Action->MaxCompletionsPerTurn,
-            Action->TurnsUntilAvailable);
+                 "— no uses left, per-turn cap reached, or on cooldown"),
+            *Action->GetActionTag().ToString());
         return false;
-    }
-
-    // Check optional interrupt permission on current top
-    UTurnBasedActionBase* CurrentTop = GetTopAction();
-    if (IsValid(CurrentTop) && !Action->bIsRequired)
-    {
-        if (UTurnBasedAction* TopAction =
-            Cast<UTurnBasedAction>(CurrentTop))
-        {
-            if (TopAction->bIsRequired
-                && !TopAction->bAllowsOptionalInterrupt)
-            {
-                UE_LOG(LogTurnBasedMechanics, Warning,
-                    TEXT("TurnBasedActionsComponent: Optional '%s' "
-                         "cannot interrupt required '%s' — "
-                         "bAllowsOptionalInterrupt is false"),
-                    *Action->ActionTag.ToString(),
-                    *TopAction->ActionTag.ToString());
-                return false;
-            }
-        }
     }
 
     PushAction(Action);
@@ -586,7 +612,7 @@ void UTurnBasedActionsComponent::CancelTopAction()
         UE_LOG(LogTurnBasedMechanics, Warning,
             TEXT("TurnBasedActionsComponent: CancelTopAction — "
                  "'%s' is not cancellable"),
-            *TopAction->ActionTag.ToString());
+            *TopAction->GetActionTag().ToString());
         return;
     }
 
@@ -639,12 +665,12 @@ FTurnBasedActionsComponentInfo UTurnBasedActionsComponent::GetInfo() const
 
     if (UTurnBasedActionBase* Top = GetTopAction())
     {
-        Info.TopActionTag = Top->ActionTag;
+        Info.TopActionTag = Top->GetActionTag();
     }
 
     if (UTurnBasedActionBase* Root = GetRootAction())
     {
-        Info.RootActionTag = Root->ActionTag;
+        Info.RootActionTag = Root->GetActionTag();
     }
 
     Info.StackDepth = GetStackDepth();
@@ -663,28 +689,18 @@ TArray<UTurnBasedAction*> UTurnBasedActionsComponent::GetAllRuntimeActions() con
     return Out;
 }
 
-TArray<UTurnBasedAction*> UTurnBasedActionsComponent::GetRequiredActions() const
-{
-    TArray<UTurnBasedAction*> Out;
-    for (UTurnBasedAction* A : RuntimeActions)
-    {
-        if (IsValid(A) && A->bIsRequired) Out.Add(A);
-    }
-    return Out;
-}
-
 UTurnBasedAction* UTurnBasedActionsComponent::FindActionByTag(FGameplayTag Tag) const
 {
     UTurnBasedAction* const* Found = RuntimeActions.FindByPredicate(
         [Tag](const UTurnBasedAction* A)
         {
-            return IsValid(A) && A->ActionTag == Tag;
+            return IsValid(A) && A->GetActionTag() == Tag;
         });
 
     if (Found) return *Found;
 
     // Check root action
-    if (IsValid(RootAction) && RootAction->ActionTag == Tag)
+    if (IsValid(RootAction) && RootAction->GetActionTag() == Tag)
         return RootAction;
 
     return nullptr;
@@ -725,18 +741,24 @@ void UTurnBasedActionsComponent::OnOpponentTurnStarted_Implementation(
     ClearAndPush(SpectatorViewerAction);
 }
 
+bool UTurnBasedActionsComponent::HasTurnEndRequirementTree() const
+{
+    return IsValid(Loadout) && Loadout->HasTurnEndRequirements();
+}
+
 bool UTurnBasedActionsComponent::CanAutoEndTurn_Implementation() const
 {
-    // Default -- all required actions must have at least one completion
-    for (const UTurnBasedAction* Action : RuntimeActions)
+    // No tree: no action contributes to turn end, so nothing is required
+    // before the turn can end (the loadout validator warns about this).
+    if (!HasTurnEndRequirementTree())
     {
-        if (!IsValid(Action)) continue;
-        if (Action->bIsRequired && Action->CompletionsThisTurn == 0)
-        {
-            return false;
-        }
+        return true;
     }
-    return true;
+
+    // Evaluated by the player's authoritative PlayerState (shared with AI
+    // controllers), against this component's own loadout.
+    const ATurnBasedPlayerState* PS = GetOwnerPlayerState();
+    return IsValid(PS) && PS->AreTurnEndRequirementsMet(Loadout);
 }
 
 // --- Completion Handlers ---
@@ -747,7 +769,18 @@ void UTurnBasedActionsComponent::HandleActionCompleted(UTurnBasedAction* Action)
     SafePopAction();
     OnActionCompleted.Broadcast(Action);
     OnActionCompletedSafe.Broadcast(
-        FTurnActionSnapshot{ IsValid(Action) ? Action->ActionTag : FGameplayTag() });
+        FTurnActionSnapshot{ IsValid(Action) ? Action->GetActionTag() : FGameplayTag() });
+
+    // A completion that came from a server-confirmed request waits for the
+    // PlayerState update before checking turn end (see EnterStateSyncLimbo);
+    // any other completion checks immediately, as before.
+    if (bPendingStateSync)
+    {
+        bPendingStateSync = false;
+        EnterStateSyncLimbo();
+        return;
+    }
+
     CheckAutoEndTurn();
 }
 
@@ -757,7 +790,7 @@ void UTurnBasedActionsComponent::HandleActionCancelled(UTurnBasedAction* Action)
     SafePopAction();
     OnActionCancelled.Broadcast(Action);
     OnActionCancelledSafe.Broadcast(
-        FTurnActionSnapshot{ IsValid(Action) ? Action->ActionTag : FGameplayTag() });
+        FTurnActionSnapshot{ IsValid(Action) ? Action->GetActionTag() : FGameplayTag() });
 }
 
 void UTurnBasedActionsComponent::HandleBoardChangeRequested(const FTurnActionRequest& Request)
@@ -779,6 +812,13 @@ void UTurnBasedActionsComponent::HandleBoardChangeRequested(const FTurnActionReq
 
     bAwaitingRequestConfirmation = true;
     PendingRequest = Request;
+
+    // Remember the state revision this request's update must beat (see
+    // EnterStateSyncLimbo). Must be taken now, before the server can answer.
+    if (const ATurnBasedPlayerState* PS = GetOwnerPlayerState())
+    {
+        RevisionAtRequest = PS->GetActionStateRevision();
+    }
 
     // Push before flipping the flag -- PushAction refuses to run while
     // bAwaitingRequestConfirmation is true
@@ -810,12 +850,104 @@ void UTurnBasedActionsComponent::NotifyBoardChangeOutcome(
     {
         if (UTurnBasedAction* Action = Cast<UTurnBasedAction>(GetTopAction()))
         {
+            // New-system loadouts: HandleActionCompleted (fired from inside
+            // Complete) enters limbo instead of checking turn end right away
+            const ATurnBasedPlayerState* PS = GetOwnerPlayerState();
+            bPendingStateSync = IsValid(PS) && PS->HasActionConfig();
             Action->Complete();
+            bPendingStateSync = false;
         }
     }
     // Failure: reactivation above (or having never been deactivated, in
     // the degraded no-awaiting-action case) already is "recommence" --
     // the requesting action is simply live again, ready to retry.
+}
+
+// --- Post-completion limbo ---
+
+void UTurnBasedActionsComponent::EnsureBoundToPlayerState()
+{
+    if (ATurnBasedPlayerState* PS = GetOwnerPlayerState())
+    {
+        PS->OnActionRuntimeStateUpdated.AddUniqueDynamic(
+            this, &UTurnBasedActionsComponent::HandleActionRuntimeStateUpdated);
+    }
+}
+
+ATurnBasedPlayerState* UTurnBasedActionsComponent::GetOwnerPlayerState() const
+{
+    const AController* Controller = GetOwningController();
+    return IsValid(Controller) ? Controller->GetPlayerState<ATurnBasedPlayerState>() : nullptr;
+}
+
+void UTurnBasedActionsComponent::EnterStateSyncLimbo()
+{
+    const ATurnBasedPlayerState* PS = GetOwnerPlayerState();
+
+    // No PlayerState, or the update already landed (it can arrive before the
+    // outcome RPC, e.g. on a listen-server host) -- nothing to wait for.
+    if (!IsValid(PS) || PS->GetActionStateRevision() > RevisionAtRequest)
+    {
+        CheckAutoEndTurn();
+        return;
+    }
+
+    bAwaitingRuntimeState = true;
+
+    // TODO: I understand having this right now but ultimately we should build the system
+    // bullet proof so this does not happen
+    if (const UWorld* World = GetWorld())
+    {
+        World->GetTimerManager().SetTimer(
+            StateSyncTimeoutHandle, this,
+            &UTurnBasedActionsComponent::HandleStateSyncTimeout,
+            StateSyncTimeoutSeconds, false);
+    }
+
+    UE_LOG(LogTurnBasedMechanics, Log,
+        TEXT("TurnBasedActionsComponent: %s entered limbo, waiting on "
+             "PlayerState action state (revision > %d)"),
+        *GetOwner()->GetName(), RevisionAtRequest);
+}
+
+void UTurnBasedActionsComponent::ExitStateSyncLimbo(const bool bCheckTurnEnd)
+{
+    bPendingStateSync = false;
+    if (!bAwaitingRuntimeState) return;
+
+    bAwaitingRuntimeState = false;
+
+    if (const UWorld* World = GetWorld())
+    {
+        World->GetTimerManager().ClearTimer(StateSyncTimeoutHandle);
+    }
+
+    if (bCheckTurnEnd)
+    {
+        CheckAutoEndTurn();
+    }
+}
+
+void UTurnBasedActionsComponent::HandleStateSyncTimeout()
+{
+    if (!bAwaitingRuntimeState) return;
+
+    UE_LOG(LogTurnBasedMechanics, Warning,
+        TEXT("TurnBasedActionsComponent: limbo on %s timed out after %.1fs "
+             "with no PlayerState update -- checking turn end anyway"),
+        *GetOwner()->GetName(), StateSyncTimeoutSeconds);
+
+    ExitStateSyncLimbo(true);
+}
+
+void UTurnBasedActionsComponent::HandleActionRuntimeStateUpdated()
+{
+    if (!bAwaitingRuntimeState) return;
+
+    const ATurnBasedPlayerState* PS = GetOwnerPlayerState();
+    if (!IsValid(PS) || PS->GetActionStateRevision() <= RevisionAtRequest) return;
+
+    ExitStateSyncLimbo(true);
 }
 
 void UTurnBasedActionsComponent::CheckAutoEndTurn()
@@ -834,7 +966,7 @@ void UTurnBasedActionsComponent::LogActionRecord(UTurnBasedAction* Action, FStri
     if (!IsValid(Action)) return;
 
     FTurnBasedActionRecord Record;
-    Record.ActionTag    = Action->ActionTag;
+    Record.ActionTag    = Action->GetActionTag();
     Record.TurnNumber   = CurrentTurnNumber;
     Record.DebugNote    = Note;
     Record.Timestamp    = GetWorld()

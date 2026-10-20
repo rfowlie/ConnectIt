@@ -9,8 +9,8 @@ tags:
 # <the one idea, stated as a short claim>
 
 <Mini-essay in your own words — start, middle, end. Everything a future reader needs to
-grasp this idea on its own, with no other note required. Under 500 words; it should fit
-on screen without scrolling.>
+grasp this idea on its own, with no other note required. Under 1000 words — still a
+single, tightly-scoped read, even if it now takes a scroll.>
 
 ## References
 

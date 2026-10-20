@@ -3,19 +3,25 @@
 #include "Board/ConnectIt_BoardRequestMediator.h"
 #include "ConnectIt_GameplayTags.h"
 #include "GameplayTagContainer.h"
+#include "Misc/ScopeExit.h"
 #include "StructUtils/InstancedStruct.h"
 #include "TurnBasedMechanicsStructs.h"
+#include "Action/TurnBasedAction.h"
+#include "Action/ConnectIt_BoardShiftAction.h"
 #include "Board/ConnectIt_BoardStateComponent.h"
-#include "Board/Rules/ConnectIt_BoardRules.h"
+#include "Board/Operations/ConnectIt_BoardOperations.h"
+#include "Board/Rules/ConnectIt_RuleSet.h"
+#include "Board/Operations/ConnectIt_BoardOperation.h"
+#include "Board/Events/ConnectIt_BoardEvents.h"
 #include "Framework/GameState/ConnectIt_GameState.h"
 #include "Framework/Library/ConnectIt_GameUtilityLibrary.h"
 #include "Framework/PlayerState/ConnectIt_PlayerState.h"
 #include "GameEvent/ConnectIt_PlacePieceGameEvent.h"
 
 
-void UConnectIt_BoardRequestMediator::Initialise(UConnectIt_BoardRules* InBoardRules)
+void UConnectIt_BoardRequestMediator::Initialise(const FConnectItRuleSet* InRules)
 {
-    BoardRules = InBoardRules;
+    Rules = InRules;
 }
 
 // UConnectIt_BoardStateComponent* UConnectIt_BoardRequestMediator::GetBoardState() const
@@ -35,8 +41,8 @@ void UConnectIt_BoardRequestMediator::CreateGameEventsFromBoardUpdate_Implementa
         return;
     }
 
-    FConnectItBoardChangeEvent ChangeEvent = BoardState->GetChangeEvent();
-    if (ChangeEvent.bPiecePlaced)
+    const FConnectItBoardChangeEvent& ChangeEvent = BoardState->GetChangeEvent();
+    if (ChangeEvent.FindFirst<FConnectItBoardEvent_PiecePlaced>())
     {
         // create place piece game event
         // or initialize reusable game event and add to queue
@@ -55,10 +61,119 @@ void UConnectIt_BoardRequestMediator::ExecuteGameEvents()
 
 // --- Request Processing ---
 
-bool UConnectIt_BoardRequestMediator::ProcessRequest(const FTurnActionRequest& Request)
+bool UConnectIt_BoardRequestMediator::ProcessRequest(const FTurnActionRequest& Request, int32 RequestingFaction)
 {
-    // UConnectIt_BoardStateComponent* BoardState = GetBoardState();
-    const UConnectIt_BoardStateComponent* BoardState = UConnectIt_GameUtilityLibrary::GetBoardStateComponent(this);
+    // The payload is the board change itself. It is client-supplied, so it
+    // must be an operation at all. What kind of request this is comes from
+    // the operation -- there is nowhere else for it to be stated.
+    const FConnectItBoardOperation* Requested = Request.Payload.GetPtr<FConnectItBoardOperation>();
+    if (!Requested)
+    {
+        UE_LOG(LogTemp, Warning,
+            TEXT("ConnectIt_BoardRequestMediator: request by action '%s' rejected "
+                 "-- its payload is missing or is not a board operation"),
+            *Request.ActionTag.ToString());
+        return false;
+    }
+    const FGameplayTag RequestType = Requested->GetRequestType();
+
+    // Every board-change request is spent against an action in the requester's
+    // loadout, and the requester's PlayerState holds the authoritative
+    // per-action state. There is no ungated path: a player with no action
+    // state (e.g. the PlayerState was never seeded) can do nothing.
+    // RequestingFaction is the server's own knowledge of who sent this.
+    AConnectIt_PlayerState* PlayerState = RequestingFaction >= 0
+        ? UConnectIt_GameUtilityLibrary::GetPlayerStateForFaction(this, RequestingFaction)
+        : nullptr;
+
+    if (!IsValid(PlayerState) || !PlayerState->HasActionConfig())
+    {
+        UE_LOG(LogTemp, Error,
+            TEXT("ConnectIt_BoardRequestMediator: request '%s' rejected -- "
+                 "faction %d has no action state (PlayerState missing, or not "
+                 "seeded from a loadout with PermanentActions/NumberedActions)"),
+            *RequestType.ToString(), RequestingFaction);
+        return false;
+    }
+
+    // ActionTag is client-supplied: it must name an action in this player's
+    // loadout, that action must be allowed to send this kind of operation,
+    // and the player must currently be able to use it.
+    const TSubclassOf<UTurnBasedAction> ActionClass =
+        PlayerState->FindActionClassByTag(Request.ActionTag);
+    if (!ActionClass)
+    {
+        UE_LOG(LogTemp, Warning,
+            TEXT("ConnectIt_BoardRequestMediator: request '%s' rejected -- "
+                 "ActionTag '%s' is not in faction %d's loadout"),
+            *RequestType.ToString(),
+            *Request.ActionTag.ToString(), RequestingFaction);
+        return false;
+    }
+
+    const UTurnBasedAction* DefaultAction = ActionClass->GetDefaultObject<UTurnBasedAction>();
+    if (!IsValid(DefaultAction) || !DefaultAction->ProducesRequestType(RequestType))
+    {
+        UE_LOG(LogTemp, Warning,
+            TEXT("ConnectIt_BoardRequestMediator: request '%s' rejected -- "
+                 "action '%s' does not produce that request type"),
+            *RequestType.ToString(), *ActionClass->GetName());
+        return false;
+    }
+
+    // A shift's Steps is client-supplied too: it must be exactly what the
+    // sending action grants, or any client could ask for any shift distance.
+    // (Direction is not checked -- it is runtime-settable on the action.)
+    if (const FConnectItBoardOperation_Shift* Shift = Request.Payload.GetPtr<FConnectItBoardOperation_Shift>())
+    {
+        const UConnectIt_BoardShiftAction* ShiftAction = Cast<UConnectIt_BoardShiftAction>(DefaultAction);
+        if (!ShiftAction || Shift->Steps != ShiftAction->ShiftSteps)
+        {
+            UE_LOG(LogTemp, Warning,
+                TEXT("ConnectIt_BoardRequestMediator: request '%s' rejected -- "
+                     "shift of %d step(s) but action '%s' grants %d"),
+                *RequestType.ToString(), Shift->Steps, *ActionClass->GetName(),
+                ShiftAction ? ShiftAction->ShiftSteps : 0);
+            return false;
+        }
+    }
+
+    if (!PlayerState->CanUseAction(ActionClass))
+    {
+        UE_LOG(LogTemp, Warning,
+            TEXT("ConnectIt_BoardRequestMediator: request '%s' rejected -- "
+                 "faction %d cannot use '%s' right now (no uses left, "
+                 "per-turn cap reached, or on cooldown)"),
+            *RequestType.ToString(), RequestingFaction,
+            *ActionClass->GetName());
+        return false;
+    }
+
+    const bool bSucceeded = DispatchRequest(Request.Payload, RequestingFaction);
+
+    // Spend the use only once the change has actually been committed --
+    // never burn one on a request rejected above or by its handler.
+    if (bSucceeded)
+    {
+        if (!PlayerState->ConsumeActionUse(ActionClass))
+        {
+            UE_LOG(LogTemp, Error,
+                TEXT("ConnectIt_BoardRequestMediator: '%s' committed but its "
+                     "use could not be consumed on faction %d"),
+                *ActionClass->GetName(), RequestingFaction);
+        }
+    }
+
+    return bSucceeded;
+}
+
+bool UConnectIt_BoardRequestMediator::DispatchRequest(
+    const FInstancedStruct& Payload, int32 RequestingFaction)
+{
+    bDispatching = true;
+    ON_SCOPE_EXIT { bDispatching = false; };
+
+    UConnectIt_BoardStateComponent* BoardState = UConnectIt_GameUtilityLibrary::GetBoardStateComponent(this);
     if (!IsValid(BoardState))
     {
         UE_LOG(LogTemp, Error,
@@ -70,7 +185,8 @@ bool UConnectIt_BoardRequestMediator::ProcessRequest(const FTurnActionRequest& R
     // Universal choke point regardless of caller (player-controller RPC or
     // AI controller's direct server-side call) -- once the game is over,
     // no further board mutation is possible, full stop.
-    if (BoardState->GetCurrentState().bGameOver)
+    const FConnectItBoardState& Current = BoardState->GetCurrentState();
+    if (Current.bGameOver)
     {
         UE_LOG(LogTemp, Warning,
             TEXT("ConnectIt_BoardRequestMediator: ProcessRequest rejected — "
@@ -78,517 +194,62 @@ bool UConnectIt_BoardRequestMediator::ProcessRequest(const FTurnActionRequest& R
         return false;
     }
 
-    if (!Request.IsValid())
+    // Work on our own copy of the operation, made by the requester the
+    // server knows -- never by whoever the payload says
+    FInstancedStruct OperationStorage = Payload;
+    FConnectItBoardOperation* OperationPtr = OperationStorage.GetMutablePtr<FConnectItBoardOperation>();
+    if (!ensure(OperationPtr)) return false; // ProcessRequest checked this
+    FConnectItBoardOperation& Operation = *OperationPtr;
+    Operation.Faction = RequestingFaction;
+
+    const FGameplayTag RequestType = Operation.GetRequestType();
+
+    // May this be done to the board as it stands?
+    FString WhyNot;
+    if (!Operation.CanApply(Current, &WhyNot))
     {
         UE_LOG(LogTemp, Warning,
-            TEXT("ConnectIt_BoardRequestMediator: Received invalid "
-                 "FTurnActionRequest"));
+            TEXT("ConnectIt_BoardRequestMediator: '%s' by faction %d rejected "
+                 "-- %s"),
+            *RequestType.ToString(), Operation.Faction, *WhyNot);
         return false;
     }
 
-    if (Request.RequestType == ConnectIt_Game_PlacePiece)
-    {
-        if (const FConnectItRequestPlacePiece* Payload =
-            Request.Payload.GetPtr<FConnectItRequestPlacePiece>())
-        {
-            return HandlePlacePieceRequest(*Payload, Request.FactionID);
-        }
-
-        UE_LOG(LogTemp, Error,
-            TEXT("ConnectIt_BoardRequestMediator: PlacePiece request payload "
-                 "missing or wrong type"));
-        return false;
-    }
-
-    if (Request.RequestType == ConnectIt_Game_ForcePlacePiece)
-    {
-        if (const FConnectItRequestForcePlacePiece* Payload =
-            Request.Payload.GetPtr<FConnectItRequestForcePlacePiece>())
-        {
-            return HandleForcePlacePieceRequest(*Payload, Request.FactionID);
-        }
-
-        UE_LOG(LogTemp, Error,
-            TEXT("ConnectIt_BoardRequestMediator: ForcePlacePiece request payload "
-                 "missing or wrong type"));
-        return false;
-    }
-
-    if (Request.RequestType == ConnectIt_Game_DestroyTileMultiplier)
-    {
-        if (const FConnectItRequestDestroyTileMultiplier* Payload =
-            Request.Payload.GetPtr<FConnectItRequestDestroyTileMultiplier>())
-        {
-            return HandleDestroyTileMultiplierRequest(*Payload);
-        }
-
-        UE_LOG(LogTemp, Error,
-            TEXT("ConnectIt_BoardRequestMediator: DestroyTileMultiplier request "
-                 "payload missing or wrong type"));
-        return false;
-    }
-
-    if (Request.RequestType == ConnectIt_Game_RemovePiece)
-    {
-        if (const FConnectItRequestRemovePiece* Payload =
-            Request.Payload.GetPtr<FConnectItRequestRemovePiece>())
-        {
-            return HandleRemovePieceRequest(*Payload);
-        }
-
-        UE_LOG(LogTemp, Error,
-            TEXT("ConnectIt_BoardRequestMediator: RemovePiece request payload "
-                 "missing or wrong type"));
-        return false;
-    }
-
-    if (Request.RequestType == ConnectIt_Game_SwapPieces)
-    {
-        if (const FConnectItRequestSwapPieces* Payload =
-            Request.Payload.GetPtr<FConnectItRequestSwapPieces>())
-        {
-            return HandleSwapPiecesRequest(*Payload, Request.FactionID);
-        }
-
-        UE_LOG(LogTemp, Error,
-            TEXT("ConnectIt_BoardRequestMediator: SwapPieces request payload "
-                 "missing or wrong type"));
-        return false;
-    }
-
-    if (Request.RequestType == ConnectIt_Game_ToggleTileActive)
-    {
-        if (const FConnectItRequestToggleTileActive* Payload =
-            Request.Payload.GetPtr<FConnectItRequestToggleTileActive>())
-        {
-            return HandleToggleTileActiveRequest(*Payload);
-        }
-
-        UE_LOG(LogTemp, Error,
-            TEXT("ConnectIt_BoardRequestMediator: ToggleTileActive request payload "
-                 "missing or wrong type"));
-        return false;
-    }
-
-    if (Request.RequestType == ConnectIt_Game_CapturePiece)
-    {
-        if (const FConnectItRequestCapturePiece* Payload =
-            Request.Payload.GetPtr<FConnectItRequestCapturePiece>())
-        {
-            return HandleCapturePieceRequest(*Payload, Request.FactionID);
-        }
-
-        UE_LOG(LogTemp, Error,
-            TEXT("ConnectIt_BoardRequestMediator: CapturePiece request payload "
-                 "missing or wrong type"));
-        return false;
-    }
-
-    UE_LOG(LogTemp, Warning,
-        TEXT("ConnectIt_BoardRequestMediator: Unknown request type '%s'"),
-        *Request.RequestType.ToString());
-    return false;
-}
-
-bool UConnectIt_BoardRequestMediator::HandlePlacePieceRequest(
-    const FConnectItRequestPlacePiece& Request, int32 FactionID) const
-{
-    if (Request.Positions.IsEmpty())
-    {
-        UE_LOG(LogTemp, Warning,
-            TEXT("ConnectIt_BoardRequestMediator: PlacePiece request "
-                 "has no positions"));
-        return false;
-    }
-
-    // UConnectIt_BoardStateComponent* BoardState = GetBoardState();
-    UConnectIt_BoardStateComponent* BoardState = UConnectIt_GameUtilityLibrary::GetBoardStateComponent(this);
-    const FGridPosition TargetPosition = Request.Positions[0];
-    const FConnectItBoardState& Current = BoardState->GetCurrentState();
-
-    if (!BoardRules->IsTilePlaceable(Current, TargetPosition))
-    {
-        UE_LOG(LogTemp, Warning,
-            TEXT("ConnectIt_BoardRequestMediator: PlacePiece rejected "
-                 "— position (%d,%d) invalid for placement"),
-            TargetPosition.X, TargetPosition.Y);
-        return false;
-    }
-
-    FConnectItBoardState NewState = Current;
-
-    if (FConnectItTileData* TileData =
-        NewState.GetTileDataMutable(TargetPosition))
-    {
-        TileData->SetFactionPiece(FactionID);
-    }
-
-    // check scoring achieved (updates NewState)
-    TArray<FGridPosition> ScoringPositions;
-    const float PointsScored = BoardRules->ApplyScoring(
-        NewState, TargetPosition, FactionID, ScoringPositions);
-
-    // check win achieved
-    BoardRules->CheckWinCondition(NewState);
-
-    // Record what happened -- replicated alongside the state itself via
+    // What happened is recorded as an ordered list of board events (see
+    // ConnectIt_BoardEvents.h) that replicates alongside the state itself via
     // SetBoardState, instead of broadcasting gameplay delegates directly
     // here. This only ever runs on the server, so a direct broadcast would
     // never reach a real remote client. ConnectIt_BoardStateComponent reads
-    // this back from its own BoardSnapshot.ChangeEvent and enqueues the
-    // matching event tags on UGameEventTaskSubsystem itself, symmetrically
-    // on both server (from SetBoardState) and client (from OnRep) -- this
-    // mediator plays no role in sequencing, only in deciding what happened.
+    // the list back from its own BoardSnapshot.ChangeEvent and queues each
+    // event on UGameEventTaskSubsystem itself, symmetrically on both server
+    // (from SetBoardState) and client (from OnRep) -- this mediator plays no
+    // role in sequencing, only in deciding what happened, in what order.
     FConnectItBoardChangeEvent ChangeEvent;
-    ChangeEvent.bPiecePlaced        = true;
-    ChangeEvent.PlacedPosition      = TargetPosition;
-    ChangeEvent.PlacingFactionSlot  = FactionID;
-    ChangeEvent.bLineScored         = PointsScored > 0.f;
-    ChangeEvent.ScoringFactionSlot  = FactionID;
-    ChangeEvent.PointsScored        = PointsScored;
-    ChangeEvent.ScoringLinePositions = ScoringPositions;
-    // Edge-triggered -- true only on the transition into game-over, not
-    // "the game is currently over" (Current.bGameOver would already be
-    // true on every snapshot after the winning move)
-    ChangeEvent.bGameWon            = NewState.bGameOver && !Current.bGameOver;
-    ChangeEvent.WinningFactionSlot  = NewState.WinningFactionSlot;
 
-    if (ChangeEvent.bLineScored)
-    {
-        UE_LOG(LogTemp, Log,
-            TEXT("ConnectIt_BoardRequestMediator: Faction %d scored %.0f points"),
-            FactionID, PointsScored);
-    }
-
-    BoardState->SetBoardState(NewState, ChangeEvent);
-    return true;
-}
-
-bool UConnectIt_BoardRequestMediator::HandleForcePlacePieceRequest(
-    const FConnectItRequestForcePlacePiece& Request, int32 FactionID) const
-{
-    // UConnectIt_BoardStateComponent* BoardState = GetBoardState();
-    UConnectIt_BoardStateComponent* BoardState = UConnectIt_GameUtilityLibrary::GetBoardStateComponent(this);
-    const FConnectItBoardState& Current = BoardState->GetCurrentState();
-
-    // Only requires the position to exist -- deliberately skips
-    // IsTileValidForPlacement (active/unoccupied) so this can overwrite an
-    // inactive or already-occupied tile. Registry existence is still
-    // checked so a garbage position can't silently grow the tile arrays.
-    if (!Current.GetTileData(Request.Position))
-    {
-        UE_LOG(LogTemp, Warning,
-            TEXT("ConnectIt_BoardRequestMediator: ForcePlacePiece rejected "
-                 "-- position (%d,%d) not registered"),
-            Request.Position.X, Request.Position.Y);
-        return false;
-    }
-
+    // The change itself and the scoring that follows from it (the operation
+    // changes the board, appending the event saying what it did; the rule set
+    // then scores where pieces arrived, appending Scored events) -- the same
+    // call a Blueprint "Simulate Operation" makes...
     FConnectItBoardState NewState = Current;
+    const float PointsScored = Rules->CarryOutOperation(Operation, NewState, &ChangeEvent);
 
-    if (FConnectItTileData* TileData = NewState.GetTileDataMutable(Request.Position))
+    // ...then how far each side has got through its win groups (appending a
+    // checkpoint event for each group completed that isn't a side's last) and
+    // whether anyone has now won
+    Rules->StampWinState(NewState, &ChangeEvent);
+
+    // Edge-triggered -- only on the transition into game-over, not "the
+    // game is currently over"
+    if (NewState.bGameOver && !Current.bGameOver)
     {
-        TileData->SetFactionPiece(FactionID);
+        FConnectItBoardEvent_GameWon Won;
+        Won.WinningFaction = NewState.WinningFactionSlot;
+        ChangeEvent.Add(Won);
     }
 
-    TArray<FGridPosition> ScoringPositions;
-    const float PointsScored = BoardRules->ApplyScoring(
-        NewState, Request.Position, FactionID, ScoringPositions);
-
-    BoardRules->CheckWinCondition(NewState);
-
-    FConnectItBoardChangeEvent ChangeEvent;
-    ChangeEvent.bPiecePlaced       = true;
-    ChangeEvent.PlacedPosition     = Request.Position;
-    ChangeEvent.PlacingFactionSlot = FactionID;
-    ChangeEvent.bLineScored        = PointsScored > 0.f;
-    ChangeEvent.ScoringFactionSlot = FactionID;
-    ChangeEvent.PointsScored       = PointsScored;
-    ChangeEvent.ScoringLinePositions = ScoringPositions;
-    ChangeEvent.bGameWon           = NewState.bGameOver && !Current.bGameOver;
-    ChangeEvent.WinningFactionSlot = NewState.WinningFactionSlot;
-
-    BoardState->SetBoardState(NewState, ChangeEvent);
-    return true;
-}
-
-bool UConnectIt_BoardRequestMediator::HandleDestroyTileMultiplierRequest(
-    const FConnectItRequestDestroyTileMultiplier& Request) const
-{
-    // UConnectIt_BoardStateComponent* BoardState = GetBoardState();
-    UConnectIt_BoardStateComponent* BoardState = UConnectIt_GameUtilityLibrary::GetBoardStateComponent(this);
-    const FConnectItBoardState& Current = BoardState->GetCurrentState();
-    const FConnectItTileData* Existing = Current.GetTileData(Request.Position);
-
-    if (!Existing)
-    {
-        UE_LOG(LogTemp, Warning,
-            TEXT("ConnectIt_BoardRequestMediator: DestroyTileMultiplier rejected "
-                 "-- position (%d,%d) not registered"),
-            Request.Position.X, Request.Position.Y);
-        return false;
-    }
-
-    if (Existing->Multiplier == 1.0f)
-    {
-        UE_LOG(LogTemp, Warning,
-            TEXT("ConnectIt_BoardRequestMediator: DestroyTileMultiplier rejected "
-                 "-- position (%d,%d) has no multiplier to destroy"),
-            Request.Position.X, Request.Position.Y);
-        return false;
-    }
-
-    FConnectItBoardState NewState = Current;
-
-    if (FConnectItTileData* TileData = NewState.GetTileDataMutable(Request.Position))
-    {
-        TileData->Multiplier = 1.0f;
-    }
-
-    FConnectItBoardChangeEvent ChangeEvent;
-    ChangeEvent.bTileMultiplierDestroyed   = true;
-    ChangeEvent.MultiplierDestroyedPosition = Request.Position;
-
-    BoardState->SetBoardState(NewState, ChangeEvent);
-    return true;
-}
-
-bool UConnectIt_BoardRequestMediator::HandleRemovePieceRequest(
-    const FConnectItRequestRemovePiece& Request) const
-{
-    if (Request.DelayTurns > 0)
-    {
-        UE_LOG(LogTemp, Warning,
-            TEXT("ConnectIt_BoardRequestMediator: RemovePiece rejected -- "
-                 "DelayTurns %d not supported yet (no per-turn scheduling "
-                 "mechanism exists), only immediate (0) removal is handled"),
-            Request.DelayTurns);
-        return false;
-    }
-
-    // UConnectIt_BoardStateComponent* BoardState = GetBoardState();
-    UConnectIt_BoardStateComponent* BoardState = UConnectIt_GameUtilityLibrary::GetBoardStateComponent(this);
-    const FConnectItBoardState& Current = BoardState->GetCurrentState();
-    const FConnectItTileData* Existing = Current.GetTileData(Request.Position);
-
-    if (!Existing || !Existing->bIsOccupied)
-    {
-        UE_LOG(LogTemp, Warning,
-            TEXT("ConnectIt_BoardRequestMediator: RemovePiece rejected -- "
-                 "position (%d,%d) is not occupied"),
-            Request.Position.X, Request.Position.Y);
-        return false;
-    }
-
-    const int32 RemovedFactionSlot = Existing->FactionPiece;
-
-    FConnectItBoardState NewState = Current;
-
-    if (FConnectItTileData* TileData = NewState.GetTileDataMutable(Request.Position))
-    {
-        TileData->SetFactionPiece(-1);
-    }
-
-    FConnectItBoardChangeEvent ChangeEvent;
-    ChangeEvent.bPieceRemoved      = true;
-    ChangeEvent.RemovedPosition    = Request.Position;
-    ChangeEvent.RemovedFactionSlot = RemovedFactionSlot;
-
-    BoardState->SetBoardState(NewState, ChangeEvent);
-    return true;
-}
-
-bool UConnectIt_BoardRequestMediator::HandleSwapPiecesRequest(
-    const FConnectItRequestSwapPieces& Request, const int32 FactionID) const
-{
-    // Server-authoritative use-budget check -- the client-side action's own
-    // pre-check (CanActivate-equivalent) is cosmetic only, this is the real
-    // gate. Never trust a client to have already enforced this.
-    AConnectIt_PlayerState* PlayerState =
-        UConnectIt_GameUtilityLibrary::GetPlayerStateForFaction(this, FactionID);
-    if (!IsValid(PlayerState) || PlayerState->GetSwapActionUsesRemaining() <= 0)
-    {
-        UE_LOG(LogTemp, Warning,
-            TEXT("ConnectIt_BoardRequestMediator: SwapPieces rejected -- "
-                 "faction %d has no SWAP uses remaining"),
-            FactionID);
-        return false;
-    }
-    
-    // UConnectIt_BoardStateComponent* BoardState = GetBoardState();
-    UConnectIt_BoardStateComponent* BoardState = UConnectIt_GameUtilityLibrary::GetBoardStateComponent(this);
-    const FConnectItBoardState& Current = BoardState->GetCurrentState();
-    const FConnectItTileData* DataA = Current.GetTileData(Request.PositionA);
-    const FConnectItTileData* DataB = Current.GetTileData(Request.PositionB);
-
-    if (!DataA || !DataB || !DataA->bIsOccupied || !DataB->bIsOccupied)
-    {
-        UE_LOG(LogTemp, Warning,
-            TEXT("ConnectIt_BoardRequestMediator: SwapPieces rejected -- "
-                 "both (%d,%d) and (%d,%d) must be registered and occupied"),
-            Request.PositionA.X, Request.PositionA.Y,
-            Request.PositionB.X, Request.PositionB.Y);
-        return false;
-    }
-
-    // A trade, not an arbitrary reposition -- exactly one side must belong
-    // to the requesting faction.
-    const bool bOwnsA = DataA->FactionPiece == FactionID;
-    const bool bOwnsB = DataB->FactionPiece == FactionID;
-    if (bOwnsA == bOwnsB)
-    {
-        UE_LOG(LogTemp, Warning,
-            TEXT("ConnectIt_BoardRequestMediator: SwapPieces rejected -- "
-                 "faction %d must own exactly one of (%d,%d)/(%d,%d)"),
-            FactionID, Request.PositionA.X, Request.PositionA.Y,
-            Request.PositionB.X, Request.PositionB.Y);
-        return false;
-    }
-
-    FConnectItBoardState NewState = Current;
-    FConnectItTileData* MutableA = NewState.GetTileDataMutable(Request.PositionA);
-    FConnectItTileData* MutableB = NewState.GetTileDataMutable(Request.PositionB);
-    int32 A = MutableA->FactionPiece;
-    int32 B = MutableB->FactionPiece;
-    MutableA->SetFactionPiece(B);
-    MutableB->SetFactionPiece(A);
-
-    // Re-run scoring for both positions' new occupying faction -- a swap
-    // that completes a line now scores like any other turn-ending move
-    // (previously a documented, deliberate gap). Evaluated independently
-    // per position since A and B now belong to different factions by
-    // construction (see the ownership check above); ScoringLinePositions
-    // accumulates both calls' results (ApplyScoring appends, never clears).
-    // Known simplification: FConnectItBoardChangeEvent only carries a
-    // single ScoringFactionSlot, so the rare case of BOTH positions
-    // completing a line in the same swap can only name one of the two
-    // scoring factions in the event -- ScoreBoard itself (mutated inside
-    // ApplyScoring) is correct for both regardless.
-    TArray<FGridPosition> ScoringPositions;
-    const float PointsScoredA = BoardRules->ApplyScoring(
-        NewState, Request.PositionA, B, ScoringPositions);
-    const float PointsScoredB = BoardRules->ApplyScoring(
-        NewState, Request.PositionB, A, ScoringPositions);
-
-    BoardRules->CheckWinCondition(NewState);
-
-    FConnectItBoardChangeEvent ChangeEvent;
-    ChangeEvent.bPiecesSwapped      = true;
-    ChangeEvent.SwapPositionA       = Request.PositionA;
-    ChangeEvent.SwapPositionB       = Request.PositionB;
-    ChangeEvent.bLineScored         = PointsScoredA > 0.f || PointsScoredB > 0.f;
-    ChangeEvent.ScoringFactionSlot  = PointsScoredA > 0.f ? B : A;
-    ChangeEvent.PointsScored        = PointsScoredA + PointsScoredB;
-    ChangeEvent.ScoringLinePositions = ScoringPositions;
-    ChangeEvent.bGameWon            = NewState.bGameOver && !Current.bGameOver;
-    ChangeEvent.WinningFactionSlot  = NewState.WinningFactionSlot;
-
-    if (ChangeEvent.bLineScored)
-    {
-        UE_LOG(LogTemp, Log,
-            TEXT("ConnectIt_BoardRequestMediator: Swap scored — "
-                 "faction %d: %.0f, faction %d: %.0f"),
-            B, PointsScoredA, A, PointsScoredB);
-    }
-
-    BoardState->SetBoardState(NewState, ChangeEvent);
-
-    // Decrement only after the swap has been committed -- never burn a use
-    // on a request that got rejected above.
-    PlayerState->ConsumeSwapUse();
-
-    return true;
-}
-
-bool UConnectIt_BoardRequestMediator::HandleToggleTileActiveRequest(
-    const FConnectItRequestToggleTileActive& Request) const
-{
-    // UConnectIt_BoardStateComponent* BoardState = GetBoardState();
-    UConnectIt_BoardStateComponent* BoardState = UConnectIt_GameUtilityLibrary::GetBoardStateComponent(this);
-    const FConnectItBoardState& Current = BoardState->GetCurrentState();
-    const FConnectItTileData* Existing = Current.GetTileData(Request.Position);
-
-    if (!Existing)
-    {
-        UE_LOG(LogTemp, Warning,
-            TEXT("ConnectIt_BoardRequestMediator: ToggleTileActive rejected -- "
-                 "position (%d,%d) not registered"),
-            Request.Position.X, Request.Position.Y);
-        return false;
-    }
-
-    FConnectItBoardState NewState = Current;
-    bool bNewActiveState = false;
-
-    if (FConnectItTileData* TileData = NewState.GetTileDataMutable(Request.Position))
-    {
-        TileData->bIsActive = !TileData->bIsActive;
-        bNewActiveState = TileData->bIsActive;
-    }
-
-    FConnectItBoardChangeEvent ChangeEvent;
-    ChangeEvent.bTileActiveToggled       = true;
-    ChangeEvent.ToggledPosition          = Request.Position;
-    ChangeEvent.bToggledPositionNowActive = bNewActiveState;
-
-    BoardState->SetBoardState(NewState, ChangeEvent);
-    return true;
-}
-
-bool UConnectIt_BoardRequestMediator::HandleCapturePieceRequest(
-    const FConnectItRequestCapturePiece& Request, int32 FactionID) const
-{
-    // UConnectIt_BoardStateComponent* BoardState = GetBoardState();
-    UConnectIt_BoardStateComponent* BoardState = UConnectIt_GameUtilityLibrary::GetBoardStateComponent(this);
-    const FConnectItBoardState& Current = BoardState->GetCurrentState();
-    const FConnectItTileData* Existing = Current.GetTileData(Request.Position);
-
-    if (!Existing || !Existing->bIsOccupied)
-    {
-        UE_LOG(LogTemp, Warning,
-            TEXT("ConnectIt_BoardRequestMediator: CapturePiece rejected -- "
-                 "position (%d,%d) is not occupied"),
-            Request.Position.X, Request.Position.Y);
-        return false;
-    }
-
-    if (Existing->FactionPiece == FactionID)
-    {
-        UE_LOG(LogTemp, Warning,
-            TEXT("ConnectIt_BoardRequestMediator: CapturePiece rejected -- "
-                 "position (%d,%d) already belongs to faction %d"),
-            Request.Position.X, Request.Position.Y, FactionID);
-        return false;
-    }
-
-    const int32 PreviousFactionSlot = Existing->FactionPiece;
-
-    FConnectItBoardState NewState = Current;
-
-    if (FConnectItTileData* TileData = NewState.GetTileDataMutable(Request.Position))
-    {
-        TileData->SetFactionPiece(FactionID);
-    }
-
-    // Exactly one position changed ownership -- same well-defined case
-    // HandlePlacePieceRequest already handles, unlike HandleSwapPiecesRequest
-    TArray<FGridPosition> ScoringPositions;
-    const float PointsScored = BoardRules->ApplyScoring(
-        NewState, Request.Position, FactionID, ScoringPositions);
-
-    BoardRules->CheckWinCondition(NewState);
-
-    FConnectItBoardChangeEvent ChangeEvent;
-    ChangeEvent.bPieceCaptured        = true;
-    ChangeEvent.CapturedPosition      = Request.Position;
-    ChangeEvent.CapturingFactionSlot  = FactionID;
-    ChangeEvent.PreviousFactionSlot   = PreviousFactionSlot;
-    ChangeEvent.bLineScored           = PointsScored > 0.f;
-    ChangeEvent.ScoringFactionSlot    = FactionID;
-    ChangeEvent.PointsScored          = PointsScored;
-    ChangeEvent.ScoringLinePositions  = ScoringPositions;
-    ChangeEvent.bGameWon              = NewState.bGameOver && !Current.bGameOver;
-    ChangeEvent.WinningFactionSlot    = NewState.WinningFactionSlot;
+    UE_LOG(LogTemp, Log,
+        TEXT("ConnectIt_BoardRequestMediator: '%s' %s by faction %d (scored %.0f)"),
+        *RequestType.ToString(), *Operation.Describe(), Operation.Faction, PointsScored);
 
     BoardState->SetBoardState(NewState, ChangeEvent);
     return true;

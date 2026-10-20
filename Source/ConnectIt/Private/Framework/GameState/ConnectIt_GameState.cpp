@@ -1,6 +1,7 @@
 ﻿// Fill out your copyright notice in the Description page of Project Settings.
 
 #include "Framework/GameState/ConnectIt_GameState.h"
+#include "Board/Operations/ConnectIt_BoardOperations.h"
 #include "Net/UnrealNetwork.h"
 #include "TurnBasedMechanicsStructs.h"
 #include "Board/ConnectIt_BoardStateComponent.h"
@@ -22,9 +23,23 @@ void AConnectIt_GameState::GetLifetimeReplicatedProps(
 {
     Super::GetLifetimeReplicatedProps(OutLifetimeProps);
     DOREPLIFETIME(AConnectIt_GameState, MatchResult);
+    DOREPLIFETIME(AConnectIt_GameState, MatchRules);
 }
 
 // --- Server API ---
+
+void AConnectIt_GameState::SetMatchRules(const FConnectItRuleSet& InRules)
+{
+    if (!HasAuthority()) return;
+
+    MatchRules = InRules;
+    OnMatchRulesChanged.Broadcast();
+}
+
+void AConnectIt_GameState::OnRep_MatchRules()
+{
+    OnMatchRulesChanged.Broadcast();
+}
 
 void AConnectIt_GameState::SetMatchResult(
     int32 WinningFactionSlot,
@@ -108,7 +123,7 @@ bool AConnectIt_GameState::IsTileValidForPlacement(
 {
     if (UConnectIt_BoardStateComponent* BSC = GetBoardStateComponent())
     {
-        return BSC->GetCurrentState().IsTileValidForPlacement(Position);
+        return FConnectItBoardOperation_PlacePiece::IsTilePlaceableAt(BSC->GetCurrentState(), Position);
     }
     return false;
 }

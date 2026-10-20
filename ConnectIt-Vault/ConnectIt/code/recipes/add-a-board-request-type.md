@@ -8,8 +8,8 @@ touches:
   - Source/ConnectIt/Public/Board/ConnectIt_BoardStateComponent.h — EnqueueBoardEventTags branch
   - Source/ConnectIt/Public/ConnectIt_GameplayTags.h (a request-type tag + a board-event tag)
   - a UTurnBasedAction subclass that builds and sends the request
-reconciled: 2026-09-10
-commit: 6477d5d
+reconciled: 2026-09-18
+commit: 9187568
 ---
 
 # Recipe: add a board request type

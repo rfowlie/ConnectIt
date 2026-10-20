@@ -5,6 +5,8 @@
 #include "CoreMinimal.h"
 #include "Kismet/BlueprintFunctionLibrary.h"
 #include "ConnectIt_Structs.h"
+#include "StructUtils/InstancedStruct.h"
+#include "Board/Rules/ConnectIt_RuleSet.h"
 #include "ConnectIt_BoardStateLibrary.generated.h"
 
 // Blueprint-callable queries over FConnectItBoardState/FConnectItTileData,
@@ -89,4 +91,44 @@ public:
     UFUNCTION(BlueprintPure, Category = "ConnectIt|Board State")
     static TArray<FGridPosition> GetChangedPositions(
         const FConnectItBoardState& Previous, const FConnectItBoardState& Current);
+
+    // --- For Blueprint AI strategies (and anything else that plans a move) ---
+
+    // Every position a piece may be placed on right now -- the same check
+    // the server makes of a Place Piece request
+    // (FConnectItBoardOperation_PlacePiece::IsTilePlaceable).
+    UFUNCTION(BlueprintPure, Category = "ConnectIt|Board State",
+        meta = (DisplayName = "Get Placeable Positions (Board State)"))
+    static TArray<FGridPosition> GetPlaceablePositions(const FConnectItBoardState& State);
+
+    // "What would happen if Faction made this move?" -- without making it.
+    // Operation is a board operation struct (e.g. Place Piece with a
+    // Position, wrapped with Make Instanced Struct); Rules is the match's rule
+    // set (e.g. the AI decision context's). Runs the very code the server
+    // runs for a real request, on a copy: Board itself is never changed.
+    //
+    // True pin: the move is possible. ResultBoard is the board afterwards;
+    // PointsScored what it scored (for whoever scored); NumScoredEvents how
+    // many things scored (under the Lines rule: how many lines it completed);
+    // Events everything that happened, in order (including a WinCheckpointReached
+    // for each win group the move completes that isn't the faction's last).
+    // ResultBoard's game-over / winner fields and GroupsCompleted are the rule
+    // set's own verdict.
+    //
+    // False pin: Operation isn't a board operation, or can't be made on this
+    // board (an occupied tile...). ResultBoard is then just Board.
+    //
+    // The operation's own Faction field is ignored: Faction is used instead,
+    // as the server does with the requester's.
+    UFUNCTION(BlueprintCallable, Category = "ConnectIt|Board State",
+        meta = (ExpandBoolAsExecs = "ReturnValue"))
+    static bool SimulateOperation(
+        const FConnectItBoardState& Board,
+        const FConnectItRuleSet& Rules,
+        const FInstancedStruct& Operation,
+        int32 Faction,
+        FConnectItBoardState& ResultBoard,
+        float& PointsScored,
+        int32& NumScoredEvents,
+        FConnectItBoardChangeEvent& Events);
 };

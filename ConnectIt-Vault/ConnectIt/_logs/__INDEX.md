@@ -6,6 +6,230 @@ Vault-wide passes go in `_core/_logs/`.
 
 Newest first:
 
+- [2026-10-16-1700](2026-10-16-1700.md) — session — AI director pipeline, built in stages 0-7 (2026-10-16..19): plan moved into the vault; Stage 1, MinMax
+  publishes each completed depth to a thread-safe progress holder; Stage 2, candidate confidence / score / tags / label and
+  strategies' best-so-far answers; Stage 3, four selectors;
+  Stage 4, coordinator pipeline + director owns the AI setup;
+  Stage 5, AI profile removed; Stage 6, win conditions as data assets;
+  Stage 7, recipes / ai-turn / design notes / decision. 40/40 tests; PIE pending after owner-side asset work.
+
+- [2026-10-14-1605](2026-10-14-1605.md) — session — composable AI: candidate lists, MinMax search as a Blueprint node, coordinator strategy, AI director on
+  the match preset. Four stages, 30/30 tests; PIE pending; one Blueprint strategy needs rewiring.
+
+- [2026-10-14-1500](2026-10-14-1500.md) — session — AI turn flow page + designer recipe for setting up a custom AI opponent (profile, Blueprint strategy,
+  Blueprint controller); restored a dropped `DecisionTurnNumber` assignment that made every AI decision look stale. Not compiled.
+
+- [2026-10-14-1355](2026-10-14-1355.md) — session — stage / match split: level config = stage + `DefaultMatchPreset`; `UConnectIt_MatchPreset` holds rules,
+  loadout and AI; the menu can pick a preset. Written, deliberately not built until the two configs are migrated.
+
+- [2026-10-13-1826](2026-10-13-1826.md) — session — Blueprint surface for designer AI strategies: `Simulate Operation`, `Get Placeable Positions`, turn info on
+  the decision context; shared `CarryOutOperation`. Build clean, 26/26 tests (also covers the scoring-directions change).
+
+- [2026-10-13-1000](2026-10-13-1000.md) — session — win conditions become an ordered list of groups per side; checkpoint (`OnWinCheckpointReached`) and win
+  (`OnMatchWon`) delegates; pre-commit hook and `SetWinConditions` removed. Not compiled.
+
+- [2026-10-08-2100](2026-10-08-2100.md) — session — win conditions are per-side lists that must all hold (no AI fallback); Piece Count replaces No Pieces;
+  `OnWinConditionsMet` hook + Blueprint-callable `SetWinConditions` / `SetLoadout` for phased levels. Not compiled.
+
+- [2026-10-08-2000](2026-10-08-2000.md) — session — rule set gets separate `PlayerWinCondition` (no default, renamed with a redirect) and optional
+  `AIWinCondition`; GameMode sets `AIFaction`; the Per Faction composite is removed. Not compiled.
+
+- [2026-10-08-1900](2026-10-08-1900.md) — session — swap-only puzzle levels designed; No Pieces win condition and a Per Faction win-condition composite built
+  (player and AI can have different goals). Tests added. Not compiled.
+
+- [2026-10-08-1810](2026-10-08-1810.md) — session — Lines scoring rule gains `ScoringDirections` (Horizontal / Vertical / Diagonal flags); scoring and the
+  AI's line windows follow it. Not yet compiled (editor was open with Live Coding).
+
+- [2026-10-08-1200](2026-10-08-1200.md) — session — setup checklist for the first two Adventure levels (Swap Heist, Shift Puzzle): shared
+  steps, rules/numbers, map layouts and PIE checks. No code changed.
+
+- [2026-10-08-1100](2026-10-08-1100.md) — session — Adventure Mode design note: levers a level has today, constraints, and 14 prospective
+  levels needing no new code (+ a short list needing small builds). No code changed; nothing chosen yet.
+
+- [2026-10-08-0900](2026-10-08-0900.md) — session — Board Shift moves its line N places: `Steps` on the Shift operation (fixed per action,
+  counted in shiftable tiles, one use), server rejects a mismatched `Steps`. Tests added. Not compiled.
+
+- [2026-10-07-1657](2026-10-07-1657.md) — session — request pipeline slimmed: `FTurnActionRequest` is `ActionTag` + `Payload`, the server supplies the
+  requester's faction (closes a spoofing hole). Build clean, 20/20 tests, also covering the two changes that were waiting.
+
+- [2026-10-07-1612](2026-10-07-1612.md) — session — a swap that scores keeps nothing: operations say whether arriving pieces survive scoring;
+  Scored events list `ClearedPositions`. Not yet compiled (editor was open with Live Coding).
+
+- [2026-10-07-1529](2026-10-07-1529.md) — session — typed board-event getters moved from the board state component into the static
+  `UConnectIt_BoardEventLibrary`. Not yet compiled (editor was open with Live Coding).
+
+- [2026-10-07-1518](2026-10-07-1518.md) — session — typed Blueprint getters for the board event being played (one per event kind, True/False pins,
+  error on mismatch); untyped Blueprint getter removed. Build clean, 20/20 tests.
+
+- [2026-10-07-1453](2026-10-07-1453.md) — session — board events: the change event is an ordered list of small event structs (operation / result),
+  each queued with its own payload and played one at a time; event queue plugin gains a payload. 20/20 tests; BP rewire + PIE pending.
+
+- [2026-10-07-1426](2026-10-07-1426.md) — session — MinMax judgement: term structs replaced by named weights on the strategy and handwritten
+  `EvaluateState` / `EvaluateMove` helpers. Build clean, 19/19 tests, 390k nodes/s; PIE vs AI pending.
+
+- [2026-10-07-0130](2026-10-07-0130.md) — session — board operations revision 2: the operation is the request (carries its own data, sent by actions);
+  all eight request types are operations; the Mediator has one path. Build clean, 19/19 tests; PIE pass pending.
+
+- [2026-10-07-0055](2026-10-07-0055.md) — session — board operations revision: one concrete placement check on the Place operation, change event
+  reports `ScoringConfigurations`, a move is gameplay tag + typed data. Build clean, 13/13 tests; `CI_PieceVisualHandler` needs rewiring.
+
+- [2026-10-07-0015](2026-10-07-0015.md) — session — board operations: `FConnectItBoardOperation` (Place, Swap) in the rule set, run by both
+  the Mediator and the MinMax search; scoring is a separate `ResolveBoardChange` step. Build clean, 12/12 tests; PIE pass pending.
+
+- [2026-10-07-0010](2026-10-07-0010.md) — session — GameMode owns the live match setup; rules + AI profile mirrored on the GameState,
+  clients build actions from their PlayerState; `GetLevelConfig` removed. Build clean; replication needs a 2-player PIE pass.
+
+- [2026-10-06-2300](2026-10-06-2300.md) — session — design note, question and task for rules that change mid-level (rotating
+  scoring axis); no code.
+
+- [2026-10-06-2210](2026-10-06-2210.md) — session — rules became thread-safe structs in one `FConnectItRuleSet` shared by the game
+  and the AI search (interfaces + `UConnectIt_BoardRules` removed); Phase B (moves/pipeline) written up.
+
+- [2026-10-04-1700](2026-10-04-1700.md) — session — MinMax win detection now comes from the level's win condition;
+  terminal vs unfinished scoring split; full-board question filed.
+
+- [2026-10-04-1530](2026-10-04-1530.md) — session — Ply explained in MinMax code comments; concept rename reapplied after an editor overwrite.
+
+- [2026-10-04-1500](2026-10-04-1500.md) — session — MinMax concept names: `IsTerminalState`, `EvaluateState`, `EvaluateMove`.
+
+- [2026-10-04-1000](2026-10-04-1000.md) — session — MinMax concept: `OrderScore` renamed `EvaluateMoveScore`.
+
+- [2026-10-02-1600](2026-10-02-1600.md) — session — AI profile assets, AI controller runs its own turn, main-menu match setup
+  subsystem + level catalog, per-match rule copies. Build clean; tests pass.
+
+- [2026-10-02-1330](2026-10-02-1330.md) — session — next steps agreed (AI profile asset, controller-driven AI turns, match setup
+  subsystem); design note written, nothing implemented.
+
+- [2026-10-02-1255](2026-10-02-1255.md) — session — wishlist task added: explore MinMax moves beyond PlacePiece (Swap).
+
+- [2026-10-02-1250](2026-10-02-1250.md) — session — wishlist task added: curve-based mapping of MinMax heuristic scores into the non-win band.
+
+- [2026-10-02-1235](2026-10-02-1235.md) — session — MinMax evaluation/ordering became editor term lists on the strategy;
+  rules renamed `FConnectItMinMaxRules` (internal, fixed); 7/7 tests pass.
+
+- [2026-10-02-1123](2026-10-02-1123.md) — session — pluggable `UConnectIt_AIStrategy` (MinMax subclass) on the level
+  config; MinMax search → `GameIntelligence::Search::MinMax` with const rules instances; 7/7 tests pass.
+
+- [2026-10-02-0952](2026-10-02-0952.md) — session — Classic MinMax search redesigned: on-demand negamax + alpha-beta in
+  UnrealGameIntelligence, line-potential evaluator, per-level difficulty, controller rework. Built; 6/6 tests pass.
+
+- [2026-09-24-1730](2026-09-24-1730.md) — session — Classic MinMax rebuilt end to end: real
+  board state + thread-safe static scoring calls, decision-to-request bridge, turn-end
+  loop. Deleted the older node model + dead example file. Design note + 2 decisions filed.
+  Not compiled.
+
+- [2026-09-21-0001](2026-09-21-0001.md) — session — task added to rework the MinMax AI (existing code messy and pre-dates the loadout/gate changes); design discussion first, no code changed.
+
+- [2026-09-20-2352](2026-09-20-2352.md) — session — task added for editor visualisation of starting-piece tiles; reported "can't score lines" resolved
+  by an editor restart (scoring rule is axis-independent, no code change).
+
+- [2026-09-20-2345](2026-09-20-2345.md) — session — grid axes now follow UE (+X forward/Up, +Y right): checked
+  the swapped direction table, fixed `GetTilesByDirection` (still on the old convention) and noted the
+  `UpLeft` duplicate the owner corrected. Decision filed. Not compiled.
+
+- [2026-09-20-2320](2026-09-20-2320.md) — session — designer-set tile values (multiplier, active, shiftable, starting piece) now reach the board
+  state via `IConnectIt_TileDataProvider`; `BoardSeeded` event for starting-piece visuals. Written, NOT compiled.
+
+- [2026-09-20-2228](2026-09-20-2228.md) — session — root cause of empty PlayerState action arrays: humans were never seeded on the
+  server (controller setup is local-only). `AConnectIt_GameMode::SeedActionStateForPlayer` now seeds in `PostLogin`.
+  Builds; not PIE-tested.
+
+- [2026-09-20-2120](2026-09-20-2120.md) — session — `TryPushActionByClass` now returns whether the push happened; actions gained read-only
+  accessors that read their runtime state from the PlayerState (no copy stored). Builds; not PIE-tested.
+
+- [2026-09-20-1510](2026-09-20-1510.md) — session — design talk (no code): board changes layered as
+  primitives / 1:1 request objects / shared pipeline / per-level `BoardReactions`, `ChangeEvent`
+  as an ordered step list, Crumble threshold on replicated state. Design note + 3 decisions filed.
+
+- [2026-09-20-1449](2026-09-20-1449.md) — process-discussion — `action-state-authority-and-limbo` filed from compiled excerpts of this
+  conversation; 5 topics (1 continuing `action-state-architecture`, 4 first mentions).
+
+- [2026-09-20-1447](2026-09-20-1447.md) — session-close — closed the 2026-09-18-1251 session note (09-18 to 09-20 loadout/turn-end
+  system, Board Shift direction fix); filed the effective-per-turn-cap decision.
+
+- [2026-09-20-1340](2026-09-20-1340.md) — session — the per-turn cap is now runtime state on both action state structs
+  (seeded once, not reset each turn), read by `CanUseAction`, exposed via `GetActionMaxUsesPerTurn` for the Actions UI;
+  groundwork for temporary max-uses changes. Builds; no modifier API yet.
+
+- [2026-09-20-1250](2026-09-20-1250.md) — session — Step 2 Stage 3 (remove): legacy `Actions`,
+  `bIsRequired`, per-action caps/cooldowns, `RequiredActionTagA/B` and the SWAP budget deleted; Mediator
+  gate now mandatory, seeding logged. C++ builds; Blueprint fallout and PIE outstanding.
+
+- [2026-09-20-1240](2026-09-20-1240.md) — session — Board Shift direction inversion root-caused
+  (`GetTilesByDirection` grouped Up/Down by the wrong coordinate, so the sort key was 0); fixed
+  for X = left-right, Y = up-down. First attempt (table rewrite) superseded same session. Not compiled.
+
+- [2026-09-18-1445](2026-09-18-1445.md) — session — Step 2 Stage 2 (switch): Mediator gates and
+  spends per-action uses from PlayerState, server turn-boundary reset/cooldown hooks, limbo in the
+  actions component, tree reads PlayerState, `ProducesRequestType` on Place/Swap/BoardShift. Written,
+  NOT compiled (editor open).
+
+- [2026-09-18-1510](2026-09-18-1510.md) — session — skin plugin slice 3: generic code-built
+  debug panel (`SkinMechanics.ToggleDebug`), `GetSkinResolution` + `GetConfigurationIssues`
+  on the subsystem (catalog validation delivered). Decision filed. Not compiled.
+
+- [2026-09-18-1425](2026-09-18-1425.md) — session — Step 2 Stage 1 (additive): replicated
+  per-action state + server API + `OnActionRuntimeStateUpdated` on `ATurnBasedPlayerState`,
+  `ActionTag` on `FTurnActionRequest`, component builds from config arrays (legacy fallback
+  kept), loadout validator. Builds clean; Stages 2 (switch) and 3 (remove) open.
+
+- [2026-09-18-1422](2026-09-18-1422.md) — session — skin plugin slice 2: trimmed to a
+  project-agnostic core (deleted the skin/catalog types, kept only `FSkinPresetRowBase`),
+  added `USkinSubsystem` + `USkinSaveGame` (precedence resolution, `OnSkinChanged`, runtime-only
+  level-forced, save/reload). Decision filed. Not compiled.
+
+- [2026-09-18-1358](2026-09-18-1358.md) — session — skin system slice 1: new plugin
+  `UnrealSkinMechanics` (scaffold, `USkinSettings` with DataTable-array catalogs, row/
+  selection structs, `USkinDataAsset` base), enabled in the uproject, registered as a vault
+  domain; naming/DataTable decision filed. Not built yet (new plugin, editor restart).
+
+- [2026-09-18-1400](2026-09-18-1400.md) — session — action config and turn-end leaves now
+  reference `TSubclassOf<UTurnBasedAction>` (tag derived from the class default object via
+  `GetTagForClass`) instead of a typed tag; builds clean. Decision filed; Step 2 open.
+
+- [2026-09-18-1350](2026-09-18-1350.md) — session — recorded the owner's `ActionConfig.h`
+  changes (numbered actions grantable + `MaxHeldUses`, runtime state split) as a decision;
+  fixed stale comments; editor-side test steps for the turn-end tree. Not rebuilt (editor open).
+
+- [2026-09-18-1337](2026-09-18-1337.md) — session — skin-system design recorded (no code):
+  4 decision notes (layered data/flow, local-only + fixed-class data, new plugin +
+  explicit lists, faction visuals as a curated skin group) + `design/skin-system.md`;
+  marked the retired faction-visuals decision partially superseded
+
+- [2026-09-18-1320](2026-09-18-1320.md) — session — loadout/turn-end task slice 1: new
+  turn-end requirement tree (Instanced UObject Leaf/Group nodes — the recursive struct
+  failed UHT), action-config + runtime-state structs, base `CanAutoEndTurn` evaluates the
+  tree when a loadout sets one. Builds clean; not yet PIE-tested, validator and PlayerState
+  wiring still open.
+
+- [2026-09-18-0144](2026-09-18-0144.md) — session — implemented the registry-mapping-
+  refresh fix: new `UGridDefinition` (grid geometry extracted off the tile registry),
+  new `GameEventTaskSubsystem::OnAnyTagComplete`, `PieceRegistry` re-keying `PieceMap`
+  from `FConnectItBoardChangeEvent`'s own positions on shift/swap/remove. 3 new
+  decisions, 2 code pages updated. Not yet built/PIE-verified.
+- [2026-09-17-1615](2026-09-17-1615.md) — session-close — updated the 2026-09-17 session
+  note's `## Close` in place, filed the visual-events-in-Blueprint decision, flagged
+  piece-tile-tracking as a question candidate
+- [2026-09-17-1600](2026-09-17-1600.md) — session — filed
+  [`board-shift-loop-visuals`](../_questions/board-shift-loop-visuals.md) as a new open
+  question (board-shift wrap-tile identification + visual treatment), per owner's request
+- [2026-09-17-1455](2026-09-17-1455.md) — session — backfilled the 09-16 session note's
+  `## Close` and wrote a new 09-17 session note, reconstructed from `_logs/` entries and
+  real file-modification timestamps (not conversational memory) since `/session-close` and
+  `/session-open` were both skipped
+- [2026-09-17-1443](2026-09-17-1443.md) — session — started `ConnectIt/design/`
+  (deliberately schema-less): notes for Place Piece, SWAP, Board Shift, and a general
+  "tiles with powers" feature idea with 5 example powers; `CLAUDE.md` updated to point at
+  it
+- [2026-09-17-1203](2026-09-17-1203.md) — session — updated `action-gameplay-tags`'s
+  `## Current thinking` with the root cause of the `ActionTag` instancing bug (Instanced
+  `Loadout.Actions[]` + plain-`EditAnywhere` `ActionTag`, not `DefaultToInstanced`) and two
+  candidate fixes, neither applied — owner wants to mull it over
+- [2026-09-16-1550](2026-09-16-1550.md) — session — first `/session-open` run; opened
+  `ConnectIt/_sessions/` (didn't exist yet) and wrote its first map note; flagged the
+  repo-root `.claude/skills/` mirrors as stale/generic (diverged from the vault's authored
+  skills) and `CLAUDE.md`'s missing single-next-action field since the 2026-09-14 "Current
+  state" removal
 - [2026-09-14-0207](2026-09-14-0207.md) — session — applied the 2026-09-14 check-in's task
   candidates to `_tasks/`: 2 rows completed, 1 rewritten (root-action task → HUD-owned-UI
   confirmation), 4 added (Board Shift, turn-end AND/OR groups, blocker prototype,

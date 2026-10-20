@@ -6,11 +6,21 @@ spans:
   - Plugins/UnrealGridMechanics/Source/UnrealGridMechanics/Public/Board/Shift/GridMechanics_GridShiftLibrary.h
   - Plugins/UnrealGridMechanics/Source/UnrealGridMechanics/Public/Board/Shift/GridShiftTypes.h
   - Plugins/UnrealGridMechanics/Source/UnrealGridMechanics/Public/Board/BoardStateComponentBase.h
-reconciled: 2026-09-10
-commit: ded6143
+reconciled: 2026-09-18
+commit: 9187568
 ---
 
 # Board shift
+
+> **Not what ConnectIt's own Board Shift action uses.** `UGridMechanics_GridShiftLibrary`
+> only models orthogonal row/column shifts (`FShiftOperation`) — no diagonal support.
+> `UConnectIt_BoardShiftAction`/`UConnectIt_BoardRequestMediator::HandleBoardShiftRequest`
+> (added 2026-09-18) explicitly ruled this pipeline out for that reason and computes its
+> own rotation directly, over `UGridTileRegistryBase::GetTilesByDirection`'s already-
+> ordered line (all 8 `EGridDirection` values, diagonals included). This page still
+> describes real, working plugin infrastructure — just not the path this project's own
+> board-shift mechanic actually takes. See
+> [[ConnectIt/code/UConnectIt_BoardRequestMediator|ConnectIt_BoardRequestMediator]].
 
 ## What happens
 

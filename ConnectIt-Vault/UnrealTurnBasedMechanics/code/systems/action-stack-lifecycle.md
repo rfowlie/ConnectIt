@@ -5,8 +5,8 @@ spans:
   - Plugins/UnrealTurnBasedMechanics/Source/UnrealTurnBasedMechanics/Private/Action/TurnBasedActionsComponent.cpp
   - Plugins/UnrealTurnBasedMechanics/Source/UnrealTurnBasedMechanics/Public/Action/TurnBasedAction.h
   - Plugins/UnrealTurnBasedMechanics/Source/UnrealTurnBasedMechanics/Public/Action/TurnBasedActionBase.h
-reconciled: 2026-09-10
-commit: acbfa6f
+reconciled: 2026-09-18
+commit: 9187568
 ---
 
 # Action stack lifecycle

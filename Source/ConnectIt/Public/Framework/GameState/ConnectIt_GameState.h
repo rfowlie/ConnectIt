@@ -6,6 +6,7 @@
 #include "ConnectIt_Structs.h"
 #include "Framework/GameState/TurnBasedGameState.h"
 #include "TurnBasedMechanicsStructs.h"
+#include "Board/Rules/ConnectIt_RuleSet.h"
 #include "ConnectIt_GameState.generated.h"
 
 class UConnectIt_BoardStateComponent;
@@ -51,6 +52,7 @@ struct CONNECTIT_API FConnectItMatchResult
 
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnMatchResultUpdated, const FConnectItMatchResult&, Result);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnMatchRulesChanged);
 
 // Everything a debug widget needs to know about this game state's current
 // values in one call -- used to seed initial state once, right after
@@ -97,6 +99,22 @@ public:
         int32 WinningFactionSlot,
         EMatchEndReason EndReason,
         int32 TotalTurns);
+
+    // --- Match setup (read-only mirror) ---
+    // The server's GameMode owns the live match setup and is the only writer
+    // here (AConnectIt_GameMode::PublishMatchSetup). Everything else --
+    // clients, UI -- reads these copies.
+
+    // The match's current rules, including per-match and mid-level changes
+    UFUNCTION(BlueprintPure, Category = "ConnectIt|Match")
+    const FConnectItRuleSet& GetMatchRules() const { return MatchRules; }
+
+    // The rules changed (or first arrived) -- on the server and on clients
+    UPROPERTY(BlueprintAssignable, Category = "ConnectIt|Match")
+    FOnMatchRulesChanged OnMatchRulesChanged;
+
+    // Server only -- called by the GameMode
+    void SetMatchRules(const FConnectItRuleSet& InRules);
 
     // --- Board State ---
     // Owned here, not on the board actor -- board state genuinely needs to
@@ -169,6 +187,12 @@ protected:
     TObjectPtr<UConnectIt_BoardStateComponent> BoardStateComponent = nullptr;
 
 private:
+
+    UPROPERTY(ReplicatedUsing = OnRep_MatchRules)
+    FConnectItRuleSet MatchRules;
+
+    UFUNCTION()
+    void OnRep_MatchRules();
 
     UFUNCTION()
     void OnRep_MatchResult();

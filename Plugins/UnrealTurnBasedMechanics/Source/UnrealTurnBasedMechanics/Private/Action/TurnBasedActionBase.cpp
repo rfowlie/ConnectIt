@@ -6,6 +6,11 @@
 #include "GameFramework/PlayerController.h"
 
 
+FGameplayTag UTurnBasedActionBase::GetActionTag_Implementation() const
+{
+	return FGameplayTag();
+}
+
 void UTurnBasedActionBase::Activate(AController* InOwningController)
 {
 	if (bIsActive)
@@ -13,7 +18,7 @@ void UTurnBasedActionBase::Activate(AController* InOwningController)
 		UE_LOG(LogTurnBasedMechanics, Warning,
 			TEXT("TurnBasedActionBase: '%s' Activate called "
 				 "but already active"),
-			*ActionTag.ToString());
+			*GetActionTag().ToString());
 		return;
 	}
 
@@ -26,7 +31,7 @@ void UTurnBasedActionBase::Activate(AController* InOwningController)
 
 	UE_LOG(LogTurnBasedMechanics, Log,
 		TEXT("TurnBasedActionBase: '%s' activated"),
-		*ActionTag.ToString());
+		*GetActionTag().ToString());
 }
 
 void UTurnBasedActionBase::ForceDeactivate()
@@ -42,7 +47,7 @@ void UTurnBasedActionBase::ForceDeactivate()
 
 	UE_LOG(LogTurnBasedMechanics, Log,
 		TEXT("TurnBasedActionBase: '%s' force deactivated"),
-		*ActionTag.ToString());
+		*GetActionTag().ToString());
 }
 
 UWorld* UTurnBasedActionBase::GetWorld() const

@@ -7,13 +7,16 @@
 #include "TurnBasedMechanicsStructs.h"
 #include "ConnectIt_PlayerController.generated.h"
 
+class UActionLoadoutDataAsset;
+
 // ConnectIt player controller
 // Generic turn/action/match-phase wiring (ParticipantComponent,
 // ActionsComponent, delegate routing) is provided by the base class via
 // UTurnBasedControllerCoordinatorComponent -- this class only adds the
-// ConnectIt-specific plumbing: loading the player's action loadout from the
-// level config, and routing board change requests to the server for
-// validation. Tile/piece registries used to live here (per-machine, one
+// ConnectIt-specific plumbing: building the player's actions from the loadout
+// on their PlayerState (seeded by the server -- never from static level
+// data, so it stays right if the server changes it), and routing board
+// change requests to the server for validation. Tile/piece registries used to live here (per-machine, one
 // controller per machine) but have moved to UConnectIt_BoardRegistrySubsystem
 // -- they're level-authored, deterministic, world-scoped singletons, not
 // per-machine or per-player state. See that class's header comment.
@@ -41,12 +44,27 @@ protected:
     virtual void BeginPlay() override;
     virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 
+    // Clients: the PlayerState has arrived -- its loadout may be on it
+    virtual void OnRep_PlayerState() override;
+
 private:
 
     // --- Initialisation ---
 
-    // Resolves the level config asset and initialises this player's loadout
-    void InitialiseFromLevelConfig();
+    // Local controller only. Binds to the PlayerState's OnLoadoutChanged and
+    // builds the actions component from the PlayerState's current loadout, if
+    // it has one and it isn't the one already in use. Called from BeginPlay,
+    // OnRep_PlayerState and OnLoadoutChanged, because on a client the
+    // PlayerState and its loadout can each arrive after this controller
+    // starts; safe to call repeatedly.
+    void InitialiseActionsFromPlayerState();
+
+    UFUNCTION()
+    void HandleLoadoutChanged();
+
+    // The loadout the actions component was last built from
+    UPROPERTY()
+    TObjectPtr<UActionLoadoutDataAsset> ActiveLoadout = nullptr;
 
     // --- Action Component Handler ---
     // Board change request routing is ConnectIt-specific -- the generic

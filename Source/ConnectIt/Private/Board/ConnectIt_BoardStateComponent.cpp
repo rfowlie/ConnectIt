@@ -2,10 +2,13 @@
 
 #include "Board/ConnectIt_BoardStateComponent.h"
 #include "ConnectIt_GameplayTags.h"
+#include "Board/Events/ConnectIt_BoardEvents.h"
 #include "Framework/Library/ConnectIt_GameUtilityLibrary.h"
 #include "GameEvent/GameEventTaskSubsystem.h"
 #include "Library/CodingUtilsLibrary.h"
 #include "Net/UnrealNetwork.h"
+#include "Board/ConnectIt_TileDataProvider.h"
+#include "Tile/GridTileBase.h"
 #include "Tile/GridTileRegistryBase.h"
 
 
@@ -15,7 +18,8 @@ UConnectIt_BoardStateComponent::UConnectIt_BoardStateComponent()
     SetIsReplicatedByDefault(true);
 }
 
-// TODO: fix up the conversion, should read from Registries that do initial sweeps in the level
+// Each tile that implements IConnectIt_TileDataProvider supplies its own
+// designer-set starting values; any other tile gets the defaults below.
 void UConnectIt_BoardStateComponent::InitialiseBoardState(
     UGridTileRegistryBase* TileRegistry,
     UGridPieceRegistryBase* PieceRegistry,
@@ -27,14 +31,61 @@ void UConnectIt_BoardStateComponent::InitialiseBoardState(
     FConnectItBoardState InitialState;
 
     // Populate tile map from registered positions
-    for (const auto Tile : TileRegistry->GetAllTiles())
+    int32 TilesWithDesignerData = 0;
+    int32 StartingPieces = 0;
+    TArray<int32> StartingPiecesPerFaction;
+    StartingPiecesPerFaction.Init(0, NumFactions);
+
+    for (AGridTileBase* Tile : TileRegistry->GetAllTiles())
     {
         FConnectItTileData TileData;
         TileData.SetFactionPiece(-1);
         TileData.Multiplier   = InitialMultiplier;
         TileData.bIsActive    = true;
+
+        if (IsValid(Tile) && Tile->Implements<UConnectIt_TileDataProvider>())
+        {
+            const FConnectItTileInitialData Designer =
+                IConnectIt_TileDataProvider::Execute_GetInitialTileData(Tile);
+
+            TileData.Multiplier = Designer.Multiplier;
+            TileData.bIsActive  = Designer.bIsActive;
+            TileData.bCanShift  = Designer.bCanShift;
+            TilesWithDesignerData++;
+
+            if (Designer.StartingFactionPiece >= 0)
+            {
+                if (Designer.StartingFactionPiece < NumFactions)
+                {
+                    TileData.SetFactionPiece(Designer.StartingFactionPiece);
+                    StartingPieces++;
+                    StartingPiecesPerFaction[Designer.StartingFactionPiece]++;
+                }
+                else
+                {
+                    UE_LOG(LogTemp, Warning,
+                        TEXT("ConnectIt_BoardStateComponent: tile '%s' has "
+                             "StartingFactionPiece %d but the board only has %d "
+                             "factions -- starting empty"),
+                        *Tile->GetName(), Designer.StartingFactionPiece, NumFactions);
+                }
+            }
+        }
+
         InitialState.SetTileData(TileRegistry->GetPositionOfTile(Tile), TileData);
     }
+
+    FString PerFactionSummary;
+    for (int32 Faction = 0; Faction < StartingPiecesPerFaction.Num(); Faction++)
+    {
+        PerFactionSummary += FString::Printf(TEXT("%s%d:%d"),
+            Faction > 0 ? TEXT(", ") : TEXT(""), Faction, StartingPiecesPerFaction[Faction]);
+    }
+    UE_LOG(LogTemp, Log,
+        TEXT("ConnectIt_BoardStateComponent: InitialiseBoardState -- %d tiles, "
+             "%d with designer data, %d starting pieces (faction:count %s)"),
+        InitialState.TilePositions.Num(), TilesWithDesignerData,
+        StartingPieces, *PerFactionSummary);
 
     // Initialise scoreboard with one entry per faction
     InitialState.ScoreBoard.Init(0.f, NumFactions);
@@ -42,19 +93,21 @@ void UConnectIt_BoardStateComponent::InitialiseBoardState(
     InitialState.bGameOver        = false;
     InitialState.WinningFactionSlot = -1;
     InitialState.TargetScore      = InTargetScore;
+    InitialState.StartingPieces   = StartingPiecesPerFaction;
+    InitialState.GroupsCompleted.Init(0, NumFactions);
 
     // Apply without capturing snapshot -- no previous state yet
     BoardSnapshot.PreviousState = InitialState;
     BoardSnapshot.CurrentState  = InitialState;
 
-    /*
-     * TODO: in theory this will likely not be necessary
-     * each level should have a starting position where tiles and pieces are set
-     * broadcasting a change is technically wrong
-     */ 
-    // Broadcast so listeners can initialise their visual state
-    // BroadcastChange();
-    
+    // Mark this initial snapshot as the seed so visuals for any starting
+    // pieces get created. It replicates with the snapshot, so clients see the
+    // same flag and enqueue the same tag from OnRep_BoardSnapshot.
+    // BroadcastChange() stays off: nothing changed relative to a previous
+    // state, only the game-event tag is needed.
+    BoardSnapshot.ChangeEvent = FConnectItBoardChangeEvent();
+    BoardSnapshot.ChangeEvent.Add(FConnectItBoardEvent_BoardSeeded());
+    EnqueueBoardEventTags();
 }
 
 void UConnectIt_BoardStateComponent::SetBoardState(
@@ -171,53 +224,23 @@ void UConnectIt_BoardStateComponent::EnqueueBoardEventTags() const
         return;
     }
 
-    const FConnectItBoardChangeEvent& ChangeEvent = BoardSnapshot.ChangeEvent;
+    // One queue entry per event, in the order they happened. Each carries
+    // its own data as the entry's payload, so a listener always reads the
+    // event that is actually playing (UConnectIt_BoardEventLibrary) -- even if this
+    // snapshot has been replaced by a newer one by then.
+    for (const FInstancedStruct& Entry : BoardSnapshot.ChangeEvent.Events)
+    {
+        const FConnectItBoardEvent* Event = Entry.GetPtr<FConnectItBoardEvent>();
+        const FGameplayTag EventTag = Event ? Event->GetEventTag() : FGameplayTag();
+        if (!EventTag.IsValid())
+        {
+            UE_LOG(LogTemp, Error,
+                TEXT("ConnectIt_BoardStateComponent: EnqueueBoardEventTags — "
+                     "skipping an entry that isn't a board event with a tag (%s)"),
+                *GetNameSafe(Entry.GetScriptStruct()));
+            continue;
+        }
 
-    // Fixed order -- each SetBoardState call represents exactly one kind of
-    // concrete change, then conditionally LineScored and/or PlayerWin. Each
-    // call enqueues independently; UGameEventTaskSubsystem's own queue
-    // serializes them so the next one doesn't start firing until the
-    // previous is done.
-    
-    // concrete changes to board from player actions
-    if (ChangeEvent.bPiecePlaced)
-    {
-        GameEventSubsystem->QueueTagContainer(FGameplayTagContainer(ConnectIt_Event_PiecePlaced));
+        GameEventSubsystem->QueueTagContainerWithPayload(FGameplayTagContainer(EventTag), Entry);
     }
-    if (ChangeEvent.bPieceRemoved)
-    {
-        GameEventSubsystem->QueueTagContainer(FGameplayTagContainer(ConnectIt_Event_PieceRemoved));
-    }
-    if (ChangeEvent.bPiecesSwapped)
-    {
-        GameEventSubsystem->QueueTagContainer(FGameplayTagContainer(ConnectIt_Event_PiecesSwapped));
-    }
-    if (ChangeEvent.bPieceCaptured)
-    {
-        GameEventSubsystem->QueueTagContainer(FGameplayTagContainer(ConnectIt_Event_PieceCaptured));
-    }
-    if (ChangeEvent.bTileMultiplierDestroyed)
-    {
-        GameEventSubsystem->QueueTagContainer(FGameplayTagContainer(ConnectIt_Event_TileMultiplierDestroyed));
-    }   
-
-    // knock on board changes from rules
-    if (ChangeEvent.bLineScored)
-    {
-        GameEventSubsystem->QueueTagContainer(FGameplayTagContainer(ConnectIt_Event_LineScored));
-    }    
-    if (ChangeEvent.bGameWon)
-    {
-        GameEventSubsystem->QueueTagContainer(FGameplayTagContainer(ConnectIt_Event_PlayerWin));
-    }
-
-    // New mutation types (see AConnectIt_BoardManager's Handle*Request
-    // methods) -- each is its own disjoint kind of change, so no ordering
-    // relationship between them
-    
-    if (ChangeEvent.bTileActiveToggled)
-    {
-        GameEventSubsystem->QueueTagContainer(FGameplayTagContainer(ConnectIt_Event_TileActiveToggled));
-    }
-    
 }

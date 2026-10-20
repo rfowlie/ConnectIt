@@ -2,13 +2,15 @@
 
 
 #include "Board/Rules/ConnectIt_LineScoringRule.h"
+#include "Board/Events/ConnectIt_BoardEvents.h"
 
 
-float UConnectIt_LineScoringRule::ApplyScoring_Implementation(
+float FConnectItScoringRule_Lines::ApplyScoring(
     FConnectItBoardState& MutableState,
     FGridPosition Position,
     int32 FactionSlot,
-    TArray<FGridPosition>& OutScoringPositions)
+    bool bArrivingPieceSurvives,
+    FConnectItBoardChangeEvent* OutEvents) const
 {
     TArray<TArray<FGridPosition>> ScoringLines =
         FindScoringLines(MutableState, Position, FactionSlot);
@@ -19,14 +21,21 @@ float UConnectIt_LineScoringRule::ApplyScoring_Implementation(
 
     for (const TArray<FGridPosition>& Line : ScoringLines)
     {
-        TotalPoints += ApplyScoringLine(
-            MutableState, Line, Position, FactionSlot);
+        TArray<FGridPosition> ClearedPositions;
+        const float LinePoints = ApplyScoringLine(
+            MutableState, Line, Position, bArrivingPieceSurvives,
+            OutEvents ? &ClearedPositions : nullptr);
+        TotalPoints += LinePoints;
 
-        // Union across every completed line -- AddUnique since lines always
-        // overlap at Position at minimum, and could overlap further.
-        for (const FGridPosition& LinePosition : Line)
+        // One Scored event per completed line (lines always share Position)
+        if (OutEvents)
         {
-            OutScoringPositions.AddUnique(LinePosition);
+            FConnectItBoardEvent_Scored Event;
+            Event.Faction   = FactionSlot;
+            Event.Points    = LinePoints;
+            Event.Positions = Line;
+            Event.ClearedPositions = MoveTemp(ClearedPositions);
+            OutEvents->Add(Event);
         }
     }
 
@@ -38,14 +47,15 @@ float UConnectIt_LineScoringRule::ApplyScoring_Implementation(
     return TotalPoints;
 }
 
-TArray<TArray<FGridPosition>> UConnectIt_LineScoringRule::FindScoringLines(
+TArray<TArray<FGridPosition>> FConnectItScoringRule_Lines::FindScoringLines(
     const FConnectItBoardState& State,
     FGridPosition Position,
     int32 FactionSlot) const
 {
     TArray<TArray<FGridPosition>> ScoringLines;
 
-    for (const FGridDirectionVector& Dir : GetScoringDirections())
+    // Only lines along an allowed direction count
+    for (const FGridDirectionVector& Dir : GetAllowedAxes())
     {
         TArray<FGridPosition> Line;
         Line.Add(Position);
@@ -83,11 +93,12 @@ TArray<TArray<FGridPosition>> UConnectIt_LineScoringRule::FindScoringLines(
     return ScoringLines;
 }
 
-float UConnectIt_LineScoringRule::ApplyScoringLine(
+float FConnectItScoringRule_Lines::ApplyScoringLine(
     FConnectItBoardState& MutableState,
     const TArray<FGridPosition>& Line,
     FGridPosition CompletingPosition,
-    int32 FactionSlot) const
+    bool bKeepCompletingPiece,
+    TArray<FGridPosition>* OutClearedPositions)
 {
     float PointsScored = 0.f;
 
@@ -96,32 +107,40 @@ float UConnectIt_LineScoringRule::ApplyScoringLine(
         FConnectItTileData* TileData = MutableState.GetTileDataMutable(Position);
         if (!TileData) continue;
 
+        // Every tile of the line scores and gains multiplier...
         PointsScored += TileData->Multiplier;
+        TileData->Multiplier += 1.0f;
 
-        // Remove piece and increment multiplier
-        TileData->SetFactionPiece(-1);
-        TileData->Multiplier  += 1.0f;
-    }
+        // ...and loses its piece, except the completing piece when it is kept
+        if (bKeepCompletingPiece && Position == CompletingPosition) continue;
 
-    // Completing piece stays on the board
-    if (FConnectItTileData* CompletingTile =
-        MutableState.GetTileDataMutable(CompletingPosition))
-    {
-        CompletingTile->SetFactionPiece(FactionSlot);
+        // Already empty when an earlier line through the same completing
+        // piece cleared it
+        if (TileData->FactionPiece != -1)
+        {
+            TileData->SetFactionPiece(-1);
+            if (OutClearedPositions) OutClearedPositions->Add(Position);
+        }
     }
 
     return PointsScored;
 }
 
-const TArray<FGridDirectionVector>&
-UConnectIt_LineScoringRule::GetScoringDirections()
+FConnectItScoringRule_Lines::FAxes FConnectItScoringRule_Lines::GetAllowedAxes() const
 {
-    static const TArray<FGridDirectionVector> Directions =
+    FAxes Axes;
+    if (IsDirectionAllowed(EConnectItScoringDirection::Horizontal))
     {
-        { 0,  1 },  // Row
-        { 1,  0 },  // Column
-        { 1,  1 },  // Diagonal top-down
-        { 1, -1 }   // Diagonal bottom-up
-    };
-    return Directions;
+        Axes.Add({ 0, 1 });     // Row
+    }
+    if (IsDirectionAllowed(EConnectItScoringDirection::Vertical))
+    {
+        Axes.Add({ 1, 0 });     // Column
+    }
+    if (IsDirectionAllowed(EConnectItScoringDirection::Diagonal))
+    {
+        Axes.Add({ 1, 1 });     // Diagonal top-down
+        Axes.Add({ 1, -1 });    // Diagonal bottom-up
+    }
+    return Axes;
 }

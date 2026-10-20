@@ -2,7 +2,9 @@
 
 
 #include "Action/ConnectIt_PlacePieceAction.h"
+#include "Board/Operations/ConnectIt_BoardOperations.h"
 #include "Board/ConnectIt_BoardStateComponent.h"
+#include "ConnectIt_GameplayTags.h"
 #include "ConnectIt_Structs.h"
 #include "Interface/GridFactionInterface.h"
 #include "Framework/Library/ConnectIt_GameUtilityLibrary.h"
@@ -13,18 +15,21 @@
 #include "Turn/Participant/TurnBasedParticipantComponent.h"
 
 
+bool UConnectIt_PlacePieceAction::ProducesRequestType_Implementation(FGameplayTag RequestType) const
+{
+    return RequestType == ConnectIt_Game_PlacePiece;
+}
+
 UConnectIt_PlacePieceAction::UConnectIt_PlacePieceAction()
 {
-    // Required -- turn cannot end without placing a piece
-    bIsRequired = true;
+    // Uses, per-turn cap and turn-end contribution live in the loadout's
+    // PermanentActions entry and TurnEndRequirements tree, not here.
 
     // Cancellable -- shard or power activation cancels this,
     // and it reactivates after the optional action completes
     bIsCancellable = true;
 
     bRequiresSelection = true;
-    MaxCompletionsPerTurn = 1;
-    CooldownTurns = 0;
 }
 
 void UConnectIt_PlacePieceAction::PostInitialiseAction_Implementation()
@@ -73,9 +78,10 @@ bool UConnectIt_PlacePieceAction::IsValidHoverTile_Implementation(AGridTileBase*
     const auto TileRegistry = UConnectIt_GameUtilityLibrary::GetTileRegistry(GetPlayerController());
     const FGridPosition Position = TileRegistry->GetPositionOfTile(Tile);
 
-    // Tile must be valid for placement in current board state
-    // IsTileValidForPlacement checks both bIsActive and !IsOccupied
-    return BoardState->GetCurrentState().IsTileValidForPlacement(Position);
+    // The same check the server makes of the request (and the AI of its
+    // candidate moves)
+    return FConnectItBoardOperation_PlacePiece::IsTilePlaceableAt(
+        BoardState->GetCurrentState(), Position);   
 }
 
 bool UConnectIt_PlacePieceAction::IsValidSelectionTile_Implementation(AGridTileBase* Tile) const
@@ -89,18 +95,17 @@ bool UConnectIt_PlacePieceAction::IsValidSelectionTile_Implementation(AGridTileB
 void UConnectIt_PlacePieceAction::HandleValidHover_Implementation(AGridTileBase* Tile)
 {
     if (!IsValid(Tile)) return;
-    if (!Tag_ValidHover.IsValid()) return;
+    if (!TagActionMouseHover.IsValid()) return;
 
-    Tile->SendGameplayTag(Tag_ValidHover);
+    Tile->SendGameplayTag(TagActionMouseHover);
 }
 
-void UConnectIt_PlacePieceAction::HandleHoverCleared_Implementation(
-    AGridTileBase* PreviousTile)
+void UConnectIt_PlacePieceAction::HandleHoverCleared_Implementation(AGridTileBase* PreviousTile)
 {
     if (!IsValid(PreviousTile)) return;
-    if (!Tag_Default.IsValid()) return;
+    if (!TagActionGridState.IsValid()) return;
 
-    PreviousTile->SendGameplayTag(Tag_Default);
+    PreviousTile->SendGameplayTag(TagActionGridState);
 }
 
 void UConnectIt_PlacePieceAction::HandleValidSelection_Implementation(AGridTileBase* Tile)
@@ -119,25 +124,26 @@ void UConnectIt_PlacePieceAction::HandleValidSelection_Implementation(AGridTileB
     
     // Build the request -- board manager handles all mutation
     // Action has no knowledge of pools, piece actors, or state changes
-    FTurnActionRequest Request;
-    Request.RequestType = ActionTag;
-    Request.FactionID = GetOwningControllerFactionID();
-    Request.Payload.InitializeAs<FConnectItRequestPlacePiece>(
-        FConnectItRequestPlacePiece{ .Positions = { Position } });
+    // The request IS the board change (see FConnectItBoardOperation).
+    // Faction is filled in for completeness and the log; the server sets it
+    // itself from whoever sent the request.
+    FConnectItBoardOperation_PlacePiece Operation;
+    Operation.Faction = GetOwningControllerFactionID();
+    Operation.Position = Position;
 
     UE_LOG(LogTemp, Log,
         TEXT("PlacePieceAction: Selection confirmed at (%d,%d) "
              "faction %d — requesting board change"),
         Position.X,
         Position.Y,
-        Request.FactionID);
+        Operation.Faction);
 
     // Route to action component which sends to server. Complete() is no
     // longer called here -- UTurnBasedActionsComponent pushes an
     // awaiting-confirmation state and calls Complete() itself once the
     // server's answer arrives (NotifyBoardChangeOutcome), so a rejected
     // request no longer falsely completes this action.
-    RequestBoardChange(Request);
+    RequestBoardChange(FInstancedStruct::Make(Operation));
 }
 
 void UConnectIt_PlacePieceAction::ClearSelectionState_Implementation()
@@ -145,9 +151,9 @@ void UConnectIt_PlacePieceAction::ClearSelectionState_Implementation()
     // Clear hover state on currently hovered tile
     if (AGridTileBase* Hovered = CurrentHoveredTile.Get())
     {
-        if (Tag_Default.IsValid())
+        if (TagActionGridState.IsValid())
         {
-            Hovered->SendGameplayTag(Tag_Default);
+            Hovered->SendGameplayTag(TagActionGridState);
         }
     }
 }

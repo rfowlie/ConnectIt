@@ -26,11 +26,14 @@ Owner facts live in `_user`, not here. Mental models are `_atomic` notes tagged
 - **One canonical file per subject.** If a domain has a single reference doc that is the
   source of truth for some set of facts, update it in place when facts change; don't
   scatter the same facts across other files.
+- **Every `wiki/` note carries `atomic-summary`** (`true`/`false`), defaulting `false` on
+  creation. `/process-data` never flips it beyond that initial `false` — `/process-atomic`
+  is what sweeps a wiki note for atomic-note-worthy ideas and sets it `true` once done.
 
 ## Template
 
-No per-note template — `_data/` defines a folder layout. `raw/` files keep the source's
-own shape plus frontmatter; a `wiki/<slug>.md` is free-form synthesis.
+`raw/` still has no per-note template — files keep the source's own shape plus
+frontmatter. `wiki/<slug>.md` now follows [[TSchemaWiki]].
 
 ## Deviations
 

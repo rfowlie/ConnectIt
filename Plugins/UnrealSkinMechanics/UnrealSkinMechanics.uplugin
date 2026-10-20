@@ -1,0 +1,23 @@
+{
+	"FileVersion": 3,
+	"Version": 1,
+	"VersionName": "1.0",
+	"FriendlyName": "UnrealSkinMechanics",
+	"Description": "Generic player-selectable skin system: category tags, skin/preset catalogs, and (later) a GameInstance resolver with a saved player selection.",
+	"Category": "Other",
+	"CreatedBy": "Robert A. Fowlie",
+	"CreatedByURL": "",
+	"DocsURL": "",
+	"MarketplaceURL": "",
+	"CanContainContent": true,
+	"IsBetaVersion": false,
+	"IsExperimentalVersion": false,
+	"Installed": false,
+	"Modules": [
+		{
+			"Name": "UnrealSkinMechanics",
+			"Type": "Runtime",
+			"LoadingPhase": "Default"
+		}
+	]
+}

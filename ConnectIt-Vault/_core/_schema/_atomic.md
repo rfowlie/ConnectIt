@@ -31,7 +31,7 @@ Flat — no topic subfolders.
 - **Frontmatter** — `created:`, a `status:` of `baby` | `child` | `adult` (how developed
   and polished the note is), and a few high-level topic `tags:`.
 - **Body** — a mini-essay in your own words with a clear start, middle, and end. Under
-  ~500 words; it should fit on screen without scrolling.
+  ~1000 words — still a single, tightly-scoped read, even if it now takes a scroll.
 - **`## References`** — a link back to the source note the idea came from, plus links to
   related atomic notes.
 

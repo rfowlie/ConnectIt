@@ -8,8 +8,8 @@ spans:
   - Source/ConnectIt/Public/Framework/GameMode/ConnectIt_GameMode.h
   - Source/ConnectIt/Public/Board/ConnectIt_BoardRequestMediator.h
   - Source/ConnectIt/Public/Board/ConnectIt_BoardStateComponent.h
-reconciled: 2026-09-10
-commit: 6477d5d
+reconciled: 2026-09-18
+commit: 9187568
 ---
 
 # Place-piece request (server-authoritative)

@@ -47,8 +47,8 @@ An atomic note is defined by **three core strengths**:
 
 - **Write in your own words.** Don't paste from the source; rewriting forces active
   learning and deeper digestion.
-- **Keep it short and focused.** Aim for a "mini-essay" **under 500 words** — the whole
-  note should fit on screen without scrolling.
+- **Keep it short and focused.** Aim for a "mini-essay" **under 1000 words** — still a
+  single, tightly-scoped read, even if it no longer fits on screen without scrolling.
 - **Standardise the structure.** Date, a maturity status tag (`baby` / `child` / `adult`),
   a few high-level topic tags, the body, and a references section at the bottom.
 - **Link heavily.** Connect to related atomic notes, and always link back to the source

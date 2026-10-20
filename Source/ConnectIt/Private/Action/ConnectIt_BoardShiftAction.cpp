@@ -1,0 +1,164 @@
+﻿// Fill out your copyright notice in the Description page of Project Settings.
+
+
+#include "Action/ConnectIt_BoardShiftAction.h"
+#include "Board/Operations/ConnectIt_BoardOperations.h"
+#include "ConnectIt_GameplayTags.h"
+#include "ConnectIt_Structs.h"
+#include "GridMechanics_GridLibrary.h"
+#include "Interface/GridFactionInterface.h"
+#include "Framework/Library/ConnectIt_GameUtilityLibrary.h"
+#include "StructUtils/InstancedStruct.h"
+#include "Tile/GridTileBase.h"
+
+
+bool UConnectIt_BoardShiftAction::ProducesRequestType_Implementation(FGameplayTag RequestType) const
+{
+	return RequestType == ConnectIt_Game_Shift;
+}
+
+UConnectIt_BoardShiftAction::UConnectIt_BoardShiftAction()
+{
+	// Uses, per-turn cap and turn-end contribution (e.g. "ends the turn after
+	// two shifts") live in the loadout's PermanentActions entry and
+	// TurnEndRequirements tree, not here.
+	bIsCancellable = true;
+
+	// The actual fix that makes this action reachable at all -- without
+	// this, Activate_Internal_Implementation never binds hover/selection
+	// input in the first place.
+	bRequiresSelection = true;
+}
+
+void UConnectIt_BoardShiftAction::PostInitialiseAction_Implementation()
+{
+	if (!IsValid(OwningController))
+	{
+		UE_LOG(LogTemp, Error,
+			TEXT("PieceSwapperAction: PostInitialiseAction -- "
+				 "OwningController is null"));
+		return;
+	}
+
+	// TileRegistry lives on UConnectIt_BoardRegistrySubsystem -- one
+	// canonical per-world instance, not per-controller.
+	TileRegistry = UConnectIt_GameUtilityLibrary::GetTileRegistry(GetPlayerController());
+
+	if (!IsValid(TileRegistry))
+	{
+		UE_LOG(LogTemp, Error,
+			TEXT("PieceSwapperAction: PostInitialiseAction -- "
+				 "OwningController has no valid TileRegistry"));
+	}
+}
+
+void UConnectIt_BoardShiftAction::HandleValidHover_Implementation(AGridTileBase* Tile)
+{
+	if (!IsValid(Tile)) return;
+	if (!IsValid(TileRegistry)) return;
+	if (!TagActionMouseHover.IsValid()) return;
+
+	for (const auto OutTile : TileRegistry->GetTilesByDirection(
+		TileRegistry->GetPositionOfTile(Tile), ShiftDirection))
+	{
+		// TODO: could we have a ITileShiftVisualizer - SetShiftVisual(EGridDirection)
+		OutTile->SendGameplayTag(TagActionMouseHover);
+	}
+}
+
+void UConnectIt_BoardShiftAction::HandleHoverCleared_Implementation(AGridTileBase* PreviousTile)
+{
+	if (!IsValid(PreviousTile)) return;
+	if (!IsValid(TileRegistry)) return;
+	if (!TagActionGridState.IsValid()) return;
+
+	for (const auto OutTile : TileRegistry->GetTilesByDirection(
+		TileRegistry->GetPositionOfTile(PreviousTile), ShiftDirection))
+	{
+		OutTile->SendGameplayTag(TagActionGridState);
+	}
+}
+
+void UConnectIt_BoardShiftAction::HandleValidSelection_Implementation(AGridTileBase* Tile)
+{
+	if (!IsValid(Tile)) return;
+	if (!IsValid(TileRegistry)) return;
+
+	const FGridPosition Position = TileRegistry->GetPositionOfTile(Tile);
+
+	// GetTilesByDirection iterates the registry's own Tiles array (sorted by
+	// actor name, not geometry) -- collect positions, then sort into actual
+	// line order below, so the Mediator gets a usable, ordered list instead
+	// of having to re-derive order itself.
+	TArray<FGridPosition> ShiftPositions;
+	for (const auto LineTile : TileRegistry->GetTilesByDirection(Position, ShiftDirection))
+	{
+		if (IsValid(LineTile))
+		{
+			ShiftPositions.Add(TileRegistry->GetPositionOfTile(LineTile));
+		}
+	}
+
+	// this will sort the tiles in the correct grid direction
+	const FGridDirectionVector Dir = UGridMechanics_GridLibrary::GetGridDirectionVector(ShiftDirection);
+	ShiftPositions.Sort([&Position, &Dir](const FGridPosition& A, const FGridPosition& B)
+	{
+		// Signed distance along the shift axis from the selected tile --
+		// orders the line from one end to the other, not by discovery order.
+		const int32 DistA = (A.X - Position.X) * Dir.Row + (A.Y - Position.Y) * Dir.Column;
+		const int32 DistB = (B.X - Position.X) * Dir.Row + (B.Y - Position.Y) * Dir.Column;
+		return DistA < DistB;
+	});
+
+	// Build the request -- the Mediator still re-validates ShiftPositions
+	// against its own board state before mutating anything; this action has
+	// no knowledge of board mutation, same division of responsibility as
+	// PlacePiece/Swap.
+	FConnectItBoardOperation_Shift Operation;
+	Operation.Faction = GetOwningControllerFactionID();
+	Operation.Positions = ShiftPositions;
+	Operation.Direction = ShiftDirection;
+	Operation.Steps = ShiftSteps;
+
+	UE_LOG(LogTemp, Log,
+		TEXT("BoardShiftAction: Selection confirmed at (%d,%d), direction %d, "
+			 "%d step(s), %d tile(s) in line, faction %d — requesting board shift"),
+		Position.X, Position.Y,
+		static_cast<uint8>(ShiftDirection),
+		ShiftSteps,
+		ShiftPositions.Num(),
+		Operation.Faction);
+
+	// Route to action component which sends to server. Complete() is not
+	// called here -- UTurnBasedActionsComponent pushes an
+	// awaiting-confirmation state and calls Complete() itself once the
+	// server's answer arrives, same as PlacePiece/Swap.
+	RequestBoardChange(FInstancedStruct::Make(Operation));
+}
+
+void UConnectIt_BoardShiftAction::ClearSelectionState_Implementation()
+{
+	if (AGridTileBase* Hovered = CurrentHoveredTile.Get())
+	{
+		HandleHoverCleared_Implementation(Hovered);
+	}
+}
+
+int32 UConnectIt_BoardShiftAction::GetOwningControllerFactionID() const
+{
+	if (!IsValid(OwningController))
+	{
+		UE_LOG(LogTemp, Error,
+			TEXT("BoardShiftAction: GetOwningControllerFactionID -- "
+				 "OwningController is null"));
+		return -1;
+	}
+
+	int32 FactionId = -1;
+	if (OwningController->Implements<UGridFactionInterface>())
+	{
+		FactionId = IGridFactionInterface::Execute_GetFactionId(OwningController);
+	}
+
+	return FactionId;
+}

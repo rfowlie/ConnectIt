@@ -5,8 +5,8 @@ spans:
   - Source/ConnectIt/Private/Board/ConnectIt_BoardStateComponent.cpp
   - Source/ConnectIt/Public/ConnectIt_Structs.h
   - Source/ConnectIt/Public/Framework/GameState/ConnectIt_GameState.h
-reconciled: 2026-09-10
-commit: 6477d5d
+reconciled: 2026-09-18
+commit: 9187568
 ---
 
 # Board state — single source of truth

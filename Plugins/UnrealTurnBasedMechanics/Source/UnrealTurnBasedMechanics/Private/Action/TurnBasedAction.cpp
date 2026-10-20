@@ -4,9 +4,18 @@
 #include "UnrealTurnBasedMechanics.h"
 #include "EnhancedInputComponent.h"
 #include "GameFramework/Controller.h"
+#include "Framework/PlayerState/TurnBasedPlayerState.h"
 #include "Subsystem/GridHoverSubsystem.h"
 #include "Tile/GridTileBase.h"
 
+
+FGameplayTag UTurnBasedAction::GetTagForClass(TSubclassOf<UTurnBasedAction> ActionClass)
+{
+    if (!ActionClass) return FGameplayTag();
+
+    const UTurnBasedAction* DefaultAction = ActionClass->GetDefaultObject<UTurnBasedAction>();
+    return IsValid(DefaultAction) ? DefaultAction->GetActionTag() : FGameplayTag();
+}
 
 void UTurnBasedAction::InitialiseAction(
     AController* InOwningController,
@@ -17,17 +26,12 @@ void UTurnBasedAction::InitialiseAction(
     EnhancedInputComponent = InInputComponent;
     LocalPlayerSubsystem = InLocalPlayerSubsystem;
 
+    ConstructInputBindings();
+
+    // TODO: check if there are duplicate Input Actions in bindings
+
     InputTagBinder = NewObject<UInputTagBinder>(this);
     InputTagBinder->Initialise(EnhancedInputComponent, LocalPlayerSubsystem, InputBindings);
-    InputTagBinder->OnInputTagTriggered.AddDynamic(this, &UTurnBasedAction::HandleInputTagTriggered);
-
-    // SelectionInputAction stays this class's own bespoke concern -- map it
-    // onto the same context InputTagBinder just built, so there's still
-    // only one UInputMappingContext per action instance
-    // if (IsValid(SelectionInputAction) && IsValid(InputTagBinder->GetMappingContext()))
-    // {
-    //     InputTagBinder->GetMappingContext()->MapKey(SelectionInputAction, SelectionInputKey);
-    // }
 
     PostInitialiseAction();
 }
@@ -38,21 +42,13 @@ void UTurnBasedAction::Complete()
     {
         UE_LOG(LogTurnBasedMechanics, Warning,
             TEXT("TurnBasedAction: '%s' Complete called but not active"),
-            *ActionTag.ToString());
+            *GetActionTag().ToString());
         return;
     }
 
     UnbindInput();
     UnbindGridSubsystem();
     ClearSelectionState();
-
-    // Increment completions -- only Complete() does this
-    CompletionsThisTurn++;
-
-    if (CooldownTurns > 0)
-    {
-        TurnsUntilAvailable = CooldownTurns;
-    }
 
     OnCompleted();
     OnActionCompleted.Broadcast(this);
@@ -61,10 +57,8 @@ void UTurnBasedAction::Complete()
     FinishAction();
 
     UE_LOG(LogTurnBasedMechanics, Log,
-        TEXT("TurnBasedAction: '%s' completed "
-             "(%d completions this turn)"),
-        *ActionTag.ToString(),
-        CompletionsThisTurn);
+        TEXT("TurnBasedAction: '%s' completed"),
+        *GetActionTag().ToString());
 }
 
 void UTurnBasedAction::Cancel()
@@ -75,15 +69,13 @@ void UTurnBasedAction::Cancel()
         UE_LOG(LogTurnBasedMechanics, Warning,
             TEXT("TurnBasedAction: '%s' Cancel called "
                  "but bIsCancellable is false"),
-            *ActionTag.ToString());
+            *GetActionTag().ToString());
         return;
     }
 
     UnbindInput();
     UnbindGridSubsystem();
     ClearSelectionState();
-
-    // No CompletionsThisTurn increment on cancel
 
     OnCancelled();
     OnActionCancelled.Broadcast(this);
@@ -93,7 +85,7 @@ void UTurnBasedAction::Cancel()
 
     UE_LOG(LogTurnBasedMechanics, Log,
         TEXT("TurnBasedAction: '%s' cancelled"),
-        *ActionTag.ToString());
+        *GetActionTag().ToString());
 }
 
 void UTurnBasedAction::FinishAction()
@@ -107,41 +99,73 @@ void UTurnBasedAction::FinishAction()
 bool UTurnBasedAction::CanActivate() const
 {
     if (IsActive()) return false;
-    if (TurnsUntilAvailable > 0) return false;
-    if (MaxCompletionsPerTurn > 0
-        && CompletionsThisTurn >= MaxCompletionsPerTurn) return false;
+
+    // The player's authoritative runtime state decides (uses left, per-turn
+    // cap, cooldown). If it isn't available yet (e.g. a client before the
+    // PlayerState has replicated) don't block here -- this is only a
+    // convenience; the server gate is the real check.
+    if (const ATurnBasedPlayerState* PS = GetOwnerPlayerState())
+    {
+        if (PS->HasActionConfig())
+        {
+            return PS->CanUseAction(GetClass());
+        }
+    }
+
     return true;
 }
 
-void UTurnBasedAction::TickCooldown(const bool bIsMyTurn)
+ATurnBasedPlayerState* UTurnBasedAction::GetOwnerPlayerState() const
 {
-    if (!ShouldTickCooldown(bIsMyTurn)) return;
-    if (TurnsUntilAvailable <= 0) return;
-
-    TurnsUntilAvailable--;
-
-    if (TurnsUntilAvailable <= 0)
-    {
-        UE_LOG(LogTurnBasedMechanics, Log,
-            TEXT("TurnBasedAction: '%s' cooldown expired"),
-            *ActionTag.ToString());
-    }
+    const AController* Controller = OwningController;
+    return IsValid(Controller) ? Controller->GetPlayerState<ATurnBasedPlayerState>() : nullptr;
 }
 
-void UTurnBasedAction::ResetTurnState()
+bool UTurnBasedAction::GetPermanentRuntimeState(FPermanentActionRuntimeState& OutState) const
 {
-    CompletionsThisTurn = 0;
+    const ATurnBasedPlayerState* PS = GetOwnerPlayerState();
+    return IsValid(PS) && PS->GetPermanentRuntimeState(GetClass(), OutState);
 }
 
-void UTurnBasedAction::RequestBoardChange(const FTurnActionRequest& Request)
+bool UTurnBasedAction::GetNumberedRuntimeState(FNumberedActionRuntimeState& OutState) const
 {
-    if (!Request.IsValid())
+    const ATurnBasedPlayerState* PS = GetOwnerPlayerState();
+    return IsValid(PS) && PS->GetNumberedRuntimeState(GetClass(), OutState);
+}
+
+int32 UTurnBasedAction::GetUsesThisTurn() const
+{
+    const ATurnBasedPlayerState* PS = GetOwnerPlayerState();
+    return IsValid(PS) ? PS->GetActionUsesThisTurn(GetClass()) : 0;
+}
+
+int32 UTurnBasedAction::GetMaxUsesPerTurn() const
+{
+    const ATurnBasedPlayerState* PS = GetOwnerPlayerState();
+    return IsValid(PS) ? PS->GetActionMaxUsesPerTurn(GetClass()) : 0;
+}
+
+int32 UTurnBasedAction::GetUsesRemaining() const
+{
+    const ATurnBasedPlayerState* PS = GetOwnerPlayerState();
+    return IsValid(PS) ? PS->GetNumberedActionUsesRemaining(GetClass()) : 0;
+}
+
+void UTurnBasedAction::RequestBoardChange(const FInstancedStruct& Payload)
+{
+    if (!Payload.IsValid())
     {
         UE_LOG(LogTurnBasedMechanics, Warning,
-            TEXT("TurnBasedAction: '%s' fired invalid FTurnActionRequest"),
-            *ActionTag.ToString());
+            TEXT("TurnBasedAction: '%s' requested a board change with no payload"),
+            *GetActionTag().ToString());
         return;
     }
+
+    // Stamp the sending action's identity so the server can resolve which
+    // config/runtime-state entry this request belongs to.
+    FTurnActionRequest Request;
+    Request.ActionTag = GetActionTag();
+    Request.Payload = Payload;
 
     OnChangeRequested.Broadcast(Request);
     OnChangeRequested_Native.Broadcast(Request);
@@ -164,7 +188,7 @@ void UTurnBasedAction::RequestNextAction(TSubclassOf<UTurnBasedAction> NextActio
         UE_LOG(LogTurnBasedMechanics, Warning,
             TEXT("TurnBasedAction: '%s' RequestNextAction called "
                  "with null class"),
-            *ActionTag.ToString());
+            *GetActionTag().ToString());
         return;
     }
 
@@ -173,7 +197,7 @@ void UTurnBasedAction::RequestNextAction(TSubclassOf<UTurnBasedAction> NextActio
 
     UE_LOG(LogTurnBasedMechanics, Log,
         TEXT("TurnBasedAction: '%s' requested next action '%s'"),
-        *ActionTag.ToString(),
+        *GetActionTag().ToString(),
         *NextActionClass->GetName());
 }
 
@@ -206,18 +230,6 @@ void UTurnBasedAction::ForceDeactivate_Internal_Implementation()
 
 void UTurnBasedAction::BindInput()
 {
-    // SelectionInputAction is this class's own bespoke binding -- InputTagBinder
-    // only owns the generic InputBindings entries (see InitialiseAction for
-    // how SelectionInputAction shares InputTagBinder's mapping context)
-    // if (IsValid(EnhancedInputComponent) && IsValid(SelectionInputAction))
-    // {
-    //     EnhancedInputComponent->BindAction(
-    //         SelectionInputAction,
-    //         ETriggerEvent::Triggered,
-    //         this,
-    //         &UTurnBasedAction::OnSelectionInputTriggered);
-    // }
-
     if (IsValid(InputTagBinder))
     {
         InputTagBinder->BindAll();
@@ -226,9 +238,6 @@ void UTurnBasedAction::BindInput()
 
 void UTurnBasedAction::UnbindInput()
 {
-    // Clears SelectionInputAction's binding above -- registered against
-    // `this`, not InputTagBinder, so InputTagBinder->UnbindAll() below
-    // doesn't clear it (and vice versa)
     if (IsValid(EnhancedInputComponent))
     {
         EnhancedInputComponent->ClearBindingsForObject(this);
@@ -288,23 +297,14 @@ void UTurnBasedAction::OnGridTileHoverChanged(AGridTileBase* NewTile)
     }
 }
 
-// TODO: how do we get the InputInfo passed through? (InputTagBinder's
-// OnInputTagTriggered only carries BindingTag today, same as the pre-
-// extraction version -- still open, not part of this round)
-void UTurnBasedAction::HandleInputTagTriggered(const FInputActionInstance&, FGameplayTag BindingTag)
-{ 
-    OnBoundInputTriggered(BindingTag);
-}
-
 // --- Default Virtual Implementations ---
 
 void UTurnBasedAction::OnCancelled_Implementation() {}
 void UTurnBasedAction::OnCompleted_Implementation() {}
+void UTurnBasedAction::ConstructInputBindings_Implementation() {}
 bool UTurnBasedAction::IsValidHoverTile_Implementation(AGridTileBase* Tile) const { return IsValid(Tile); }
 bool UTurnBasedAction::IsValidSelectionTile_Implementation(AGridTileBase* Tile) const { return IsValid(Tile); }
 void UTurnBasedAction::HandleValidHover_Implementation(AGridTileBase*) {}
 void UTurnBasedAction::HandleHoverCleared_Implementation(AGridTileBase*) {}
 void UTurnBasedAction::HandleValidSelection_Implementation(AGridTileBase*) {}
 void UTurnBasedAction::ClearSelectionState_Implementation() {}
-void UTurnBasedAction::OnBoundInputTriggered_Implementation(FGameplayTag) {}
-bool UTurnBasedAction::ShouldTickCooldown_Implementation(bool bIsMyTurn) const { return bIsMyTurn; }

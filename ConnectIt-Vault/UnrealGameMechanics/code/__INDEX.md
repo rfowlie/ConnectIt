@@ -59,7 +59,7 @@ One Runtime module, `Plugins/UnrealGameMechanics/Source/UnrealGameMechanics/`. S
   [[UnrealGameMechanics/code/systems/actor-pooling-lifecycle|systems/actor-pooling-lifecycle]].
 - **`Input/`** — `UInputTagBinder`: one mapping context built from data-only
   `FInputTagBinding` entries, scoped to an explicit `BindAll()`/`UnbindAll()` lifetime;
-  every action dispatches through one `OnInputTagTriggered` delegate keyed by tag.
+  each binding dispatches straight to its own `InputActionDelegate`, no shared consumer.
 - **`State/`** — two independent patterns: single-state (`UGameMechanicsStateBase` /
   `…Simple`) and stack-based (`UStackedStateMachine` / `UStackedState`).
 - **`GameTurn/`, `Scoring/`, `Broadcasters/`, `Widget/` (`UDWidgetBase`), `Debug/`** —

@@ -33,6 +33,12 @@ Every `_core/_skills/process-*.md` file **except this one** (`process.md`) — c
 Discover the list by globbing `_core/_skills/process-*.md` rather than hard-coding it —
 the list above is current as of this file's writing, not a fixed set.
 
+**Fixed dependency: `process-data` before `process-atomic`.** `process-atomic`'s `_data/`
+sweep pass reads `_data/wiki/` notes and their `atomic-summary` field, which only exists
+(or is current) once `process-data` has run. This isn't incidental list order — if
+discovery ever changes (alphabetical, parallel, etc.), `process-data` must still be
+sequenced before `process-atomic` in the run.
+
 ## Arguments
 
 - None. If the user names one schema ("just process data"), run that one skill directly
@@ -40,6 +46,13 @@ the list above is current as of this file's writing, not a fixed set.
 
 ## Steps
 
+0. **Branch check.** Run `git branch --show-current` and compare it to the branch named on
+   the `**Status:**` line of the game domain's `CLAUDE.md` (today
+   `ConnectIt/CLAUDE.md`, "Branch `…`"). If they differ, rewrite that line to the actual
+   current branch and record the old → new values under the log's `## Changed`. Skip
+   quietly if git reports a detached HEAD (nothing to compare), and flag it if the
+   `Status:` line names no branch at all. This runs first so the sub-skills' own
+   `commit:` provenance checks aren't reasoning against a stale branch label.
 1. Run each discovered skill's own **Steps** in full, in the order listed above.
 2. Collect each one's **Output format** sections, but skip each sub-skill's own **Log**
    step — this skill writes one combined log at the end instead of one per sub-skill.
@@ -51,6 +64,9 @@ the list above is current as of this file's writing, not a fixed set.
 One section per sub-skill, in the order run, each headed with the skill's name (e.g.
 `### process-data`) and containing that skill's own output sections verbatim (minus its
 Log step). Close with:
+
+### Branch check
+One line: branch label matched, or old → new if it was corrected.
 
 ### Summary
 One line per sub-skill: what it found / changed, or "nothing to do."

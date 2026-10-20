@@ -345,6 +345,20 @@ void UTurnBasedParticipantManagerComponent::StartTurn(int32 ParticipantIndex)
     // Fired before turn notifications so clients know updating has ended
     SetMatchPhase(EMatchPhase::InProgress);
 
+    // Authoritative per-action turn bookkeeping for the participant whose
+    // turn this is: tick cooldowns (own turns only, matching
+    // UTurnBasedAction::ShouldTickCooldown's default) and zero the per-turn
+    // use counters. Done before the turn notification so clients never see
+    // last turn's counts as this turn's.
+    if (AController* ActiveController = GetControllerAtIndex(ParticipantIndex))
+    {
+        if (ATurnBasedPlayerState* ActivePS = ActiveController->GetPlayerState<ATurnBasedPlayerState>())
+        {
+            ActivePS->TickActionCooldowns();
+            ActivePS->ResetActionTurnCounters();
+        }
+    }
+
     SetPhase(ETurnPhase::TurnStart);
     BroadcastTurnStart(ParticipantIndex);
 

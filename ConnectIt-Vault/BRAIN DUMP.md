@@ -1,32 +1,103 @@
 
-I think the shape we should aim for first is create one new action (let's go with the SWAP action that is already being discussed) and give each player 3 uses of the skill at the start of the match. The bonus skill can only be used once per turn and acts as the turn (no placing a piece after). Players cannot gain more uses of the skill after using it 3 times. We will want to make sure that the UI indicates number of uses.
+- I am imagining a situation much like super smash bros, where we have a level that is designed for a specific adventure mode, but then we want to allow for players to use in multiplayer with custom rules. How do we go about supporting that?
+- We will want to broadcast what checkpoint win condition has completed so that the same object can act differently for different check points reached. 
+	- Not sure we should use tags though, it should really just be an index. We will want a way to check the state of win conditions for all players (int func(playerId));
+- 
 
-What happened here?
-**`ActionTag` ≠ the wire-level `RequestType`, and `PlacePieceAction` already conflates them** (`Request.RequestType = ActionTag;`, verified at `ConnectIt_PlacePieceAction.cpp:127`) — that only works today because someone hand-set PlacePiece's `ActionTag` in the editor to the _native_ tag string (`"ConnectIt.Game.State.PlacePiece"`), silently diverging from the clean `"ConnectIt.Action.PlacePiece"` the ini declares.
+## Summary of your AI notes
 
-Action Stats
-- is it possible to genericize state for an action? 
-	- Permanent (always available) + turn uses, cooldowns
-	- Non-permanent + turn uses + uses available + cooldown
-- Or do we just create project specific interfaces to get the expected info and setup?
+### What you want
 
-The real concern here is setting up the player state to track action state and have it not exposed unnecessarily. 
+- **MinMax as a tool, not a hidden strategy.** Designers should be able to call the search from their own BP strategies with parameters.
+- **A designer-facing pipeline.** They set up or reuse a strategy, set it on the controller, call `BeginDecision`, and the move flows through the normal checks to the server.
+- **Mix-and-match strategies.** Strategies should be generic, parameterizable containers of behaviour. The controller coordinates them and swapping them is free.
 
-Encountering a state issue when it comes to Actions. The ActionsComponent is tracking the state, but we want the player state to know about the current state of each action so all players can have access to that information. Just having it on the actions component of the local player controller is not ideal.
-At the same time we run into the issue of tampering. If a players actions and their associated state are stored on the actions component there is opportunity to tamper. If on the player state, it becomes a read only and imitate setup situation locally.
-We have a bit of a circle. The Actions UI (which the player uses to switch between place piece and swap piece) reads what actions (place, swap) are available for this player through the player state (we want it hear so that all clients can have access to this information cleanly?). But then how does the player state know what the state of each action is? The ActionsComponent and each action it holds contain that. So we need to send some server request to update it? This is a bad setup. 
-Something to consider is that Actions in theory are transient in nature in that are just logic to perform an action. How that action behaves is dictated by some state (which we can consider a payload). Actions themselves are actually high level concepts, not atomic. They should be directed at accomplishing a super specific task (action). How this happens is totally up to interpretation (internal state machine, etc.). 
+### The flow you described
 
-What if the actions component doesn't maintain a live set of actions that track their own set and cooldowns etc. What if the actions component simply receives requests to pop, push already preconstructed and state set actions? Would this just make it a glorified state machine (action machine?).
+- **Pipeline:** `AIController` owns a `Strategy`. `BeginDecision(Context)` leads to `FinishDecision(Decision)`, which fires `OnDecisionFinished`. The controller’s `HandleDecisionFinished` runs its checks and calls `SubmitDecision`.
+- **Proposed change:** make the checks in `HandleDecisionFinished` BP-overridable. You called it “templated”, but what you describe is a hook such as `HandleDecisionFinishedInternal` returning a bool, “should this decision be submitted?”. Its default would return true. This is a virtual or `BlueprintNativeEvent`, not a template.
 
-Realistically no matter what turn based game we make, there will always exist an actions menu (think final fantasy, fire emblem) which guards and gates what actions can be performed, and when. We don't actually need the Actions component to manage this. An actions menu UI reading from immutable player action state data will set itself up properly so that inappropriate actions cannot be selected or performed. 
-So where does this leave us with the current actions setup? It removes much of the responsibility but perhaps it is okay that we leave it as a state machine like wrapper class that is specific to actions for clarity and ease of use. 
+### Concerns about loadouts
 
-- Currently there are far too many places to mess up gameplay tags for actions
-	- Action Loadout
-	- Action BP
-	- OnBoundInputTriggered
-	- UI for each action
-- We should be able to read the actions tag instead of having to set it everywhere manually
+- **Where validation happens.** From BP it looks like you can create a move and send it with no loadout involved. In the code, the controller’s `SubmitDecision` only looks up which action produces the request type. The real check is the server’s Mediator gate, which rejects a move whose action isn’t in the player state’s loadout.
+- **Who owns the loadout.** Should the controller own the loadout instead of the config? The case you raise is an AI that swaps loadouts every turn. Today the loadout lives on the PlayerState. `SetLoadout` can swap it at the next turn start. The controller reads it fresh on each decision.
+- **Strategies and moves.** Do strategies discover moves from the loadout, or assume a fixed move set and decide accordingly? Should a strategy have to declare the moves it supports, so unavailable actions can be skipped up front?
 
-I've noticed a slight issue with the current logic regarding SWAP piece. If swapping a piece results in a scoring line for either player. The new board state that gets created and replicated has the end position. We lose the intermediary state of the pieces being swapped. This is huge disruption for the visualization side of the game. As it clouds what needs to happen? Or does it? As everything that happens gets recorded into the game event. So as long as that is setup in the correct order for visuals we should be able to interpret each intermediary step around what happened. Updating visuals chronoligcally.
+### Strategy and controller roles
+
+- **Strategies only return decisions.** The controller sends them.
+- **Unchecked sends.** A controller could skip strategies and send a random move that isn’t in the loadout. The server would block it, which is confusing.
+- **MinMax guards itself.** It limits its choices to its own loadout, so tampering isn’t a concern.
+
+### MinMax specifically
+
+- It currently reads move availability straight from the player state’s loadout through the decision context.
+- **Parameterize it.** Pass the allowed move set in, so a designer can change it on the fly. Your example is giving the AI new moves for a comeback when the player is close to winning.
+
+### Open questions
+
+1. Is the strategy the whole AI behaviour, or a swappable part under a coordinating controller? You’re leaning toward the second.
+2. Should the controller or the config own the loadout?
+3. Should strategies declare their supported moves?
+4. Should the controller be able to skip strategies at all?
+5. How should MinMax take its move set and search settings as parameters?
+
+
+## AI structure: organized notes
+
+### Proposed architecture
+
+- **Director**
+    - It listens to game events and responds to them. Expect one subclass per adventure level, since each level has custom events to react to.
+    - It decides three things: the **loadout**, the **strategies and how they’re initialized**, and the **decision selector**. It re-decides on game events, including level start.
+    - It initializes and parameterizes the strategies, then hands them to the coordinator.
+- **Coordinator**
+    - It is not a strategy, but it has the same interface.
+    - It is generic: it takes an array of strategies and runs them all, collecting every decision.
+    - After the think time, it queries each strategy for its cached decisions. It then runs a passed-in selector and tries to submit the selected decisions to the server.
+- **Strategy**
+    - Strategies **cache their own decisions** so the coordinator can pull them when the think time is up.
+    - Start with an **empty strategy that takes a delegate for `BeginDecision`**. Once patterns repeat across levels, encapsulate them as subclasses.
+- **Selector**
+    - A function the director passes in. It either receives the collected decisions, or receives the strategies and queries how many decisions each should contribute.
+    - It returns an **array of decisions** that the coordinator submits.
+
+### Consequences
+
+- **AI profile** might be deprecated. The director now picks the loadout and strategies that the profile used to bundle.
+- **Win conditions and checkpoints** get restructured. A director may or may not depend on them.
+- **Win conditions** would move into **their own data assets**, so several systems (rules, director, BP scripting) can reference the same one.
+- The cost is some editor-matching concerns, since multiple systems need to know the specifics of a win-condition asset. You expect this to be mostly avoidable.
+
+### Open questions
+
+1. **Where director events come from.**
+    - Option A: win-condition and checkpoint events live in their own data asset, so scripting in BP shows exactly which events exist.
+    - Option B: the director responds to generic subsystem events.
+2. **Delegates vs. many strategies.**
+    - Option A: one generic strategy plus delegates the director sets. This avoids many near-duplicate strategies.
+    - Option B: encapsulated variants, which are easier to set in directors.
+    - Your current lean is delegates first, with subclasses added as patterns emerge.
+3. **Strategy responsibilities.** Should “run decisions” and “select a decision” be separated, or are they naturally intertwined?
+4. **Selector shape.** Does it receive decisions, or receive strategies and query them?
+
+### How this relates to what exists
+
+- Today the controller owns one duplicated strategy from an AI profile, and the strategy decides _and_ picks one move.
+- The controller submits one decision per call.
+- These notes replace that with director, coordinator, strategies and selector. The coordinator submits several decisions, and the profile goes away.
+
+
+### New Match Preset Setup
+
+- Win condition data assets feels clunky. What is the reasoning behind this again? Is it so that the AI director can also have it set?
+	- At the same time it does force organization. Each adventure level needs to a player and AI win condition data asset. Being a DA makes it super clear.
+- MinMax>Search>Request Types feels clucky as well. I understand the idea behind it where maybe we want to restrict the moves used in search from what the loadout holds but perhaps we are adding complexity unnecessarily. We should remove this for now and just assume we can use any move in the loadout. If a move has not been supported yet it should silently fail (or post an error in the log).
+- MinMax>Search>TimeBudget should maybe be renamed to default time budget just to be clearer
+- Setting all the values for a director in the match preset data asset also feels a bit clunky. I was imagining that the director hides all the implementation details. But it could be useful to just see what is set? It does cloud the match preset data asset. As well I was imagining that there would be a distinct AI director subclass for each adventure level as it needs to respond to potentially unique situations...
+	- It sort of implies that there needs to be something set initially which is generally true, so maybe this isn't the worst. At the end of the day the director can just overwrite everything on level start if it wants
+- Level Config DA > Board - I can see these values often being the same, perhaps we should as well encapsulate the board values into a DA for reuse?
+	- Maybe a wishlist item?
+- Does DA overuse have downsides? 
+	- Currently each level config will likely be unique per adventure level, the match preset will also be unique to the adventure level. It seems like most of the DA's we have created are unique to the adventure level. Is this bad or confusing? Or does it make things more organized and clear? What are the benefits of doing this? For one AI directors can get ahold of both the player/AI win condition DAs for their specific level. As well as the match preset DA and action loadout DA. I think the main issue I am seeing is actually the folder organization of these DA. They are all living in folders for the DA themselves. I think ideally what we want is that each DA that is unique to an adventure level sits in the folder for that adventure level. This way it is clear to see what is needed, what is missing, etc. 
+- Design Note - Exhaustion levels for swap, player cannot go first if there are no opponent pieces on the board as swap enforces swapping opposite faction pieces. As well we need to make sure that exhaust levels have the correct number of player pieces on the board so that they can achieve zero pieces (must be divisible by the scoring line minimum)

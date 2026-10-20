@@ -4,25 +4,23 @@
 
 #include "CoreMinimal.h"
 #include "Engine/DataAsset.h"
-#include "Board/Rules/ConnectIt_ScoringRule.h"
-#include "Board/Rules/ConnectIt_TilePlaceableRule.h"
-#include "Board/Rules/ConnectIt_WinCondition.h"
 #include "ConnectIt_LevelConfigDataAsset.generated.h"
 
-class UActionLoadoutDataAsset;
+class UConnectIt_MatchPreset;
 class AConnectIt_GridPiece;
 class UConnectIt_TileRegistry;
 class UConnectIt_PieceRegistry;
+class UGridDefinition;
 
-// Per-level board configuration -- replaces UConnectIt_ConfigComponent
-// (used to sit on the level-placed AConnectIt_BoardManager actor, one
-// instance configured per level) outright, not alongside it: a designer
-// authors one of these per level instead of configuring a placed actor,
-// and both AConnectIt_GameMode (server) and AConnectIt_PlayerController
-// (client, for its own loadout) resolve the SAME asset independently via
-// ConnectIt_LevelConfigSettings' level-name lookup -- symmetric, static,
-// un-networked data, so no live server object needs to hand it to clients.
-// See "Board architecture overhaul" plan.
+// A level's stage: the board it is played on (tile and piece registries, grid
+// geometry) and its pieces -- one per level, found by level name through
+// ConnectIt_LevelConfigSettings.
+//
+// How a match on this stage is played (rules, player loadout, AI) is not here:
+// that is a UConnectIt_MatchPreset. The level names the preset it plays as by
+// default (DefaultMatchPreset); the main menu can choose a different one, so
+// a level built for Adventure can also be played as a versus match with other
+// rules.
 UCLASS(BlueprintType)
 class CONNECTIT_API UConnectIt_LevelConfigDataAsset : public UDataAsset
 {
@@ -30,21 +28,13 @@ class CONNECTIT_API UConnectIt_LevelConfigDataAsset : public UDataAsset
 
 public:
 
-    // --- Loadouts ---
+    // --- Match ---
 
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "ConnectIt|Config")
-    TObjectPtr<UActionLoadoutDataAsset> PlayerLoadout = nullptr;
-
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "ConnectIt|Config")
-    TObjectPtr<UActionLoadoutDataAsset> EnemyLoadout = nullptr;
-
-    // --- AI ---
-
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "ConnectIt|Config")
-    int32 AISearchDepth = 3;
-
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "ConnectIt|Config")
-    int32 AIThreadDepth = 1;
+    // How this level is played when nothing else is chosen: its Adventure
+    // setup, or what opening the level directly in the editor plays. The main
+    // menu can pick another preset for the same level.
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "ConnectIt|Match")
+    TObjectPtr<UConnectIt_MatchPreset> DefaultMatchPreset = nullptr;
 
     // --- Piece Pool ---
 
@@ -56,38 +46,16 @@ public:
         meta = (ClampMin = 1))
     int32 PiecePoolInitialSize = 32;
 
-    // --- Rules ---
-    // Designer-selectable concrete subclass per level -- replaces the
-    // equivalent Instanced selection that used to live on the placed
-    // UConnectIt_BoardRulesComponent instance.
-
-    // TObjectPtr<UObject> + Instanced + MustImplement (not TScriptInterface
-    // -- Instanced only drives the inline class-pick/edit Details-panel
-    // behaviour on an FObjectProperty, which TScriptInterface's
-    // FInterfaceProperty is not).
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Instanced, Category = "ConnectIt|Rules",
-        meta = (MustImplement = "/Script/ConnectIt.ConnectIt_ScoringRule"))
-    TObjectPtr<UObject> ScoringRule;
-
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Instanced, Category = "ConnectIt|Rules",
-        meta = (MustImplement = "/Script/ConnectIt.ConnectIt_WinCondition"))
-    TObjectPtr<UObject> WinConditionRule;
-
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Instanced, Category = "ConnectIt|Rules",
-        meta = (MustImplement = "/Script/ConnectIt.ConnectIt_TilePlaceableRule"))
-    TObjectPtr<UObject> TilePlaceableRule;
-
     // --- Board Registries ---
-    // Instanced concrete-class UObject polymorphism, same shape as the rules
-    // above but typed directly to a concrete registry base rather than an
+    // Instanced concrete-class UObject polymorphism, typed directly to a concrete registry base rather than an
     // interface -- a designer picks a whole UConnectIt_TileRegistry/
     // UConnectIt_PieceRegistry subclass with its own inline-editable
-    // sub-properties (e.g. GridSize), the same pattern ABoardManagerBase
-    // used to expose these with. Typed to the ConnectIt-specific subclasses
-    // (not the plugin's own UGridTileRegistryBase/UGridPieceRegistryBase)
-    // so the Details-panel class picker only offers registries that can
-    // actually resolve UConnectIt_BoardStateComponent -- see those classes'
-    // header comments. Treated purely as a template by
+    // sub-properties, the same pattern ABoardManagerBase used to expose
+    // these with. Typed to the ConnectIt-specific subclasses (not the
+    // plugin's own UGridTileRegistryBase/UGridPieceRegistryBase) so the
+    // Details-panel class picker only offers registries that can actually
+    // resolve UConnectIt_BoardStateComponent -- see those classes' header
+    // comments. Treated purely as a template by
     // UConnectIt_BoardRegistrySubsystem, which duplicates its own per-world
     // runtime instance from these rather than ever using them live -- see
     // that class's header comment.
@@ -97,6 +65,13 @@ public:
 
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Instanced, Category = "ConnectIt|Board")
     TObjectPtr<UConnectIt_PieceRegistry> PieceRegistry;
+
+    // Grid geometry (cell size, World<->Grid conversion) both registries
+    // above share -- a sibling template, same Instanced/duplicate-per-world
+    // pattern, not a sub-property of either registry. See UGridDefinition's
+    // own class comment for why this isn't just TileRegistry's business.
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Instanced, Category = "ConnectIt|Board")
+    TObjectPtr<UGridDefinition> GridDefinition;
 
 #if WITH_EDITOR
     virtual EDataValidationResult IsDataValid(

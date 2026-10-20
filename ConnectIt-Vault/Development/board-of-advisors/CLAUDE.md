@@ -22,7 +22,7 @@ own repo, this file becomes the root `CLAUDE.md` (copy `_schema/` in alongside i
 | `_knowledge/audience/` | Players, collaborators, target studios. Created on first use. |
 | [`_questions/`](_questions/) | One file per board consultation. Local rules: [`_questions/__README.md`](_questions/__README.md). |
 | `_skills/ask-the-board.md` | Authored copy of the `/ask-the-board` skill (live copy at `.claude/skills/ask-the-board/SKILL.md`). |
-| `_logs/` | Maintenance history, written by `/improve-system` → [`../_schema/logs.md`](../_schema/logs.md). Created on first use. |
+| `_logs/` | Maintenance history for this sub-project → [`../_schema/logs.md`](../_schema/logs.md). Created on first use — still empty; `/improve-system`, the skill that would have written here, was retired 2026-09-17 (never actually ran). |
 
 Sections follow the shared schemas in [`../_schema/`](../_schema/). Local overrides:
 `_knowledge/raw/`, `_knowledge/wiki/`, and `_questions/` each have a `__README.md` that extends

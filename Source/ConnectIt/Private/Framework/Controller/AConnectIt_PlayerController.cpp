@@ -9,7 +9,7 @@
 #include "Action/ActionLoadoutDataAsset.h"
 #include "Action/ConnectIt_TurnBasedActionsComponent.h"
 #include "Action/TurnBasedActionsComponent.h"
-#include "Framework/Data/ConnectIt_LevelConfigDataAsset.h"
+#include "Framework/PlayerState/TurnBasedPlayerState.h"
 
 
 AConnectIt_PlayerController::AConnectIt_PlayerController(
@@ -35,8 +35,15 @@ void AConnectIt_PlayerController::BeginPlay()
         this,
         &AConnectIt_PlayerController::HandleBoardChangeRequested);
 
-    // Initialise from level config
-    InitialiseFromLevelConfig();
+    // Build actions from the PlayerState's loadout (now, or when it arrives)
+    InitialiseActionsFromPlayerState();
+}
+
+void AConnectIt_PlayerController::OnRep_PlayerState()
+{
+    Super::OnRep_PlayerState();
+
+    InitialiseActionsFromPlayerState();
 }
 
 void AConnectIt_PlayerController::EndPlay(const EEndPlayReason::Type EndPlayReason)
@@ -46,35 +53,42 @@ void AConnectIt_PlayerController::EndPlay(const EEndPlayReason::Type EndPlayReas
 
 // --- Initialisation ---
 
-void AConnectIt_PlayerController::InitialiseFromLevelConfig()
+void AConnectIt_PlayerController::InitialiseActionsFromPlayerState()
 {
-    const UConnectIt_LevelConfigDataAsset* LevelConfig =
-        UConnectIt_GameUtilityLibrary::GetLevelConfig(this);
+    // Only the owning client has an action stack to build
+    if (!IsLocalController()) return;
 
-    if (!IsValid(LevelConfig))
+    ATurnBasedPlayerState* PS = GetPlayerState<ATurnBasedPlayerState>();
+    if (!IsValid(PS)) return; // not replicated yet -- OnRep_PlayerState calls back
+
+    PS->OnLoadoutChanged.AddUniqueDynamic(this, &AConnectIt_PlayerController::HandleLoadoutChanged);
+
+    UActionLoadoutDataAsset* Loadout = PS->GetLoadout();
+    if (!IsValid(Loadout)) return; // not seeded/replicated yet -- OnLoadoutChanged calls back
+    if (Loadout == ActiveLoadout) return;
+
+    if (IsValid(ActiveLoadout))
     {
-        UE_LOG(LogTemp, Error,
-            TEXT("ConnectIt_PlayerController: No ConnectIt_LevelConfigDataAsset "
-                 "found for the current level"));
-        return;
+        // The server replaced this player's loadout mid-match. Rebuilding
+        // while an action is in progress is untested -- nothing does this yet.
+        UE_LOG(LogTemp, Warning,
+            TEXT("ConnectIt_PlayerController: loadout changed from '%s' to '%s' "
+                 "-- rebuilding actions"),
+            *ActiveLoadout->LoadoutName, *Loadout->LoadoutName);
     }
 
-    UActionLoadoutDataAsset* Loadout = LevelConfig->PlayerLoadout;
-
-    if (!IsValid(Loadout))
-    {
-        UE_LOG(LogTemp, Error,
-            TEXT("ConnectIt_PlayerController: No PlayerLoadout set "
-                 "on the level config"));
-        return;
-    }
-
+    ActiveLoadout = Loadout;
     ActionsComponent->InitialiseFromLoadout(Loadout);
 
     UE_LOG(LogTemp, Log,
-        TEXT("ConnectIt_PlayerController: Initialised from level config "
-             "with loadout '%s'"),
+        TEXT("ConnectIt_PlayerController: initialised actions from PlayerState "
+             "loadout '%s'"),
         *Loadout->LoadoutName);
+}
+
+void AConnectIt_PlayerController::HandleLoadoutChanged()
+{
+    InitialiseActionsFromPlayerState();
 }
 
 // --- Action Component Handler ---
@@ -113,12 +127,19 @@ void AConnectIt_PlayerController::ServerRouteBoardChangeRequest_Implementation(
         return;
     }
 
-    // TODO: this feels problematic, any action can be made valid if no FactionID set?
-    // TODO: should this bo added to the failure case?
-    // Stamp faction ID if not set by action
-    if (Request.FactionID < 0)
+    // Who is asking is decided here, from the connection the request arrived
+    // on: this controller's own PlayerState. Nothing in the request says who
+    // sent it, so a client cannot ask as somebody else.
+    const ATurnBasedPlayerState* RequestingPlayerState = GetPlayerState<ATurnBasedPlayerState>();
+    const int32 RequestingFaction =
+        IsValid(RequestingPlayerState) ? RequestingPlayerState->GetSlotIndex() : INDEX_NONE;
+    if (RequestingFaction < 0)
     {
-        Request.FactionID = ParticipantComponent->GetActiveParticipantSlotIndex();
+        UE_LOG(LogTemp, Error,
+            TEXT("ConnectIt_PlayerController: Board change request rejected "
+                 "— this controller has no PlayerState slot"));
+        ClientNotifyBoardChangeOutcome(Request, false);
+        return;
     }
 
     // Route to GameMode -- server-only, structurally unreachable from any
@@ -135,16 +156,17 @@ void AConnectIt_PlayerController::ServerRouteBoardChangeRequest_Implementation(
         return;
     }
 
-    const bool bSucceeded = GameMode->ProcessBoardRequest(Request);
+    // process
+    const bool bSucceeded = GameMode->ProcessBoardRequest(Request, RequestingFaction);
 
     // return success value to client to halt player input
     ClientNotifyBoardChangeOutcome(Request, bSucceeded);
 
     UE_LOG(LogTemp, Log,
         TEXT("ConnectIt_PlayerController: Board change request routed "
-             "'%s' from faction %d — %s"),
-        *Request.RequestType.ToString(),
-        Request.FactionID,
+             "by action '%s' from faction %d — %s"),
+        *Request.ActionTag.ToString(),
+        RequestingFaction,
         bSucceeded ? TEXT("succeeded") : TEXT("rejected"));
 }
 

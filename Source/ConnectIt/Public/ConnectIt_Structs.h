@@ -3,7 +3,9 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "GridMechanicsBaseEnums.h"
 #include "GridMechanicsBaseStructs.h"
+#include "StructUtils/InstancedStruct.h"
 #include "ConnectIt_Structs.generated.h"
 
 
@@ -31,7 +33,15 @@ struct FConnectItTileData
     // (non player piece occupying)
     UPROPERTY(BlueprintReadOnly)
     bool bIsOccupied = true;
-    
+
+    // Whether a board shift is allowed to move this tile's data. An
+    // unshiftable tile is skipped -- it stays exactly where it is, and the
+    // shiftable tiles around it rotate among themselves as if it weren't
+    // part of the line at all. See
+    // FConnectItBoardOperation_Shift.
+    UPROPERTY(BlueprintReadOnly)
+    bool bCanShift = true;
+
     void SetFactionPiece(const int32 InFactionPiece)
     {
         FactionPiece = InFactionPiece;
@@ -41,6 +51,11 @@ struct FConnectItTileData
 
 // Full board state -- the single source of truth
 // This struct is what replicates -- one property drives all visual systems
+//
+// Also copied wholesale into the AI's background MinMax search
+// (FConnectItMinMaxRules), which is only thread-safe because this is
+// plain data: keep it free of UObject references (TObjectPtr, UObject*, weak
+// object pointers) -- a background thread can't safely hold or follow them.
 USTRUCT(BlueprintType)
 struct FConnectItBoardState
 {
@@ -71,15 +86,36 @@ struct FConnectItBoardState
     UPROPERTY(BlueprintReadOnly)
     int32 WinningFactionSlot = -1;
 
-    // Score needed to win, published by whichever IConnectIt_WinCondition is
-    // active (see UConnectIt_BoardRulesComponent::GetTargetScore) so UI can
-    // render "57 / 100" without knowing which strategy is in play or
-    // reaching into a server-side strategy object that isn't replicated.
+    // Score needed to win, published by the match's win condition (see
+    // FConnectItRuleSet::StampWinState) so UI can render "57 / 100" without
+    // knowing which condition is in play or reaching the server-only rules.
     // Rides this single replicated snapshot rather than adding a second
     // replicated property. 0 means "this win condition isn't score-based" --
-    // a progress bar should hide itself rather than divide by zero.
+    // use WinProgress for a bar that works under any condition.
     UPROPERTY(BlueprintReadOnly)
     float TargetScore = 0.f;
+
+    // How close each faction slot is to winning, 0 to 1, under whatever the
+    // match's win condition is (FConnectItWinCondition::GetProgress).
+    // Stamped alongside TargetScore after every move; empty until the first.
+    UPROPERTY(BlueprintReadOnly)
+    TArray<float> WinProgress;
+
+    // How many of its win condition groups each faction slot has completed
+    // (FConnectItRuleSet::PlayerWinGroups / AIWinGroups), in order. Groups stay
+    // completed once they are. A faction has won when this reaches the number
+    // of groups it has. Kept here, not in the rules, so the rules stay plain
+    // shared data and the AI's search carries each side's progress with the
+    // board. Empty on a board built without it (nobody has completed anything).
+    UPROPERTY(BlueprintReadOnly)
+    TArray<int32> GroupsCompleted;
+
+    // How many pieces each faction slot started the match with (the designer's
+    // starting pieces), set once when the board is built. A win condition about
+    // piece counts measures its progress from this, so the designer never has
+    // to type the number in. Empty on a board built without it.
+    UPROPERTY(BlueprintReadOnly)
+    TArray<int32> StartingPieces;
 
     // --- Accessors ---
 
@@ -132,11 +168,6 @@ struct FConnectItBoardState
         return Data && Data->bIsActive;
     }
 
-    bool IsTileValidForPlacement(const FGridPosition& Position) const
-    {
-        return IsTileActive(Position) && !IsTileOccupied(Position);
-    }
-
     float GetScore(int32 FactionSlot) const
     {
         return ScoreBoard.IsValidIndex(FactionSlot)
@@ -160,108 +191,43 @@ struct FConnectItBoardState
     }
 };
 
-// Describes what specifically happened on the most recent ApplyAndBroadcast
-// call -- rides along inside FConnectItBoardStateSnapshot so it replicates
-// atomically with the state it describes. Consumed by AConnectIt_BoardManager
-// to drive typed delegates and gated visual sequencing identically on server
-// and client (see HandleBoardStateChanged), instead of the old pattern of
-// firing gameplay delegates directly from server-only request handlers.
+// What happened in one board change: an ordered list of board events
+// (FConnectItBoardEvent and its subclasses -- see ConnectIt_BoardEvents.h), in
+// the order they happened. E.g. [Piece Placed, Scored, Scored, Game Won].
 //
-// bGameWon is edge-triggered -- true only on the transition into game-over,
-// not "the game is currently over" (FConnectItBoardState::bGameOver stays
-// true on every snapshot after the win).
+// Rides along inside FConnectItBoardStateSnapshot so it replicates atomically
+// with the state it describes. Built on the server as the change is carried
+// out: the operation appends what it did, the scoring rule appends what
+// scored, the Mediator appends a win. UConnectIt_BoardStateComponent then
+// plays the events one at a time, identically on server and client.
 USTRUCT(BlueprintType)
 struct FConnectItBoardChangeEvent
 {
     GENERATED_BODY()
 
+    // Each entry holds one FConnectItBoardEvent subclass
     UPROPERTY(BlueprintReadOnly)
-    bool bPiecePlaced = false;
+    TArray<FInstancedStruct> Events;
 
-    UPROPERTY(BlueprintReadOnly)
-    FGridPosition PlacedPosition;
+    template<typename TEvent>
+    void Add(const TEvent& Event)
+    {
+        Events.Add(FInstancedStruct::Make(Event));
+    }
 
-    UPROPERTY(BlueprintReadOnly)
-    int32 PlacingFactionSlot = -1;
-
-    UPROPERTY(BlueprintReadOnly)
-    bool bLineScored = false;
-
-    UPROPERTY(BlueprintReadOnly)
-    int32 ScoringFactionSlot = -1;
-
-    UPROPERTY(BlueprintReadOnly)
-    float PointsScored = 0.f;
-
-    // Every tile that was part of a completed line on this placement --
-    // the union across all lines if more than one completed simultaneously
-    // (e.g. a horizontal and a diagonal through the same piece), not kept
-    // separate per line since USTRUCT arrays-of-arrays don't replicate
-    // (same reason shift below uses parallel arrays instead of a TMap/TSet).
-    // Empty when bLineScored is false.
-    UPROPERTY(BlueprintReadOnly)
-    TArray<FGridPosition> ScoringLinePositions;
-
-    UPROPERTY(BlueprintReadOnly)
-    bool bGameWon = false;
-
-    UPROPERTY(BlueprintReadOnly)
-    int32 WinningFactionSlot = -1;
-
-    // --- Tile Multiplier Destroyed --- (UConnectIt_TileMultiplierDestroyerAction)
-
-    UPROPERTY(BlueprintReadOnly)
-    bool bTileMultiplierDestroyed = false;
-
-    UPROPERTY(BlueprintReadOnly)
-    FGridPosition MultiplierDestroyedPosition;
-
-    // --- Piece Removed --- (UConnectIt_TimedPieceRemoverAction)
-
-    UPROPERTY(BlueprintReadOnly)
-    bool bPieceRemoved = false;
-
-    UPROPERTY(BlueprintReadOnly)
-    FGridPosition RemovedPosition;
-
-    UPROPERTY(BlueprintReadOnly)
-    int32 RemovedFactionSlot = -1;
-
-    // --- Pieces Swapped --- (UConnectIt_PieceSwapperAction)
-
-    UPROPERTY(BlueprintReadOnly)
-    bool bPiecesSwapped = false;
-
-    UPROPERTY(BlueprintReadOnly)
-    FGridPosition SwapPositionA;
-
-    UPROPERTY(BlueprintReadOnly)
-    FGridPosition SwapPositionB;
-
-    // --- Tile Active Toggled --- (UConnectIt_TileActivationToggleAction)
-
-    UPROPERTY(BlueprintReadOnly)
-    bool bTileActiveToggled = false;
-
-    UPROPERTY(BlueprintReadOnly)
-    FGridPosition ToggledPosition;
-
-    UPROPERTY(BlueprintReadOnly)
-    bool bToggledPositionNowActive = false;
-
-    // --- Piece Captured --- (UConnectIt_PieceCaptureAction)
-
-    UPROPERTY(BlueprintReadOnly)
-    bool bPieceCaptured = false;
-
-    UPROPERTY(BlueprintReadOnly)
-    FGridPosition CapturedPosition;
-
-    UPROPERTY(BlueprintReadOnly)
-    int32 CapturingFactionSlot = -1;
-
-    UPROPERTY(BlueprintReadOnly)
-    int32 PreviousFactionSlot = -1;
+    // The first event of type TEvent (or a subclass of it), or null
+    template<typename TEvent>
+    const TEvent* FindFirst() const
+    {
+        for (const FInstancedStruct& Entry : Events)
+        {
+            if (const TEvent* Event = Entry.GetPtr<TEvent>())
+            {
+                return Event;
+            }
+        }
+        return nullptr;
+    }
 };
 
 // Snapshot -- the ONE replicated property on UConnectItBoardStateComponent
@@ -291,90 +257,4 @@ struct FConnectItBoardStateSnapshot
     // What specifically changed on this update -- see FConnectItBoardChangeEvent
     UPROPERTY(BlueprintReadWrite)
     FConnectItBoardChangeEvent ChangeEvent;
-};
-
-// FTurnActionRequest payload -- FactionID lives on the envelope itself,
-// not duplicated here (see FTurnActionRequest in TurnBasedMechanicsStructs.h)
-USTRUCT(BlueprintType)
-struct FConnectItRequestPlacePiece
-{
-    GENERATED_BODY()
-
-    // Grid positions relevant to this request
-    UPROPERTY(BlueprintReadWrite)
-    TArray<FGridPosition> Positions;
-};
-
-// FTurnActionRequest payload -- UConnectIt_TileMultiplierDestroyerAction
-USTRUCT(BlueprintType)
-struct FConnectItRequestDestroyTileMultiplier
-{
-    GENERATED_BODY()
-
-    UPROPERTY(BlueprintReadWrite)
-    FGridPosition Position;
-};
-
-// FTurnActionRequest payload -- UConnectIt_TimedPieceRemoverAction.
-// DelayTurns is forward-declared for a delayed/scheduled follow-up that
-// doesn't exist yet -- see that action's class comment. The current board
-// manager handler only honours DelayTurns == 0 (immediate removal).
-USTRUCT(BlueprintType)
-struct FConnectItRequestRemovePiece
-{
-    GENERATED_BODY()
-
-    UPROPERTY(BlueprintReadWrite)
-    FGridPosition Position;
-
-    UPROPERTY(BlueprintReadWrite, meta = (ClampMin = 0))
-    int32 DelayTurns = 0;
-};
-
-// FTurnActionRequest payload -- UConnectIt_PieceSwapperAction
-USTRUCT(BlueprintType)
-struct FConnectItRequestSwapPieces
-{
-    GENERATED_BODY()
-
-    UPROPERTY(BlueprintReadWrite)
-    FGridPosition PositionA;
-
-    UPROPERTY(BlueprintReadWrite)
-    FGridPosition PositionB;
-};
-
-// FTurnActionRequest payload -- UConnectIt_TileActivationToggleAction
-USTRUCT(BlueprintType)
-struct FConnectItRequestToggleTileActive
-{
-    GENERATED_BODY()
-
-    UPROPERTY(BlueprintReadWrite)
-    FGridPosition Position;
-};
-
-// FTurnActionRequest payload -- UConnectIt_PieceCaptureAction. No explicit
-// capturing faction field -- FTurnActionRequest::FactionID on the envelope
-// is already "who's making this request" for every request type.
-USTRUCT(BlueprintType)
-struct FConnectItRequestCapturePiece
-{
-    GENERATED_BODY()
-
-    UPROPERTY(BlueprintReadWrite)
-    FGridPosition Position;
-};
-
-// FTurnActionRequest payload -- UConnectIt_ForcePiecePlaceOnTileAction.
-// Deliberately the same shape as FConnectItRequestPlacePiece (not reused
-// directly) -- keeps this request type free to diverge later (e.g. an
-// explicit faction override) without touching the normal placement payload.
-USTRUCT(BlueprintType)
-struct FConnectItRequestForcePlacePiece
-{
-    GENERATED_BODY()
-
-    UPROPERTY(BlueprintReadWrite)
-    FGridPosition Position;
 };
