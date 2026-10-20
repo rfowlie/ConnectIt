@@ -46,4 +46,12 @@ struct CONNECTIT_API FConnectItScoringRule
     {
         return 0.f;
     }
+
+    // The fewest pieces of one faction a score can be made from (Lines: its
+    // Connect Length). 0 = this rule doesn't say. Read by conditions such as
+    // Not Enough Pieces To Score.
+    virtual int32 GetMinPiecesToScore() const
+    {
+        return 0;
+    }
 };

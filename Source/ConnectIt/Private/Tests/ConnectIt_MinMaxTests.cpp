@@ -15,6 +15,7 @@
 #include "Board/Rules/ConnectIt_LineScoringRule.h"
 #include "Board/Rules/ConnectIt_ScoreThresholdCondition.h"
 #include "Board/Rules/ConnectIt_PieceCountCondition.h"
+#include "Board/Rules/ConnectIt_NotEnoughPiecesToScoreCondition.h"
 #include "Board/Operations/ConnectIt_BoardOperations.h"
 #include "Board/Events/ConnectIt_BoardEvents.h"
 #include "ConnectIt_GameplayTags.h"
@@ -407,45 +408,84 @@ bool FConnectItPieceCountWinTest::RunTest(const FString& Parameters)
     Place(Board, 4, 4, 1);
     Board.ScoreBoard = { 0.f, 0.f };
     Board.StartingPieces = { 2, 1 };
+    const FConnectItRuleSet NoRules;
+    const FConnectItConditionContext Ctx{ Board, NoRules };
 
     // Faction 0 holds 2 pieces, faction 1 holds 1
-    TestFalse(TEXT("Equal 0: pieces left"), PiecesIs(EConnectItPieceCountComparison::Equal, 0).HasFactionWon(Board, 0));
-    TestTrue(TEXT("Equal 2 is met by faction 0"), PiecesIs(EConnectItPieceCountComparison::Equal, 2).HasFactionWon(Board, 0));
-    TestFalse(TEXT("...and not by faction 1"), PiecesIs(EConnectItPieceCountComparison::Equal, 2).HasFactionWon(Board, 1));
-    TestTrue(TEXT("Less Than 3: 2 < 3"), PiecesIs(EConnectItPieceCountComparison::LessThan, 3).HasFactionWon(Board, 0));
-    TestFalse(TEXT("Less Than 2: 2 < 2 is false"), PiecesIs(EConnectItPieceCountComparison::LessThan, 2).HasFactionWon(Board, 0));
-    TestTrue(TEXT("Greater Than 1: 2 > 1"), PiecesIs(EConnectItPieceCountComparison::GreaterThan, 1).HasFactionWon(Board, 0));
-    TestFalse(TEXT("Greater Than 2: 2 > 2 is false"), PiecesIs(EConnectItPieceCountComparison::GreaterThan, 2).HasFactionWon(Board, 0));
-    TestFalse(TEXT("an unknown faction can't win"), PiecesIs(EConnectItPieceCountComparison::Equal, 0).HasFactionWon(Board, 5));
-    TestEqual(TEXT("the winner is named (lowest slot)"),
-        PiecesIs(EConnectItPieceCountComparison::Equal, 2).GetWinningFaction(Board), 0);
-    TestEqual(TEXT("nobody has won"),
-        PiecesIs(EConnectItPieceCountComparison::Equal, 0).GetWinningFaction(Board), static_cast<int32>(INDEX_NONE));
+    TestFalse(TEXT("Equal 0: pieces left"), PiecesIs(EConnectItPieceCountComparison::Equal, 0).IsMetFor(Ctx, 0));
+    TestTrue(TEXT("Equal 2 is met by faction 0"), PiecesIs(EConnectItPieceCountComparison::Equal, 2).IsMetFor(Ctx, 0));
+    TestFalse(TEXT("...and not by faction 1"), PiecesIs(EConnectItPieceCountComparison::Equal, 2).IsMetFor(Ctx, 1));
+    TestTrue(TEXT("Less Than 3: 2 < 3"), PiecesIs(EConnectItPieceCountComparison::LessThan, 3).IsMetFor(Ctx, 0));
+    TestFalse(TEXT("Less Than 2: 2 < 2 is false"), PiecesIs(EConnectItPieceCountComparison::LessThan, 2).IsMetFor(Ctx, 0));
+    TestTrue(TEXT("Greater Than 1: 2 > 1"), PiecesIs(EConnectItPieceCountComparison::GreaterThan, 1).IsMetFor(Ctx, 0));
+    TestFalse(TEXT("Greater Than 2: 2 > 2 is false"), PiecesIs(EConnectItPieceCountComparison::GreaterThan, 2).IsMetFor(Ctx, 0));
+    TestFalse(TEXT("an unknown faction can't win"), PiecesIs(EConnectItPieceCountComparison::Equal, 0).IsMetFor(Ctx, 5));
 
     // Progress is measured from the starting count the board remembers
     const FConnectItMatchCondition_PieceCount ClearAll = PiecesIs(EConnectItPieceCountComparison::Equal, 0);
-    TestEqual(TEXT("no progress yet (2 of 2 left)"), ClearAll.GetProgress(Board, 0), 0.f);
+    TestEqual(TEXT("no progress yet (2 of 2 left)"), ClearAll.GetProgress(Ctx, 0), 0.f);
     Board.GetTileDataMutable(FGridPosition(0, 0))->SetFactionPiece(-1);
-    TestEqual(TEXT("half way (1 of 2 left)"), ClearAll.GetProgress(Board, 0), 0.5f);
+    TestEqual(TEXT("half way (1 of 2 left)"), ClearAll.GetProgress(Ctx, 0), 0.5f);
     Board.GetTileDataMutable(FGridPosition(1, 0))->SetFactionPiece(-1);
-    TestTrue(TEXT("none left: met with no score at all"), ClearAll.HasFactionWon(Board, 0));
-    TestEqual(TEXT("full progress on the win"), ClearAll.GetProgress(Board, 0), 1.f);
+    TestTrue(TEXT("none left: met with no score at all"), ClearAll.IsMetFor(Ctx, 0));
+    TestEqual(TEXT("full progress on the win"), ClearAll.GetProgress(Ctx, 0), 1.f);
 
     // Less Than 1 is the same goal as Equal 0, and Greater Than counts up
     TestEqual(TEXT("Less Than 1 aims at 0"),
-        PiecesIs(EConnectItPieceCountComparison::LessThan, 1).GetProgress(Board, 1), 0.f);
+        PiecesIs(EConnectItPieceCountComparison::LessThan, 1).GetProgress(Ctx, 1), 0.f);
     FConnectItBoardState Growing = MakeBoard(5);
     Place(Growing, 0, 0, 0);
     Place(Growing, 1, 0, 0);
     Growing.ScoreBoard = { 0.f, 0.f };
     Growing.StartingPieces = { 1, 0 };
+    const FConnectItConditionContext GrowingCtx{ Growing, NoRules };
     TestEqual(TEXT("Greater Than 2 aims at 3: from 1 to 2 is half way"),
-        PiecesIs(EConnectItPieceCountComparison::GreaterThan, 2).GetProgress(Growing, 0), 0.5f);
+        PiecesIs(EConnectItPieceCountComparison::GreaterThan, 2).GetProgress(GrowingCtx, 0), 0.5f);
 
     // No starting count on the board: progress is 0 until met
     Growing.StartingPieces.Empty();
     TestEqual(TEXT("no baseline: 0"),
-        PiecesIs(EConnectItPieceCountComparison::GreaterThan, 2).GetProgress(Growing, 0), 0.f);
+        PiecesIs(EConnectItPieceCountComparison::GreaterThan, 2).GetProgress(GrowingCtx, 0), 0.f);
+    return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FConnectItNotEnoughPiecesTest,
+    "ConnectIt.Board.Conditions.NotEnoughPiecesToScore", TestFlags)
+
+bool FConnectItNotEnoughPiecesTest::RunTest(const FString& Parameters)
+{
+    // Lines(4): a faction needs 4 pieces to ever score
+    FConnectItRuleSet Rules;
+    FConnectItBoardState Board = MakeBoard(5);
+    Board.ScoreBoard = { 0.f, 0.f };
+    Place(Board, 0, 0, 0);
+    Place(Board, 1, 0, 0);
+    Place(Board, 2, 0, 0);
+    const FConnectItConditionContext Ctx{ Board, Rules };
+    const FConnectItMatchCondition_NotEnoughPiecesToScore Stuck;
+
+    TestEqual(TEXT("Lines says how many a score needs"), Rules.GetScoringRule()->GetMinPiecesToScore(), 4);
+    TestTrue(TEXT("3 pieces can't make a line of 4"), Stuck.IsMetFor(Ctx, 0));
+    Place(Board, 3, 0, 0);
+    TestFalse(TEXT("4 pieces can"), Stuck.IsMetFor(Ctx, 0));
+    TestTrue(TEXT("no pieces at all counts too"), Stuck.IsMetFor(Ctx, 1));
+    TestFalse(TEXT("an unknown faction never"), Stuck.IsMetFor(Ctx, 5));
+
+    // The minimum comes from the rule: Lines(5) needs 5
+    FConnectItRuleSet LongLines;
+    LongLines.ScoringRule.GetMutable<FConnectItScoringRule_Lines>().ConnectLength = 5;
+    TestTrue(TEXT("4 pieces can't make a line of 5"), Stuck.IsMetFor(FConnectItConditionContext{ Board, LongLines }, 0));
+
+    // A scoring rule that doesn't say: never met, and validation says so
+    FConnectItRuleSet NoMinimum;
+    NoMinimum.ScoringRule = TInstancedStruct<FConnectItScoringRule>::Make<FConnectItScoringRule>();
+    TestFalse(TEXT("no minimum: never met"), Stuck.IsMetFor(FConnectItConditionContext{ Board, NoMinimum }, 1));
+    TArray<FText> Warnings;
+    Stuck.GetValidationWarnings(&NoMinimum, Warnings);
+    TestEqual(TEXT("...and validation warns"), Warnings.Num(), 1);
+    Warnings.Reset();
+    Stuck.GetValidationWarnings(&Rules, Warnings);
+    TestEqual(TEXT("no warning under Lines"), Warnings.Num(), 0);
     return true;
 }
 

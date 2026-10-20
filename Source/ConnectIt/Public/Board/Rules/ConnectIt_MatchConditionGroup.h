@@ -42,8 +42,8 @@ struct CONNECTIT_API FConnectItMatchConditionGroup
 
     bool IsEmpty() const { return Conditions.IsEmpty(); }
 
-    // Non-empty, and every condition says Faction has met it.
-    bool HasFactionWon(const FConnectItBoardState& Board, int32 Faction) const
+    // Non-empty, and every condition is met for Faction.
+    bool IsMetFor(const FConnectItConditionContext& Context, int32 Faction) const
     {
         if (Conditions.IsEmpty()) return false;
 
@@ -52,14 +52,14 @@ struct CONNECTIT_API FConnectItMatchConditionGroup
             const FConnectItMatchCondition* Condition = Entry.GetPtr();
             // A cleared slot can't be satisfied, so it blocks the win rather
             // than being skipped (skipping would let a half-set group win).
-            if (!Condition || !Condition->HasFactionWon(Board, Faction)) return false;
+            if (!Condition || !Condition->IsMetFor(Context, Faction)) return false;
         }
         return true;
     }
 
     // The average of the conditions' progress, so it only reaches 1 when every
     // one does. 0 for an empty group.
-    float GetProgress(const FConnectItBoardState& Board, int32 Faction) const
+    float GetProgress(const FConnectItConditionContext& Context, int32 Faction) const
     {
         if (Conditions.IsEmpty()) return 0.f;
 
@@ -67,7 +67,7 @@ struct CONNECTIT_API FConnectItMatchConditionGroup
         for (const TInstancedStruct<FConnectItMatchCondition>& Entry : Conditions)
         {
             const FConnectItMatchCondition* Condition = Entry.GetPtr();
-            Total += Condition ? Condition->GetProgress(Board, Faction) : 0.f;
+            Total += Condition ? Condition->GetProgress(Context, Faction) : 0.f;
         }
         return Total / Conditions.Num();
     }

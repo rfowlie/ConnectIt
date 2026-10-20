@@ -99,13 +99,14 @@ void FConnectItRuleSet::AdvanceWinGroups(
 {
     // One entry per faction (a board built without them starts every side at 0)
     Board.GroupsCompleted.SetNumZeroed(Board.ScoreBoard.Num());
+    const FConnectItConditionContext Context{ Board, *this };
 
     for (int32 Faction = 0; Faction < Board.GroupsCompleted.Num(); Faction++)
     {
         const TArray<FConnectItMatchConditionGroup>& Groups = GetWinGroupsFor(Faction);
         int32& Completed = Board.GroupsCompleted[Faction];
 
-        while (Completed < Groups.Num() && Groups[Completed].HasFactionWon(Board, Faction))
+        while (Completed < Groups.Num() && Groups[Completed].IsMetFor(Context, Faction))
         {
             const FConnectItMatchConditionGroup& Group = Groups[Completed];
             Completed++;
@@ -150,7 +151,7 @@ float FConnectItRuleSet::GetProgress(const FConnectItBoardState& Board, int32 Fa
     const int32 Completed = Board.GroupsCompleted.IsValidIndex(Faction) ? Board.GroupsCompleted[Faction] : 0;
     if (Completed >= Groups.Num()) return 1.f;
 
-    return (Completed + Groups[Completed].GetProgress(Board, Faction)) / Groups.Num();
+    return (Completed + Groups[Completed].GetProgress(FConnectItConditionContext{ Board, *this }, Faction)) / Groups.Num();
 }
 
 float FConnectItRuleSet::GetTargetScore(const FConnectItBoardState& Board) const

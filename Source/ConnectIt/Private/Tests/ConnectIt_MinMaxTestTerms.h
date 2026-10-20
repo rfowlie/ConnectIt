@@ -20,10 +20,10 @@ struct FConnectItMatchCondition_TestCorner : public FConnectItMatchCondition
 {
     GENERATED_BODY()
 
-    virtual int32 GetWinningFaction(const FConnectItBoardState& Board) const override
+    virtual bool IsMetFor(const FConnectItConditionContext& Context, int32 Faction) const override
     {
-        const FConnectItTileData* Corner = Board.GetTileData(FGridPosition(0, 0));
-        return Corner && Corner->FactionPiece != -1 ? Corner->FactionPiece : INDEX_NONE;
+        const FConnectItTileData* Corner = Context.Board.GetTileData(FGridPosition(0, 0));
+        return Corner && Corner->FactionPiece != -1 && Corner->FactionPiece == Faction;
     }
 };
 

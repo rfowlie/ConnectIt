@@ -8,7 +8,7 @@ Newest first:
 
 - [2026-10-20-1500](2026-10-20-1500.md) — session — conditions and legal moves (part 1 of the 2026-10-20 plan, in progress):
   Stage 1, MinMax `DefaultTimeBudgetSeconds` (the director's think time wins); Stage 2, "match condition"
-  rename with redirects. 40/40 tests.
+  rename with redirects; Stage 3, condition context + Not Enough Pieces To Score. 41/41 tests.
 
 - [2026-10-16-1700](2026-10-16-1700.md) — session — AI director pipeline, built in stages 0-7 (2026-10-16..19): plan moved into the vault; Stage 1, MinMax
   publishes each completed depth to a thread-safe progress holder; Stage 2, candidate confidence / score / tags / label and

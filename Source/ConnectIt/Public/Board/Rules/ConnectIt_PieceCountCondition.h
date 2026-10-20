@@ -45,30 +45,19 @@ struct CONNECTIT_API FConnectItMatchCondition_PieceCount : public FConnectItMatc
         return Total;
     }
 
-    virtual bool HasFactionWon(const FConnectItBoardState& Board, int32 Faction) const override
+    virtual bool IsMetFor(const FConnectItConditionContext& Context, int32 Faction) const override
     {
-        if (!Board.ScoreBoard.IsValidIndex(Faction)) return false;
-        return IsMet(CountPieces(Board, Faction));
-    }
-
-    virtual int32 GetWinningFaction(const FConnectItBoardState& Board) const override
-    {
-        for (int32 Faction = 0; Faction < Board.ScoreBoard.Num(); Faction++)
-        {
-            if (HasFactionWon(Board, Faction))
-            {
-                return Faction;
-            }
-        }
-        return INDEX_NONE;
+        if (!Context.Board.ScoreBoard.IsValidIndex(Faction)) return false;
+        return IsMet(CountPieces(Context.Board, Faction));
     }
 
     // How far the faction's count has travelled from where it started (the
     // board remembers each faction's starting count, from the designer's tile
     // data) to the nearest count that meets the condition. 0 if the board has
     // no starting count to measure from.
-    virtual float GetProgress(const FConnectItBoardState& Board, int32 Faction) const override
+    virtual float GetProgress(const FConnectItConditionContext& Context, int32 Faction) const override
     {
+        const FConnectItBoardState& Board = Context.Board;
         const int32 Current = CountPieces(Board, Faction);
         if (IsMet(Current)) return 1.f;
         if (!Board.StartingPieces.IsValidIndex(Faction)) return 0.f;

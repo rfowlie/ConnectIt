@@ -7,8 +7,7 @@
 #include "ConnectIt_ScoreThresholdCondition.generated.h"
 
 
-// The classic condition: the first faction to reach WinScoreThreshold points
-// wins.
+// The classic condition: a faction has reached WinScoreThreshold points.
 USTRUCT(BlueprintType, meta = (DisplayName = "Score Threshold"))
 struct CONNECTIT_API FConnectItMatchCondition_ScoreThreshold : public FConnectItMatchCondition
 {
@@ -17,27 +16,15 @@ struct CONNECTIT_API FConnectItMatchCondition_ScoreThreshold : public FConnectIt
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Win Condition", meta = (ClampMin = 1.0))
     float WinScoreThreshold = 100.f;
 
-    virtual int32 GetWinningFaction(const FConnectItBoardState& Board) const override
+    virtual bool IsMetFor(const FConnectItConditionContext& Context, int32 Faction) const override
     {
-        for (int32 Faction = 0; Faction < Board.ScoreBoard.Num(); Faction++)
-        {
-            if (HasFactionWon(Board, Faction))
-            {
-                return Faction;
-            }
-        }
-        return INDEX_NONE;
+        return Context.Board.ScoreBoard.IsValidIndex(Faction) && Context.Board.ScoreBoard[Faction] >= WinScoreThreshold;
     }
 
-    virtual bool HasFactionWon(const FConnectItBoardState& Board, int32 Faction) const override
-    {
-        return Board.ScoreBoard.IsValidIndex(Faction) && Board.ScoreBoard[Faction] >= WinScoreThreshold;
-    }
-
-    virtual float GetProgress(const FConnectItBoardState& Board, int32 Faction) const override
+    virtual float GetProgress(const FConnectItConditionContext& Context, int32 Faction) const override
     {
         return WinScoreThreshold > 0.f
-            ? FMath::Clamp(Board.GetScore(Faction) / WinScoreThreshold, 0.f, 1.f)
+            ? FMath::Clamp(Context.Board.GetScore(Faction) / WinScoreThreshold, 0.f, 1.f)
             : 0.f;
     }
 

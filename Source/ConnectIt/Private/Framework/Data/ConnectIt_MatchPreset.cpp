@@ -53,7 +53,7 @@ EDataValidationResult UConnectIt_MatchPreset::IsDataValid(
 
     // A goal that is unset or has no conditions is never satisfied, so it
     // blocks every goal after it
-    const auto CheckGoals = [&Context, &Result](const TCHAR* Side,
+    const auto CheckGoals = [this, &Context, &Result](const TCHAR* Side,
         const TArray<TObjectPtr<UConnectIt_MatchConditionAsset>>& Goals)
     {
         for (int32 Index = 0; Index < Goals.Num(); Index++)
@@ -64,7 +64,25 @@ EDataValidationResult UConnectIt_MatchPreset::IsDataValid(
                     "ConnectIt_MatchPreset: %s win condition %d is empty -- it is skipped."),
                     Side, Index)));
             }
-            else if (Goals[Index]->Conditions.IsEmpty())
+            else
+            {
+                // What the conditions say about this match's rules
+                for (const TInstancedStruct<FConnectItMatchCondition>& Entry : Goals[Index]->Conditions)
+                {
+                    const FConnectItMatchCondition* Condition = Entry.GetPtr();
+                    if (!Condition) continue;
+                    TArray<FText> Warnings;
+                    Condition->GetValidationWarnings(&Rules, Warnings);
+                    for (const FText& Warning : Warnings)
+                    {
+                        Context.AddWarning(FText::FromString(FString::Printf(TEXT(
+                            "ConnectIt_MatchPreset: %s win condition %d ('%s'): %s"),
+                            Side, Index, *Goals[Index]->GetName(), *Warning.ToString())));
+                    }
+                }
+            }
+
+            if (IsValid(Goals[Index]) && Goals[Index]->Conditions.IsEmpty())
             {
                 Context.AddWarning(FText::FromString(FString::Printf(TEXT(
                     "ConnectIt_MatchPreset: %s win condition %d ('%s') has no conditions -- "

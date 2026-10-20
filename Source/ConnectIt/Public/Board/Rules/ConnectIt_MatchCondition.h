@@ -6,6 +6,16 @@
 #include "ConnectIt_Structs.h"
 #include "ConnectIt_MatchCondition.generated.h"
 
+struct FConnectItRuleSet;
+
+// What a condition is asked about: the board, and the match's rules (e.g. how
+// many pieces a score needs). References valid for the call only. Plain data,
+// safe on any thread like the rules themselves -- the AI's search asks too.
+struct FConnectItConditionContext
+{
+    const FConnectItBoardState& Board;
+    const FConnectItRuleSet& Rules;
+};
 
 // Something that holds, or doesn't, for a faction on a board -- the building
 // block of a match's goals (and, later, of its losses and level triggers).
@@ -23,32 +33,18 @@ struct CONNECTIT_API FConnectItMatchCondition
 
     virtual ~FConnectItMatchCondition() = default;
 
-    // The faction slot that has won on Board, or INDEX_NONE if nobody has.
-    // If more than one faction satisfies the condition at once, the lowest
-    // slot wins (the simultaneous case is rare: one move can finish both a
-    // swap's pieces).
-    virtual int32 GetWinningFaction(const FConnectItBoardState& Board) const
+    // Whether the condition holds for Faction, independent of any other
+    // faction (the player and the AI can have different conditions). Default:
+    // never.
+    virtual bool IsMetFor(const FConnectItConditionContext& Context, int32 Faction) const
     {
-        return INDEX_NONE;
+        return false;
     }
 
-    // Whether Faction in particular has won on Board, independent of any other
-    // faction. What the rule set asks of the condition assigned to a faction
-    // (FConnectItRuleSet::HasFactionWon -- the player and the AI can have
-    // different conditions): asking GetWinningFaction would be wrong there,
-    // since it names only the lowest faction that satisfies the condition.
-    // Conditions that can answer the question directly override this; the
-    // default derives it from GetWinningFaction, which is right for any
-    // condition that names a single possible winner.
-    virtual bool HasFactionWon(const FConnectItBoardState& Board, int32 Faction) const
-    {
-        return GetWinningFaction(Board) == Faction;
-    }
-
-    // How close Faction is to winning, 0 (nowhere) to 1 (won) -- whatever
-    // that means for this condition (score / target, tiles held / tiles
-    // needed...). Feeds a generic progress bar.
-    virtual float GetProgress(const FConnectItBoardState& Board, int32 Faction) const
+    // How close Faction is to meeting it, 0 (nowhere) to 1 (met) -- whatever
+    // that means for this condition (score / target, pieces cleared...).
+    // Feeds a generic progress bar.
+    virtual float GetProgress(const FConnectItConditionContext& Context, int32 Faction) const
     {
         return 0.f;
     }
@@ -65,5 +61,12 @@ struct CONNECTIT_API FConnectItMatchCondition
     virtual bool SetTargetScore(float NewTargetScore)
     {
         return false;
+    }
+
+    // Problems a designer should know about, shown when the asset holding
+    // this condition is validated. Rules: the match's rules when a match
+    // preset validates it, null when the asset is validated on its own.
+    virtual void GetValidationWarnings(const FConnectItRuleSet* Rules, TArray<FText>& OutWarnings) const
+    {
     }
 };

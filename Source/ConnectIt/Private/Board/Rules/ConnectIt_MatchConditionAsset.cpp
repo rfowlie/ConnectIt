@@ -19,6 +19,16 @@ EDataValidationResult UConnectIt_MatchConditionAsset::IsDataValid(FDataValidatio
 
     for (int32 Index = 0; Index < Conditions.Num(); Index++)
     {
+        if (const FConnectItMatchCondition* Condition = Conditions[Index].GetPtr())
+        {
+            TArray<FText> Warnings;
+            Condition->GetValidationWarnings(nullptr, Warnings);
+            for (const FText& Warning : Warnings)
+            {
+                Context.AddWarning(Warning);
+            }
+        }
+
         if (!Conditions[Index].IsValid())
         {
             Context.AddError(FText::FromString(FString::Printf(TEXT(

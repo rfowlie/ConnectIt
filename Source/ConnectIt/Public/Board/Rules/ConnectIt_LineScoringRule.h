@@ -62,6 +62,8 @@ struct CONNECTIT_API FConnectItScoringRule_Lines : public FConnectItScoringRule
         bool bArrivingPieceSurvives,
         FConnectItBoardChangeEvent* OutEvents) const override;
 
+    virtual int32 GetMinPiecesToScore() const override { return ConnectLength; }
+
     // The line axes scoring checks under ScoringDirections (each is walked
     // both ways): up to four -- the row axis, the column axis and the two
     // diagonals. Public so the MinMax line-potential evaluation measures
