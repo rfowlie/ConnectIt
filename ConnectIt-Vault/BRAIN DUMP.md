@@ -86,3 +86,18 @@
 - Today the controller owns one duplicated strategy from an AI profile, and the strategy decides _and_ picks one move.
 - The controller submits one decision per call.
 - These notes replace that with director, coordinator, strategies and selector. The coordinator submits several decisions, and the profile goes away.
+
+
+### New Match Preset Setup
+
+- Win condition data assets feels clunky. What is the reasoning behind this again? Is it so that the AI director can also have it set?
+	- At the same time it does force organization. Each adventure level needs to a player and AI win condition data asset. Being a DA makes it super clear.
+- MinMax>Search>Request Types feels clucky as well. I understand the idea behind it where maybe we want to restrict the moves used in search from what the loadout holds but perhaps we are adding complexity unnecessarily. We should remove this for now and just assume we can use any move in the loadout. If a move has not been supported yet it should silently fail (or post an error in the log).
+- MinMax>Search>TimeBudget should maybe be renamed to default time budget just to be clearer
+- Setting all the values for a director in the match preset data asset also feels a bit clunky. I was imagining that the director hides all the implementation details. But it could be useful to just see what is set? It does cloud the match preset data asset. As well I was imagining that there would be a distinct AI director subclass for each adventure level as it needs to respond to potentially unique situations...
+	- It sort of implies that there needs to be something set initially which is generally true, so maybe this isn't the worst. At the end of the day the director can just overwrite everything on level start if it wants
+- Level Config DA > Board - I can see these values often being the same, perhaps we should as well encapsulate the board values into a DA for reuse?
+	- Maybe a wishlist item?
+- Does DA overuse have downsides? 
+	- Currently each level config will likely be unique per adventure level, the match preset will also be unique to the adventure level. It seems like most of the DA's we have created are unique to the adventure level. Is this bad or confusing? Or does it make things more organized and clear? What are the benefits of doing this? For one AI directors can get ahold of both the player/AI win condition DAs for their specific level. As well as the match preset DA and action loadout DA. I think the main issue I am seeing is actually the folder organization of these DA. They are all living in folders for the DA themselves. I think ideally what we want is that each DA that is unique to an adventure level sits in the folder for that adventure level. This way it is clear to see what is needed, what is missing, etc. 
+- Design Note - Exhaustion levels for swap, player cannot go first if there are no opponent pieces on the board as swap enforces swapping opposite faction pieces. As well we need to make sure that exhaust levels have the correct number of player pieces on the board so that they can achieve zero pieces (must be divisible by the scoring line minimum)
