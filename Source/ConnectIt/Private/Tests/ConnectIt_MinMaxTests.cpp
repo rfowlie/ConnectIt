@@ -6,6 +6,7 @@
 #include "AI/ConnectIt_AIDirector.h"
 #include "Framework/Data/ConnectIt_MatchPreset.h"
 #include "AI/ConnectIt_AICoordinator.h"
+#include "Framework/GameMode/ConnectIt_LevelChange.h"
 #include "AI/ConnectIt_MinMaxSearch.h"
 #include "AI/ConnectIt_AISelector.h"
 #include "ConnectIt_MinMaxTestTerms.h"
@@ -2509,6 +2510,38 @@ bool FConnectItLevelTriggersTest::RunTest(const FString& Parameters)
     Both.ScoreBoard = { 0.f, 5.f };
     Any->CheckTriggers(Both, Rules);
     TestEqual(TEXT("either side: the AI's score counts"), Any->Log, FString(TEXT("WC_Test_Trigger4 1; ")));
+    return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FConnectItLevelChangesTest,
+    "ConnectIt.AI.LevelChanges", TestFlags)
+
+bool FConnectItLevelChangesTest::RunTest(const FString& Parameters)
+{
+    // When a level change applies: now, after the move being carried out,
+    // or at the next turn's start
+    FConnectItLevelChangeQueue Queue;
+    FConnectItLevelChange Change;
+    Change.Operation = FInstancedStruct::Make(FConnectItBoardOperation_ToggleTileActive());
+
+    TestTrue(TEXT("immediately with nothing in progress: apply now"), Queue.Add(Change, EConnectItChangeTiming::Immediately, false));
+    TestEqual(TEXT("...nothing queued"), Queue.NumWaiting(), 0);
+    TestFalse(TEXT("immediately during a move: wait"), Queue.Add(Change, EConnectItChangeTiming::Immediately, true));
+    TestFalse(TEXT("next turn: wait"), Queue.Add(Change, EConnectItChangeTiming::NextTurnStart, false));
+    TestEqual(TEXT("after the move: one"), Queue.TakeAfterMove().Num(), 1);
+    TestEqual(TEXT("...taken"), Queue.TakeAfterMove().Num(), 0);
+    TestEqual(TEXT("next turn: one"), Queue.TakeNextTurn().Num(), 1);
+    TestEqual(TEXT("all taken"), Queue.NumWaiting(), 0);
+
+    // The scoring rule a level sets
+    FConnectItRuleSet Rules;
+    FConnectItScoringRule_Lines Five;
+    Five.ConnectLength = 5;
+    TestTrue(TEXT("a scoring rule is accepted"), Rules.SetScoringRuleFrom(FInstancedStruct::Make(Five)));
+    TestEqual(TEXT("...and used"), Rules.GetScoringRule()->GetMinPiecesToScore(), 5);
+    TestFalse(TEXT("a board operation is not a scoring rule"),
+        Rules.SetScoringRuleFrom(FInstancedStruct::Make(FConnectItBoardOperation_PlacePiece())));
+    TestEqual(TEXT("...and changes nothing"), Rules.GetScoringRule()->GetMinPiecesToScore(), 5);
     return true;
 }
 

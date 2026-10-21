@@ -22,7 +22,7 @@ int32 UConnectIt_PlayerDirector::GetFaction() const
     return IsValid(PS) ? PS->GetSlotIndex() : INDEX_NONE;
 }
 
-void UConnectIt_PlayerDirector::SetPlayerLoadout(UActionLoadoutDataAsset* Loadout, EConnectItLoadoutTiming Timing)
+void UConnectIt_PlayerDirector::SetPlayerLoadout(UActionLoadoutDataAsset* Loadout, EConnectItChangeTiming Timing)
 {
     AConnectIt_GameMode* GameMode = GetGameMode();
     ATurnBasedPlayerState* PS = DirectedPlayerState.Get();

@@ -66,7 +66,7 @@ protected:
     // from the new loadout's values.
     UFUNCTION(BlueprintCallable, Category = "Player|Director")
     void SetPlayerLoadout(UActionLoadoutDataAsset* Loadout,
-        EConnectItLoadoutTiming Timing = EConnectItLoadoutTiming::NextTurnStart);
+        EConnectItChangeTiming Timing = EConnectItChangeTiming::NextTurnStart);
 
     // The loadout the player has now
     UFUNCTION(BlueprintPure, Category = "Player|Director")

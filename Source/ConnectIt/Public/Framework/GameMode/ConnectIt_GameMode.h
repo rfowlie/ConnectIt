@@ -8,6 +8,7 @@
 #include "TurnBasedMechanicsEnums.h"
 #include "Framework/GameMode/TurnBasedGameMode.h"
 #include "Board/Rules/ConnectIt_RuleSet.h"
+#include "Framework/GameMode/ConnectIt_LevelChange.h"
 #include "ConnectIt_GameMode.generated.h"
 
 class AConnectIt_AIController;
@@ -42,21 +43,6 @@ enum class EConnectItRole : uint8
     AI      UMETA(DisplayName = "AI")
 };
 
-// When a replaced loadout takes effect
-UENUM(BlueprintType)
-enum class EConnectItLoadoutTiming : uint8
-{
-    // When that side's next turn begins. The default: swapping a loadout
-    // re-seeds every action's use counts and cooldowns, so doing it between
-    // turns can't hand out extra actions in a turn already under way.
-    NextTurnStart   UMETA(DisplayName = "Next Turn Start"),
-
-    // Now. Not allowed while a move is being carried out (that move's action
-    // use is spent only after it finishes, against the loadout it came from),
-    // and board event listeners such as OnWinCheckpointReached can run inside
-    // that window: there this quietly becomes NextTurnStart.
-    Immediately     UMETA(DisplayName = "Immediately")
-};
 
 UCLASS()
 class CONNECTIT_API AConnectIt_GameMode : public ATurnBasedGameMode
@@ -139,11 +125,22 @@ public:
     // of that side's action uses and cooldowns from the new loadout.
     UFUNCTION(BlueprintCallable, Category = "ConnectIt|Match")
     void SetLoadout(EConnectItRole PlayerRole, UActionLoadoutDataAsset* Loadout,
-        EConnectItLoadoutTiming Timing = EConnectItLoadoutTiming::NextTurnStart);
+        EConnectItChangeTiming Timing = EConnectItChangeTiming::NextTurnStart);
+
+    // --- Level changes (what the Level director calls) ---
+
+    // Carries out a board operation outside any player's move (see
+    // UConnectIt_BoardRequestMediator::ProcessLevelOperation), at Timing
+    void ApplyLevelOperation(const FInstancedStruct& Operation, int32 AsFaction, EConnectItChangeTiming Timing);
+
+    // Replaces the match's scoring rule at Timing (clients see it through the
+    // replicated rules; the AI from its next decision). False if ScoringRule
+    // isn't a scoring rule struct.
+    bool SetScoringRule(const FInstancedStruct& ScoringRule, EConnectItChangeTiming Timing);
 
     // The same for one player (what a Player director calls for its own player)
     void SetLoadoutForPlayer(ATurnBasedPlayerState* PlayerState, UActionLoadoutDataAsset* Loadout,
-        EConnectItLoadoutTiming Timing = EConnectItLoadoutTiming::NextTurnStart);
+        EConnectItChangeTiming Timing = EConnectItChangeTiming::NextTurnStart);
 
 protected:
 
@@ -219,6 +216,17 @@ private:
     // The Player director of PlayerState's player, made from the preset's
     // class on first ask
     UConnectIt_PlayerDirector* FindOrCreatePlayerDirector(ATurnBasedPlayerState* PlayerState);
+
+    // Level changes waiting for the current move to finish / the next turn
+    FConnectItLevelChangeQueue LevelChanges;
+
+    // A move or a level operation is being carried out (level changes wait)
+    bool bApplyingBoardChange = false;
+
+    // Applies Changes in order, then whatever their own reactions queued
+    void ApplyLevelChanges(TArray<FConnectItLevelChange> Changes);
+    void ApplyLevelChange(const FConnectItLevelChange& Change);
+    void QueueLevelChange(const FConnectItLevelChange& Change, EConnectItChangeTiming Timing);
 
     // Loadouts parked by SetLoadout (NextTurnStart), by faction slot
     UPROPERTY()

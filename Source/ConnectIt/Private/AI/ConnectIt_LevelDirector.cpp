@@ -4,6 +4,7 @@
 #include "Board/Rules/ConnectIt_MatchConditionAsset.h"
 #include "Board/Rules/ConnectIt_RuleSet.h"
 #include "Misc/DataValidation.h"
+#include "Framework/GameMode/ConnectIt_GameMode.h"
 
 
 void UConnectIt_LevelDirector::RearmTrigger(UConnectIt_MatchConditionAsset* Condition)
@@ -67,6 +68,30 @@ void UConnectIt_LevelDirector::CheckTriggers(const FConnectItBoardState& Board, 
             break;
         }
     }
+}
+
+void UConnectIt_LevelDirector::ApplyBoardOperation(const FInstancedStruct& Operation, int32 AsFaction, EConnectItChangeTiming Timing)
+{
+    if (AConnectIt_GameMode* GameMode = GetGameMode())
+    {
+        GameMode->ApplyLevelOperation(Operation, AsFaction, Timing);
+    }
+    else
+    {
+        UE_LOG(LogTemp, Warning, TEXT("ConnectIt_LevelDirector: %s has no GameMode -- board not changed"), *GetName());
+    }
+}
+
+bool UConnectIt_LevelDirector::SetScoringRule(const FInstancedStruct& ScoringRule, EConnectItChangeTiming Timing)
+{
+    AConnectIt_GameMode* GameMode = GetGameMode();
+    return IsValid(GameMode) && GameMode->SetScoringRule(ScoringRule, Timing);
+}
+
+FConnectItRuleSet UConnectIt_LevelDirector::GetMatchRules() const
+{
+    const AConnectIt_GameMode* GameMode = GetGameMode();
+    return IsValid(GameMode) ? GameMode->GetRules() : FConnectItRuleSet();
 }
 
 TArray<TObjectPtr<UConnectIt_MatchConditionAsset>> UConnectIt_LevelDirector::GetTriggerConditions() const

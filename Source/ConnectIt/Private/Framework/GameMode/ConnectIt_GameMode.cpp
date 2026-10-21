@@ -216,7 +216,7 @@ void AConnectIt_GameMode::ModifyRules(const TFunctionRef<void(FConnectItRuleSet&
 }
 
 void AConnectIt_GameMode::SetLoadout(
-    EConnectItRole PlayerRole, UActionLoadoutDataAsset* Loadout, EConnectItLoadoutTiming Timing)
+    EConnectItRole PlayerRole, UActionLoadoutDataAsset* Loadout, EConnectItChangeTiming Timing)
 {
     UTurnBasedParticipantManagerComponent* Manager = GetParticipantManager();
     if (!IsValid(Manager)) return;
@@ -230,7 +230,7 @@ void AConnectIt_GameMode::SetLoadout(
 }
 
 void AConnectIt_GameMode::SetLoadoutForPlayer(
-    ATurnBasedPlayerState* PlayerState, UActionLoadoutDataAsset* Loadout, EConnectItLoadoutTiming Timing)
+    ATurnBasedPlayerState* PlayerState, UActionLoadoutDataAsset* Loadout, EConnectItChangeTiming Timing)
 {
     if (!IsValid(Loadout))
     {
@@ -243,7 +243,7 @@ void AConnectIt_GameMode::SetLoadoutForPlayer(
     // A move in progress spends its action's use after it finishes, against
     // the loadout it came from: never swap it out from under that.
     const bool bMoveInProgress = IsValid(BoardRequestMediator) && BoardRequestMediator->IsDispatching();
-    const bool bDefer = Timing == EConnectItLoadoutTiming::NextTurnStart || bMoveInProgress;
+    const bool bDefer = Timing == EConnectItChangeTiming::NextTurnStart || bMoveInProgress;
 
     if (bDefer)
     {
@@ -330,6 +330,12 @@ void AConnectIt_GameMode::HandleTurnPhaseChanged(ETurnPhase NewPhase)
     const int32 Faction = Active.SlotIndex;
     const int32 TurnNumber = GS->GetActiveTurnNumber();
     const bool bStarted = NewPhase == ETurnPhase::TurnStart;
+
+    // Level changes waiting for this turn, before anyone hears it started
+    if (bStarted)
+    {
+        ApplyLevelChanges(LevelChanges.TakeNextTurn());
+    }
 
     ForEachDirector([Faction, TurnNumber, bStarted](UConnectIt_Director& Director)
     {
@@ -526,7 +532,101 @@ bool AConnectIt_GameMode::ProcessBoardRequest(const FTurnActionRequest& Request,
         return false;
     }
 
-    return BoardRequestMediator->ProcessRequest(Request, RequestingFaction);
+    bApplyingBoardChange = true;
+    const bool bSucceeded = BoardRequestMediator->ProcessRequest(Request, RequestingFaction);
+    bApplyingBoardChange = false;
+
+    // Level changes asked for while the move was being carried out
+    ApplyLevelChanges(LevelChanges.TakeAfterMove());
+    return bSucceeded;
+}
+
+// --- Level changes ---
+
+void AConnectIt_GameMode::ApplyLevelOperation(const FInstancedStruct& Operation, int32 AsFaction, EConnectItChangeTiming Timing)
+{
+    if (!Operation.GetPtr<FConnectItBoardOperation>())
+    {
+        UE_LOG(LogTemp, Warning, TEXT("ConnectIt_GameMode: ApplyLevelOperation -- not a board operation, ignored"));
+        return;
+    }
+
+    FConnectItLevelChange Change;
+    Change.Operation = Operation;
+    Change.AsFaction = AsFaction;
+    QueueLevelChange(Change, Timing);
+}
+
+bool AConnectIt_GameMode::SetScoringRule(const FInstancedStruct& ScoringRule, EConnectItChangeTiming Timing)
+{
+    if (!FConnectItRuleSet::IsScoringRule(ScoringRule))
+    {
+        UE_LOG(LogTemp, Warning, TEXT("ConnectIt_GameMode: SetScoringRule -- not a scoring rule struct, ignored"));
+        return false;
+    }
+
+    FConnectItLevelChange Change;
+    Change.ScoringRule = ScoringRule;
+    QueueLevelChange(Change, Timing);
+    return true;
+}
+
+void AConnectIt_GameMode::QueueLevelChange(const FConnectItLevelChange& Change, EConnectItChangeTiming Timing)
+{
+    const bool bBusy = bApplyingBoardChange || (IsValid(BoardRequestMediator) && BoardRequestMediator->IsDispatching());
+    if (LevelChanges.Add(Change, Timing, bBusy))
+    {
+        ApplyLevelChanges({ Change });
+    }
+}
+
+void AConnectIt_GameMode::ApplyLevelChanges(TArray<FConnectItLevelChange> Changes)
+{
+    // Reactions to a change may queue more; a level whose triggers keep
+    // feeding each other is stopped rather than looping forever
+    constexpr int32 MaxChained = 64;
+    int32 Applied = 0;
+    while (!Changes.IsEmpty() && Applied < MaxChained)
+    {
+        const FConnectItLevelChange Change = Changes[0];
+        Changes.RemoveAt(0);
+        ApplyLevelChange(Change);
+        Applied++;
+        Changes.Append(LevelChanges.TakeAfterMove());
+    }
+
+    if (!Changes.IsEmpty())
+    {
+        UE_LOG(LogTemp, Error,
+            TEXT("ConnectIt_GameMode: more than %d level changes in a row -- the rest are dropped (do the level's "
+                 "triggers keep setting each other off?)"),
+            MaxChained);
+    }
+}
+
+void AConnectIt_GameMode::ApplyLevelChange(const FConnectItLevelChange& Change)
+{
+    if (Change.ScoringRule.IsValid())
+    {
+        ModifyRules([&Change](FConnectItRuleSet& MatchRules)
+        {
+            MatchRules.SetScoringRuleFrom(Change.ScoringRule);
+        });
+        UE_LOG(LogTemp, Log, TEXT("ConnectIt_GameMode: scoring rule is now '%s'"),
+            *GetNameSafe(Change.ScoringRule.GetScriptStruct()));
+        return;
+    }
+
+    if (!IsValid(BoardRequestMediator)) return;
+
+    bApplyingBoardChange = true;
+    const bool bApplied = BoardRequestMediator->ProcessLevelOperation(Change.Operation, Change.AsFaction);
+    bApplyingBoardChange = false;
+
+    if (!bApplied)
+    {
+        UE_LOG(LogTemp, Warning, TEXT("ConnectIt_GameMode: a level operation could not be carried out (see above)"));
+    }
 }
 
 // --- Board Setup ---

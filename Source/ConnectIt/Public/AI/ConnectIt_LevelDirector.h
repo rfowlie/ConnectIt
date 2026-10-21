@@ -4,6 +4,9 @@
 
 #include "CoreMinimal.h"
 #include "AI/ConnectIt_Director.h"
+#include "StructUtils/InstancedStruct.h"
+#include "Framework/GameMode/ConnectIt_LevelChange.h"
+#include "Board/Rules/ConnectIt_RuleSet.h"
 #include "ConnectIt_LevelDirector.generated.h"
 
 class UConnectIt_MatchConditionAsset;
@@ -50,8 +53,11 @@ struct CONNECTIT_API FConnectItLevelTrigger
 // the level's own business: they don't win or lose anything, and the AI's
 // search doesn't see them.
 //
-// (Blueprint board / scoring-rule changes arrive in the next stage of the
-// three-directors plan.)
+// Changes: Apply Board Operation (e.g. Force Place Piece, Toggle Tile
+// Active, Destroy Tile Multiplier -- Make Instanced Struct) and Set Scoring
+// Rule, each at a timing: Immediately (right after the move being carried
+// out, if any) or at the next turn's start. Board operations go through the
+// same checks, scoring, win check and events as a move, without a loadout.
 UCLASS(Blueprintable, BlueprintType)
 class CONNECTIT_API UConnectIt_LevelDirector : public UConnectIt_Director
 {
@@ -87,6 +93,32 @@ public:
     virtual EDataValidationResult IsDataValid(FDataValidationContext& Context) const override;
     virtual void AddConditionRuleWarnings(const FConnectItRuleSet& Rules, FDataValidationContext& Context) const override;
 #endif
+
+protected:
+
+    // Changes the board on the level's behalf: Operation is a board operation
+    // struct (Make Instanced Struct), made by AsFaction (-1 for one that
+    // belongs to nobody, e.g. Toggle Tile Active). It is checked, scores and
+    // can win like a move, but needs no loadout. Immediately = right after the
+    // move being carried out, if any.
+    UFUNCTION(BlueprintCallable, Category = "Level|Changes")
+    void ApplyBoardOperation(
+        UPARAM(meta = (BaseStruct = "/Script/ConnectIt.ConnectItBoardOperation")) const FInstancedStruct& Operation,
+        int32 AsFaction = -1,
+        EConnectItChangeTiming Timing = EConnectItChangeTiming::Immediately);
+
+    // Replaces the match's scoring rule (a scoring rule struct, e.g. Lines
+    // with its settings). Clients see it through the replicated rules (On
+    // Match Rules Changed); the AI from its next decision. False if it isn't
+    // a scoring rule.
+    UFUNCTION(BlueprintCallable, Category = "Level|Changes")
+    bool SetScoringRule(
+        UPARAM(meta = (BaseStruct = "/Script/ConnectIt.ConnectItScoringRule")) const FInstancedStruct& ScoringRule,
+        EConnectItChangeTiming Timing = EConnectItChangeTiming::NextTurnStart);
+
+    // The match's rules as they are now (a copy)
+    UFUNCTION(BlueprintPure, Category = "Level|Changes")
+    FConnectItRuleSet GetMatchRules() const;
 
 private:
 

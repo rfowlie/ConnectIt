@@ -44,6 +44,19 @@ void FConnectItRuleSet::ResolveConditionGroups(
     Resolve(TEXT("AI lose"), AILoseConditions, AILoseGroups);
 }
 
+bool FConnectItRuleSet::IsScoringRule(const FInstancedStruct& Rule)
+{
+    const UScriptStruct* Struct = Rule.GetScriptStruct();
+    return Struct && Struct->IsChildOf(FConnectItScoringRule::StaticStruct());
+}
+
+bool FConnectItRuleSet::SetScoringRuleFrom(const FInstancedStruct& NewRule)
+{
+    if (!IsScoringRule(NewRule)) return false;
+    ScoringRule.InitializeAsScriptStruct(NewRule.GetScriptStruct(), NewRule.GetMemory());
+    return true;
+}
+
 const TArray<FConnectItMatchConditionGroup>& FConnectItRuleSet::GetWinGroupsFor(int32 Faction) const
 {
     return (Faction != INDEX_NONE && Faction == AIFaction) ? AIWinGroups : PlayerWinGroups;

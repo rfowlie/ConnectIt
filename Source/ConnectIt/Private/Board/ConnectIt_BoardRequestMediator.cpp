@@ -167,6 +167,21 @@ bool UConnectIt_BoardRequestMediator::ProcessRequest(const FTurnActionRequest& R
     return bSucceeded;
 }
 
+bool UConnectIt_BoardRequestMediator::ProcessLevelOperation(const FInstancedStruct& Operation, int32 AsFaction)
+{
+    const FConnectItBoardOperation* Requested = Operation.GetPtr<FConnectItBoardOperation>();
+    if (!Requested)
+    {
+        UE_LOG(LogTemp, Warning,
+            TEXT("ConnectIt_BoardRequestMediator: level operation rejected -- it is not a board operation"));
+        return false;
+    }
+
+    UE_LOG(LogTemp, Log, TEXT("ConnectIt_BoardRequestMediator: level operation '%s' %s as faction %d"),
+        *Requested->GetRequestType().ToString(), *Requested->Describe(), AsFaction);
+    return DispatchRequest(Operation, AsFaction);
+}
+
 bool UConnectIt_BoardRequestMediator::DispatchRequest(
     const FInstancedStruct& Payload, int32 RequestingFaction)
 {

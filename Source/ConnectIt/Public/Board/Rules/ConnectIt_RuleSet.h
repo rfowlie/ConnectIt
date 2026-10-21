@@ -84,6 +84,11 @@ struct CONNECTIT_API FConnectItRuleSet
 
     const FConnectItScoringRule* GetScoringRule() const { return ScoringRule.GetPtr(); }
 
+    // Replaces the scoring rule with NewRule (a scoring rule struct, e.g. Lines
+    // with its settings). False, and nothing changed, if it isn't one.
+    bool SetScoringRuleFrom(const FInstancedStruct& NewRule);
+    static bool IsScoringRule(const FInstancedStruct& Rule);
+
     // The goals Faction has to complete: the AI's if Faction is the AI's slot,
     // else the player's. No fallback between them.
     const TArray<FConnectItMatchConditionGroup>& GetWinGroupsFor(int32 Faction) const;
