@@ -119,6 +119,10 @@ protected:
         Log += FString::Printf(TEXT("checkpoint %d %s %s %d %s; "),
             Faction, bIsMine ? TEXT("mine") : TEXT("theirs"), *GetNameSafe(Goal), GroupIndex, *GroupName.ToString());
     }
+    virtual void OnLoseConditionMet_Implementation(int32 Faction, bool bIsMine, UConnectIt_MatchConditionAsset* Condition) override
+    {
+        Log += FString::Printf(TEXT("lost %d %s %s; "), Faction, bIsMine ? TEXT("mine") : TEXT("theirs"), *GetNameSafe(Condition));
+    }
     virtual void OnMatchWon_Implementation(int32 Faction, bool bIsMine) override
     {
         Log += FString::Printf(TEXT("won %d %s; "), Faction, bIsMine ? TEXT("mine") : TEXT("theirs"));

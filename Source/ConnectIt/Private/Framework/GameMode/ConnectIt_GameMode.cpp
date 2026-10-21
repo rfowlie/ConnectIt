@@ -156,7 +156,8 @@ void AConnectIt_GameMode::EnsureMatchSetupResolved()
         PlayerDirectorClass ? *PlayerDirectorClass : UConnectIt_PlayerDirector::StaticClass());
     const UConnectIt_AIDirector* AIDefaults = GetDefault<UConnectIt_AIDirector>(
         AIDirectorClass ? *AIDirectorClass : UConnectIt_AIDirector::StaticClass());
-    Rules.ResolveConditionGroups(PlayerDefaults->WinConditions, AIDefaults->WinConditions);
+    Rules.ResolveConditionGroups(PlayerDefaults->WinConditions, AIDefaults->WinConditions,
+        PlayerDefaults->LoseConditions, AIDefaults->LoseConditions);
 
     // Tweaks from the menu, on top of whichever preset plays
     if (bHasMatchSettings)
@@ -363,6 +364,13 @@ void AConnectIt_GameMode::HandleBoardStateChangedForDirectors()
                     Checkpoint->Asset, Checkpoint->GroupIndex, Checkpoint->GroupName);
             });
         }
+        else if (const FConnectItBoardEvent_LoseConditionMet* Lost = Entry.GetPtr<FConnectItBoardEvent_LoseConditionMet>())
+        {
+            ForEachDirector([Lost](UConnectIt_Director& Director)
+            {
+                Director.OnLoseConditionMet(Lost->Faction, Director.IsMine(Lost->Faction), Lost->Asset);
+            });
+        }
         else if (const FConnectItBoardEvent_GameWon* Won = Entry.GetPtr<FConnectItBoardEvent_GameWon>())
         {
             const int32 Winner = Won->WinningFaction;
@@ -402,6 +410,14 @@ void AConnectIt_GameMode::HandleActiveControllerChanged(AController* NewActiveCo
 
 void AConnectIt_GameMode::WarnAboutMissingWinConditions() const
 {
+    // Lose conditions are for matches with an AI (versus: undecided)
+    if (Rules.AIFaction == INDEX_NONE && !Rules.PlayerLoseGroups.IsEmpty())
+    {
+        UE_LOG(LogTemp, Warning,
+            TEXT("ConnectIt_GameMode: the Player director has Lose Conditions, but this match has no AI -- "
+                 "they are ignored"));
+    }
+
     if (Rules.PlayerWinGroups.IsEmpty())
     {
         UE_LOG(LogTemp, Warning,
@@ -635,6 +651,7 @@ void AConnectIt_GameMode::HandleGameOver(FGameplayTag Tag)
 
     const int32 WinningFactionSlot = IsValid(BoardState)
         ? BoardState->GetCurrentState().WinningFactionSlot : -1;
+    const bool bByLoss = IsValid(BoardState) && BoardState->GetCurrentState().LosingFactionSlot != -1;
 
     UE_LOG(LogTemp, Log,
        TEXT("ConnectIt_GameMode: Game over — faction %d wins"),
@@ -645,7 +662,7 @@ void AConnectIt_GameMode::HandleGameOver(FGameplayTag Tag)
     {
         GS->SetMatchResult(
             WinningFactionSlot,
-            EMatchEndReason::ScoreThresholdReached,
+            bByLoss ? EMatchEndReason::OpponentLost : EMatchEndReason::ScoreThresholdReached,
             GetGameState<ATurnBasedGameState>()->GetActiveTurnNumber()
         );
     }

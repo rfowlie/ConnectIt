@@ -53,6 +53,15 @@ struct CONNECTIT_API FConnectItRuleSet
     UPROPERTY(Transient, BlueprintReadOnly, Category = "Rules")
     TArray<FConnectItMatchConditionGroup> AIWinGroups;
 
+    // The directors' lose conditions as plain groups (any one met = that side
+    // loses), copied by ResolveConditionGroups. Only apply in a match with an
+    // AI (see GetLoseGroupsFor).
+    UPROPERTY(Transient, BlueprintReadOnly, Category = "Rules")
+    TArray<FConnectItMatchConditionGroup> PlayerLoseGroups;
+
+    UPROPERTY(Transient, BlueprintReadOnly, Category = "Rules")
+    TArray<FConnectItMatchConditionGroup> AILoseGroups;
+
     // The faction slot the AI plays, set by the GameMode once it has
     // registered the AI (the slot isn't known until then). INDEX_NONE = no AI,
     // so PlayerWinGroups applies to every faction.
@@ -62,12 +71,14 @@ struct CONNECTIT_API FConnectItRuleSet
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Rules", meta = (ExcludeBaseStruct))
     TInstancedStruct<FConnectItScoringRule> ScoringRule;
 
-    // Copies the directors' goal assets' conditions into PlayerWinGroups /
-    // AIWinGroups, in order (empty entries skipped, with a warning). Game
-    // thread, once per match, before the rules are used -- the GameMode does it.
+    // Copies the directors' condition assets into the win and lose groups,
+    // in order (empty entries skipped, with a warning). Game thread, once per
+    // match, before the rules are used -- the GameMode does it.
     void ResolveConditionGroups(
         const TArray<TObjectPtr<UConnectIt_MatchConditionAsset>>& PlayerWinConditions,
-        const TArray<TObjectPtr<UConnectIt_MatchConditionAsset>>& AIWinConditions);
+        const TArray<TObjectPtr<UConnectIt_MatchConditionAsset>>& AIWinConditions,
+        const TArray<TObjectPtr<UConnectIt_MatchConditionAsset>>& PlayerLoseConditions = {},
+        const TArray<TObjectPtr<UConnectIt_MatchConditionAsset>>& AILoseConditions = {});
 
     // --- The rules themselves (null if a slot was cleared / left empty) ---
 
@@ -76,6 +87,15 @@ struct CONNECTIT_API FConnectItRuleSet
     // The goals Faction has to complete: the AI's if Faction is the AI's slot,
     // else the player's. No fallback between them.
     const TArray<FConnectItMatchConditionGroup>& GetWinGroupsFor(int32 Faction) const;
+
+    // The ways Faction loses: the AI's if Faction is the AI's slot, else the
+    // player's -- and none at all in a match with no AI (lose conditions in
+    // versus play are undecided, so they're ignored there).
+    const TArray<FConnectItMatchConditionGroup>& GetLoseGroupsFor(int32 Faction) const;
+
+    // The lowest faction that meets any of its lose conditions on Board, or
+    // INDEX_NONE; OutGroup (if given) gets the condition met
+    int32 GetLosingFaction(const FConnectItBoardState& Board, const FConnectItMatchConditionGroup** OutGroup = nullptr) const;
 
     // The scoring rule if it is a T (e.g. FConnectItScoringRule_Lines), else
     // null -- for code that only makes sense under one kind of scoring.
@@ -137,8 +157,11 @@ struct CONNECTIT_API FConnectItRuleSet
     // faction with no groups.
     bool HasFactionWon(const FConnectItBoardState& Board, int32 Faction) const;
 
-    // The faction slot that has won, or INDEX_NONE. If several have, the
-    // lowest slot wins.
+    // The faction slot that has won, or INDEX_NONE: a faction that has
+    // completed all its goals (if several, the lowest slot) -- or, if none
+    // has, the other side of a faction that has lost (two factions). Wins are
+    // checked first, so a move that completes a win and meets a lose
+    // condition is a win. The AI's search asks this too, so it sees losses.
     int32 GetWinningFaction(const FConnectItBoardState& Board) const;
 
     // How close Faction is to winning, 0 to 1: groups completed, plus how far
@@ -164,6 +187,7 @@ struct CONNECTIT_API FConnectItRuleSet
     // The one place a win is written into board state, called by the Mediator
     // after a move's scoring: advances the win groups (appending checkpoint
     // events to OutEvents, if given), refreshes TargetScore and WinProgress, and
-    // sets bGameOver / WinningFactionSlot once someone has won.
+    // sets bGameOver / WinningFactionSlot once someone has won. A win by a
+    // loss also sets LosingFactionSlot and appends a LoseConditionMet event.
     void StampWinState(FConnectItBoardState& Board, FConnectItBoardChangeEvent* OutEvents = nullptr) const;
 };

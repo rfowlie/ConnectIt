@@ -86,6 +86,12 @@ struct FConnectItBoardState
     UPROPERTY(BlueprintReadOnly)
     int32 WinningFactionSlot = -1;
 
+    // The faction that lost by meeting a lose condition (the winner is then the
+    // other side), or -1 -- set by FConnectItRuleSet::StampWinState. -1 when
+    // the game was won by completing goals.
+    UPROPERTY(BlueprintReadOnly)
+    int32 LosingFactionSlot = -1;
+
     // Score needed to win, published by the match's win condition (see
     // FConnectItRuleSet::StampWinState) so UI can render "57 / 100" without
     // knowing which condition is in play or reaching the server-only rules.

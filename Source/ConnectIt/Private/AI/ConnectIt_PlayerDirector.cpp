@@ -61,11 +61,13 @@ EDataValidationResult UConnectIt_PlayerDirector::IsDataValid(FDataValidationCont
         Result = EDataValidationResult::Invalid;
     }
     ValidateConditionList(this, TEXT("Win Conditions"), WinConditions, Context, Result);
+    ValidateConditionList(this, TEXT("Lose Conditions"), LoseConditions, Context, Result);
     return Result;
 }
 
 void UConnectIt_PlayerDirector::AddConditionRuleWarnings(const FConnectItRuleSet& Rules, FDataValidationContext& Context) const
 {
     AddConditionListRuleWarnings(this, TEXT("Win Conditions"), WinConditions, Rules, Context);
+    AddConditionListRuleWarnings(this, TEXT("Lose Conditions"), LoseConditions, Rules, Context);
 }
 #endif

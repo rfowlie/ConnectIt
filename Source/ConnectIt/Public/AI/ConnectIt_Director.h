@@ -66,6 +66,12 @@ public:
     void OnWinCheckpointReached(int32 Faction, bool bIsMine, UConnectIt_MatchConditionAsset* Goal, int32 GroupIndex, FName GroupName);
     virtual void OnWinCheckpointReached_Implementation(int32 Faction, bool bIsMine, UConnectIt_MatchConditionAsset* Goal, int32 GroupIndex, FName GroupName) {}
 
+    // Faction met one of its lose conditions (Condition: the asset), so it has
+    // lost; On Match Won for the other side follows
+    UFUNCTION(BlueprintNativeEvent, Category = "Director")
+    void OnLoseConditionMet(int32 Faction, bool bIsMine, UConnectIt_MatchConditionAsset* Condition);
+    virtual void OnLoseConditionMet_Implementation(int32 Faction, bool bIsMine, UConnectIt_MatchConditionAsset* Condition) {}
+
     // Faction has won the match (the match ends right after)
     UFUNCTION(BlueprintNativeEvent, Category = "Director")
     void OnMatchWon(int32 Faction, bool bIsMine);

@@ -256,6 +256,27 @@ struct CONNECTIT_API FConnectItBoardEvent_WinCheckpointReached : public FConnect
     virtual FGameplayTag GetEventTag() const override;
 };
 
+// A faction just met one of its lose conditions, so it has lost; a Game Won
+// for the other side follows in the same change. Appears once.
+USTRUCT(BlueprintType, meta = (DisplayName = "Lose Condition Met"))
+struct CONNECTIT_API FConnectItBoardEvent_LoseConditionMet : public FConnectItBoardResultEvent
+{
+    GENERATED_BODY()
+
+    UPROPERTY(BlueprintReadOnly, Category = "Event")
+    int32 Faction = -1;
+
+    // The lose condition met: its asset (null for one built in code)
+    UPROPERTY(BlueprintReadOnly, Category = "Event")
+    TObjectPtr<UConnectIt_MatchConditionAsset> Asset = nullptr;
+
+    // Its name (the asset's name)
+    UPROPERTY(BlueprintReadOnly, Category = "Event")
+    FName GroupName;
+
+    virtual FGameplayTag GetEventTag() const override;
+};
+
 // The game was just won. Appears once, on the change that ended the game
 // (FConnectItBoardState::bGameOver stays true on every snapshot after it).
 USTRUCT(BlueprintType, meta = (DisplayName = "Game Won"))

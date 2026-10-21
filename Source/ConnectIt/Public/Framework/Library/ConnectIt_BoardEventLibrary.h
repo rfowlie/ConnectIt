@@ -77,6 +77,11 @@ public:
         meta = (WorldContext = "WorldContextObject", ExpandBoolAsExecs = "ReturnValue"))
     static bool GetActiveWinCheckpointReachedEvent(const UObject* WorldContextObject, FConnectItBoardEvent_WinCheckpointReached& OutEvent);
 
+    // For listeners of ConnectIt.Event.LoseConditionMet
+    UFUNCTION(BlueprintCallable, Category = "ConnectIt|Board Events",
+        meta = (WorldContext = "WorldContextObject", ExpandBoolAsExecs = "ReturnValue"))
+    static bool GetActiveLoseConditionMetEvent(const UObject* WorldContextObject, FConnectItBoardEvent_LoseConditionMet& OutEvent);
+
     // For listeners of ConnectIt.Event.PlayerWin
     UFUNCTION(BlueprintCallable, Category = "ConnectIt|Board Events",
         meta = (WorldContext = "WorldContextObject", ExpandBoolAsExecs = "ReturnValue"))

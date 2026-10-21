@@ -14,7 +14,9 @@ FConnectItRuleSet::FConnectItRuleSet()
 
 void FConnectItRuleSet::ResolveConditionGroups(
     const TArray<TObjectPtr<UConnectIt_MatchConditionAsset>>& PlayerWinConditions,
-    const TArray<TObjectPtr<UConnectIt_MatchConditionAsset>>& AIWinConditions)
+    const TArray<TObjectPtr<UConnectIt_MatchConditionAsset>>& AIWinConditions,
+    const TArray<TObjectPtr<UConnectIt_MatchConditionAsset>>& PlayerLoseConditions,
+    const TArray<TObjectPtr<UConnectIt_MatchConditionAsset>>& AILoseConditions)
 {
     const auto Resolve = [](const TCHAR* Side,
         const TArray<TObjectPtr<UConnectIt_MatchConditionAsset>>& Assets, TArray<FConnectItMatchConditionGroup>& OutGroups)
@@ -38,11 +40,37 @@ void FConnectItRuleSet::ResolveConditionGroups(
     };
     Resolve(TEXT("Player"), PlayerWinConditions, PlayerWinGroups);
     Resolve(TEXT("AI"), AIWinConditions, AIWinGroups);
+    Resolve(TEXT("Player lose"), PlayerLoseConditions, PlayerLoseGroups);
+    Resolve(TEXT("AI lose"), AILoseConditions, AILoseGroups);
 }
 
 const TArray<FConnectItMatchConditionGroup>& FConnectItRuleSet::GetWinGroupsFor(int32 Faction) const
 {
     return (Faction != INDEX_NONE && Faction == AIFaction) ? AIWinGroups : PlayerWinGroups;
+}
+
+const TArray<FConnectItMatchConditionGroup>& FConnectItRuleSet::GetLoseGroupsFor(int32 Faction) const
+{
+    static const TArray<FConnectItMatchConditionGroup> None;
+    if (AIFaction == INDEX_NONE) return None;
+    return Faction == AIFaction ? AILoseGroups : PlayerLoseGroups;
+}
+
+int32 FConnectItRuleSet::GetLosingFaction(const FConnectItBoardState& Board, const FConnectItMatchConditionGroup** OutGroup) const
+{
+    const FConnectItConditionContext Context{ Board, *this };
+    for (int32 Faction = 0; Faction < Board.ScoreBoard.Num(); Faction++)
+    {
+        for (const FConnectItMatchConditionGroup& Group : GetLoseGroupsFor(Faction))
+        {
+            if (Group.IsMetFor(Context, Faction))
+            {
+                if (OutGroup) *OutGroup = &Group;
+                return Faction;
+            }
+        }
+    }
+    return INDEX_NONE;
 }
 
 float FConnectItRuleSet::ResolveBoardChange(
@@ -137,10 +165,18 @@ bool FConnectItRuleSet::HasFactionWon(const FConnectItBoardState& Board, int32 F
 
 int32 FConnectItRuleSet::GetWinningFaction(const FConnectItBoardState& Board) const
 {
-    // Lowest slot first, so a simultaneous win goes to the lowest slot.
+    // Wins first, lowest slot first, so a simultaneous win goes to the lowest slot
     for (int32 Faction = 0; Faction < Board.ScoreBoard.Num(); Faction++)
     {
         if (HasFactionWon(Board, Faction)) return Faction;
+    }
+
+    // Then a loss: the other side wins (lose conditions only exist with two
+    // factions -- a match with an AI)
+    const int32 Loser = GetLosingFaction(Board);
+    if (Loser != INDEX_NONE && Board.ScoreBoard.Num() == 2)
+    {
+        return 1 - Loser;
     }
     return INDEX_NONE;
 }
@@ -205,6 +241,28 @@ void FConnectItRuleSet::StampWinState(FConnectItBoardState& Board, FConnectItBoa
     const int32 Winner = GetWinningFaction(Board);
     if (Winner != INDEX_NONE)
     {
+        // Won by the other side meeting a lose condition (goals are checked
+        // first, so a completed goal never shows up as a loss)
+        if (!HasFactionWon(Board, Winner) && Board.LosingFactionSlot == INDEX_NONE)
+        {
+            const FConnectItMatchConditionGroup* LoseGroup = nullptr;
+            const int32 Loser = GetLosingFaction(Board, &LoseGroup);
+            Board.LosingFactionSlot = Loser;
+
+            if (OutEvents && LoseGroup)
+            {
+                FConnectItBoardEvent_LoseConditionMet Lost;
+                Lost.Faction = Loser;
+                Lost.Asset = LoseGroup->Source;
+                Lost.GroupName = LoseGroup->Name;
+                OutEvents->Add(Lost);
+            }
+
+            UE_LOG(LogTemp, Log,
+                TEXT("ConnectIt_RuleSet: faction %d met lose condition '%s'"),
+                Loser, LoseGroup ? *LoseGroup->Name.ToString() : TEXT("?"));
+        }
+
         Board.bGameOver = true;
         Board.WinningFactionSlot = Winner;
 

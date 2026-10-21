@@ -8,7 +8,7 @@ Newest first:
 
 - [2026-10-20-2330](2026-10-20-2330.md) — session — three directors (part 2 of the 2026-10-20 plan, in progress): Stage 1,
   director base + Level / Player / AI directors named by class on the preset, GameMode hub; Stage 2, win conditions
-  live on the directors. 44/44 tests.
+  live on the directors; Stage 3, lose conditions. 45/45 tests.
 
 - [2026-10-20-1500](2026-10-20-1500.md) — session — conditions and legal moves (part 1 of the 2026-10-20 plan, done):
   Stage 1, MinMax `DefaultTimeBudgetSeconds` (the director's think time wins); Stage 2, "match condition"

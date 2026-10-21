@@ -19,6 +19,8 @@ enum class EMatchEndReason : uint8
     ScoreThresholdReached   UMETA(DisplayName = "Score Threshold Reached"),
     OpponentForfeited       UMETA(DisplayName = "Opponent Forfeited"),
     OpponentDisconnected    UMETA(DisplayName = "Opponent Disconnected"),
+    // The other side met one of its lose conditions
+    OpponentLost            UMETA(DisplayName = "Opponent Lost"),
     Unknown                 UMETA(DisplayName = "Unknown")
 };
 

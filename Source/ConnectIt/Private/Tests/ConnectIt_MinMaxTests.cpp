@@ -550,6 +550,80 @@ bool FConnectItNoLegalMoveTest::RunTest(const FString& Parameters)
     return true;
 }
 
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FConnectItLoseConditionsTest,
+    "ConnectIt.Board.Conditions.Lose", TestFlags)
+
+bool FConnectItLoseConditionsTest::RunTest(const FString& Parameters)
+{
+    // The player wins by clearing the board having scored; loses when stuck
+    // with fewer pieces than a line needs. The AI wins at 12 points.
+    UConnectIt_MatchConditionAsset* Clear = NewObject<UConnectIt_MatchConditionAsset>(GetTransientPackage(), TEXT("WC_Test_LoseClear"));
+    Clear->Conditions.Add(TInstancedStruct<FConnectItMatchCondition>::Make<FConnectItMatchCondition_PieceCount>(PiecesIs(EConnectItPieceCountComparison::Equal, 0)));
+    UConnectIt_MatchConditionAsset* Stuck = NewObject<UConnectIt_MatchConditionAsset>(GetTransientPackage(), TEXT("WC_Test_LoseStuck"));
+    Stuck->Conditions.Add(TInstancedStruct<FConnectItMatchCondition>::Make<FConnectItMatchCondition_NotEnoughPiecesToScore>());
+    UConnectIt_MatchConditionAsset* AIScore = NewObject<UConnectIt_MatchConditionAsset>(GetTransientPackage(), TEXT("WC_Test_LoseAIScore"));
+    AIScore->Conditions.Add(TInstancedStruct<FConnectItMatchCondition>::Make<FConnectItMatchCondition_ScoreThreshold>(ScoreAtLeast(12.f)));
+
+    FConnectItRuleSet Rules;
+    Rules.ResolveConditionGroups({ Clear }, { AIScore }, { Stuck }, {});
+    Rules.AIFaction = 1;
+
+    // Player (0) has 2 pieces left: stuck, so it loses and the AI wins
+    FConnectItBoardState Board = MakeBoard(5);
+    Board.ScoreBoard = { 0.f, 0.f };
+    Board.StartingPieces = { 4, 1 };
+    Place(Board, 0, 0, 0);
+    Place(Board, 1, 0, 0);
+    Place(Board, 4, 4, 1);
+
+    TestEqual(TEXT("the player is the loser"), Rules.GetLosingFaction(Board), 0);
+    TestEqual(TEXT("so the AI is the winner"), Rules.GetWinningFaction(Board), 1);
+
+    FConnectItBoardChangeEvent Change;
+    Rules.StampWinState(Board, &Change);
+    TestTrue(TEXT("game over"), Board.bGameOver);
+    TestEqual(TEXT("won by the AI"), Board.WinningFactionSlot, 1);
+    TestEqual(TEXT("lost by the player"), Board.LosingFactionSlot, 0);
+    if (const auto* Lost = OnlyEvent<FConnectItBoardEvent_LoseConditionMet>(Change))
+    {
+        TestEqual(TEXT("the event names the loser"), Lost->Faction, 0);
+        TestTrue(TEXT("and the condition met"), Lost->Asset == Stuck);
+    }
+    else
+    {
+        AddError(TEXT("expected exactly one LoseConditionMet event"));
+    }
+
+    // 0 pieces: the "clear the board" goal is complete -- a win, even though
+    // having no pieces also means "not enough to score"
+    FConnectItBoardState Cleared = MakeBoard(5);
+    Cleared.ScoreBoard = { 4.f, 0.f };
+    Cleared.StartingPieces = { 4, 1 };
+    Place(Cleared, 4, 4, 1);
+    FConnectItBoardChangeEvent ClearedChange;
+    Rules.StampWinState(Cleared, &ClearedChange);
+    TestEqual(TEXT("win beats loss: the player wins"), Cleared.WinningFactionSlot, 0);
+    TestEqual(TEXT("...no loser"), Cleared.LosingFactionSlot, -1);
+    TestTrue(TEXT("...no Lose event"), !ClearedChange.Events.ContainsByPredicate(
+        [](const FInstancedStruct& Entry) { return Entry.GetPtr<FConnectItBoardEvent_LoseConditionMet>() != nullptr; }));
+
+    // No AI in the match: lose conditions are ignored
+    FConnectItRuleSet Online = Rules;
+    Online.AIFaction = INDEX_NONE;
+    TestEqual(TEXT("online: nobody loses"), Online.GetLosingFaction(Board), static_cast<int32>(INDEX_NONE));
+
+    // The AI's search sees a loss as the end of the game
+    FConnectItBoardState Fresh = MakeBoard(5);
+    Fresh.ScoreBoard = { 0.f, 0.f };
+    Fresh.StartingPieces = { 4, 1 };
+    Place(Fresh, 0, 0, 0);
+    Place(Fresh, 1, 0, 0);
+    Place(Fresh, 4, 4, 1);
+    const FConnectItMinMaxRules Search(Fresh, Rules, DefaultEvaluationWeights(), DefaultOrderingWeights(), PlaceOnly(), PlaceOnly());
+    TestTrue(TEXT("a lost position is terminal"), Search.IsTerminalState(Search.MakeRoot(Fresh, 1)));
+    return true;
+}
+
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FConnectItRuleSetWinConditionsTest,
     "ConnectIt.Board.Conditions.RuleSet", TestFlags)
 

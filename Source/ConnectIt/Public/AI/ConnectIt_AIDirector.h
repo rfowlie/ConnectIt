@@ -83,6 +83,14 @@ public:
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "AI|Conditions")
     TArray<TObjectPtr<UConnectIt_MatchConditionAsset>> WinConditions;
 
+    // Ways this side LOSES: if any one holds after a move (all of its
+    // conditions at once), this side loses and the other side wins -- unless
+    // a win was completed in that same move (wins are checked first). Only in
+    // a match with an AI (ignored online for now). E.g. Not Enough Pieces To
+    // Score, No Legal Move: Swap Pieces on an exhaustion level.
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "AI|Conditions")
+    TArray<TObjectPtr<UConnectIt_MatchConditionAsset>> LoseConditions;
+
     // --- For the controller ---
 
     // Adopts strategy / selector changes made since the last decision. Called
