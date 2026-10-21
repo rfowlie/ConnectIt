@@ -29,6 +29,7 @@ UE_DEFINE_GAMEPLAY_TAG_COMMENT(ConnectIt_Event_Scored, "ConnectIt.Event.Scored",
 UE_DEFINE_GAMEPLAY_TAG_COMMENT(ConnectIt_Event_PlayerWin, "ConnectIt.Event.PlayerWin", "");
 UE_DEFINE_GAMEPLAY_TAG_COMMENT(ConnectIt_Event_LoseConditionMet, "ConnectIt.Event.LoseConditionMet", "A faction met one of its lose conditions, so it has lost (see FConnectItBoardEvent_LoseConditionMet)");
 UE_DEFINE_GAMEPLAY_TAG_COMMENT(ConnectIt_Event_WinCheckpointReached, "ConnectIt.Event.WinCheckpointReached", "A faction completed a win condition group that was not its last (see FConnectItBoardEvent_WinCheckpointReached)");
+UE_DEFINE_GAMEPLAY_TAG_COMMENT(ConnectIt_Event_BoardChangeComplete, "ConnectIt.Event.BoardChangeComplete", "Server only: queued after a board change's events, so it completes once they have all played out");
 UE_DEFINE_GAMEPLAY_TAG_COMMENT(ConnectIt_Event_TurnEnd, "ConnectIt.Event.TurnEnd", "");
 
 UE_DEFINE_GAMEPLAY_TAG_COMMENT(ConnectIt_Event_TileMultiplierDestroyed, "ConnectIt.Event.TileMultiplierDestroyed", "");

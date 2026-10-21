@@ -26,6 +26,7 @@
 #include "AI/ConnectIt_LevelDirector.h"
 #include "Board/Events/ConnectIt_BoardEvents.h"
 #include "Board/Operations/ConnectIt_BoardOperation.h"
+#include "TimerManager.h"
 
 
 AConnectIt_GameMode::AConnectIt_GameMode()
@@ -329,10 +330,17 @@ void AConnectIt_GameMode::HandleTurnPhaseChanged(ETurnPhase NewPhase)
     const int32 TurnNumber = GS->GetActiveTurnNumber();
     const bool bStarted = NewPhase == ETurnPhase::TurnStart;
 
-    // Level changes waiting for this turn, before anyone hears it started
+    // Level changes waiting for this turn, before anyone hears it started:
+    // they join the waiting line and play out one at a time (the AI waits
+    // for the board to settle before it decides)
     if (bStarted)
     {
-        ApplyLevelChanges(LevelChanges.TakeNextTurn());
+        LevelChangesInARow = 0;
+        LevelChanges.StartTurn();
+        if (!IsBoardChangeResolving())
+        {
+            DrainLevelChanges();
+        }
     }
 
     ForEachDirector([Faction, TurnNumber, bStarted](UConnectIt_Director& Director)
@@ -508,6 +516,7 @@ void AConnectIt_GameMode::HandleMatchHasStarted()
     if (UConnectIt_BoardStateComponent* BoardState = UConnectIt_GameUtilityLibrary::GetBoardStateComponent(this))
     {
         BoardState->OnBoardStateChanged.AddUniqueDynamic(this, &AConnectIt_GameMode::HandleBoardStateChangedForDirectors);
+        BoardState->OnBoardChangeCommitted.AddUObject(this, &AConnectIt_GameMode::HandleBoardChangeCommitted);
     }
     ForEachDirector([](UConnectIt_Director& Director) { Director.OnMatchStarted(); });
 }
@@ -530,12 +539,25 @@ bool AConnectIt_GameMode::ProcessBoardRequest(const FTurnActionRequest& Request,
         return false;
     }
 
-    bApplyingBoardChange = true;
-    const bool bSucceeded = BoardRequestMediator->ProcessRequest(Request, RequestingFaction);
-    bApplyingBoardChange = false;
+    // One board change at a time: a request while one is still resolving
+    // shouldn't happen (the AI waits for a settled board; clients are told
+    // the board is busy) -- refused, and the requester's action re-enables
+    if (IsBoardChangeResolving())
+    {
+        UE_LOG(LogTemp, Warning,
+            TEXT("ConnectIt_GameMode: ProcessBoardRequest -- '%s' by faction %d refused: a board change "
+                 "is still resolving (its visuals haven't finished)"),
+            *Request.ActionTag.ToString(), RequestingFaction);
+        return false;
+    }
 
-    // Level changes asked for while the move was being carried out
-    ApplyLevelChanges(LevelChanges.TakeAfterMove());
+    // Level changes asked for while the move is carried out wait for it to
+    // play out (released by HandleBoardChangeComplete)
+    const bool bSucceeded = BoardRequestMediator->ProcessRequest(Request, RequestingFaction);
+    if (bSucceeded)
+    {
+        LevelChangesInARow = 0;
+    }
     return bSucceeded;
 }
 
@@ -571,34 +593,109 @@ bool AConnectIt_GameMode::SetScoringRule(const FInstancedStruct& ScoringRule, EC
 
 void AConnectIt_GameMode::QueueLevelChange(const FConnectItLevelChange& Change, EConnectItChangeTiming Timing)
 {
-    const bool bBusy = bApplyingBoardChange || (IsValid(BoardRequestMediator) && BoardRequestMediator->IsDispatching());
-    if (LevelChanges.Add(Change, Timing, bBusy))
+    if (LevelChanges.Add(Change, Timing, IsBoardChangeResolving()))
     {
-        ApplyLevelChanges({ Change });
+        LevelChangesInARow++;
+        ApplyLevelChange(Change);
     }
 }
 
-void AConnectIt_GameMode::ApplyLevelChanges(TArray<FConnectItLevelChange> Changes)
+// --- One board change at a time ---
+
+bool AConnectIt_GameMode::IsBoardChangeResolving() const
 {
-    // Reactions to a change may queue more; a level whose triggers keep
-    // feeding each other is stopped rather than looping forever
-    constexpr int32 MaxChained = 64;
-    int32 Applied = 0;
-    while (!Changes.IsEmpty() && Applied < MaxChained)
+    return bBoardChangeResolving || (IsValid(BoardRequestMediator) && BoardRequestMediator->IsDispatching());
+}
+
+bool AConnectIt_GameMode::IsBoardSettled() const
+{
+    return !IsBoardChangeResolving() && !LevelChanges.HasWaiting();
+}
+
+void AConnectIt_GameMode::HandleBoardChangeCommitted()
+{
+    NumBoardChanges++;
+    NumChangesPlaying++;
+    bBoardChangeResolving = true;
+
+    // Restarted by every change: the timeout is for the latest one
+    GetWorldTimerManager().SetTimer(BoardChangeTimeoutHandle,
+        FTimerDelegate::CreateUObject(this, &AConnectIt_GameMode::HandleBoardChangeTimeout),
+        BoardChangeTimeoutSeconds, false);
+}
+
+void AConnectIt_GameMode::HandleBoardChangeComplete(FGameplayTag Tag)
+{
+    NumChangesPlaying = FMath::Max(NumChangesPlaying - 1, 0);
+
+    // Markers complete in order: none left playing is the end of the last
+    // committed change. (After a timeout the lock is already off; a late
+    // marker just catches the count up.)
+    if (NumChangesPlaying == 0 && bBoardChangeResolving)
     {
-        const FConnectItLevelChange Change = Changes[0];
-        Changes.RemoveAt(0);
+        ReleaseBoardChangeLock();
+    }
+}
+
+void AConnectIt_GameMode::ReleaseBoardChangeLock()
+{
+    bBoardChangeResolving = false;
+    GetWorldTimerManager().ClearTimer(BoardChangeTimeoutHandle);
+
+    // Next tick: the marker can complete inside the call that committed the
+    // change (no visuals registered), where nothing new may be carried out
+    GetWorldTimerManager().SetTimerForNextTick(
+        FTimerDelegate::CreateUObject(this, &AConnectIt_GameMode::DrainLevelChanges));
+}
+
+void AConnectIt_GameMode::HandleBoardChangeTimeout()
+{
+    if (!bBoardChangeResolving) return;
+
+    FString Queued;
+    if (UGameEventTaskSubsystem* GameEventSubsystem = GetWorld()->GetSubsystem<UGameEventTaskSubsystem>())
+    {
+        for (const FGameplayTag& QueuedTag : GameEventSubsystem->GetTagsInQueue())
+        {
+            Queued += (Queued.IsEmpty() ? TEXT("") : TEXT(", ")) + QueuedTag.ToString();
+        }
+    }
+    UE_LOG(LogTemp, Error,
+        TEXT("ConnectIt_GameMode: a board change has been resolving for %.0f s -- releasing the lock. A visual "
+             "task never reported complete, so the event queue behind it is stuck too (queued: %s)"),
+        BoardChangeTimeoutSeconds, Queued.IsEmpty() ? TEXT("nothing") : *Queued);
+
+    ReleaseBoardChangeLock();
+}
+
+void AConnectIt_GameMode::DrainLevelChanges()
+{
+    // A level whose triggers keep feeding each other is stopped rather than
+    // looping forever
+    constexpr int32 MaxInARow = 64;
+
+    const int32 ChangesBefore = NumBoardChanges;
+    FConnectItLevelChange Change;
+    while (!IsBoardChangeResolving() && NumBoardChanges == ChangesBefore && LevelChanges.TakeNext(Change))
+    {
+        if (++LevelChangesInARow > MaxInARow)
+        {
+            const int32 Dropped = 1 + LevelChanges.DiscardWaiting();
+            UE_LOG(LogTemp, Error,
+                TEXT("ConnectIt_GameMode: more than %d level changes in a row -- %d dropped (do the level's "
+                     "triggers keep setting each other off?)"),
+                MaxInARow, Dropped);
+            break;
+        }
+
+        // One that changes the board stops the loop: the next waits for it
+        // to play out. A scoring rule change (or a refused operation) doesn't.
         ApplyLevelChange(Change);
-        Applied++;
-        Changes.Append(LevelChanges.TakeAfterMove());
     }
 
-    if (!Changes.IsEmpty())
+    if (IsBoardSettled())
     {
-        UE_LOG(LogTemp, Error,
-            TEXT("ConnectIt_GameMode: more than %d level changes in a row -- the rest are dropped (do the level's "
-                 "triggers keep setting each other off?)"),
-            MaxChained);
+        OnBoardChangeSettled.Broadcast();
     }
 }
 
@@ -617,9 +714,7 @@ void AConnectIt_GameMode::ApplyLevelChange(const FConnectItLevelChange& Change)
 
     if (!IsValid(BoardRequestMediator)) return;
 
-    bApplyingBoardChange = true;
     const bool bApplied = BoardRequestMediator->ProcessLevelOperation(Change.Operation, Change.AsFaction);
-    bApplyingBoardChange = false;
 
     if (!bApplied)
     {
@@ -666,6 +761,11 @@ void AConnectIt_GameMode::InitialiseBoard()
         GameEventSubsystem->BindOnTagComplete(
             ConnectIt_Event_PlayerWin, this,
             GET_FUNCTION_NAME_CHECKED(AConnectIt_GameMode, HandleGameOver));
+
+        // The end of each board change (see IsBoardChangeResolving)
+        GameEventSubsystem->BindOnTagComplete(
+            ConnectIt_Event_BoardChangeComplete, this,
+            GET_FUNCTION_NAME_CHECKED(AConnectIt_GameMode, HandleBoardChangeComplete));
     }
 
     const float InitialTargetScore = Rules.GetTargetScore();

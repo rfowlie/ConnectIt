@@ -125,6 +125,16 @@ void UConnectIt_BoardStateComponent::SetBoardState(
     // Clients receive via OnRep_BoardSnapshot replication
     BroadcastChange();
     EnqueueBoardEventTags();
+
+    // The change is resolving until its events have played out: say so
+    // first, then queue the marker behind them. (With no visuals registered
+    // the marker completes inside this call, so the order matters.)
+    OnBoardChangeCommitted.Broadcast();
+    if (UGameEventTaskSubsystem* GameEventSubsystem =
+        GetWorld() ? GetWorld()->GetSubsystem<UGameEventTaskSubsystem>() : nullptr)
+    {
+        GameEventSubsystem->QueueTagContainer(FGameplayTagContainer(ConnectIt_Event_BoardChangeComplete));
+    }
 }
 
 const FConnectItBoardStateSnapshot* UConnectIt_BoardStateComponent::GetBoardSnapshot() const

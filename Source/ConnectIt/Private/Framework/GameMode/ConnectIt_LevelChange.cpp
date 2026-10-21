@@ -10,24 +10,34 @@ bool FConnectItLevelChangeQueue::Add(const FConnectItLevelChange& Change, EConne
         NextTurn.Add(Change);
         return false;
     }
-    if (bBusy)
+
+    // Behind anything already waiting, so changes keep the order they were asked in
+    if (bBusy || !Waiting.IsEmpty())
     {
-        AfterMove.Add(Change);
+        Waiting.Add(Change);
         return false;
     }
     return true;
 }
 
-TArray<FConnectItLevelChange> FConnectItLevelChangeQueue::TakeAfterMove()
+void FConnectItLevelChangeQueue::StartTurn()
 {
-    TArray<FConnectItLevelChange> Taken = MoveTemp(AfterMove);
-    AfterMove.Reset();
-    return Taken;
+    Waiting.Append(MoveTemp(NextTurn));
+    NextTurn.Reset();
 }
 
-TArray<FConnectItLevelChange> FConnectItLevelChangeQueue::TakeNextTurn()
+bool FConnectItLevelChangeQueue::TakeNext(FConnectItLevelChange& OutChange)
 {
-    TArray<FConnectItLevelChange> Taken = MoveTemp(NextTurn);
-    NextTurn.Reset();
-    return Taken;
+    if (Waiting.IsEmpty()) return false;
+
+    OutChange = Waiting[0];
+    Waiting.RemoveAt(0);
+    return true;
+}
+
+int32 FConnectItLevelChangeQueue::DiscardWaiting()
+{
+    const int32 Discarded = Waiting.Num();
+    Waiting.Reset();
+    return Discarded;
 }

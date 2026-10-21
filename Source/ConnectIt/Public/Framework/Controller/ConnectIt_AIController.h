@@ -95,7 +95,18 @@ private:
     // move per turn).
     void BeginDecision();
 
-    // Re-checks the decision is still current, then submits it
+    // BeginDecision once the board has settled (AConnectIt_GameMode::
+    // IsBoardSettled): a decision is only ever made from the board its move
+    // will be applied to. Now if it already has; otherwise when the GameMode
+    // says it has.
+    void BeginDecisionWhenSettled();
+
+    // AConnectIt_GameMode::OnBoardChangeSettled
+    void HandleBoardChangeSettled();
+
+    // Re-checks the decision is still current, then submits it -- or, if the
+    // board changed or isn't settled since it was made, decides again once
+    // it is
     void SubmitDecision(int32 DecisionId, FConnectItAIDecision Decision);
 
     // Submits one candidate as the loadout action that produces its kind of
@@ -131,6 +142,14 @@ private:
 
     FDelegateHandle TurnNotificationHandle;
     FDelegateHandle MatchPhaseHandle;
+    FDelegateHandle BoardSettledHandle;
+
+    // A decision is waiting for the board to settle (BeginDecisionWhenSettled)
+    bool bWaitingForSettledBoard = false;
+
+    // AConnectIt_GameMode::GetNumBoardChanges when the decision was started:
+    // a different count at submit means the board changed underneath it
+    int32 DecisionBoardChanges = INDEX_NONE;
 
     // The turn number a decision was last started for -- the participant
     // component notifies both TurnStart and TurnActive, start only once.

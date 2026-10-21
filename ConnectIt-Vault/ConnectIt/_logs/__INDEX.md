@@ -6,6 +6,8 @@ Vault-wide passes go in `_core/_logs/`.
 
 Newest first:
 
+- [2026-10-21-1421](2026-10-21-1421.md) — session — one board change at a time, Stage 1: server lock until the change's
+  visuals complete; level changes queue, requests refused, AI waits for a settled board. 47/47 tests; PIE pending.
 - [2026-10-21-1405](2026-10-21-1405.md) — session — plan: one board change at a time (server lock until the change's
   visuals complete; level changes queue, requests refused, AI waits). Not approved yet.
 - [2026-10-21-1344](2026-10-21-1344.md) — session — tile-powers plan's last points confirmed (Exit / Change faction,

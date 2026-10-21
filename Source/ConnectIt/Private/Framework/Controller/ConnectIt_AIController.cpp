@@ -52,6 +52,13 @@ void AConnectIt_AIController::BeginPlay()
         MatchPhaseHandle = GameState->OnMatchPhaseChanged_Native.AddUObject(
             this, &AConnectIt_AIController::HandleMatchPhaseChanged);
     }
+
+    // One board change at a time: a decision waits for the board to settle
+    if (AConnectIt_GameMode* GameMode = Cast<AConnectIt_GameMode>(GetWorld()->GetAuthGameMode()))
+    {
+        BoardSettledHandle = GameMode->OnBoardChangeSettled.AddUObject(
+            this, &AConnectIt_AIController::HandleBoardChangeSettled);
+    }
 }
 
 void AConnectIt_AIController::EndPlay(const EEndPlayReason::Type EndPlayReason)
@@ -67,6 +74,10 @@ void AConnectIt_AIController::EndPlay(const EEndPlayReason::Type EndPlayReason)
         if (ATurnBasedGameState* GameState = World->GetGameState<ATurnBasedGameState>())
         {
             GameState->OnMatchPhaseChanged_Native.Remove(MatchPhaseHandle);
+        }
+        if (AConnectIt_GameMode* GameMode = Cast<AConnectIt_GameMode>(World->GetAuthGameMode()))
+        {
+            GameMode->OnBoardChangeSettled.Remove(BoardSettledHandle);
         }
     }
 
@@ -155,7 +166,7 @@ void AConnectIt_AIController::HandleMatchPhaseChanged(EMatchPhase NewPhase)
                 bResumeOnUnpause = false;
                 if (IsMyTurnNow())
                 {
-                    BeginDecision();
+                    BeginDecisionWhenSettled();
                 }
             }
             break;
@@ -226,7 +237,36 @@ void AConnectIt_AIController::OnMyTurnStarted()
 
     bTurnInProgress = true;
     DecisionsThisTurn = 0;
+
+    // The level's turn-start changes may still be playing out
+    BeginDecisionWhenSettled();
+}
+
+void AConnectIt_AIController::BeginDecisionWhenSettled()
+{
+    CancelDecision();
+
+    const AConnectIt_GameMode* GameMode = Cast<AConnectIt_GameMode>(GetWorld()->GetAuthGameMode());
+    if (IsValid(GameMode) && !GameMode->IsBoardSettled())
+    {
+        bWaitingForSettledBoard = true;
+        UE_LOG(LogTemp, Log, TEXT("ConnectIt_AIController: waiting for the board to settle before deciding"));
+        return;
+    }
+
     BeginDecision();
+}
+
+void AConnectIt_AIController::HandleBoardChangeSettled()
+{
+    if (!bWaitingForSettledBoard) return;
+    bWaitingForSettledBoard = false;
+
+    // The turn may have ended while it waited
+    if (bTurnInProgress && IsMyTurnNow())
+    {
+        BeginDecisionWhenSettled();
+    }
 }
 
 void AConnectIt_AIController::BeginDecision()
@@ -292,6 +332,7 @@ void AConnectIt_AIController::BeginDecision()
 
     ++CurrentDecisionId;
     DecisionTurnNumber = GameState->GetActiveTurnNumber();
+    DecisionBoardChanges = GameMode->GetNumBoardChanges();
     Context.TurnNumber = DecisionTurnNumber;
     Context.DecisionIndexThisTurn = DecisionsThisTurn;
 
@@ -523,8 +564,10 @@ bool AConnectIt_AIController::IsDecisionStillCurrent(int32 DecisionId) const
 
 void AConnectIt_AIController::CancelDecision()
 {
-    // Invalidates any in-flight result or pending think timer
+    // Invalidates any in-flight result or pending think timer, and stops
+    // waiting for the board to settle
     CurrentDecisionId++;
+    bWaitingForSettledBoard = false;
 
     if (IsValid(Coordinator))
     {
@@ -544,6 +587,19 @@ void AConnectIt_AIController::SubmitDecision(int32 DecisionId, FConnectItAIDecis
         UE_LOG(LogTemp, Log,
             TEXT("ConnectIt_AIController: SubmitDecision -- decision is stale "
                  "(turn moved on), dropping it"));
+        return;
+    }
+
+    // The level changed the board while it thought (a director's turn-start
+    // change), or a change is still playing out: decide again from the
+    // settled board rather than send a move the server would refuse
+    const AConnectIt_GameMode* GameMode = Cast<AConnectIt_GameMode>(GetWorld()->GetAuthGameMode());
+    if (IsValid(GameMode) && (!GameMode->IsBoardSettled() || GameMode->GetNumBoardChanges() != DecisionBoardChanges))
+    {
+        UE_LOG(LogTemp, Log,
+            TEXT("ConnectIt_AIController: SubmitDecision -- the board changed (or is still resolving) since "
+                 "this decision began; deciding again once it settles"));
+        BeginDecisionWhenSettled();
         return;
     }
 
@@ -581,7 +637,9 @@ void AConnectIt_AIController::SubmitDecision(int32 DecisionId, FConnectItAIDecis
     }
 
     // This loadout's turn-end requirements need more than one move --
-    // decide again from the post-move board, same as a fresh turn would.
+    // decide again from the post-move board, same as a fresh turn would,
+    // once that move (and anything the level does in response) has played
+    // out.
     DecisionsThisTurn++;
     if (DecisionsThisTurn >= MaxDecisionsPerTurn)
     {
@@ -594,5 +652,5 @@ void AConnectIt_AIController::SubmitDecision(int32 DecisionId, FConnectItAIDecis
         return;
     }
 
-    BeginDecision();
+    BeginDecisionWhenSettled();
 }

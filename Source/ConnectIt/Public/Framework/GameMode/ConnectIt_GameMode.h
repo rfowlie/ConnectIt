@@ -75,6 +75,14 @@ public:
         Category = "ConnectIt|Config")
     int32 NumFactions = 2;
 
+    // How long a board change may stay resolving before the lock gives up
+    // (an error is logged and new changes are allowed again). Only a visual
+    // task that never reports complete gets here -- it also holds up the
+    // event queue behind it, so the log says what is stuck.
+    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly,
+        Category = "ConnectIt|Config", meta = (ClampMin = 1, Units = "s"))
+    float BoardChangeTimeoutSeconds = 15.f;
+
     // --- Overrides ---
 
     virtual void PostLogin(APlayerController* NewPlayer) override;
@@ -88,8 +96,31 @@ public:
     // (and therefore BoardRequestMediator) doesn't exist on any client.
     // RequestingFaction is who is asking, as the SERVER knows it (the
     // sending controller's PlayerState slot) -- a request doesn't say.
+    // Refused while a board change is resolving (IsBoardChangeResolving).
     UFUNCTION(BlueprintCallable, Category = "ConnectIt|Board")
     bool ProcessBoardRequest(const FTurnActionRequest& Request, int32 RequestingFaction);
+
+    // --- One board change at a time ---
+    // A board change (a move, or a level operation) resolves from the moment
+    // it is carried out until its visuals have played out (the server's own
+    // event queue: ConnectIt_Event_BoardChangeComplete). Meanwhile requests
+    // are refused and level changes wait, so every change reaches clients as
+    // its own snapshot with its own events.
+
+    // A board change is being carried out or its visuals are still playing
+    UFUNCTION(BlueprintPure, Category = "ConnectIt|Board")
+    bool IsBoardChangeResolving() const;
+
+    // Nothing resolving and no level change waiting: a decision made now is
+    // made from the board the next move will be applied to
+    bool IsBoardSettled() const;
+
+    // Board changes committed so far this match: compare two reads to tell
+    // whether the board changed in between
+    int32 GetNumBoardChanges() const { return NumBoardChanges; }
+
+    // Fires when the board becomes settled (IsBoardSettled) after a change
+    FSimpleMulticastDelegate OnBoardChangeSettled;
 
     // --- Live match setup ---
     // This GameMode is the authority for what the match is actually using.
@@ -175,6 +206,11 @@ protected:
     UFUNCTION()
     void HandleGameOver(FGameplayTag Tag);
 
+    // Bound to ConnectIt_Event_BoardChangeComplete completing: one committed
+    // change has played out
+    UFUNCTION()
+    void HandleBoardChangeComplete(FGameplayTag Tag);
+
     // Director events: the participant manager's turn phases (server side) ->
     // OnTurnStarted / OnTurnEnded for every director
     UFUNCTION()
@@ -217,14 +253,41 @@ private:
     // class on first ask
     UConnectIt_PlayerDirector* FindOrCreatePlayerDirector(ATurnBasedPlayerState* PlayerState);
 
-    // Level changes waiting for the current move to finish / the next turn
+    // Level changes waiting for the board to settle / the next turn
     FConnectItLevelChangeQueue LevelChanges;
 
-    // A move or a level operation is being carried out (level changes wait)
-    bool bApplyingBoardChange = false;
+    // The board-change lock (see IsBoardChangeResolving). Set when a change
+    // is committed; cleared when every committed change's marker has
+    // completed, or by the timeout.
+    bool bBoardChangeResolving = false;
 
-    // Applies Changes in order, then whatever their own reactions queued
-    void ApplyLevelChanges(TArray<FConnectItLevelChange> Changes);
+    // Committed changes whose completion marker hasn't completed yet. Markers
+    // complete in order, so the lock lifts when this reaches 0 (or a timeout
+    // lifts it early, leaving this to catch up).
+    int32 NumChangesPlaying = 0;
+
+    int32 NumBoardChanges = 0;
+
+    // Level changes applied since the last player / AI move or turn start: a
+    // level whose triggers keep feeding each other is stopped
+    int32 LevelChangesInARow = 0;
+
+    FTimerHandle BoardChangeTimeoutHandle;
+
+    // OnBoardChangeCommitted (the board state component): lock
+    void HandleBoardChangeCommitted();
+
+    // The lock is lifted: waiting level changes are applied from the next
+    // tick (never inside the call that lifted it, which may be a change
+    // still being carried out)
+    void ReleaseBoardChangeLock();
+    void HandleBoardChangeTimeout();
+
+    // Applies waiting level changes in order until one changes the board
+    // (the next waits for that change to play out) or none are left; then,
+    // if the board is settled, says so (OnBoardChangeSettled)
+    void DrainLevelChanges();
+
     void ApplyLevelChange(const FConnectItLevelChange& Change);
     void QueueLevelChange(const FConnectItLevelChange& Change, EConnectItChangeTiming Timing);
 

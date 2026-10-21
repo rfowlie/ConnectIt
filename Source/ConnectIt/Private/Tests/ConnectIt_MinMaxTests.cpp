@@ -2518,20 +2518,43 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(FConnectItLevelChangesTest,
 
 bool FConnectItLevelChangesTest::RunTest(const FString& Parameters)
 {
-    // When a level change applies: now, after the move being carried out,
-    // or at the next turn's start
+    // When a level change applies: now, once the board change resolving has
+    // played out, or at the next turn's start -- always in the order asked
     FConnectItLevelChangeQueue Queue;
-    FConnectItLevelChange Change;
-    Change.Operation = FInstancedStruct::Make(FConnectItBoardOperation_ToggleTileActive());
+    const auto MakeChange = [](int32 AsFaction)
+    {
+        FConnectItLevelChange Change;
+        Change.Operation = FInstancedStruct::Make(FConnectItBoardOperation_ToggleTileActive());
+        Change.AsFaction = AsFaction;
+        return Change;
+    };
 
-    TestTrue(TEXT("immediately with nothing in progress: apply now"), Queue.Add(Change, EConnectItChangeTiming::Immediately, false));
-    TestEqual(TEXT("...nothing queued"), Queue.NumWaiting(), 0);
-    TestFalse(TEXT("immediately during a move: wait"), Queue.Add(Change, EConnectItChangeTiming::Immediately, true));
-    TestFalse(TEXT("next turn: wait"), Queue.Add(Change, EConnectItChangeTiming::NextTurnStart, false));
-    TestEqual(TEXT("after the move: one"), Queue.TakeAfterMove().Num(), 1);
-    TestEqual(TEXT("...taken"), Queue.TakeAfterMove().Num(), 0);
-    TestEqual(TEXT("next turn: one"), Queue.TakeNextTurn().Num(), 1);
-    TestEqual(TEXT("all taken"), Queue.NumWaiting(), 0);
+    TestTrue(TEXT("immediately with nothing resolving: apply now"),
+        Queue.Add(MakeChange(0), EConnectItChangeTiming::Immediately, false));
+    TestEqual(TEXT("...nothing waiting"), Queue.NumWaiting(), 0);
+
+    TestFalse(TEXT("immediately while resolving: wait"), Queue.Add(MakeChange(1), EConnectItChangeTiming::Immediately, true));
+    TestFalse(TEXT("next turn: wait for it"), Queue.Add(MakeChange(2), EConnectItChangeTiming::NextTurnStart, false));
+    TestFalse(TEXT("nothing resolving, but one waiting: behind it"),
+        Queue.Add(MakeChange(3), EConnectItChangeTiming::Immediately, false));
+    TestEqual(TEXT("two waiting"), Queue.NumWaiting(), 2);
+    TestEqual(TEXT("one for the next turn"), Queue.NumForNextTurn(), 1);
+
+    FConnectItLevelChange Taken;
+    TestTrue(TEXT("first waiting..."), Queue.TakeNext(Taken) && Taken.AsFaction == 1);
+
+    Queue.StartTurn();
+    TestEqual(TEXT("the turn's change joins the line"), Queue.NumWaiting(), 2);
+    TestEqual(TEXT("...none left for the next turn"), Queue.NumForNextTurn(), 0);
+    TestTrue(TEXT("...behind the one already waiting"), Queue.TakeNext(Taken) && Taken.AsFaction == 3);
+    TestTrue(TEXT("...then the turn's"), Queue.TakeNext(Taken) && Taken.AsFaction == 2);
+    TestFalse(TEXT("all taken"), Queue.TakeNext(Taken));
+
+    Queue.Add(MakeChange(4), EConnectItChangeTiming::Immediately, true);
+    Queue.Add(MakeChange(5), EConnectItChangeTiming::Immediately, true);
+    Queue.Add(MakeChange(6), EConnectItChangeTiming::NextTurnStart, true);
+    TestEqual(TEXT("discarding drops the waiting ones"), Queue.DiscardWaiting(), 2);
+    TestEqual(TEXT("...but not the next turn's"), Queue.NumForNextTurn(), 1);
 
     // The scoring rule a level sets
     FConnectItRuleSet Rules;

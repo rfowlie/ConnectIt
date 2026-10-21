@@ -62,9 +62,17 @@ public:
     // Clients receive via OnRep -- EnqueueBoardEventTags reads ChangeEvent
     // from that same signal on both machines to drive gated visual
     // sequencing
+    // Then (server) OnBoardChangeCommitted, and the
+    // ConnectIt_Event_BoardChangeComplete marker queued behind the change's
+    // events: it completes once they have all played out.
     void SetBoardState(
         const FConnectItBoardState& NewState,
         const FConnectItBoardChangeEvent& ChangeEvent);
+
+    // Server only: a board change has been committed and its events queued
+    // (after OnBoardStateChanged), just before its completion marker is
+    // queued. Not fired for the initial seed.
+    FSimpleMulticastDelegate OnBoardChangeCommitted;
 
     // --- Read API ---
     // Bound listeners and game logic call these

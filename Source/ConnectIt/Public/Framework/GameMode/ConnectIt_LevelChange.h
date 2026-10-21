@@ -18,11 +18,12 @@ enum class EConnectItChangeTiming : uint8
     // hand out extra actions in a turn already under way.
     NextTurnStart   UMETA(DisplayName = "Next Turn Start"),
 
-    // Now -- or, while a move is being carried out (directors' reactions to a
-    // board change run inside it), right after that move has finished, never
-    // part-way through its scoring. (A loadout asked for during a move waits
-    // for that side's next turn instead: the move's action use is spent
-    // against the loadout it came from.)
+    // Now -- or, while a board change is resolving (being carried out, or its
+    // visuals still playing; directors' reactions to a change run inside it),
+    // once that change has played out, never part-way through it. Several
+    // play one after another, each with its own visuals. (A loadout asked
+    // for during a move waits for that side's next turn instead: the move's
+    // action use is spent against the loadout it came from.)
     Immediately     UMETA(DisplayName = "Immediately")
 };
 
@@ -39,26 +40,34 @@ struct FConnectItLevelChange
     FInstancedStruct ScoringRule;
 };
 
-// The GameMode's waiting level changes: what is applied right after the move
-// being carried out, and what waits for the next turn to start
+// The GameMode's level changes that can't be applied yet: those waiting for
+// the board to settle (applied one at a time, in order, as each board change
+// plays out) and those waiting for the next turn to start
 class CONNECTIT_API FConnectItLevelChangeQueue
 {
 public:
 
-    // Queues Change for Timing, or returns true when it should be applied now
-    // (Immediately, and nothing is being carried out: bBusy false)
+    // Queues Change for Timing, or returns true when it should be applied now:
+    // Immediately, nothing resolving (bBusy false) and nothing already waiting
+    // ahead of it
     bool Add(const FConnectItLevelChange& Change, EConnectItChangeTiming Timing, bool bBusy);
 
-    // The changes waiting for the current move to finish, emptied
-    TArray<FConnectItLevelChange> TakeAfterMove();
+    // A turn has started: the changes waiting for it join the back of the
+    // waiting line
+    void StartTurn();
 
-    // The changes waiting for the next turn, emptied
-    TArray<FConnectItLevelChange> TakeNextTurn();
+    // The next waiting change, removed; false if none
+    bool TakeNext(FConnectItLevelChange& OutChange);
 
-    int32 NumWaiting() const { return AfterMove.Num() + NextTurn.Num(); }
+    // Every waiting change dropped (not those for the next turn); returns how many
+    int32 DiscardWaiting();
+
+    bool HasWaiting() const { return !Waiting.IsEmpty(); }
+    int32 NumWaiting() const { return Waiting.Num(); }
+    int32 NumForNextTurn() const { return NextTurn.Num(); }
 
 private:
 
-    TArray<FConnectItLevelChange> AfterMove;
+    TArray<FConnectItLevelChange> Waiting;
     TArray<FConnectItLevelChange> NextTurn;
 };

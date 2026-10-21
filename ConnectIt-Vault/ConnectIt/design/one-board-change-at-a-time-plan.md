@@ -1,7 +1,8 @@
 # Plan: one board change at a time
 
 Discussion: round 12 of [tile-powers-in-the-board-pipeline](../_questions/tile-powers-in-the-board-pipeline.md). Closes the
-known issue in [tile-powers-plan](tile-powers-plan.md) ("Not in this plan"). Written 2026-10-21; **not approved yet**.
+known issue in [tile-powers-plan](tile-powers-plan.md) ("Not in this plan"). Written 2026-10-21; approved the same day.
+**Stage 1 built** (47/47 tests).
 
 ## Context
 
@@ -42,8 +43,9 @@ What already exists and stays:
 - **On release:** the next waiting level change is applied on the **next tick**. With no visuals registered the marker
   completes synchronously, inside `SetBoardState`, inside the Mediator's dispatch; deferring a tick keeps that from
   nesting a dispatch.
-- **Safety timeout:** a visual task that never completes would otherwise freeze the match. After
-  `BoardChangeTimeoutSeconds` (on the GameMode, default 15) the lock logs an error naming the change, and releases.
+- **Safety timeout:** after `BoardChangeTimeoutSeconds` (on the GameMode, default 15) the lock logs an error listing
+  what is queued, and releases. *(As built: this can't unstick the match by itself. A visual task that never completes
+  also blocks the event queue behind it, turn end included. The timeout lifts the lock and reports what's stuck.)*
 - **Game over:** release works as normal; the Mediator already refuses everything once the game is over.
 
 ## Stage 1: the lock (server)
@@ -74,6 +76,14 @@ What already exists and stays:
   - `IsDecisionStillCurrent` is unchanged: the turn number still guards stale results.
   - Turn end is unaffected: `ServerSubmitTurnEnd` already queues behind the visuals.
 - **Loadout changes** keep their own deferral (`bMoveInProgress` stays on `IsDispatching`).
+- *As built (2026-10-21):*
+  - The AI also notices the board changing **while it thinks**: the GameMode counts committed changes
+    (`GetNumBoardChanges`). If the count moved, or the board isn't settled at submit, the AI decides again once it
+    settles. This covers a director's Immediately change from `OnTurnStarted`, whatever order the turn-start handlers
+    run in.
+  - `IsBoardSettled` = nothing resolving and no level change waiting. `OnBoardChangeSettled` fires from the drain.
+  - A drain stops after any change that committed, even when its marker completed inside the call (no visuals): the
+    next change then waits a tick.
 - **Tests** (queue logic, no world):
   - `Add` while resolving waits.
   - A drain stops after a board change and continues past scoring rule changes.
@@ -123,5 +133,6 @@ What already exists and stays:
   - **AI with a loadout that needs two moves:** the second move waits for the first's visuals.
   - **Two level changes queued for one turn start** (test director): they play one after another before the AI moves.
   - **Click during an animation:** refused, and greyed out once Stage 2's UI is wired.
-  - **Timeout:** a debug visual task that never completes logs an error after 15 s, and the match continues.
+  - **Timeout:** a debug visual task that never completes logs an error after 15 s, listing the stuck queue. The lock
+    lifts, but the turn can't end until the task completes.
   - **2-player listen server:** the client sees every change's events in order.

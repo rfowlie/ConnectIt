@@ -43,6 +43,10 @@ UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_Event_WinCheckpointReached);
 // A faction met one of its lose conditions (see FConnectItBoardEvent_LoseConditionMet)
 UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_Event_LoseConditionMet);
 UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_Event_TurnEnd);
+// Server only, not a board event: queued right after a board change's events,
+// so it completes once they have all played out -- the end of that change
+// (see AConnectIt_GameMode::IsBoardChangeResolving)
+UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_Event_BoardChangeComplete);
 
 // Board event tags for the new mutation types -- ForcePlacePiece
 // deliberately reuses ConnectIt_Event_PiecePlaced instead of getting its
