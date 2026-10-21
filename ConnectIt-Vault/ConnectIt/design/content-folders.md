@@ -17,12 +17,11 @@ direction and the gotchas.
 
 - Move in the Content Browser (never in Explorer while the editor might hold references), then **Fix Up Redirectors** on the
   folders.
-- **`Config/DefaultGame.ini` names level configs by path as plain strings** (`DefaultLevelConfig`, `LevelConfigs`); they do
-  not follow a move. Redirectors keep the old path working until fixed up, so update the ini when the configs have moved
-  (Claude does this on request).
-- Soft references in other config (e.g. `LevelCatalog`) are the same.
+- **Since 2026-10-21 a map names its board and default preset in its World Settings** (real asset references, so they follow a
+  move). The ConnectIt project settings (and their path strings in `Config/DefaultGame.ini`) are gone, so nothing in config
+  names a ConnectIt asset any more. See [level-world-settings](level-world-settings.md).
 
 ## Wishlist
 
-- A reusable **board data asset** (grid definition, registries, piece class) so levels with the same board don't repeat
-  those values -- see [stage-and-match-preset](stage-and-match-preset.md).
+- ~~A reusable **board data asset**~~ -- done 2026-10-21: the level config is now only the board, and any number of maps name
+  it in their World Settings ([level-world-settings](level-world-settings.md)). A shared board belongs in `Shared/`.

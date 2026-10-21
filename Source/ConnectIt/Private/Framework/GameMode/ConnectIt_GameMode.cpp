@@ -9,7 +9,7 @@
 #include "Framework/Controller/ConnectIt_AIController.h"
 #include "Action/ActionLoadoutDataAsset.h"
 #include "Framework/Data/ConnectIt_LevelConfigDataAsset.h"
-#include "Framework/Data/ConnectIt_LevelConfigSettings.h"
+#include "Framework/Data/ConnectIt_WorldSettings.h"
 #include "Framework/Data/ConnectIt_MatchPreset.h"
 #include "Framework/Subsystem/ConnectIt_MatchSetupSubsystem.h"
 #include "Framework/GameState/ConnectIt_GameState.h"
@@ -127,14 +127,12 @@ void AConnectIt_GameMode::EnsureMatchSetupResolved()
     const bool bHasMatchSettings =
         UConnectIt_MatchSetupSubsystem::GetSettingsForCurrentLevel(this, MatchSettings);
 
-    // How this match is played: the preset chosen in the menu, else the
-    // level's own default. Read here, once, and nowhere else for these values.
-    const UConnectIt_LevelConfigDataAsset* LevelConfig =
-        UConnectIt_LevelConfigSettings::FindLevelConfig(this);
+    // How this match is played: the preset chosen in the menu, else the map's
+    // own default (its World Settings). Read here, once, and nowhere else for
+    // these values.
     const UConnectIt_MatchPreset* Preset =
         bHasMatchSettings && IsValid(MatchSettings.MatchPreset) ? MatchSettings.MatchPreset.Get()
-        : IsValid(LevelConfig) ? LevelConfig->DefaultMatchPreset.Get()
-        : nullptr;
+        : AConnectIt_WorldSettings::FindDefaultMatchPreset(this);
 
     // Rules: a value copy (so changes never touch the asset), or an empty
     // rule set (no win condition) if there is no preset.
@@ -142,7 +140,7 @@ void AConnectIt_GameMode::EnsureMatchSetupResolved()
     {
         UE_LOG(LogTemp, Warning,
             TEXT("ConnectIt_GameMode: no match preset -- the menu chose none and "
-                 "the level config has no DefaultMatchPreset. The match has no "
+                 "the map's World Settings name no Default Match Preset. The match has no "
                  "rules, loadout or AI."));
     }
     Rules = IsValid(Preset) ? Preset->Rules : FConnectItRuleSet();

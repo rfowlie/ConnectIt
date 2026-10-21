@@ -58,3 +58,13 @@ presets and pastes them in. Until a level config is re-saved its old values are 
   `UConnectIt_LevelCatalog::MatchPresets`, and the GameMode resolving the preset.
 - Not built yet, so the owner can copy the two configs' old values out with the current build first.
 - Decision: [stage and match preset](../_decisions/2026-10-14-stage-and-match-preset.md).
+
+## Update (2026-10-21): the map names its board and default preset
+
+The level config no longer has `DefaultMatchPreset`. Each map names its board (**Level Config**) and default **Match Preset**
+in its World Settings (`AConnectIt_WorldSettings`), so both assets are reusable: a level config is a shareable board (the
+wishlist's "reusable board asset"), a match preset is a per-adventure-level setup or a shared mode. The name-keyed
+`LevelConfigs` registry in project settings is gone, and (same day) the ConnectIt project settings with it: no fallbacks
+(duplicating a map copies its World Settings; a map without a board is a menu map or a mistake the log points at), and the
+menu will reference its level catalog directly. The menu still picks a preset for any map. Plan: [level-world-settings](level-world-settings.md);
+decision: [2026-10-21-map-names-board-and-preset](../_decisions/2026-10-21-map-names-board-and-preset.md).

@@ -3,7 +3,7 @@ schema: recipes
 task: Give a match an AI opponent that plays the way you designed -- a tuned built-in one, a Blueprint-made strategy, several strategies with a selector, or a Blueprint AI controller -- through an AI director Blueprint named by the match preset.
 touches:
   - a Blueprint subclass of UConnectIt_AIDirector (its Class Defaults are the AI's setup)
-  - the match preset (AI Director Class, Player Director Class), the level config (Default Match Preset), the level's GameMode (Match Type, AI Controller Class)
+  - the match preset (AI Director Class, Player Director Class), the map's World Settings (Level Config, Default Match Preset), the level's GameMode (Match Type, AI Controller Class)
   - a Blueprint subclass of UConnectIt_AIStrategy (only for a bespoke strategy)
   - a Blueprint subclass of AConnectIt_AIController (only if you need one; see C)
 reconciled: 2026-10-21
@@ -38,7 +38,8 @@ director, not from the controller class.
 ## Prerequisites
 
 - A level whose match is played as **Adventure** (the GameMode's `Match Type` is Adventure, which is what spawns the AI).
-- A **match preset** for it (Data Asset of class `ConnectIt_MatchPreset`; the level config's `Default Match Preset` names it).
+- A **match preset** for it (Data Asset of class `ConnectIt_MatchPreset`; the map's **World Settings > ConnectIt > Default
+  Match Preset** names it, next to its **Level Config**, the board).
 - An **action loadout** for the AI (an asset like a player's): the AI may only do what its loadout's actions allow, and the server
   holds it to that exactly like a human. A Place Piece action to place, a Swap action to swap, and so on, with the per-turn
   limits and turn-end requirements you want.
@@ -114,7 +115,8 @@ director, not from the controller class.
 7. In the **match preset** set **Directors > AI Director Class** to your AI director Blueprint, and **Player Director Class**
    to the human side's (required). The AI's goals are the AI director's **Win Conditions**: it never borrows the player's,
    and none means it can never win (you get a warning).
-8. Confirm the level config's `Default Match Preset` points at that preset, and the GameMode's `Match Type` is **Adventure**.
+8. Confirm the map's **World Settings > ConnectIt > Default Match Preset** points at that preset (and **Level Config** at its
+   board), and the GameMode's `Match Type` is **Adventure**.
 9. Right-click the preset > **Asset Actions > Validate**: it checks the directors too (a starting loadout, at least one strategy,
    a loadout that grants moves the strategies play, the goal lists).
 

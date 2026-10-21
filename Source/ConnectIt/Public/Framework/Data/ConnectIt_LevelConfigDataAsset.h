@@ -6,35 +6,25 @@
 #include "Engine/DataAsset.h"
 #include "ConnectIt_LevelConfigDataAsset.generated.h"
 
-class UConnectIt_MatchPreset;
 class AConnectIt_GridPiece;
 class UConnectIt_TileRegistry;
 class UConnectIt_PieceRegistry;
 class UGridDefinition;
 
-// A level's stage: the board it is played on (tile and piece registries, grid
-// geometry) and its pieces -- one per level, found by level name through
-// ConnectIt_LevelConfigSettings.
+// A board: the tile and piece registries, grid geometry and pieces a map is
+// played on. Reusable -- any number of maps can name the same one in their
+// World Settings (AConnectIt_WorldSettings::LevelConfig).
 //
-// How a match on this stage is played (rules, player loadout, AI) is not here:
-// that is a UConnectIt_MatchPreset. The level names the preset it plays as by
-// default (DefaultMatchPreset); the main menu can choose a different one, so
-// a level built for Adventure can also be played as a versus match with other
-// rules.
+// How a match on it is played (rules, directors) is not here: that is a
+// UConnectIt_MatchPreset, which the map names as its default in its World
+// Settings too; the main menu can choose a different one, so a level built for
+// Adventure can also be played as a versus match with other rules.
 UCLASS(BlueprintType)
 class CONNECTIT_API UConnectIt_LevelConfigDataAsset : public UDataAsset
 {
     GENERATED_BODY()
 
 public:
-
-    // --- Match ---
-
-    // How this level is played when nothing else is chosen: its Adventure
-    // setup, or what opening the level directly in the editor plays. The main
-    // menu can pick another preset for the same level.
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "ConnectIt|Match")
-    TObjectPtr<UConnectIt_MatchPreset> DefaultMatchPreset = nullptr;
 
     // --- Piece Pool ---
 

@@ -1,7 +1,7 @@
 ---
 Date: 2026-10-14
-status: Active
-superseded by:
+status: Partly superseded
+superseded by: "[2026-10-21-map-names-board-and-preset](2026-10-21-map-names-board-and-preset.md) (the default preset is named by the map's World Settings, not the level config)"
 tags:
   - architecture
   - level-design

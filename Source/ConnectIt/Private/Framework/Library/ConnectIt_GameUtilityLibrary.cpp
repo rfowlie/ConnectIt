@@ -5,7 +5,7 @@
 #include "Board/Operations/ConnectIt_BoardOperations.h"
 #include "TurnBasedMechanicsEnums.h"
 #include "Subsystem/GridHoverSubsystem.h"
-#include "Framework/Data/ConnectIt_LevelConfigSettings.h"
+#include "Framework/Data/ConnectIt_WorldSettings.h"
 #include "Framework/Data/ConnectIt_LevelConfigDataAsset.h"
 #include "Action/ActionLoadoutDataAsset.h"
 #include "Board/Rules/ConnectIt_RuleSet.h"
@@ -210,14 +210,14 @@ TSubclassOf<AConnectIt_GridPiece> UConnectIt_GameUtilityLibrary::GetPieceActorCl
     const UObject* WorldContextObject)
 {
     const UConnectIt_LevelConfigDataAsset* LevelConfig =
-        UConnectIt_LevelConfigSettings::FindLevelConfig(WorldContextObject);
+        AConnectIt_WorldSettings::FindLevelConfig(WorldContextObject);
     return IsValid(LevelConfig) ? LevelConfig->PieceActorClass : nullptr;
 }
 
 int32 UConnectIt_GameUtilityLibrary::GetPiecePoolInitialSize(const UObject* WorldContextObject)
 {
     const UConnectIt_LevelConfigDataAsset* LevelConfig =
-        UConnectIt_LevelConfigSettings::FindLevelConfig(WorldContextObject);
+        AConnectIt_WorldSettings::FindLevelConfig(WorldContextObject);
     return IsValid(LevelConfig) ? LevelConfig->PiecePoolInitialSize : 0;
 }
 

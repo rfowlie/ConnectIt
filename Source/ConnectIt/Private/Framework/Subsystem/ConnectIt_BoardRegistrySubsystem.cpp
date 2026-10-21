@@ -6,7 +6,7 @@
 #include "Board/ConnectIt_PieceRegistry.h"
 #include "Board/ConnectIt_TileRegistry.h"
 #include "Framework/Data/ConnectIt_LevelConfigDataAsset.h"
-#include "Framework/Data/ConnectIt_LevelConfigSettings.h"
+#include "Framework/Data/ConnectIt_WorldSettings.h"
 #include "Framework/Library/ConnectIt_GameUtilityLibrary.h"
 #include "GameEvent/GameEventTaskSubsystem.h"
 #include "Piece/GridPieceRegistryBase.h"
@@ -22,13 +22,16 @@ void UConnectIt_BoardRegistrySubsystem::OnWorldBeginPlay(UWorld& InWorld)
     // Fixed level setup, needed here before anything has replicated -- one of
     // the two intended readers of the level's template asset.
     const UConnectIt_LevelConfigDataAsset* LevelConfig =
-        UConnectIt_LevelConfigSettings::FindLevelConfig(this);
+        AConnectIt_WorldSettings::FindLevelConfig(this);
 
+    // A map with no board (e.g. the main menu) is fine; a match map without
+    // one has no board registries
     if (!IsValid(LevelConfig))
     {
-        UE_LOG(LogTemp, Error, TEXT("ConnectIt_BoardRegistrySubsystem: "
-            "OnWorldBeginPlay — no ConnectIt_LevelConfigDataAsset found for "
-            "the current level"));
+        UE_LOG(LogTemp, Warning, TEXT("ConnectIt_BoardRegistrySubsystem: "
+            "OnWorldBeginPlay — map '%s' names no board (World Settings > ConnectIt > "
+            "Level Config); no board registries. Fine for a menu map, not for a match."),
+            *InWorld.GetMapName());
         return;
     }
 

@@ -1,7 +1,7 @@
 ---
 Date: 2026-09-14
-status: Active
-superseded by:
+status: Superseded
+superseded by: "[2026-10-21-no-connectit-project-settings](2026-10-21-no-connectit-project-settings.md) (no fallback: maps name their board in World Settings; duplicating a map copies them)"
 tags:
   - level-config
   - robustness

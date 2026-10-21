@@ -85,7 +85,7 @@ sequenceDiagram
 ## Steps
 
 1. **Setup (match start).** [[AConnectIt_GameMode]] resolves the live setup (`EnsureMatchSetupResolved`: the menu's preset, else
-   the level config's `DefaultMatchPreset`): copies the preset's rules, reads its three director classes, **copies the Player
+   the map's World Settings' Default Match Preset): copies the preset's rules, reads its three director classes, **copies the Player
    and AI directors' Win / Lose Conditions into plain groups** (`FConnectItRuleSet::ResolveConditionGroups`, from the
    classes' defaults), applies the menu's tweaks (target score).
    Then, for `MatchType == Adventure`, `SpawnAndRegisterAI`, and tells the rule set which slot is the AI's (`AIFaction`).

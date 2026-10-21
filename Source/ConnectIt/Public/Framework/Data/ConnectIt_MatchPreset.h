@@ -17,10 +17,10 @@ class UConnectIt_AIDirector;
 // "mode" of playing against the AI (Classic Easy, Classic Hard...) is a preset
 // naming its directors.
 //
-// A level config names the preset it plays as by default (its Adventure
-// setup, say). The main menu can pick a different one for the same level
-// ("Versus Classic", "Versus Blitz"...) through FConnectItMatchSettings, and
-// tweak a few values on top. The GameMode copies the chosen preset when the
+// A map names the preset it plays as by default in its World Settings (its
+// Adventure setup, say). The main menu can pick a different one for the same
+// map ("Versus Classic", "Versus Blitz"...) through FConnectItMatchSettings,
+// and tweak a few values on top. The GameMode copies the chosen preset when the
 // match starts and plays on its own copy, so changes during a match never
 // touch this asset.
 UCLASS(BlueprintType)

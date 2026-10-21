@@ -1,6 +1,7 @@
 # Plan: each map names its board and default preset in World Settings
 
-Written 2026-10-21 from the owner's notes; **awaiting the owner's approval**.
+Written 2026-10-21 from the owner's notes; approved and **built** the same day (47/47 tests); PIE pending. Log:
+[_logs/2026-10-21-0145](../_logs/2026-10-21-0145.md).
 
 ## Context
 
@@ -73,3 +74,18 @@ The editor must be closed for builds; the owner commits; nothing is committed by
 - Changing the World Settings class touches every map; Unreal's handling of existing maps' old-class World Settings should be
   checked on the first map opened (values may need re-entering).
 - Main menu: the catalog's entry is the map; its default preset is now read when the map loads (no menu change needed).
+
+## Follow-up (2026-10-21): the ConnectIt project settings are deleted
+
+Asked by the owner once the World Settings were in. `UConnectIt_LevelConfigSettings` held only the two fallbacks and the
+menu's catalog pointer (unused: `None`, no Blueprint called `Get Level Catalog`), so it went:
+
+- The lookups moved to `AConnectIt_WorldSettings::FindLevelConfig` / `FindDefaultMatchPreset` (callers: the GameMode, the
+  board-registry subsystem, the piece-pool accessors).
+- No fallbacks. Duplicating a map copies its World Settings, which covers the case the 2026-09-14 fallback existed for. A map
+  with no board is fine for a menu map: the board-registry setup logs a warning naming the World Settings field, and
+  validation warns; the lookup itself is silent.
+- `UConnectIt_MatchSetupSubsystem::GetLevelCatalog` removed: the main menu will reference its catalog asset directly.
+- `DefaultGame.ini`'s ConnectIt section removed.
+
+Decision: [2026-10-21-no-connectit-project-settings](../_decisions/2026-10-21-no-connectit-project-settings.md).

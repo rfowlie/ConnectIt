@@ -123,5 +123,60 @@ and a `_decisions/` note.
 - **Still open:** whether a piece moved by a power stays on its tile when it completes a line (the operation's
   `ArrivingPiecesSurviveScoring` covers wave 0 only); the display board for the visuals (round 3).
 
+**2026-10-21, round 5: owner's calls.**
+
+- **Display board:** every machine's visuals read a display board that starts as the board from before the action and
+  is updated by each event as it plays; it matches the snapshot's Current when the list finishes. Visuals never read the
+  snapshot directly. Server-side logic (directors, the Mediator) keeps reading the real board.
+- **Scoring within a wave:** find every line made by every arrival first, then score and clear them all (changes
+  today's one-position-at-a-time `ResolveBoardChange`).
+- **A piece moved by a power that completes a line:** the operation the power issues decides, through
+  `ArrivingPiecesSurviveScoring`, as for actions (Place keeps its piece, Swap keeps nothing).
+- **Level-wide rules use the same system:** a level-wide rule (Crumble) is a power that applies to every tile, on top
+  of any power a tile holds. So the once-per-action guard is per tile *and* power, not per tile.
+- **Order within a wave: movement powers first, then scoring powers**, each group in tile order. (Claude had leaned
+  tile order regardless of family.)
+- So one wave is: A, score every line the wave's arrivals made; B, collect triggered powers; C, fire movement powers,
+  then scoring powers, each in tile order, against the board as it is then; D, what they changed is the next wave.
+
+**Claude's defaults, for the owner to confirm or change before a plan:**
+
+- A piece cleared by scoring counts as "scored through", not "left".
+- Each event records which earlier event caused it.
+- Random choices come from a seed stored on the board, so `Simulate Operation` and the AI's search get the same result
+  as the real move; the event records the outcome.
+- A power's effect acts for the faction whose change set it off, passed down the chain.
+- A power with no valid target still adds its Power Triggered event (marked "no effect") and still starts its cooldown.
+- Every event can apply itself to a board; that is how the display board advances. A test checks that the board before
+  the action plus every event equals the board after.
+- Cooldown is stored as the turn the power is ready again; the Mediator stamps the turn number on the board.
+- A wave cap as a safety net, on top of the once-per-action guard.
+- New events: multiplier changed (or the new multipliers on `Scored`), Piece Moved, Power Triggered, and Power Changed
+  (a tile given or losing a power).
+
+**2026-10-21, round 6: pre-scoring powers come back.**
+
+- **Owner:** some tiles should fire *before* scoring; it adds a layer of complexity. This reverses "score first is the
+  fixed rule" from round 4: timing becomes a per-power setting. Triggers proposed: Tile Enter, Tile Exit, Scoring, Tile
+  Change; timings: Pre Scoring, Post Scoring.
+- **Chart and the wave with both timings:** [tile-power-triggers](../design/tile-power-triggers.md). A wave becomes
+  changes in → settle (pre powers) → find lines → pre-scoring Scoring powers → score → react (post powers) → next wave.
+- **Open there:** Scoring × pre read as "a line is about to score" (between finding lines and applying them); whether
+  the settle step runs until nothing more fires; where Capture belongs; one cell per power; the react order.
+
+**2026-10-21, round 7: the chart's open points, decided (owner).**
+
+- Pre-scoring powers settle until nothing more fires, then the wave scores.
+- Scoring powers are post only (the "about to score" moment is dropped).
+- One trigger and one timing per power.
+- Firing order within a step: Enter, Exit, Scoring, Change (Change last, so Crumble sees what scoring powers did).
+- A capture counts as both Tile Exit and Tile Enter (owner's suggestion; Claude agreed). Quirk: an Exit power that needs
+  an empty tile finds it occupied after a capture and does nothing.
+- The wave is now: changes in → settle (pre: Enter, Exit, Change, until quiet) → score (all lines at once) → react
+  (post: Enter, Exit, Scoring, Change) → next wave. Updated in [tile-power-triggers](../design/tile-power-triggers.md).
+- **Still unconfirmed:** Claude's round-5 defaults (cleared-by-scoring is not an exit, cause index on events, seeded
+  randomness, faction passed down the chain, a power with no target still shows and starts its cooldown, events apply
+  themselves to the display board, ready-again turn, wave cap, the new events).
+
 ## Resolution
 
