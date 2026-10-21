@@ -54,6 +54,10 @@ EDataValidationResult UConnectIt_MatchPreset::IsDataValid(
     {
         GetDefault<UConnectIt_AIDirector>(AIDirectorClass)->AddConditionRuleWarnings(Rules, Context);
     }
+    if (LevelDirectorClass)
+    {
+        GetDefault<UConnectIt_LevelDirector>(LevelDirectorClass)->AddConditionRuleWarnings(Rules, Context);
+    }
 
     return Result;
 }

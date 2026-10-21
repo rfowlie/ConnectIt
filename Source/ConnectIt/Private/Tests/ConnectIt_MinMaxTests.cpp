@@ -2443,6 +2443,75 @@ bool FConnectItDirectorConditionsTest::RunTest(const FString& Parameters)
     return true;
 }
 
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FConnectItLevelTriggersTest,
+    "ConnectIt.AI.LevelTriggers", TestFlags)
+
+bool FConnectItLevelTriggersTest::RunTest(const FString& Parameters)
+{
+    UConnectIt_MatchConditionAsset* Score4 = NewObject<UConnectIt_MatchConditionAsset>(GetTransientPackage(), TEXT("WC_Test_Trigger4"));
+    Score4->Conditions.Add(TInstancedStruct<FConnectItMatchCondition>::Make<FConnectItMatchCondition_ScoreThreshold>(ScoreAtLeast(4.f)));
+    UConnectIt_MatchConditionAsset* Score8 = NewObject<UConnectIt_MatchConditionAsset>(GetTransientPackage(), TEXT("WC_Test_Trigger8"));
+    Score8->Conditions.Add(TInstancedStruct<FConnectItMatchCondition>::Make<FConnectItMatchCondition_ScoreThreshold>(ScoreAtLeast(8.f)));
+
+    FConnectItRuleSet Rules;
+    Rules.AIFaction = 1;
+
+    UConnectIt_TestLevelDirector* Level = NewObject<UConnectIt_TestLevelDirector>();
+    Level->Triggers.Add({ Score4, EConnectItTriggerSide::Player });
+    Level->Triggers.Add({ Score8, EConnectItTriggerSide::AI });
+
+    FConnectItBoardState Board = MakeBoard(5);
+    Board.ScoreBoard = { 0.f, 0.f };
+    Level->CheckTriggers(Board, Rules);
+    TestEqual(TEXT("nothing met, nothing fired"), Level->Log, FString());
+    TestTrue(TEXT("armed"), Level->IsTriggerArmed(Score4));
+
+    // The player reaches 4: its trigger fires once
+    Board.ScoreBoard = { 4.f, 0.f };
+    Level->CheckTriggers(Board, Rules);
+    Level->CheckTriggers(Board, Rules);
+    TestEqual(TEXT("fires once, for the player"), Level->Log, FString(TEXT("WC_Test_Trigger4 0; ")));
+    TestFalse(TEXT("then disarmed"), Level->IsTriggerArmed(Score4));
+
+    // The AI trigger ignores the player's score; fires on the AI's
+    Board.ScoreBoard = { 9.f, 0.f };
+    Level->CheckTriggers(Board, Rules);
+    TestEqual(TEXT("an AI trigger ignores the player"), Level->Log, FString(TEXT("WC_Test_Trigger4 0; ")));
+    Board.ScoreBoard = { 9.f, 8.f };
+    Level->CheckTriggers(Board, Rules);
+    TestEqual(TEXT("...and fires for the AI"), Level->Log, FString(TEXT("WC_Test_Trigger4 0; WC_Test_Trigger8 1; ")));
+
+    // Re-armed, it fires again the next time it holds
+    Level->RearmTrigger(Score4);
+    TestTrue(TEXT("re-armed"), Level->IsTriggerArmed(Score4));
+    Level->Log.Reset();
+    Level->CheckTriggers(Board, Rules);
+    TestEqual(TEXT("fires again after re-arming"), Level->Log, FString(TEXT("WC_Test_Trigger4 0; ")));
+
+    // Re-armed from inside its own reaction: fires again on the next check
+    Level->RearmOnFire = Score4;
+    Level->RearmTrigger(Score4);
+    Level->Log.Reset();
+    Level->CheckTriggers(Board, Rules);
+    Level->CheckTriggers(Board, Rules);
+    TestEqual(TEXT("a reaction can re-arm its own trigger"), Level->Log, FString(TEXT("WC_Test_Trigger4 0; WC_Test_Trigger4 0; ")));
+
+    // Nothing after the game is over
+    Level->Log.Reset();
+    Board.bGameOver = true;
+    Level->CheckTriggers(Board, Rules);
+    TestEqual(TEXT("not after the game is over"), Level->Log, FString());
+
+    // Either side: the lowest faction that meets it
+    UConnectIt_TestLevelDirector* Any = NewObject<UConnectIt_TestLevelDirector>();
+    Any->Triggers.Add({ Score4, EConnectItTriggerSide::Either });
+    FConnectItBoardState Both = MakeBoard(5);
+    Both.ScoreBoard = { 0.f, 5.f };
+    Any->CheckTriggers(Both, Rules);
+    TestEqual(TEXT("either side: the AI's score counts"), Any->Log, FString(TEXT("WC_Test_Trigger4 1; ")));
+    return true;
+}
+
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FConnectItDirectorOrderTest,
     "ConnectIt.AI.DirectorOrder", TestFlags)
 

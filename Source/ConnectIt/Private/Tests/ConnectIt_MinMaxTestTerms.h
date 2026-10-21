@@ -128,3 +128,29 @@ protected:
         Log += FString::Printf(TEXT("won %d %s; "), Faction, bIsMine ? TEXT("mine") : TEXT("theirs"));
     }
 };
+
+// Test-only level director (ConnectIt.AI.LevelTriggers): records the triggers
+// that fire, and re-arms one when asked
+UCLASS(Hidden, NotBlueprintable)
+class UConnectIt_TestLevelDirector : public UConnectIt_LevelDirector
+{
+    GENERATED_BODY()
+
+public:
+
+    FString Log;
+
+    // Re-arm this trigger from inside its own reaction
+    TObjectPtr<UConnectIt_MatchConditionAsset> RearmOnFire = nullptr;
+
+protected:
+
+    virtual void OnTriggerFired_Implementation(UConnectIt_MatchConditionAsset* Condition, int32 Faction) override
+    {
+        Log += FString::Printf(TEXT("%s %d; "), *GetNameSafe(Condition), Faction);
+        if (Condition == RearmOnFire)
+        {
+            RearmTrigger(Condition);
+        }
+    }
+};

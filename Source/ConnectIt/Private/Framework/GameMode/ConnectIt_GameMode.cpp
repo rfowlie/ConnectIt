@@ -380,6 +380,12 @@ void AConnectIt_GameMode::HandleBoardStateChangedForDirectors()
             });
         }
     }
+
+    // The level's triggers, against the committed board
+    if (IsValid(LevelDirector))
+    {
+        LevelDirector->CheckTriggers(BoardState->GetCurrentState(), Rules);
+    }
 }
 
 void AConnectIt_GameMode::ApplyLoadout(ATurnBasedPlayerState* PlayerState, UActionLoadoutDataAsset* Loadout)
