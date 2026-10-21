@@ -1,8 +1,8 @@
 ---
 created: 2026-10-20
 question: "How should a level director change the board when a level condition (trigger) fires?"
-status: open
-closed-by:
+status: answered
+closed-by: "[2026-10-21-director-hub-and-level-changes](../_decisions/2026-10-21-director-hub-and-level-changes.md)"
 tags:
   - question
 ---
@@ -31,4 +31,9 @@ search (it can't simulate Blueprint reactions).
 
 ## Resolution
 
-<Filled when status moves to answered / parked.>
+Answered and built 2026-10-21. The Level director's **Apply Board Operation (Operation, As Faction, Timing)** goes through
+`AConnectIt_GameMode::ApplyLevelOperation` to `UConnectIt_BoardRequestMediator::ProcessLevelOperation`: the move's own board
+step (CanApply, the operation, scoring, the win check, commit with events) without the loadout gate or an action use. It
+acts as the faction given (or nobody, -1), scores and can win like a move, and its events reach the visual queue like a
+move's. Timing: Immediately runs right after the move being carried out (never mid-scoring), Next Turn Start before the next
+turn's directors hear it; chains are capped at 64. Recipe: [[script-a-level]].

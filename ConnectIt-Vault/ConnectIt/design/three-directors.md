@@ -1,5 +1,9 @@
 # Three directors: Level, Player, AI
 
+> **Status: built** 2026-10-20..21 (plan stages 1-6, 47/47 tests); not yet played in PIE. The open points below were
+> settled in the plan ([three-directors-plan](three-directors-plan.md)) and the decision
+> [2026-10-21-director-hub-and-level-changes](../_decisions/2026-10-21-director-hub-and-level-changes.md).
+
 Settled with the owner on 2026-10-20, after setting up the first presets; **not built yet** -- it is part 2 of the plan whose
 part 1 is [conditions-and-legal-moves](conditions-and-legal-moves.md). **Plan: [three-directors-plan](three-directors-plan.md)**
 (2026-10-20; adds Blueprint rule changes owned by the Level director, and settles the open points below).

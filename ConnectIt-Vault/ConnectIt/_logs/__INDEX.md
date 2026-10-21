@@ -8,10 +8,11 @@ Newest first:
 
 - [2026-10-20-2345](2026-10-20-2345.md) — session — filed the owner's Adventure modules / progression / reward notes as `design/adventure-modules-and-progression.md`.
 
-- [2026-10-20-2330](2026-10-20-2330.md) — session — three directors (part 2 of the 2026-10-20 plan, in progress): Stage 1,
+- [2026-10-20-2330](2026-10-20-2330.md) — session — three directors (part 2 of the 2026-10-20 plan, done): Stage 1,
   director base + Level / Player / AI directors named by class on the preset, GameMode hub; Stage 2, win conditions
   live on the directors; Stage 3, lose conditions;
-  Stage 4, level triggers; Stage 5, level board operations and scoring-rule changes. 47/47 tests.
+  Stage 4, level triggers; Stage 5, level board operations and scoring-rule changes;
+  Stage 6, vault (recipes incl. script-a-level, ai-turn, decision). 47/47 tests; PIE pending.
 
 - [2026-10-20-1500](2026-10-20-1500.md) — session — conditions and legal moves (part 1 of the 2026-10-20 plan, done):
   Stage 1, MinMax `DefaultTimeBudgetSeconds` (the director's think time wins); Stage 2, "match condition"

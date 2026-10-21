@@ -1,7 +1,8 @@
 # Plan: three directors, lose conditions, level triggers and level changes (part 2)
 
 Design: [three-directors](three-directors.md). Part 1 (built): [conditions-and-legal-moves](conditions-and-legal-moves.md).
-Written 2026-10-20 after the open-points discussion; **awaiting the owner's approval**.
+Written 2026-10-20 after the open-points discussion; approved and **built** 2026-10-20..21 (47/47 tests). Log:
+[_logs/2026-10-20-2330](../_logs/2026-10-20-2330.md).
 
 ## Context
 

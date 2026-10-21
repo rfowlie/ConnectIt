@@ -85,3 +85,12 @@ see [line-scoring-directions](line-scoring-directions.md). Scoring only finds li
 AI's line windows are built along the same ones. It replicates with the rule set and can be changed mid-match through
 `AConnectIt_GameMode::ModifyRules`. Still not built from this note: the per-turn trigger that picks the mode, and UI
 that shows it.
+
+## Update (2026-10-21): the Level director changes the rules
+
+The Level director ([three-directors](three-directors.md)) now has Blueprint-callable **Set Scoring Rule** (a scoring rule
+struct, e.g. Lines with only some directions ticked) and **Apply Board Operation**, each with a timing (Immediately = right
+after the move being carried out; or Next Turn Start), through `AConnectIt_GameMode::SetScoringRule` /
+`ApplyLevelOperation`. A per-turn rotation is now Level-director Blueprint work (e.g. On Turn Started -> Set Scoring Rule at
+Next Turn Start). Still open: the telegraphed-vs-hidden question ([rotating-rule-randomness](../_questions/rotating-rule-randomness.md))
+and UI showing the current mode (listen to the GameState's On Match Rules Changed). Recipe: [[script-a-level]].
