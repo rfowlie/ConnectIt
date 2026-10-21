@@ -2,7 +2,7 @@
 
 Discussion: round 12 of [tile-powers-in-the-board-pipeline](../_questions/tile-powers-in-the-board-pipeline.md). Closes the
 known issue in [tile-powers-plan](tile-powers-plan.md) ("Not in this plan"). Written 2026-10-21; approved the same day.
-**Stage 1 built** (47/47 tests).
+**Stages 1-2 built** (47/47 tests).
 
 ## Context
 
@@ -99,6 +99,11 @@ What already exists and stays:
   - The flag can lag, so the server stays authoritative; this only saves a round trip.
 - **Owner, editor:** action buttons / input read `Is Board Change Resolving` and its event (greyed out while the board
   resolves).
+- *As built (2026-10-21):*
+  - The mirror is "not settled": it stays on while level changes wait, so it doesn't flicker off for a tick between a
+    release and the next change.
+  - `ProcessBoardRequest` now refuses on the same test (`!IsBoardSettled`), so the server and clients agree on
+    "busy".
 
 ## Stage 3: vault
 

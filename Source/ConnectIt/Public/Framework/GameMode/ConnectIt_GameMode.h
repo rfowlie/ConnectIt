@@ -96,7 +96,8 @@ public:
     // (and therefore BoardRequestMediator) doesn't exist on any client.
     // RequestingFaction is who is asking, as the SERVER knows it (the
     // sending controller's PlayerState slot) -- a request doesn't say.
-    // Refused while a board change is resolving (IsBoardChangeResolving).
+    // Refused until the board is settled (IsBoardSettled): a change is
+    // resolving, or level changes are waiting to play.
     UFUNCTION(BlueprintCallable, Category = "ConnectIt|Board")
     bool ProcessBoardRequest(const FTurnActionRequest& Request, int32 RequestingFaction);
 
@@ -282,6 +283,10 @@ private:
     // still being carried out)
     void ReleaseBoardChangeLock();
     void HandleBoardChangeTimeout();
+
+    // Mirrors "not settled" to the GameState for clients and UI
+    // (AConnectIt_GameState::IsBoardChangeResolving)
+    void PublishBoardChangeResolving() const;
 
     // Applies waiting level changes in order until one changes the board
     // (the next waits for that change to play out) or none are left; then,

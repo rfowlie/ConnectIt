@@ -539,14 +539,14 @@ bool AConnectIt_GameMode::ProcessBoardRequest(const FTurnActionRequest& Request,
         return false;
     }
 
-    // One board change at a time: a request while one is still resolving
-    // shouldn't happen (the AI waits for a settled board; clients are told
-    // the board is busy) -- refused, and the requester's action re-enables
-    if (IsBoardChangeResolving())
+    // One board change at a time: a request before the board has settled
+    // shouldn't happen (the AI waits for it; clients are told the board is
+    // busy) -- refused, and the requester's action re-enables
+    if (!IsBoardSettled())
     {
         UE_LOG(LogTemp, Warning,
-            TEXT("ConnectIt_GameMode: ProcessBoardRequest -- '%s' by faction %d refused: a board change "
-                 "is still resolving (its visuals haven't finished)"),
+            TEXT("ConnectIt_GameMode: ProcessBoardRequest -- '%s' by faction %d refused: the board hasn't "
+                 "settled (a change's visuals are still playing, or level changes are waiting)"),
             *Request.ActionTag.ToString(), RequestingFaction);
         return false;
     }
@@ -622,6 +622,8 @@ void AConnectIt_GameMode::HandleBoardChangeCommitted()
     GetWorldTimerManager().SetTimer(BoardChangeTimeoutHandle,
         FTimerDelegate::CreateUObject(this, &AConnectIt_GameMode::HandleBoardChangeTimeout),
         BoardChangeTimeoutSeconds, false);
+
+    PublishBoardChangeResolving();
 }
 
 void AConnectIt_GameMode::HandleBoardChangeComplete(FGameplayTag Tag)
@@ -646,6 +648,17 @@ void AConnectIt_GameMode::ReleaseBoardChangeLock()
     // change (no visuals registered), where nothing new may be carried out
     GetWorldTimerManager().SetTimerForNextTick(
         FTimerDelegate::CreateUObject(this, &AConnectIt_GameMode::DrainLevelChanges));
+
+    // Still busy for clients if level changes wait (the drain lifts it)
+    PublishBoardChangeResolving();
+}
+
+void AConnectIt_GameMode::PublishBoardChangeResolving() const
+{
+    if (AConnectIt_GameState* GS = GetGameState<AConnectIt_GameState>())
+    {
+        GS->SetBoardChangeResolving(!IsBoardSettled());
+    }
 }
 
 void AConnectIt_GameMode::HandleBoardChangeTimeout()
@@ -693,6 +706,7 @@ void AConnectIt_GameMode::DrainLevelChanges()
         ApplyLevelChange(Change);
     }
 
+    PublishBoardChangeResolving();
     if (IsBoardSettled())
     {
         OnBoardChangeSettled.Broadcast();

@@ -3,6 +3,7 @@
 
 #include "Framework/Controller/ConnectIt_PlayerController.h"
 #include "Framework/GameMode/ConnectIt_GameMode.h"
+#include "Framework/GameState/ConnectIt_GameState.h"
 #include "Framework/Library/ConnectIt_GameUtilityLibrary.h"
 #include "Turn/Participant/TurnBasedParticipantComponent.h"
 #include "Turn/Participant/TurnBasedParticipantManagerComponent.h"
@@ -97,6 +98,20 @@ void AConnectIt_PlayerController::HandleLoadoutChanged()
 void AConnectIt_PlayerController::HandleBoardChangeRequested(
     const FTurnActionRequest& Request)
 {
+    // One board change at a time: while the board is busy the server would
+    // refuse this, so don't send it -- answer it here, the same way a
+    // refusal comes back (the action re-enables). The mirror can lag, so the
+    // server still checks.
+    const AConnectIt_GameState* GS = GetWorld() ? GetWorld()->GetGameState<AConnectIt_GameState>() : nullptr;
+    if (IsValid(GS) && GS->IsBoardChangeResolving())
+    {
+        UE_LOG(LogTemp, Log,
+            TEXT("ConnectIt_PlayerController: '%s' not sent -- the board is still resolving a change"),
+            *Request.ActionTag.ToString());
+        ClientNotifyBoardChangeOutcome_Implementation(Request, false);
+        return;
+    }
+
     // Route to server via RPC
     // Server validates and passes to board manager
     ServerRouteBoardChangeRequest(Request);

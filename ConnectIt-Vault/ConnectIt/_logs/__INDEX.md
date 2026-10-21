@@ -6,6 +6,8 @@ Vault-wide passes go in `_core/_logs/`.
 
 Newest first:
 
+- [2026-10-21-1425](2026-10-21-1425.md) — session — one board change at a time, Stage 2: GameState mirrors "board busy"
+  (replicated + event); requests refused until settled; the player controller doesn't send while busy. 47/47 tests.
 - [2026-10-21-1421](2026-10-21-1421.md) — session — one board change at a time, Stage 1: server lock until the change's
   visuals complete; level changes queue, requests refused, AI waits for a settled board. 47/47 tests; PIE pending.
 - [2026-10-21-1405](2026-10-21-1405.md) — session — plan: one board change at a time (server lock until the change's
