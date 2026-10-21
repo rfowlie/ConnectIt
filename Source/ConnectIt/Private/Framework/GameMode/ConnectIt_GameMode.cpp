@@ -22,6 +22,9 @@
 #include "Tile/GridTileRegistryBase.h"
 #include "Turn/Participant/TurnBasedParticipantManagerComponent.h"
 #include "AI/ConnectIt_AIDirector.h"
+#include "AI/ConnectIt_PlayerDirector.h"
+#include "AI/ConnectIt_LevelDirector.h"
+#include "Board/Events/ConnectIt_BoardEvents.h"
 #include "Board/Operations/ConnectIt_BoardOperation.h"
 
 
@@ -84,14 +87,18 @@ void AConnectIt_GameMode::SeedActionStateForPlayer(APlayerController* NewPlayer)
         return;
     }
 
+    // Every human has a Player director (a reconnecting player keeps theirs)
+    const UConnectIt_PlayerDirector* PlayerDirector = FindOrCreatePlayerDirector(PS);
+
     // Already seeded (a reconnecting player keeps their state)
     if (PS->HasActionConfig()) return;
 
+    UActionLoadoutDataAsset* PlayerLoadout = IsValid(PlayerDirector) ? PlayerDirector->StartingLoadout.Get() : nullptr;
     if (!IsValid(PlayerLoadout))
     {
         UE_LOG(LogTemp, Error,
-            TEXT("ConnectIt_GameMode: cannot seed action state for %s -- no "
-                 "level config, or it has no PlayerLoadout"),
+            TEXT("ConnectIt_GameMode: cannot seed action state for %s -- the "
+                 "match preset's Player Director Class has no Starting Loadout"),
             *PS->GetPlayerName());
         return;
     }
@@ -141,8 +148,9 @@ void AConnectIt_GameMode::EnsureMatchSetupResolved()
     Rules = IsValid(Preset) ? Preset->Rules : FConnectItRuleSet();
     // The goal assets' conditions, copied into the plain groups the match plays with
     Rules.ResolveWinGroups();
-    PlayerLoadout = IsValid(Preset) ? Preset->PlayerLoadout : nullptr;
-    AIDirectorTemplate = IsValid(Preset) ? Preset->AIDirector : nullptr;
+    LevelDirectorClass = IsValid(Preset) ? Preset->LevelDirectorClass : nullptr;
+    PlayerDirectorClass = IsValid(Preset) ? Preset->PlayerDirectorClass : nullptr;
+    AIDirectorClass = IsValid(Preset) ? Preset->AIDirectorClass : nullptr;
 
     // Tweaks from the menu, on top of whichever preset plays
     if (bHasMatchSettings)
@@ -167,11 +175,12 @@ void AConnectIt_GameMode::EnsureMatchSetupResolved()
     }
 
     UE_LOG(LogTemp, Log,
-        TEXT("ConnectIt_GameMode: match setup resolved -- preset '%s', player "
-             "loadout '%s', AI director '%s', target score %.0f"),
+        TEXT("ConnectIt_GameMode: match setup resolved -- preset '%s', directors: "
+             "level '%s', player '%s', AI '%s', target score %.0f"),
         *GetNameSafe(Preset),
-        IsValid(PlayerLoadout) ? *PlayerLoadout->LoadoutName : TEXT("none"),
-        IsValid(AIDirectorTemplate) ? *AIDirectorTemplate->GetClass()->GetName() : TEXT("none"),
+        LevelDirectorClass ? *LevelDirectorClass->GetName() : TEXT("none"),
+        PlayerDirectorClass ? *PlayerDirectorClass->GetName() : TEXT("none"),
+        AIDirectorClass ? *AIDirectorClass->GetName() : TEXT("none"),
         Rules.GetTargetScore());
 
     PublishMatchSetup();
@@ -202,72 +211,161 @@ void AConnectIt_GameMode::ModifyRules(const TFunctionRef<void(FConnectItRuleSet&
 void AConnectIt_GameMode::SetLoadout(
     EConnectItRole PlayerRole, UActionLoadoutDataAsset* Loadout, EConnectItLoadoutTiming Timing)
 {
+    UTurnBasedParticipantManagerComponent* Manager = GetParticipantManager();
+    if (!IsValid(Manager)) return;
+
+    for (const FTurnParticipantInfo& Info : Manager->GetAllParticipants())
+    {
+        const bool bIsAI = Info.ParticipantType == EParticipantType::AI;
+        if (bIsAI != (PlayerRole == EConnectItRole::AI)) continue;
+        SetLoadoutForPlayer(Info.PlayerState, Loadout, Timing);
+    }
+}
+
+void AConnectIt_GameMode::SetLoadoutForPlayer(
+    ATurnBasedPlayerState* PlayerState, UActionLoadoutDataAsset* Loadout, EConnectItLoadoutTiming Timing)
+{
     if (!IsValid(Loadout))
     {
         UE_LOG(LogTemp, Warning,
             TEXT("ConnectIt_GameMode: SetLoadout called with no loadout -- ignored"));
         return;
     }
-
-    UTurnBasedParticipantManagerComponent* Manager = GetParticipantManager();
-    if (!IsValid(Manager)) return;
+    if (!IsValid(PlayerState)) return;
 
     // A move in progress spends its action's use after it finishes, against
     // the loadout it came from: never swap it out from under that.
     const bool bMoveInProgress = IsValid(BoardRequestMediator) && BoardRequestMediator->IsDispatching();
     const bool bDefer = Timing == EConnectItLoadoutTiming::NextTurnStart || bMoveInProgress;
 
-    if (PlayerRole == EConnectItRole::Player)
+    if (bDefer)
     {
-        // Also what a human who (re)joins is seeded with from now on
-        PlayerLoadout = Loadout;
+        PendingLoadouts.Add(PlayerState->GetSlotIndex(), Loadout);
+    }
+    else
+    {
+        PendingLoadouts.Remove(PlayerState->GetSlotIndex());
+        ApplyLoadout(PlayerState, Loadout);
+    }
+}
+
+// --- Directors ---
+
+UConnectIt_PlayerDirector* AConnectIt_GameMode::GetPlayerDirector(int32 Faction) const
+{
+    for (UConnectIt_PlayerDirector* PlayerDirector : PlayerDirectors)
+    {
+        if (IsValid(PlayerDirector) && PlayerDirector->GetFaction() == Faction) return PlayerDirector;
+    }
+    return nullptr;
+}
+
+UConnectIt_AIDirector* AConnectIt_GameMode::GetAIDirector() const
+{
+    const AConnectIt_AIController* AIController = SpawnedAIController.Get();
+    return IsValid(AIController) ? AIController->GetDirector() : nullptr;
+}
+
+UConnectIt_PlayerDirector* AConnectIt_GameMode::FindOrCreatePlayerDirector(ATurnBasedPlayerState* PlayerState)
+{
+    if (!IsValid(PlayerState)) return nullptr;
+
+    for (UConnectIt_PlayerDirector* PlayerDirector : PlayerDirectors)
+    {
+        if (IsValid(PlayerDirector) && PlayerDirector->GetDirectedPlayerState() == PlayerState) return PlayerDirector;
     }
 
-    for (const FTurnParticipantInfo& Info : Manager->GetAllParticipants())
+    EnsureMatchSetupResolved();
+    if (!PlayerDirectorClass)
     {
-        const bool bIsAI = Info.ParticipantType == EParticipantType::AI;
-        if (bIsAI != (PlayerRole == EConnectItRole::AI)) continue;
-        if (!IsValid(Info.PlayerState)) continue;
+        UE_LOG(LogTemp, Warning,
+            TEXT("ConnectIt_GameMode: the match preset has no Player Director Class -- %s gets the "
+                 "default one, which has no loadout"),
+            *PlayerState->GetPlayerName());
+    }
+    UConnectIt_PlayerDirector* PlayerDirector = NewObject<UConnectIt_PlayerDirector>(
+        this, PlayerDirectorClass ? *PlayerDirectorClass : UConnectIt_PlayerDirector::StaticClass());
+    PlayerDirector->SetDirectedPlayerState(PlayerState);
+    PlayerDirectors.Add(PlayerDirector);
 
-        if (bDefer)
+    UE_LOG(LogTemp, Log, TEXT("ConnectIt_GameMode: player director '%s' for %s"),
+        *PlayerDirector->GetClass()->GetName(), *PlayerState->GetPlayerName());
+    return PlayerDirector;
+}
+
+void AConnectIt_GameMode::ForEachDirector(TFunctionRef<void(UConnectIt_Director&)> Event) const
+{
+    TArray<UConnectIt_PlayerDirector*> Players;
+    for (UConnectIt_PlayerDirector* PlayerDirector : PlayerDirectors)
+    {
+        Players.Add(PlayerDirector);
+    }
+
+    // A director may react by asking another for something, never by adding
+    // or removing directors, so the list is fixed for the call
+    for (UConnectIt_Director* Director : UConnectIt_Director::InDispatchOrder(LevelDirector, Players, GetAIDirector()))
+    {
+        Event(*Director);
+    }
+}
+
+void AConnectIt_GameMode::HandleTurnPhaseChanged(ETurnPhase NewPhase)
+{
+    if (NewPhase != ETurnPhase::TurnStart && NewPhase != ETurnPhase::TurnEnd) return;
+
+    const ATurnBasedGameState* GS = GetGameState<ATurnBasedGameState>();
+    if (!IsValid(GS)) return;
+
+    bool bValid = false;
+    const FTurnParticipantInfo Active = GS->GetActiveParticipant(bValid);
+    if (!bValid) return;
+
+    const int32 Faction = Active.SlotIndex;
+    const int32 TurnNumber = GS->GetActiveTurnNumber();
+    const bool bStarted = NewPhase == ETurnPhase::TurnStart;
+
+    ForEachDirector([Faction, TurnNumber, bStarted](UConnectIt_Director& Director)
+    {
+        if (bStarted)
         {
-            PendingLoadouts.Add(Info.SlotIndex, Loadout);
+            Director.OnTurnStarted(Faction, Director.IsMine(Faction), TurnNumber);
         }
         else
         {
-            PendingLoadouts.Remove(Info.SlotIndex);
-            ApplyLoadout(Info.PlayerState, Loadout);
+            Director.OnTurnEnded(Faction, Director.IsMine(Faction), TurnNumber);
+        }
+    });
+}
+
+void AConnectIt_GameMode::HandleBoardStateChangedForDirectors()
+{
+    const UConnectIt_BoardStateComponent* BoardState = UConnectIt_GameUtilityLibrary::GetBoardStateComponent(this);
+    if (!IsValid(BoardState)) return;
+
+    for (const FInstancedStruct& Entry : BoardState->GetChangeEvent().Events)
+    {
+        if (const FConnectItBoardEvent_WinCheckpointReached* Checkpoint =
+            Entry.GetPtr<FConnectItBoardEvent_WinCheckpointReached>())
+        {
+            UE_LOG(LogTemp, Log,
+                TEXT("ConnectIt_GameMode: faction %d completed win group %d ('%s')"),
+                Checkpoint->Faction, Checkpoint->GroupIndex, *Checkpoint->GroupName.ToString());
+
+            ForEachDirector([Checkpoint](UConnectIt_Director& Director)
+            {
+                Director.OnWinCheckpointReached(Checkpoint->Faction, Director.IsMine(Checkpoint->Faction),
+                    Checkpoint->Asset, Checkpoint->GroupIndex, Checkpoint->GroupName);
+            });
+        }
+        else if (const FConnectItBoardEvent_GameWon* Won = Entry.GetPtr<FConnectItBoardEvent_GameWon>())
+        {
+            const int32 Winner = Won->WinningFaction;
+            ForEachDirector([Winner](UConnectIt_Director& Director)
+            {
+                Director.OnMatchWon(Winner, Director.IsMine(Winner));
+            });
         }
     }
-}
-
-EConnectItRole AConnectIt_GameMode::RoleOfFaction(int32 Faction) const
-{
-    return (Rules.AIFaction != INDEX_NONE && Faction == Rules.AIFaction)
-        ? EConnectItRole::AI : EConnectItRole::Player;
-}
-
-void AConnectIt_GameMode::HandleWinCheckpoint(FGameplayTag Tag)
-{
-    // Tag is just the manager's own identity: the checkpoint's details are the
-    // board event being played (see HandleGameOver for the same pattern)
-    const FConnectItBoardEvent_WinCheckpointReached* Checkpoint =
-        UConnectIt_BoardEventLibrary::GetActiveBoardEventAs<FConnectItBoardEvent_WinCheckpointReached>(this);
-    if (!Checkpoint)
-    {
-        UE_LOG(LogTemp, Error,
-            TEXT("ConnectIt_GameMode: HandleWinCheckpoint -- the event being played "
-                 "is not a WinCheckpointReached"));
-        return;
-    }
-
-    UE_LOG(LogTemp, Log,
-        TEXT("ConnectIt_GameMode: faction %d completed win group %d ('%s')"),
-        Checkpoint->Faction, Checkpoint->GroupIndex, *Checkpoint->GroupName.ToString());
-
-    OnWinCheckpointReached.Broadcast(
-        RoleOfFaction(Checkpoint->Faction), Checkpoint->Faction,
-        Checkpoint->Asset, Checkpoint->GroupIndex, Checkpoint->GroupName);
 }
 
 void AConnectIt_GameMode::ApplyLoadout(ATurnBasedPlayerState* PlayerState, UActionLoadoutDataAsset* Loadout)
@@ -342,6 +440,8 @@ void AConnectIt_GameMode::HandleMatchHasStarted()
             this, &AConnectIt_GameMode::HandleInvalidNumberOfPlayers);
         Manager->OnActiveControllerChanged.AddDynamic(
             this, &AConnectIt_GameMode::HandleActiveControllerChanged);
+        Manager->OnTurnPhaseChanged.AddDynamic(
+            this, &AConnectIt_GameMode::HandleTurnPhaseChanged);
     }
 
     // Normally already done in PostLogin; a match can also start with nobody
@@ -365,7 +465,19 @@ void AConnectIt_GameMode::HandleMatchHasStarted()
 
     // Initialise board -- reads tile positions from registry
     InitialiseBoard();
-    
+
+    // The level's script, then every director hears the match has started
+    // (board ready, every side registered)
+    if (LevelDirectorClass)
+    {
+        LevelDirector = NewObject<UConnectIt_LevelDirector>(this, LevelDirectorClass);
+        UE_LOG(LogTemp, Log, TEXT("ConnectIt_GameMode: level director '%s'"), *LevelDirectorClass->GetName());
+    }
+    if (UConnectIt_BoardStateComponent* BoardState = UConnectIt_GameUtilityLibrary::GetBoardStateComponent(this))
+    {
+        BoardState->OnBoardStateChanged.AddUniqueDynamic(this, &AConnectIt_GameMode::HandleBoardStateChangedForDirectors);
+    }
+    ForEachDirector([](UConnectIt_Director& Director) { Director.OnMatchStarted(); });
 }
 
 void AConnectIt_GameMode::HandleMatchHasEnded()
@@ -428,9 +540,6 @@ void AConnectIt_GameMode::InitialiseBoard()
         GameEventSubsystem->BindOnTagComplete(
             ConnectIt_Event_PlayerWin, this,
             GET_FUNCTION_NAME_CHECKED(AConnectIt_GameMode, HandleGameOver));
-        GameEventSubsystem->BindOnTagComplete(
-            ConnectIt_Event_WinCheckpointReached, this,
-            GET_FUNCTION_NAME_CHECKED(AConnectIt_GameMode, HandleWinCheckpoint));
     }
 
     const float InitialTargetScore = Rules.GetTargetScore();
@@ -480,6 +589,7 @@ void AConnectIt_GameMode::SpawnAndRegisterAI()
     }
 
     RegisterAIParticipant(AIController, AIDisplayName);
+    SpawnedAIController = AIController;
 
     // The rule set only knows slots: tell it which one is the AI's, so the
     // AI's win condition (if the level gave it one) applies to that faction.
@@ -532,12 +642,6 @@ void AConnectIt_GameMode::HandleGameOver(FGameplayTag Tag)
             EMatchEndReason::ScoreThresholdReached,
             GetGameState<ATurnBasedGameState>()->GetActiveTurnNumber()
         );
-    }
-
-    // The actual win: every one of the winner's win groups is complete
-    if (WinningFactionSlot >= 0)
-    {
-        OnMatchWon.Broadcast(RoleOfFaction(WinningFactionSlot), WinningFactionSlot);
     }
 
     EndMatch();

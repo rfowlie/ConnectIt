@@ -2255,12 +2255,15 @@ bool FConnectItAIDirectorTest::RunTest(const FString& Parameters)
     TestTrue(TEXT("with First Available"), Director->Selector && Director->Selector->IsA<UConnectIt_AISelector_FirstAvailable>());
 
     Director->OnMatchStarted();
-    Director->OnAITurnStarted(3);
-    Director->OnAITurnEnded(3);
-    Director->OnOpponentTurnStarted(4);
+    Director->OnTurnStarted(1, true, 3);
+    Director->OnTurnEnded(1, true, 3);
+    Director->OnTurnStarted(0, false, 4);
     Director->OnWinCheckpointReached(1, true, nullptr, 0, TEXT("Stage 1"));
+    Director->OnMatchWon(0, false);
     TestEqual(TEXT("events reach the director"), Director->Log,
-        FString(TEXT("match; start 3; end 3; opponent 4; checkpoint 1 AI None 0 Stage 1; ")));
+        FString(TEXT("match; start 1 mine 3; end 1 mine 3; start 0 theirs 4; checkpoint 1 mine None 0 Stage 1; won 0 theirs; ")));
+    TestEqual(TEXT("no controller: no faction"), Director->GetFaction(), static_cast<int32>(INDEX_NONE));
+    TestFalse(TEXT("...so nothing is its own"), Director->IsMine(INDEX_NONE));
 
     // Strategy and selector changes wait for the next decision, as copies
     UConnectIt_AIStrategy* const OriginalStrategy = Director->Strategies[0];
@@ -2303,10 +2306,47 @@ bool FConnectItAIDirectorTest::RunTest(const FString& Parameters)
     Director->TrySetLoadout(nullptr);
     TestNull(TEXT("no controller, no loadout"), Director->TryGetLoadout());
 
-    // A match preset can carry one
+    // A match preset names the three director classes
     UConnectIt_MatchPreset* Preset = NewObject<UConnectIt_MatchPreset>();
-    Preset->AIDirector = NewObject<UConnectIt_TestAIDirector>(Preset);
-    TestNotNull(TEXT("a preset holds its director"), Preset->AIDirector.Get());
+    Preset->AIDirectorClass = UConnectIt_TestAIDirector::StaticClass();
+    Preset->PlayerDirectorClass = UConnectIt_PlayerDirector::StaticClass();
+    Preset->LevelDirectorClass = UConnectIt_LevelDirector::StaticClass();
+    TestTrue(TEXT("a preset names its director classes"),
+        Preset->AIDirectorClass == UConnectIt_TestAIDirector::StaticClass() && Preset->PlayerDirectorClass && Preset->LevelDirectorClass);
+#if WITH_EDITOR
+    {
+        // The base Player director has no starting loadout: the preset is invalid
+        FDataValidationContext Validation;
+        TestTrue(TEXT("a player director with no loadout makes the preset invalid"),
+            Preset->IsDataValid(Validation) == EDataValidationResult::Invalid);
+    }
+#endif
+    return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FConnectItDirectorOrderTest,
+    "ConnectIt.AI.DirectorOrder", TestFlags)
+
+bool FConnectItDirectorOrderTest::RunTest(const FString& Parameters)
+{
+    // Events go to the Level director, then the Player directors (by slot;
+    // these have no player yet, so they keep their order), then the AI
+    UConnectIt_LevelDirector* Level = NewObject<UConnectIt_LevelDirector>();
+    UConnectIt_PlayerDirector* PlayerA = NewObject<UConnectIt_PlayerDirector>();
+    UConnectIt_PlayerDirector* PlayerB = NewObject<UConnectIt_PlayerDirector>();
+    UConnectIt_TestAIDirector* AI = NewObject<UConnectIt_TestAIDirector>();
+
+    const TArray<UConnectIt_Director*> Ordered = UConnectIt_Director::InDispatchOrder(Level, { PlayerA, PlayerB }, AI);
+    if (!TestEqual(TEXT("all four"), Ordered.Num(), 4)) return false;
+    TestTrue(TEXT("level first"), Ordered[0] == Level);
+    TestTrue(TEXT("then the players"), Ordered[1] == PlayerA && Ordered[2] == PlayerB);
+    TestTrue(TEXT("AI last"), Ordered[3] == AI);
+
+    const TArray<UConnectIt_Director*> NoLevel = UConnectIt_Director::InDispatchOrder(nullptr, { PlayerA }, nullptr);
+    TestTrue(TEXT("missing directors are skipped"), NoLevel.Num() == 1 && NoLevel[0] == PlayerA);
+
+    TestEqual(TEXT("the level director speaks for no side"), Level->GetFaction(), static_cast<int32>(INDEX_NONE));
+    TestEqual(TEXT("a player director with no player has no side yet"), PlayerA->GetFaction(), static_cast<int32>(INDEX_NONE));
     return true;
 }
 

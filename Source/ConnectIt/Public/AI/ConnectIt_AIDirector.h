@@ -3,7 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "UObject/Object.h"
+#include "AI/ConnectIt_Director.h"
 #include "ConnectIt_AIDirector.generated.h"
 
 class AConnectIt_AIController;
@@ -12,9 +12,12 @@ class UConnectIt_AIStrategy;
 class UConnectIt_AISelector;
 class UConnectIt_MatchConditionAsset;
 
-// The AI opponent of a match, and how it changes as the match goes on. Lives
-// on a match preset (UConnectIt_MatchPreset::AIDirector): one per adventure
-// level, or one per way of playing against the AI (e.g. a Classic director).
+// The AI opponent of a match, and how it changes as the match goes on. Named
+// by class on the match preset (UConnectIt_MatchPreset::AIDirectorClass) and
+// configured in its Blueprint's Class Defaults: one subclass per adventure
+// level, or per way of playing against the AI (e.g. a Classic director; "Easy"
+// and "Hard" are two small subclasses). See UConnectIt_Director for the
+// events every director gets.
 //
 // It owns the AI's setup:
 //   * StartingLoadout -- what the AI may do (its actions), from the start;
@@ -22,8 +25,7 @@ class UConnectIt_MatchConditionAsset;
 //   * Selector -- how the move is picked from the strategies' answers;
 //   * the think-time settings.
 // The base class as it comes is the classic opponent: one MinMax strategy,
-// First Available. Subclass it in Blueprint to change the setup during a
-// match from its events (or anything else it can reach through the world).
+// First Available (and no loadout -- a subclass sets one).
 //
 // Examples (see the recipe "Direct the AI during a match"):
 //   * alternate between two loadouts every turn;
@@ -32,14 +34,10 @@ class UConnectIt_MatchConditionAsset;
 //   * a "tell": set the AI's next loadout when the opponent's turn starts --
 //     it replicates, so the UI can show what's coming.
 //
-// React to committed state (these events, the board's state changing), never
-// to visual event tags: visuals are paced by the presentation queue and can
-// lag the real state by seconds.
-//
-// Server-only, like the AI controller it belongs to (each controller
-// duplicates the preset's director). It never picks a move itself.
-UCLASS(Blueprintable, BlueprintType, EditInlineNew, DefaultToInstanced)
-class CONNECTIT_API UConnectIt_AIDirector : public UObject
+// Server-only; each AI controller makes its own instance. It never picks a
+// move itself.
+UCLASS(Blueprintable, BlueprintType)
+class CONNECTIT_API UConnectIt_AIDirector : public UConnectIt_Director
 {
     GENERATED_BODY()
 
@@ -78,38 +76,6 @@ public:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AI|Director", meta = (ClampMin = 0.0, Units = "s"))
     float MinThinkSeconds = 0.6f;
 
-    // --- Events ---
-
-    // The AI has joined the match, before its first turn: set up here
-    UFUNCTION(BlueprintNativeEvent, Category = "AI|Director")
-    void OnMatchStarted();
-    virtual void OnMatchStarted_Implementation() {}
-
-    // The AI's turn has started, before it decides anything
-    UFUNCTION(BlueprintNativeEvent, Category = "AI|Director")
-    void OnAITurnStarted(int32 TurnNumber);
-    virtual void OnAITurnStarted_Implementation(int32 TurnNumber) {}
-
-    // The AI's turn is over (ended, timed out or skipped)
-    UFUNCTION(BlueprintNativeEvent, Category = "AI|Director")
-    void OnAITurnEnded(int32 TurnNumber);
-    virtual void OnAITurnEnded_Implementation(int32 TurnNumber) {}
-
-    // The opponent's turn has started. A loadout set here applies at once
-    // and replicates: the place for a tell of the AI's next move.
-    UFUNCTION(BlueprintNativeEvent, Category = "AI|Director")
-    void OnOpponentTurnStarted(int32 TurnNumber);
-    virtual void OnOpponentTurnStarted_Implementation(int32 TurnNumber) {}
-
-    // A faction completed one of its goals (not its last). bIsAI: it was the
-    // AI's. Goal: the win condition asset reached -- compare against your own
-    // asset references. GroupIndex: its position in that side's list in the
-    // preset's rules (PlayerWinConditions or AIWinConditions); GroupName: the
-    // asset's name.
-    UFUNCTION(BlueprintNativeEvent, Category = "AI|Director")
-    void OnWinCheckpointReached(int32 Faction, bool bIsAI, UConnectIt_MatchConditionAsset* Goal, int32 GroupIndex, FName GroupName);
-    virtual void OnWinCheckpointReached_Implementation(int32 Faction, bool bIsAI, UConnectIt_MatchConditionAsset* Goal, int32 GroupIndex, FName GroupName) {}
-
     // --- For the controller ---
 
     // Adopts strategy / selector changes made since the last decision. Called
@@ -120,7 +86,8 @@ public:
     UFUNCTION(BlueprintPure, Category = "AI|Director")
     AConnectIt_AIController* GetOwningController() const;
 
-    virtual UWorld* GetWorld() const override;
+    // The AI's faction slot
+    virtual int32 GetFaction() const override;
 
 #if WITH_EDITOR
     // The setup can play: a starting loadout, strategies, and a loadout that

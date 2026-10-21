@@ -119,8 +119,8 @@ private:
     TObjectPtr<UActionLoadoutDataAsset> PendingLoadout = nullptr;
     bool bHasPendingLoadout = false;
 
-    // This controller's own copy of the match preset's AI director (or of
-    // the default one)
+    // This controller's own AI director, made from the match preset's class
+    // (or the default one)
     UPROPERTY()
     TObjectPtr<UConnectIt_AIDirector> Director = nullptr;
 
@@ -128,15 +128,6 @@ private:
     bool bTurnInProgress = false;
 
     void OnMyTurnEnded(int32 TurnNumber);
-
-    // ParticipantComponent: another participant's turn has started
-    void HandleOpponentTurnStarted(int32 ActiveSlotIndex);
-    FDelegateHandle OpponentTurnHandle;
-
-    // Server-side: every committed board change, to pass win checkpoints to
-    // the director
-    UFUNCTION()
-    void HandleBoardStateChanged();
 
     FDelegateHandle TurnNotificationHandle;
     FDelegateHandle MatchPhaseHandle;

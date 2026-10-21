@@ -7,14 +7,15 @@
 #include "Board/Rules/ConnectIt_RuleSet.h"
 #include "ConnectIt_MatchPreset.generated.h"
 
-class UActionLoadoutDataAsset;
+class UConnectIt_LevelDirector;
+class UConnectIt_PlayerDirector;
 class UConnectIt_AIDirector;
 
-// A way to play a match -- its rules, what the player can do, and who the AI
-// is (its director) -- independent of the stage it is played on (the level
-// config holds the stage: board layout, registries, pieces). A "mode" of
-// playing against the AI (Classic Easy, Classic Hard...) is a preset naming
-// its director.
+// A way to play a match -- its rules and its three directors (the level's
+// script, the human side(s), the AI) -- independent of the stage it is played
+// on (the level config holds the stage: board layout, registries, pieces). A
+// "mode" of playing against the AI (Classic Easy, Classic Hard...) is a preset
+// naming its directors.
 //
 // A level config names the preset it plays as by default (its Adventure
 // setup, say). The main menu can pick a different one for the same level
@@ -40,15 +41,25 @@ public:
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "ConnectIt|Rules")
     FConnectItRuleSet Rules;
 
-    // The actions human players get
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "ConnectIt|Loadout")
-    TObjectPtr<UActionLoadoutDataAsset> PlayerLoadout = nullptr;
+    // --- Directors: who scripts the level, the human side(s) and the AI ---
+    // Each is a class whose Blueprint Class Defaults hold its setup (see
+    // UConnectIt_Director). One per adventure level of each kind, or shared
+    // ones for a way of playing (Classic, versus...).
+
+    // The level's script. None = no level script.
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "ConnectIt|Directors")
+    TSubclassOf<UConnectIt_LevelDirector> LevelDirectorClass;
+
+    // Every human player's director (one instance each): their starting
+    // loadout and how it changes. Required -- without it players have no actions.
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "ConnectIt|Directors")
+    TSubclassOf<UConnectIt_PlayerDirector> PlayerDirectorClass;
 
     // The AI opponent when the match is played against the AI: its loadout,
-    // strategies and selector, and how they change as the match goes on.
-    // Unset = the default director (MinMax, no loadout -- set one).
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Instanced, Category = "ConnectIt|AI")
-    TObjectPtr<UConnectIt_AIDirector> AIDirector = nullptr;
+    // strategies and selector, and how they change. Unset for versus-only
+    // presets (the default director has no loadout).
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "ConnectIt|Directors")
+    TSubclassOf<UConnectIt_AIDirector> AIDirectorClass;
 
 #if WITH_EDITOR
     virtual EDataValidationResult IsDataValid(

@@ -6,6 +6,8 @@
 #include "Board/Rules/ConnectIt_MatchCondition.h"
 #include "AI/ConnectIt_AIStrategy.h"
 #include "AI/ConnectIt_AIDirector.h"
+#include "AI/ConnectIt_PlayerDirector.h"
+#include "AI/ConnectIt_LevelDirector.h"
 #include "AI/ConnectIt_AISelector.h"
 #include "Board/Rules/ConnectIt_MatchConditionAsset.h"
 #include "Board/Operations/ConnectIt_BoardOperations.h"
@@ -104,22 +106,21 @@ protected:
     {
         Log += TEXT("match; ");
     }
-    virtual void OnOpponentTurnStarted_Implementation(int32 TurnNumber) override
+    virtual void OnTurnStarted_Implementation(int32 Faction, bool bIsMine, int32 TurnNumber) override
     {
-        Log += FString::Printf(TEXT("opponent %d; "), TurnNumber);
+        Log += FString::Printf(TEXT("start %d %s %d; "), Faction, bIsMine ? TEXT("mine") : TEXT("theirs"), TurnNumber);
     }
-
-    virtual void OnAITurnStarted_Implementation(int32 TurnNumber) override
+    virtual void OnTurnEnded_Implementation(int32 Faction, bool bIsMine, int32 TurnNumber) override
     {
-        Log += FString::Printf(TEXT("start %d; "), TurnNumber);
+        Log += FString::Printf(TEXT("end %d %s %d; "), Faction, bIsMine ? TEXT("mine") : TEXT("theirs"), TurnNumber);
     }
-    virtual void OnAITurnEnded_Implementation(int32 TurnNumber) override
-    {
-        Log += FString::Printf(TEXT("end %d; "), TurnNumber);
-    }
-    virtual void OnWinCheckpointReached_Implementation(int32 Faction, bool bIsAI, UConnectIt_MatchConditionAsset* Goal, int32 GroupIndex, FName GroupName) override
+    virtual void OnWinCheckpointReached_Implementation(int32 Faction, bool bIsMine, UConnectIt_MatchConditionAsset* Goal, int32 GroupIndex, FName GroupName) override
     {
         Log += FString::Printf(TEXT("checkpoint %d %s %s %d %s; "),
-            Faction, bIsAI ? TEXT("AI") : TEXT("player"), *GetNameSafe(Goal), GroupIndex, *GroupName.ToString());
+            Faction, bIsMine ? TEXT("mine") : TEXT("theirs"), *GetNameSafe(Goal), GroupIndex, *GroupName.ToString());
+    }
+    virtual void OnMatchWon_Implementation(int32 Faction, bool bIsMine) override
+    {
+        Log += FString::Printf(TEXT("won %d %s; "), Faction, bIsMine ? TEXT("mine") : TEXT("theirs"));
     }
 };

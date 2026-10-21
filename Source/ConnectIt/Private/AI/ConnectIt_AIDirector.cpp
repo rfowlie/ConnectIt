@@ -23,11 +23,11 @@ AConnectIt_AIController* UConnectIt_AIDirector::GetOwningController() const
     return Cast<AConnectIt_AIController>(GetOuter());
 }
 
-UWorld* UConnectIt_AIDirector::GetWorld() const
+int32 UConnectIt_AIDirector::GetFaction() const
 {
-    if (HasAnyFlags(RF_ClassDefaultObject | RF_ArchetypeObject)) return nullptr;
-    const UObject* Outer = GetOuter();
-    return Outer ? Outer->GetWorld() : nullptr;
+    const AConnectIt_AIController* Controller = GetOwningController();
+    const ATurnBasedPlayerState* PS = Controller ? Controller->GetPlayerState<ATurnBasedPlayerState>() : nullptr;
+    return PS ? PS->GetSlotIndex() : INDEX_NONE;
 }
 
 #if WITH_EDITOR

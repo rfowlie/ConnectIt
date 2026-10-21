@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "GameplayTagContainer.h"
 #include "TurnBasedMechanicsStructs.h"
+#include "TurnBasedMechanicsEnums.h"
 #include "Framework/GameMode/TurnBasedGameMode.h"
 #include "Board/Rules/ConnectIt_RuleSet.h"
 #include "ConnectIt_GameMode.generated.h"
@@ -13,6 +14,9 @@ class AConnectIt_AIController;
 class ATurnBasedPlayerState;
 class UActionLoadoutDataAsset;
 class UConnectIt_AIDirector;
+class UConnectIt_LevelDirector;
+class UConnectIt_PlayerDirector;
+class UConnectIt_Director;
 class UConnectIt_MatchConditionAsset;
 class UTurnBasedParticipantManagerComponent;
 class UConnectIt_BoardRequestMediator;
@@ -53,16 +57,6 @@ enum class EConnectItLoadoutTiming : uint8
     // that window: there this quietly becomes NextTurnStart.
     Immediately     UMETA(DisplayName = "Immediately")
 };
-
-// A faction completed one of its goals, and it was not its last.
-// See AConnectIt_GameMode::OnWinCheckpointReached. (Parameters are named
-// PlayerRole, not Role: AActor already has a Role.)
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_FiveParams(FOnWinCheckpointReached,
-    EConnectItRole, PlayerRole, int32, Faction, UConnectIt_MatchConditionAsset*, Goal, int32, GroupIndex, FName, GroupName);
-
-// A faction completed all of its win condition groups: the match is won. See
-// AConnectIt_GameMode::OnMatchWon.
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnMatchWon, EConnectItRole, PlayerRole, int32, Faction);
 
 UCLASS()
 class CONNECTIT_API AConnectIt_GameMode : public ATurnBasedGameMode
@@ -124,12 +118,16 @@ public:
     // The match's rules, including per-match and mid-level changes
     const FConnectItRuleSet& GetRules() const { return Rules; }
 
-    // The loadout human players are seeded with
-    UActionLoadoutDataAsset* GetPlayerLoadout() const { return PlayerLoadout; }
+    // --- Directors (see UConnectIt_Director) ---
 
-    // The match preset's AI director template, if it has one (each AI
-    // controller duplicates it)
-    const UConnectIt_AIDirector* GetAIDirectorTemplate() const { return AIDirectorTemplate; }
+    // The match preset's AI director class (the AI controller makes its own
+    // instance); null = none set
+    TSubclassOf<UConnectIt_AIDirector> GetAIDirectorClass() const { return AIDirectorClass; }
+
+    // This match's directors (null if there is none)
+    UConnectIt_LevelDirector* GetLevelDirector() const { return LevelDirector; }
+    UConnectIt_PlayerDirector* GetPlayerDirector(int32 Faction) const;
+    UConnectIt_AIDirector* GetAIDirector() const;
 
     // The one way to change the match's rules after setup: Change edits this
     // GameMode's rule set, then the GameState mirror is refreshed (clients and
@@ -137,30 +135,14 @@ public:
     // change applies from the next move.
     void ModifyRules(const TFunctionRef<void(FConnectItRuleSet&)>& Change);
 
-    // --- Reacting to the match's goals (for a level Blueprint) ---
-    // The GameMode exists only on the server, so a level Blueprint reaches
-    // these through "Get Game Mode" (null on clients) -- gate on that.
-    // The goals themselves are the rule set's win condition assets, listed on
-    // the match preset (FConnectItRuleSet::PlayerWinConditions / AIWinConditions).
-
-    // A side completed one of its goals and it was not its last (Goal is the
-    // win condition asset; GroupIndex counts from 0 in that side's list;
-    // GroupName is the asset's name).
-    // Fires after the move's scoring visuals. The place to change that side's
-    // loadout for the next stage (SetLoadout). Server only; keep the listener
-    // light: it can run inside the move that completed the group.
-    UPROPERTY(BlueprintAssignable, Category = "ConnectIt|Match")
-    FOnWinCheckpointReached OnWinCheckpointReached;
-
-    // A side completed ALL its win groups: the match is won. (The match result
-    // is written to the GameState and the match ends right after.) Server only.
-    UPROPERTY(BlueprintAssignable, Category = "ConnectIt|Match")
-    FOnMatchWon OnMatchWon;
-
     // Replaces a side's loadout (Player: every human; AI: the AI). Re-seeds all
     // of that side's action uses and cooldowns from the new loadout.
     UFUNCTION(BlueprintCallable, Category = "ConnectIt|Match")
     void SetLoadout(EConnectItRole PlayerRole, UActionLoadoutDataAsset* Loadout,
+        EConnectItLoadoutTiming Timing = EConnectItLoadoutTiming::NextTurnStart);
+
+    // The same for one player (what a Player director calls for its own player)
+    void SetLoadoutForPlayer(ATurnBasedPlayerState* PlayerState, UActionLoadoutDataAsset* Loadout,
         EConnectItLoadoutTiming Timing = EConnectItLoadoutTiming::NextTurnStart);
 
 protected:
@@ -174,7 +156,7 @@ protected:
     void PublishMatchSetup();
 
     // Seeds a joining human's PlayerState action state (uses/caps/cooldowns)
-    // from GetPlayerLoadout(). Server-side, called from PostLogin; a no-op if
+    // from their Player director's StartingLoadout (making the director first). Server-side, called from PostLogin; a no-op if
     // the state is already seeded. This is the only place a human's action
     // state is seeded -- their controller then builds its actions from the
     // PlayerState's loadout.
@@ -196,11 +178,15 @@ protected:
     UFUNCTION()
     void HandleGameOver(FGameplayTag Tag);
 
-    // Bound to UGameEventTaskSubsystem's ConnectIt_Event_WinCheckpointReached
-    // tag completing (see InitialiseBoard). Reads the event being played and
-    // broadcasts OnWinCheckpointReached.
+    // Director events: the participant manager's turn phases (server side) ->
+    // OnTurnStarted / OnTurnEnded for every director
     UFUNCTION()
-    void HandleWinCheckpoint(FGameplayTag Tag);
+    void HandleTurnPhaseChanged(ETurnPhase NewPhase);
+
+    // Director events: every committed board change (server side, before its
+    // visuals) -> checkpoint / match won for every director
+    UFUNCTION()
+    void HandleBoardStateChangedForDirectors();
 
     // Bound to UTurnBasedParticipantManagerComponent::OnInvalidNumberOfPlayers
     // (see HandleMatchHasStarted) -- fires when too few active participants
@@ -226,8 +212,13 @@ private:
     // (see the level config's validation)
     void WarnAboutMissingWinConditions() const;
 
-    // Which side a faction slot is on: the AI's if it is the AI's slot
-    EConnectItRole RoleOfFaction(int32 Faction) const;
+    // Calls Event on every director, in dispatch order (Level, Players by
+    // slot, AI -- UConnectIt_Director::InDispatchOrder)
+    void ForEachDirector(TFunctionRef<void(UConnectIt_Director&)> Event) const;
+
+    // The Player director of PlayerState's player, made from the preset's
+    // class on first ask
+    UConnectIt_PlayerDirector* FindOrCreatePlayerDirector(ATurnBasedPlayerState* PlayerState);
 
     // Loadouts parked by SetLoadout (NextTurnStart), by faction slot
     UPROPERTY()
@@ -247,11 +238,25 @@ private:
     UPROPERTY()
     FConnectItRuleSet Rules;
 
+    // The match preset's director classes
     UPROPERTY()
-    TObjectPtr<UActionLoadoutDataAsset> PlayerLoadout = nullptr;
+    TSubclassOf<UConnectIt_LevelDirector> LevelDirectorClass;
 
     UPROPERTY()
-    TObjectPtr<UConnectIt_AIDirector> AIDirectorTemplate = nullptr;
+    TSubclassOf<UConnectIt_PlayerDirector> PlayerDirectorClass;
+
+    UPROPERTY()
+    TSubclassOf<UConnectIt_AIDirector> AIDirectorClass;
+
+    // The directors this GameMode owns (the AI's belongs to its controller)
+    UPROPERTY()
+    TObjectPtr<UConnectIt_LevelDirector> LevelDirector = nullptr;
+
+    UPROPERTY()
+    TArray<TObjectPtr<UConnectIt_PlayerDirector>> PlayerDirectors;
+
+    // The AI controller spawned for an Adventure match (for its director)
+    TWeakObjectPtr<AConnectIt_AIController> SpawnedAIController;
 
     bool bMatchSetupResolved = false;
 

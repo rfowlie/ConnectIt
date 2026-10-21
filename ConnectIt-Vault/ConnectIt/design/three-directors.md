@@ -1,7 +1,8 @@
 # Three directors: Level, Player, AI
 
 Settled with the owner on 2026-10-20, after setting up the first presets; **not built yet** -- it is part 2 of the plan whose
-part 1 is [conditions-and-legal-moves](conditions-and-legal-moves.md). This note is the starting point for planning it.
+part 1 is [conditions-and-legal-moves](conditions-and-legal-moves.md). **Plan: [three-directors-plan](three-directors-plan.md)**
+(2026-10-20; adds Blueprint rule changes owned by the Level director, and settles the open points below).
 Decision: [2026-10-20-three-directors-and-match-conditions](../_decisions/2026-10-20-three-directors-and-match-conditions.md).
 
 ## Why

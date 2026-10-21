@@ -226,6 +226,8 @@
   },
   "active": "7e9d793cb5121f8b",
   "lastOpenFiles": [
+    "ConnectIt/_logs/2026-10-20-2330.md",
+    "ConnectIt/design/three-directors-plan.md",
     "ConnectIt/_decisions/2026-10-20-three-directors-and-match-conditions.md",
     "ConnectIt/_questions/level-trigger-board-changes.md",
     "ConnectIt/_questions/out-of-uses-condition.md",
@@ -251,8 +253,6 @@
     "ConnectIt/code/recipes/combine-ai-strategies.md",
     "ConnectIt/design/composable-ai.md",
     "ConnectIt/_decisions/2026-09-20-legacy-action-system-removed-stage-3.md",
-    "ConnectIt/code/systems/__INDEX.md",
-    "ConnectIt/_logs/2026-10-14-1500.md",
     "ConnectIt/_logs/2026-10-14-1500.md.tmp.20552.fff456794751",
     "ConnectIt/code/systems/__INDEX.md.tmp.20552.9dd57f9979ed",
     "ConnectIt/code/recipes/set-up-a-custom-ai-opponent.md.tmp.20552.a4b48728e5a1",

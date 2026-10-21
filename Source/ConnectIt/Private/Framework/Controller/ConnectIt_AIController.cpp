@@ -45,8 +45,6 @@ void AConnectIt_AIController::BeginPlay()
     {
         TurnNotificationHandle = ParticipantComponent->OnTurnNotificationReceived_Native.AddUObject(
             this, &AConnectIt_AIController::HandleTurnNotification);
-        OpponentTurnHandle = ParticipantComponent->OnOpponentTurnStarted_Native.AddUObject(
-            this, &AConnectIt_AIController::HandleOpponentTurnStarted);
     }
 
     if (ATurnBasedGameState* GameState = GetWorld()->GetGameState<ATurnBasedGameState>())
@@ -63,11 +61,6 @@ void AConnectIt_AIController::EndPlay(const EEndPlayReason::Type EndPlayReason)
     if (IsValid(ParticipantComponent))
     {
         ParticipantComponent->OnTurnNotificationReceived_Native.Remove(TurnNotificationHandle);
-        ParticipantComponent->OnOpponentTurnStarted_Native.Remove(OpponentTurnHandle);
-    }
-    if (UConnectIt_BoardStateComponent* BoardState = UConnectIt_GameUtilityLibrary::GetBoardStateComponent(this))
-    {
-        BoardState->OnBoardStateChanged.RemoveDynamic(this, &AConnectIt_AIController::HandleBoardStateChanged);
     }
     if (const UWorld* World = GetWorld())
     {
@@ -186,33 +179,28 @@ bool AConnectIt_AIController::IsMyTurnNow() const
 
 void AConnectIt_AIController::InitialiseFromMatchSetup()
 {
-    // The match preset's director is a template inside a shared, loaded-once
-    // asset -- duplicate it (and with it its strategies and selector) so this
-    // controller's decision state is its own (same reason
-    // UConnectIt_BoardRegistrySubsystem duplicates the registry templates).
+    // This controller's own director, made from the match preset's class (its
+    // Class Defaults are the setup; instanced strategies and selector are
+    // made fresh for this instance). The GameMode sends it the director
+    // events, with the others'.
     const AConnectIt_GameMode* GameMode = GetWorld() ? Cast<AConnectIt_GameMode>(GetWorld()->GetAuthGameMode()) : nullptr;
-    if (const UConnectIt_AIDirector* DirectorTemplate = GameMode ? GameMode->GetAIDirectorTemplate() : nullptr)
+    const TSubclassOf<UConnectIt_AIDirector> DirectorClass = GameMode ? GameMode->GetAIDirectorClass() : nullptr;
+    if (DirectorClass)
     {
-        Director = DuplicateObject<UConnectIt_AIDirector>(DirectorTemplate, this);
-        UE_LOG(LogTemp, Log, TEXT("ConnectIt_AIController: AI director '%s'"), *GetNameSafe(DirectorTemplate->GetClass()));
+        Director = NewObject<UConnectIt_AIDirector>(this, DirectorClass);
+        UE_LOG(LogTemp, Log, TEXT("ConnectIt_AIController: AI director '%s'"), *DirectorClass->GetName());
     }
     else
     {
         Director = NewObject<UConnectIt_AIDirector>(this);
         UE_LOG(LogTemp, Warning,
-            TEXT("ConnectIt_AIController: the match preset has no AI Director -- using the default one "
-                 "(MinMax, First Available), which has no loadout: set an AI Director with a Starting Loadout"));
+            TEXT("ConnectIt_AIController: the match preset has no AI Director Class -- using the default one "
+                 "(MinMax, First Available), which has no loadout: set an AI director class with a Starting Loadout"));
     }
 
     Coordinator = NewObject<UConnectIt_AICoordinator>(this);
 
-    if (UConnectIt_BoardStateComponent* BoardState = UConnectIt_GameUtilityLibrary::GetBoardStateComponent(this))
-    {
-        BoardState->OnBoardStateChanged.AddUniqueDynamic(this, &AConnectIt_AIController::HandleBoardStateChanged);
-    }
-
     SeedActionState(Director->StartingLoadout);
-    Director->OnMatchStarted();
 
     // Registration itself is NOT done here -- AConnectIt_GameMode::
     // SpawnAndRegisterAI already calls RegisterAIParticipant right after
@@ -237,11 +225,6 @@ void AConnectIt_AIController::OnMyTurnStarted()
     if (CheckAndApplyForcedMove()) return;
 
     bTurnInProgress = true;
-    if (IsValid(Director))
-    {
-        Director->OnAITurnStarted(LastStartedTurnNumber);
-    }
-
     DecisionsThisTurn = 0;
     BeginDecision();
 }
@@ -518,40 +501,6 @@ void AConnectIt_AIController::OnMyTurnEnded(int32 TurnNumber)
         bHasPendingLoadout = false;
         SeedActionState(PendingLoadout);
         PendingLoadout = nullptr;
-    }
-
-    if (IsValid(Director))
-    {
-        Director->OnAITurnEnded(TurnNumber);
-    }
-}
-
-void AConnectIt_AIController::HandleOpponentTurnStarted(int32 ActiveSlotIndex)
-{
-    if (!IsValid(Director)) return;
-
-    // Anything set here is what the AI plays its next turn with (and, being
-    // on the PlayerState, what the player can be shown in the meantime)
-    const ATurnBasedGameState* GameState = GetWorld() ? GetWorld()->GetGameState<ATurnBasedGameState>() : nullptr;
-    Director->OnOpponentTurnStarted(IsValid(GameState) ? GameState->GetActiveTurnNumber() : INDEX_NONE);
-}
-
-void AConnectIt_AIController::HandleBoardStateChanged()
-{
-    if (!IsValid(Director)) return;
-
-    const UConnectIt_BoardStateComponent* BoardState = UConnectIt_GameUtilityLibrary::GetBoardStateComponent(this);
-    const ATurnBasedPlayerState* PS = GetPlayerState<ATurnBasedPlayerState>();
-    if (!IsValid(BoardState)) return;
-
-    for (const FInstancedStruct& Entry : BoardState->GetChangeEvent().Events)
-    {
-        if (const FConnectItBoardEvent_WinCheckpointReached* Checkpoint =
-            Entry.GetPtr<FConnectItBoardEvent_WinCheckpointReached>())
-        {
-            const bool bIsAI = IsValid(PS) && Checkpoint->Faction == PS->GetSlotIndex();
-            Director->OnWinCheckpointReached(Checkpoint->Faction, bIsAI, Checkpoint->Asset, Checkpoint->GroupIndex, Checkpoint->GroupName);
-        }
     }
 }
 
