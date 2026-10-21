@@ -7,6 +7,9 @@
 #include "Algo/StableSort.h"
 #include "Engine/World.h"
 #include "Framework/GameMode/ConnectIt_GameMode.h"
+#include "Board/Rules/ConnectIt_MatchConditionAsset.h"
+#include "Board/Rules/ConnectIt_RuleSet.h"
+#include "Misc/DataValidation.h"
 
 
 UWorld* UConnectIt_Director::GetWorld() const
@@ -62,3 +65,53 @@ TArray<UConnectIt_Director*> UConnectIt_Director::InDispatchOrder(
     if (IsValid(AI)) Ordered.Add(AI);
     return Ordered;
 }
+
+#if WITH_EDITOR
+void UConnectIt_Director::ValidateConditionList(const UObject* Owner, const TCHAR* ListName,
+    const TArray<TObjectPtr<UConnectIt_MatchConditionAsset>>& List,
+    FDataValidationContext& Context, EDataValidationResult& Result)
+{
+    for (int32 Index = 0; Index < List.Num(); Index++)
+    {
+        const UConnectIt_MatchConditionAsset* Asset = List[Index];
+        if (!IsValid(Asset))
+        {
+            Context.AddWarning(FText::FromString(FString::Printf(TEXT(
+                "%s: %s entry %d is empty -- it is skipped."), *GetNameSafe(Owner), ListName, Index)));
+        }
+        else if (Asset->Conditions.IsEmpty())
+        {
+            Context.AddError(FText::FromString(FString::Printf(TEXT(
+                "%s: %s entry %d ('%s') has no conditions -- it can never be met."),
+                *GetNameSafe(Owner), ListName, Index, *Asset->GetName())));
+            Result = EDataValidationResult::Invalid;
+        }
+    }
+}
+
+void UConnectIt_Director::AddConditionListRuleWarnings(const UObject* Owner, const TCHAR* ListName,
+    const TArray<TObjectPtr<UConnectIt_MatchConditionAsset>>& List,
+    const FConnectItRuleSet& Rules, FDataValidationContext& Context)
+{
+    for (int32 Index = 0; Index < List.Num(); Index++)
+    {
+        const UConnectIt_MatchConditionAsset* Asset = List[Index];
+        if (!IsValid(Asset)) continue;
+
+        for (const TInstancedStruct<FConnectItMatchCondition>& Entry : Asset->Conditions)
+        {
+            const FConnectItMatchCondition* Condition = Entry.GetPtr();
+            if (!Condition) continue;
+
+            TArray<FText> Warnings;
+            Condition->GetValidationWarnings(&Rules, Warnings);
+            for (const FText& Warning : Warnings)
+            {
+                Context.AddWarning(FText::FromString(FString::Printf(TEXT(
+                    "%s: %s entry %d ('%s'): %s"),
+                    *GetNameSafe(Owner), ListName, Index, *Asset->GetName(), *Warning.ToString())));
+            }
+        }
+    }
+}
+#endif

@@ -2030,12 +2030,11 @@ bool FConnectItMatchConditionAssetsTest::RunTest(const FString& Parameters)
     ClearGoal->Conditions.Add(TInstancedStruct<FConnectItMatchCondition>::Make<FConnectItMatchCondition_PieceCount>(PiecesIs(EConnectItPieceCountComparison::Equal, 0)));
 
     FConnectItRuleSet Rules;
-    Rules.PlayerWinConditions = { ScoreGoal, nullptr, ClearGoal };
-    Rules.AIWinConditions = { ScoreGoal };
     TestEqual(TEXT("nothing to play with before resolving"), Rules.PlayerWinGroups.Num(), 0);
 
+    // As the GameMode does with the Player / AI directors' WinConditions
     AddExpectedError(TEXT("Player win condition 1 is empty"), EAutomationExpectedErrorFlags::Contains, 1);
-    Rules.ResolveWinGroups();
+    Rules.ResolveConditionGroups({ ScoreGoal, nullptr, ClearGoal }, { ScoreGoal });
     if (!TestEqual(TEXT("one group per goal, the empty one skipped"), Rules.PlayerWinGroups.Num(), 2)) return false;
     TestTrue(TEXT("in order, with their source"),
         Rules.PlayerWinGroups[0].Source == ScoreGoal && Rules.PlayerWinGroups[1].Source == ClearGoal);
@@ -2068,8 +2067,7 @@ bool FConnectItMatchConditionAssetsTest::RunTest(const FString& Parameters)
 
     // The search plays resolved goals exactly like the same groups built in code
     FConnectItRuleSet AssetRules;
-    AssetRules.PlayerWinConditions = { ScoreGoal };
-    AssetRules.ResolveWinGroups();
+    AssetRules.ResolveConditionGroups({ ScoreGoal }, {});
     const FConnectItRuleSet InlineRules = RulesWonAt(4.f);
 
     FConnectItBoardState SearchBoard = MakeBoard(7);
@@ -2319,6 +2317,53 @@ bool FConnectItAIDirectorTest::RunTest(const FString& Parameters)
         FDataValidationContext Validation;
         TestTrue(TEXT("a player director with no loadout makes the preset invalid"),
             Preset->IsDataValid(Validation) == EDataValidationResult::Invalid);
+    }
+#endif
+    return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FConnectItDirectorConditionsTest,
+    "ConnectIt.AI.DirectorConditions", TestFlags)
+
+bool FConnectItDirectorConditionsTest::RunTest(const FString& Parameters)
+{
+    // Each side's goals live on its director
+    UConnectIt_MatchConditionAsset* ScoreGoal = NewObject<UConnectIt_MatchConditionAsset>(
+        GetTransientPackage(), TEXT("WC_Test_DirectorScore"));
+    ScoreGoal->Conditions.Add(TInstancedStruct<FConnectItMatchCondition>::Make<FConnectItMatchCondition_ScoreThreshold>(ScoreAtLeast(4.f)));
+    UConnectIt_MatchConditionAsset* EmptyGoal = NewObject<UConnectIt_MatchConditionAsset>(
+        GetTransientPackage(), TEXT("WC_Test_DirectorEmpty"));
+
+    UConnectIt_PlayerDirector* Player = NewObject<UConnectIt_PlayerDirector>();
+    Player->WinConditions = { ScoreGoal, nullptr };
+    UConnectIt_TestAIDirector* AI = NewObject<UConnectIt_TestAIDirector>();
+    AI->WinConditions = { ScoreGoal };
+
+    // Resolving from the directors' lists: what the match plays with
+    FConnectItRuleSet Rules;
+    AddExpectedError(TEXT("Player win condition 1 is empty"), EAutomationExpectedErrorFlags::Contains, 1);
+    Rules.ResolveConditionGroups(Player->WinConditions, AI->WinConditions);
+    TestEqual(TEXT("the player's goal, the empty entry skipped"), Rules.PlayerWinGroups.Num(), 1);
+    TestTrue(TEXT("the AI's goal"), Rules.AIWinGroups.Num() == 1 && Rules.AIWinGroups[0].Source == ScoreGoal);
+
+#if WITH_EDITOR
+    {
+        // An empty entry is a warning; a goal with no conditions is invalid
+        FDataValidationContext Validation;
+        Player->StartingLoadout = nullptr;
+        Player->IsDataValid(Validation);
+        TestEqual(TEXT("player: the missing loadout is the only error"), static_cast<int32>(Validation.GetNumErrors()), 1);
+        TestTrue(TEXT("player: the empty entry is a warning"), Validation.GetNumWarnings() >= 1);
+
+        FDataValidationContext Broken;
+        Player->WinConditions = { EmptyGoal };
+        Player->IsDataValid(Broken);
+        TestEqual(TEXT("a goal with no conditions is an error"), static_cast<int32>(Broken.GetNumErrors()), 2);
+
+        FDataValidationContext NoGoals;
+        AI->WinConditions.Reset();
+        AI->IsDataValid(NoGoals);
+        TestTrue(TEXT("an AI with no goals is warned about"), NoGoals.GetNumWarnings() >= 1);
     }
 #endif
     return true;

@@ -146,11 +146,17 @@ void AConnectIt_GameMode::EnsureMatchSetupResolved()
                  "rules, loadout or AI."));
     }
     Rules = IsValid(Preset) ? Preset->Rules : FConnectItRuleSet();
-    // The goal assets' conditions, copied into the plain groups the match plays with
-    Rules.ResolveWinGroups();
     LevelDirectorClass = IsValid(Preset) ? Preset->LevelDirectorClass : nullptr;
     PlayerDirectorClass = IsValid(Preset) ? Preset->PlayerDirectorClass : nullptr;
     AIDirectorClass = IsValid(Preset) ? Preset->AIDirectorClass : nullptr;
+
+    // The directors' goals (their classes' -- goals are fixed for the match),
+    // copied into the plain groups the match plays with
+    const UConnectIt_PlayerDirector* PlayerDefaults = GetDefault<UConnectIt_PlayerDirector>(
+        PlayerDirectorClass ? *PlayerDirectorClass : UConnectIt_PlayerDirector::StaticClass());
+    const UConnectIt_AIDirector* AIDefaults = GetDefault<UConnectIt_AIDirector>(
+        AIDirectorClass ? *AIDirectorClass : UConnectIt_AIDirector::StaticClass());
+    Rules.ResolveConditionGroups(PlayerDefaults->WinConditions, AIDefaults->WinConditions);
 
     // Tweaks from the menu, on top of whichever preset plays
     if (bHasMatchSettings)
@@ -399,7 +405,7 @@ void AConnectIt_GameMode::WarnAboutMissingWinConditions() const
     if (Rules.PlayerWinGroups.IsEmpty())
     {
         UE_LOG(LogTemp, Warning,
-            TEXT("ConnectIt_GameMode: this match has no Player Win Conditions -- "
+            TEXT("ConnectIt_GameMode: the Player director has no Win Conditions -- "
                  "the player can never win"));
     }
 
@@ -407,7 +413,7 @@ void AConnectIt_GameMode::WarnAboutMissingWinConditions() const
     if (Rules.AIFaction != INDEX_NONE && Rules.AIWinGroups.IsEmpty())
     {
         UE_LOG(LogTemp, Warning,
-            TEXT("ConnectIt_GameMode: this match has no AI Win Conditions -- "
+            TEXT("ConnectIt_GameMode: the AI director has no Win Conditions -- "
                  "the AI opponent can never win (it does not borrow the player's)"));
     }
 

@@ -11,6 +11,7 @@ class UConnectIt_LevelDirector;
 class UConnectIt_PlayerDirector;
 class UConnectIt_AIDirector;
 class UConnectIt_MatchConditionAsset;
+struct FConnectItRuleSet;
 
 // What every director shares. A match has three kinds, each the script and
 // setup for one context, all named by class on the match preset and
@@ -101,8 +102,28 @@ public:
 
     virtual UWorld* GetWorld() const override;
 
+#if WITH_EDITOR
+    // What this director's conditions say about a match preset's rules (e.g.
+    // a condition that needs a scoring rule minimum). Called by the preset
+    // naming this class. Default: nothing.
+    virtual void AddConditionRuleWarnings(const FConnectItRuleSet& Rules, FDataValidationContext& Context) const {}
+#endif
+
 protected:
 
     // The server's GameMode (null without a world or off the server)
     AConnectIt_GameMode* GetGameMode() const;
+
+#if WITH_EDITOR
+    // A list of condition assets: an empty entry is skipped (warning); an
+    // asset with no conditions can never be met (invalid)
+    static void ValidateConditionList(const UObject* Owner, const TCHAR* ListName,
+        const TArray<TObjectPtr<UConnectIt_MatchConditionAsset>>& List,
+        FDataValidationContext& Context, EDataValidationResult& Result);
+
+    // Each listed condition's own warnings given a match's rules
+    static void AddConditionListRuleWarnings(const UObject* Owner, const TCHAR* ListName,
+        const TArray<TObjectPtr<UConnectIt_MatchConditionAsset>>& List,
+        const FConnectItRuleSet& Rules, FDataValidationContext& Context);
+#endif
 };

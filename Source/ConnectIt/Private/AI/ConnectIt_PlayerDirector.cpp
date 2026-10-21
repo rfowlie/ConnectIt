@@ -52,6 +52,20 @@ EDataValidationResult UConnectIt_PlayerDirector::IsDataValid(FDataValidationCont
             "ConnectIt_PlayerDirector: No Starting Loadout set -- the player would have no actions.")));
         Result = EDataValidationResult::Invalid;
     }
+
+    // No defaults and no borrowing between sides: the player's own goals
+    if (WinConditions.IsEmpty())
+    {
+        Context.AddWarning(FText::FromString(TEXT(
+            "ConnectIt_PlayerDirector: No Win Conditions -- the player can never win.")));
+        Result = EDataValidationResult::Invalid;
+    }
+    ValidateConditionList(this, TEXT("Win Conditions"), WinConditions, Context, Result);
     return Result;
+}
+
+void UConnectIt_PlayerDirector::AddConditionRuleWarnings(const FConnectItRuleSet& Rules, FDataValidationContext& Context) const
+{
+    AddConditionListRuleWarnings(this, TEXT("Win Conditions"), WinConditions, Rules, Context);
 }
 #endif

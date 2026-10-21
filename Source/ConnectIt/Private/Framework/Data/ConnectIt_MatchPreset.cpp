@@ -44,68 +44,16 @@ EDataValidationResult UConnectIt_MatchPreset::IsDataValid(
         Result = EDataValidationResult::Invalid;
     }
 
-    // No defaults and no borrowing between roles: each preset sets its own.
-    if (Rules.PlayerWinConditions.IsEmpty())
+    // What the directors' conditions say about this preset's rules (e.g. a
+    // condition needing the scoring rule's minimum)
+    if (PlayerDirectorClass)
     {
-        Context.AddWarning(FText::FromString(TEXT(
-            "ConnectIt_MatchPreset: No Rules > Player Win Conditions set -- "
-            "the player can never win.")));
-        Result = EDataValidationResult::Invalid;
+        GetDefault<UConnectIt_PlayerDirector>(PlayerDirectorClass)->AddConditionRuleWarnings(Rules, Context);
     }
-
-    // Not invalid: versus presets have no AI -- but if one plays, an empty
-    // list means it cannot win.
-    if (Rules.AIWinConditions.IsEmpty())
+    if (AIDirectorClass)
     {
-        Context.AddWarning(FText::FromString(TEXT(
-            "ConnectIt_MatchPreset: No Rules > AI Win Conditions set -- an AI "
-            "opponent playing this preset can never win. Set them if it can be "
-            "played against an AI.")));
+        GetDefault<UConnectIt_AIDirector>(AIDirectorClass)->AddConditionRuleWarnings(Rules, Context);
     }
-
-    // A goal that is unset or has no conditions is never satisfied, so it
-    // blocks every goal after it
-    const auto CheckGoals = [this, &Context, &Result](const TCHAR* Side,
-        const TArray<TObjectPtr<UConnectIt_MatchConditionAsset>>& Goals)
-    {
-        for (int32 Index = 0; Index < Goals.Num(); Index++)
-        {
-            if (!IsValid(Goals[Index]))
-            {
-                Context.AddWarning(FText::FromString(FString::Printf(TEXT(
-                    "ConnectIt_MatchPreset: %s win condition %d is empty -- it is skipped."),
-                    Side, Index)));
-            }
-            else
-            {
-                // What the conditions say about this match's rules
-                for (const TInstancedStruct<FConnectItMatchCondition>& Entry : Goals[Index]->Conditions)
-                {
-                    const FConnectItMatchCondition* Condition = Entry.GetPtr();
-                    if (!Condition) continue;
-                    TArray<FText> Warnings;
-                    Condition->GetValidationWarnings(&Rules, Warnings);
-                    for (const FText& Warning : Warnings)
-                    {
-                        Context.AddWarning(FText::FromString(FString::Printf(TEXT(
-                            "ConnectIt_MatchPreset: %s win condition %d ('%s'): %s"),
-                            Side, Index, *Goals[Index]->GetName(), *Warning.ToString())));
-                    }
-                }
-            }
-
-            if (IsValid(Goals[Index]) && Goals[Index]->Conditions.IsEmpty())
-            {
-                Context.AddWarning(FText::FromString(FString::Printf(TEXT(
-                    "ConnectIt_MatchPreset: %s win condition %d ('%s') has no conditions -- "
-                    "it can never be completed, so that side can never win."),
-                    Side, Index, *Goals[Index]->GetName())));
-                Result = EDataValidationResult::Invalid;
-            }
-        }
-    };
-    CheckGoals(TEXT("Player"), Rules.PlayerWinConditions);
-    CheckGoals(TEXT("AI"), Rules.AIWinConditions);
 
     return Result;
 }

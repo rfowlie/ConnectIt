@@ -10,7 +10,7 @@
 class UConnectIt_MatchConditionAsset;
 
 // One goal during a match: the copy of a UConnectIt_MatchConditionAsset's
-// conditions that the rule set plays with (FConnectItRuleSet::ResolveWinGroups
+// conditions that the rule set plays with (FConnectItRuleSet::ResolveConditionGroups
 // makes it). One or more win conditions that must ALL hold at the same time. A
 // group with no conditions is never satisfied -- "nothing to satisfy" is not a
 // win. (All-of is the only way conditions combine today; any other way would

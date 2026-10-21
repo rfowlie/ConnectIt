@@ -28,12 +28,13 @@ class UConnectIt_MatchConditionAsset;
 // it). (Which moves a player can make is not a rule: it is their loadout's
 // actions, each sending a FConnectItBoardOperation.)
 //
-// How a match is won: each side lists its goals (win condition assets) in the
-// order they are to be completed. Completing a goal that is not the last is a
-// checkpoint; completing the last is the win. A side that wants a single goal
-// lists a single one. When the match starts, ResolveWinGroups copies the
-// assets' conditions into PlayerWinGroups / AIWinGroups, which is what
-// everything plays with. How far each faction has got lives on the board
+// How a match is won: each side's director lists its goals (condition assets)
+// in the order they are to be completed (UConnectIt_PlayerDirector /
+// UConnectIt_AIDirector::WinConditions). Completing a goal that is not the
+// last is a checkpoint; completing the last is the win. When the match starts,
+// ResolveConditionGroups copies the assets' conditions into PlayerWinGroups /
+// AIWinGroups, which is what everything plays with (server, clients, the AI's
+// search). How far each faction has got lives on the board
 // (FConnectItBoardState::GroupsCompleted), not here.
 USTRUCT(BlueprintType)
 struct CONNECTIT_API FConnectItRuleSet
@@ -42,18 +43,10 @@ struct CONNECTIT_API FConnectItRuleSet
 
     FConnectItRuleSet();
 
-    // The player's goals, in order. Also the goals of every faction in a match
-    // with no AI (Online).
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Rules")
-    TArray<TObjectPtr<UConnectIt_MatchConditionAsset>> PlayerWinConditions;
-
-    // The AI's goals, in order. Set them whenever the match has an AI: an empty
-    // list means the AI cannot win (it does not borrow the player's).
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Rules")
-    TArray<TObjectPtr<UConnectIt_MatchConditionAsset>> AIWinConditions;
-
-    // What the match plays with: the goals above as plain groups, copied by
-    // ResolveWinGroups when the match starts (empty before). Not authored.
+    // What the match plays with: the directors' goals as plain groups, copied
+    // by ResolveConditionGroups when the match starts (empty before). The
+    // player's apply to every faction in a match with no AI (Online). Not
+    // authored.
     UPROPERTY(Transient, BlueprintReadOnly, Category = "Rules")
     TArray<FConnectItMatchConditionGroup> PlayerWinGroups;
 
@@ -69,10 +62,12 @@ struct CONNECTIT_API FConnectItRuleSet
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Rules", meta = (ExcludeBaseStruct))
     TInstancedStruct<FConnectItScoringRule> ScoringRule;
 
-    // Copies the goal assets' conditions into PlayerWinGroups / AIWinGroups,
-    // in order (empty entries skipped, with a warning). Game thread, once per
-    // match, before the rules are used -- the GameMode does it.
-    void ResolveWinGroups();
+    // Copies the directors' goal assets' conditions into PlayerWinGroups /
+    // AIWinGroups, in order (empty entries skipped, with a warning). Game
+    // thread, once per match, before the rules are used -- the GameMode does it.
+    void ResolveConditionGroups(
+        const TArray<TObjectPtr<UConnectIt_MatchConditionAsset>>& PlayerWinConditions,
+        const TArray<TObjectPtr<UConnectIt_MatchConditionAsset>>& AIWinConditions);
 
     // --- The rules themselves (null if a slot was cleared / left empty) ---
 

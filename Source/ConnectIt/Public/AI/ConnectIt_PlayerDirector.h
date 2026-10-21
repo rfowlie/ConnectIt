@@ -9,6 +9,7 @@
 
 class ATurnBasedPlayerState;
 class UActionLoadoutDataAsset;
+class UConnectIt_MatchConditionAsset;
 
 // A human side: what the player starts with and how that changes as the match
 // goes on (e.g. new moves when the player reaches a checkpoint). One instance
@@ -26,6 +27,13 @@ public:
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Player|Director")
     TObjectPtr<UActionLoadoutDataAsset> StartingLoadout = nullptr;
 
+    // The player's goals, in the order they are completed: completing one
+    // that isn't the last is a checkpoint, completing the last is the win.
+    // Also every faction's goals in a match with no AI. Copied into the match's
+    // rules when it starts (fixed for the match).
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Player|Conditions")
+    TArray<TObjectPtr<UConnectIt_MatchConditionAsset>> WinConditions;
+
     // Its player's faction slot
     virtual int32 GetFaction() const override;
 
@@ -37,8 +45,10 @@ public:
     void SetDirectedPlayerState(ATurnBasedPlayerState* InPlayerState);
 
 #if WITH_EDITOR
-    // A starting loadout is set (checked by the match preset naming this class)
+    // A starting loadout and win conditions are set (checked by the match
+    // preset naming this class)
     virtual EDataValidationResult IsDataValid(FDataValidationContext& Context) const override;
+    virtual void AddConditionRuleWarnings(const FConnectItRuleSet& Rules, FDataValidationContext& Context) const override;
 #endif
 
 protected:

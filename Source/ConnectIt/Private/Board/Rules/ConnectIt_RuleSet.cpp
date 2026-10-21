@@ -12,7 +12,9 @@ FConnectItRuleSet::FConnectItRuleSet()
     ScoringRule = TInstancedStruct<FConnectItScoringRule>::Make<FConnectItScoringRule_Lines>();
 }
 
-void FConnectItRuleSet::ResolveWinGroups()
+void FConnectItRuleSet::ResolveConditionGroups(
+    const TArray<TObjectPtr<UConnectIt_MatchConditionAsset>>& PlayerWinConditions,
+    const TArray<TObjectPtr<UConnectIt_MatchConditionAsset>>& AIWinConditions)
 {
     const auto Resolve = [](const TCHAR* Side,
         const TArray<TObjectPtr<UConnectIt_MatchConditionAsset>>& Assets, TArray<FConnectItMatchConditionGroup>& OutGroups)

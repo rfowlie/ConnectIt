@@ -232,7 +232,7 @@ struct CONNECTIT_API FConnectItBoardEvent_Scored : public FConnectItBoardResultE
 // last one (completing the last is the win: see GameWon). One per group
 // completed, in order -- a move that completes two in a row produces two. The
 // match's goals are listed in the rule set
-// (FConnectItRuleSet::PlayerWinConditions / AIWinConditions).
+// (the Player / AI directors' WinConditions).
 USTRUCT(BlueprintType, meta = (DisplayName = "Win Checkpoint Reached"))
 struct CONNECTIT_API FConnectItBoardEvent_WinCheckpointReached : public FConnectItBoardResultEvent
 {

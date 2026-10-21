@@ -11,6 +11,7 @@ class UActionLoadoutDataAsset;
 class UConnectIt_AIStrategy;
 class UConnectIt_AISelector;
 class UConnectIt_MatchConditionAsset;
+struct FConnectItRuleSet;
 
 // The AI opponent of a match, and how it changes as the match goes on. Named
 // by class on the match preset (UConnectIt_MatchPreset::AIDirectorClass) and
@@ -76,6 +77,12 @@ public:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AI|Director", meta = (ClampMin = 0.0, Units = "s"))
     float MinThinkSeconds = 0.6f;
 
+    // The AI's goals, in the order they are completed (checkpoints, then the
+    // win). Set them: the AI never borrows the player's, and none means it
+    // can't win. Copied into the match's rules when it starts.
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "AI|Conditions")
+    TArray<TObjectPtr<UConnectIt_MatchConditionAsset>> WinConditions;
+
     // --- For the controller ---
 
     // Adopts strategy / selector changes made since the last decision. Called
@@ -93,6 +100,7 @@ public:
     // The setup can play: a starting loadout, strategies, and a loadout that
     // grants moves the strategies play (checked by the match preset holding it)
     virtual EDataValidationResult IsDataValid(FDataValidationContext& Context) const override;
+    virtual void AddConditionRuleWarnings(const FConnectItRuleSet& Rules, FDataValidationContext& Context) const override;
 #endif
 
 protected:
