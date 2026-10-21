@@ -110,9 +110,13 @@ stages; nothing is committed by me.
   `PowerReadyTurn = TurnNumber + CooldownTurns`; ask the effect for operations; for each whose `CanApply` holds, call
   its **`Apply`** (never `CarryOutOperation`, which would start a chain inside the chain) -- its own event, `CauseIndex`
   = the PowerTriggered event; add what it changed to the next step.
-- **Faction:** the change that set it off -- Scoring: the scoring faction; Enter: the arriving piece's owner; **Exit:
-  the leaving piece's owner; Change: the faction of the change that caused it (-1 for nobody)** *(the last two are my
-  extension, to confirm)*.
+- **Faction** (confirmed by the owner): the change that set it off.
+  - Scoring: the scoring faction.
+  - Enter: the arriving piece's owner.
+  - Exit: the leaving piece's owner.
+  - Change: the faction of the change that caused it -- the scoring faction for a multiplier scoring raised, a power's
+    faction for its effect, the operation's faction for a Level director change (-1 when it has none).
+  - An effect that needs a faction (Capture, placing) finds nothing to do at -1: its operation's `CanApply` fails.
 - Once-per-action guard: a bit per (tile, power slot) -- the slots are the tile's own power plus each level-wide power
   (there can be several). Bug guard: 64 settle loops or scoring passes, log + stop.
 - Tests: the owner's chain (place → score through a Push tile → pushed piece completes a line → its tile's power fires);
@@ -125,14 +129,20 @@ stages; nothing is committed by me.
   - `_MovePiece` {From, To} → `PieceMoved` (Push / Repel / Vacuum use it; usable as a player action later).
   - `_AdjustMultiplier` {Position, Delta, floor 1} → `MultiplierChanged` {Position, From, To}.
   - `_SetTilePower` {Position, power name or none} → `PowerChanged` (the Level director's way to give a tile a power).
-- **First powers** -- one per phase, to prove the loop: **Push** (Scoring: a random adjacent piece moved one tile away;
-  no free tile = no effect), **Repel** (Enter: the arriving piece moved one tile in a random free direction), **Crumble**
-  (level-wide, Change, gate multiplier ≥ N: piece removed, then tile deactivated; **does nothing on an inactive tile**
-  -- Toggle flips, so a later change on a crumbled tile would otherwise reactivate it). Poison / Overgrowth / Siphon
-  after playtesting.
+- **First powers** -- one per trigger, to prove the loop (confirmed by the owner, Vacuum added so all four ship):
+  - **Push** (Scoring): a random adjacent piece moved one tile away; no free tile = no effect.
+  - **Repel** (Enter): the arriving piece moved one tile in a random free direction.
+  - **Vacuum** (Exit): the nearest piece in the tile's four orthogonal lines (ties broken by the seed) moved along its
+    line into the emptied tile. The tile occupied again (a capture or swap) or no piece in any line = no effect.
+    *(Claude's reading of the sketch's "the piece behind it": a Remove has no direction. Any distance; a range value
+    only if playtesting asks for one.)*
+  - **Crumble** (level-wide, Change, gate multiplier ≥ N): piece removed, then tile deactivated. **Does nothing on an
+    inactive tile** -- Toggle flips, so a later change on a crumbled tile would otherwise reactivate it.
+  - Poison / Overgrowth / Siphon after playtesting.
 - Typed Blueprint getters in `UConnectIt_BoardEventLibrary` for the new events.
 - Tests: each operation's `CanApply` / `Apply` / change record / event; each power's effect on a small board; a crumbled
-  tile stays crumbled when its multiplier changes again.
+  tile stays crumbled when its multiplier changes again; Vacuum after a Remove pulls the nearest piece, after a capture
+  does nothing; a Vacuum pull fires the Exit power of the tile it pulled from.
 
 ## Stage 6: vault
 
@@ -149,22 +159,32 @@ superseded (rules replicate); log.
   what powers do within its depth; Throughput is reported each stage.
 - Post-scoring reactions; powers on a turn timer; several switches per pole.
 - Player actions that send the new operations (possible once they exist).
-- **Known issue, not fixed here:** the board snapshot replicates as a property, so two board changes in one frame (a
-  move, then an Immediately level operation) can reach a client as one snapshot, and the first change's events never
+- **Known issue, not fixed here:** the board snapshot replicates as a property at the GameState's net update rate, so
+  two board changes closer together than one update reach a client as one snapshot, and the first change's events never
   arrive. Likely, not yet observed; it predates powers. The display board's resync covers the board; the lost
   animations stay lost.
+  - **Owner's direction:** lean on the turn / match phases -- an operation runs in an operation phase that ends only
+    when its visuals are complete, and level changes happen at turn end and turn start, so board changes are spaced
+    out.
+  - **Gaps against today's code:** an Immediately level change runs in the same call as the move
+    (`ConnectIt_GameMode.cpp`, `TakeAfterMove` right after `ProcessRequest`); several changes queued for one turn start
+    are applied back-to-back (`TakeNextTurn`). Either would need to wait for visuals, or same-moment changes become one
+    board change (one snapshot, event lists joined).
+  - **Being fixed separately:** [one-board-change-at-a-time-plan](one-board-change-at-a-time-plan.md) -- a server lock
+    from each board change until its visuals complete.
 
 ## Verification
 
 - Each stage: build (editor closed); `Automation RunTests ConnectIt` all pass; Throughput against today's.
-- Owner, PIE: a level with a Push tile, a Repel tile and Crumble on; place into each; watch the chain play one event at a
-  time, multipliers and score stepping with it; a 2-player match shows the same chain on the client.
+- Owner, PIE: a level with a Push tile, a Repel tile, a Vacuum tile and Crumble on; place into each (and remove next to
+  the Vacuum tile); watch the chain play one event at a time, multipliers and score stepping with it; a 2-player match
+  shows the same chain on the client.
 
-## To confirm before building
+## Settled before building (owner, 2026-10-21)
 
-1. Exit / Change faction rule (Stage 4).
-2. The display board advances when an event's entry **completes** (Stage 2).
-3. First powers: Push, Repel, Crumble (Stage 5).
+- In the review: a shift is not an Enter / Exit; the gate is a plain `MinMultiplier`; `_SetTilePower` stays in Stage 5.
+- Exit acts for the leaving piece's owner; Change for the faction of the change that caused it (Stage 4).
+- The display board applies an event when its entry **completes** (Stage 2).
+- First powers: Push, Repel, Vacuum, Crumble -- one per trigger (Stage 5).
 
-Settled in the review (owner): a shift is not an Enter / Exit; the gate is a plain `MinMultiplier`; `_SetTilePower`
-stays in Stage 5.
+Nothing left to confirm; the plan waits for approval.

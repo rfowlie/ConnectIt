@@ -243,5 +243,42 @@ approved yet). Three points to confirm are listed at its end.
 - **Known issue noted, not fixed:** two board changes in one frame can reach a client as one snapshot, losing the first
   change's events (predates powers).
 
+**2026-10-21, round 11: the plan's last three points (owner).**
+
+- **Faction:** Exit acts for the leaving piece's owner; Change for the faction of the change that caused it (-1 when
+  nobody).
+- **Display board:** applies an event when its queue entry completes.
+- **First powers:** Push, Repel, Crumble, **plus Vacuum** so every trigger ships. Claude's reading of Vacuum, written
+  into the plan for the owner to correct: the nearest piece in the tile's four orthogonal lines (ties broken by the
+  seed) is pulled into the emptied tile, at any distance.
+- **Collapsing snapshots (owner's direction):** lean on the turn / match phases. An operation phase ends only when its
+  visuals are complete, and level changes happen at turn end and turn start, so board changes are spaced out. Gaps
+  noted in the plan: an Immediately level change runs in the same call as the move, and several turn-start changes
+  apply back-to-back. Either they wait for visuals, or same-moment changes merge into one board change. Not decided.
+- The plan has nothing left to confirm; it waits for approval.
+
+**2026-10-21, round 12: one board change at a time (discussed, not decided).**
+
+- **Owner:** a second request arriving while one is resolving and its visuals play is a serious error. Proposal: a
+  successful request moves the match into a "processing request" state; the Mediator refuses new requests until the
+  visuals' completion event arrives.
+- **Claude, from the code:**
+  - The client already freezes its action stack until the outcome RPC (`bAwaitingRequestConfirmation`), but that
+    arrives straight after the server call, not after the visuals. The server's only guard is `IsDispatching`, which
+    lasts for the synchronous call.
+  - The turn-end gate already waits for the server's queued board events (FIFO), but only the server's.
+  - **"Visuals complete" needs an owner:** the server's queue reflects the host's visuals; on a dedicated server it
+    would be instant; clients' playback isn't awaited.
+- **Claude's leans:**
+  - The server owns the lock: player requests are refused (the existing failure path re-enables the client's action).
+  - Level changes queue behind the lock rather than being refused (Immediately = after this change's visuals; several
+    turn-start changes play one after another).
+  - Release on a marker tag queued after the change's events (`BindOnTagComplete`), with a safety timeout.
+  - The busy state is replicated so client UI can block input.
+  - A ConnectIt-side state, not a new plugin turn phase.
+  - Client acknowledgement before release comes later, with online play (still undecided).
+- **Decided (owner):** keep it ConnectIt-side; server visuals for now. Plan:
+  [one-board-change-at-a-time-plan](../design/one-board-change-at-a-time-plan.md) (not approved yet).
+
 ## Resolution
 

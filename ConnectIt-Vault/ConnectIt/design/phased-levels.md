@@ -1,7 +1,8 @@
 # Phased levels: changing the whole match at runtime
 
-Design note (2026-10-21). **Nothing decided beyond the goal; nothing built.** Open thread:
-[phased-levels-runtime-change](../_questions/phased-levels-runtime-change.md).
+Design note (2026-10-21). **Nothing built.** Open thread:
+[phased-levels-runtime-change](../_questions/phased-levels-runtime-change.md). Plan:
+[phased-levels-plan](phased-levels-plan.md) (**approved 2026-10-21**, not built).
 
 ## Goal (owner)
 
@@ -89,6 +90,61 @@ visually and save them as a layout asset.
   visuals follow the replicated board, the same as for every other change.
 - **Re-registering tiles** is a non-issue under this model, as the owner says: the registry becomes something the
   visual reconcile keeps up to date, not a source the board reads from.
+
+## Decided (owner, 2026-10-21, round 5): a phase is an event, not a bundle
+
+- **A phase is a Level director event, not a data bundle.** The Level director moves to a phase (sets the layout, if
+  the phase has one) and fires **On Phase Changed**; the GameMode hub passes it to every director in the usual order
+  (Level, Players by slot, AI). Each director responds in its own script -- e.g. a Player director sets its new win /
+  lose conditions, the AI director its loadout. **Conditions are not stored with layouts**; the "Proposed shape" above
+  is superseded on that point.
+- **Directors can change their conditions at any point in the match**, not only on a phase change -- it depends on
+  the scripting. (Today conditions are copied into the rules once at match start and fixed: this needs a "set win /
+  lose conditions (timing)" on the Player and AI directors, re-copied into the rules the way Set Scoring Rule works.)
+- **Score and goal progress follow conditions, not phases.** A phase that doesn't change a side's conditions leaves its
+  score and goal progress alone.
+- **Camera:** a layout can store a starting camera position; the runtime camera lerps to it when the layout change's
+  event plays -- an ordinary listener on the board event, like other visuals.
+- **Layouts that score on arrival** are a design choice, not an error (e.g. a phase change hands the AI two instant
+  lines to pressure the player). Whether a layout scores depends on the scoring rule in force, so no runtime check.
+  Claude's suggestion: the layout tool can *warn* (not block) when a layout holds complete lines under a chosen rule.
+
+**Revised (owner, round 6): only the Level director changes conditions mid-match.** Conditions are rules, and the
+existing ownership rule already says a side's director changes that side's loadout while the Level director changes the
+board and the rules. So a side's director still authors its **starting** win / lose conditions (Class Defaults, as
+today), but changing them during a match is a Level director call (e.g. **Set Win Conditions / Set Lose Conditions
+(side, conditions, timing)**), not something a Player or AI director does to itself. This replaces "each director sets
+its own conditions" in the first bullet above; other directors still hear On Phase Changed for everything else they own
+(loadouts, AI setup).
+
+### What a condition change means for progress (Claude, to settle)
+
+- **Goal progress** (`GroupsCompleted`, how far a side is through its ordered win goals) indexes into that side's goal
+  list, so a new list must restart it at 0 -- otherwise it points into a list that no longer exists.
+- **Score** is on the board and independent of conditions, so it carries over. But a score goal ("reach 10") set in a
+  later phase may already be met by score earned in an earlier phase and complete instantly. Options: the director
+  resets the score when it wants (a Set Score operation), or score goals count from when they were set (a baseline
+  stored with the goal progress).
+
+**Decided (owner, round 6): carried-over score is a natural consequence, not a bug.** Phases are events that change one
+or many parts of the match without loading a new one, so anything not changed carries over -- score included. No
+mechanism to prevent it; it goes in the designer guidance below (a runtime warning such as "a new score goal is already
+met when set" stays optional). Goal progress still restarts at 0 when a side's goal list is replaced, since it indexes
+into that list.
+
+## Working with phases: designer pitfalls
+
+To become the "script a phased level" recipe once built.
+
+- **Everything you don't change carries over**: pieces, multipliers, score, goal progress (unless the goal list is
+  replaced), loadouts, triggers, the scoring rule.
+- **Score carries over**: a score goal set in a later phase may already be met. Reset the score in the phase change, or
+  set the target relative to the current score.
+- **A new layout can score the moment it appears** if it holds complete lines under the scoring rule in force (and set
+  off Tile Enter powers). Use it on purpose (instant pressure) or avoid it; check the layout under the level's rule.
+- **Tiles in both layouts keep their piece and multiplier.** Clear them explicitly if the phase should start clean.
+- **Replacing a side's goals restarts its goal progress** at the first goal of the new list.
+- **The AI can't foresee a phase change**; it plays the current phase until the change happens.
 
 ## Also to settle
 

@@ -62,6 +62,9 @@ board request with its own chain, through the Level director's existing path (`A
 - One trigger per power.
 - A capture counts as both Tile Exit and Tile Enter.
 - Director, checkpoint and win reactions happen after the chain, as new board requests.
-- A power acts for the faction whose change set it off (the scoring faction for Scoring, the arriving piece's owner
-  for Enter).
+- A power acts for the faction whose change set it off: the scoring faction for Scoring, the arriving piece's owner
+  for Enter, the leaving piece's owner for Exit, and the faction of the change that caused it for Change (-1 when
+  nobody).
+- A shift is neither an Enter nor an Exit (the tile and its piece move together).
+- First powers, one per trigger: Push (Scoring), Repel (Enter), Vacuum (Exit), Crumble (Change, level-wide).
 - A power's effect is a board operation, the same kind a player action sends, so powers and actions can share them.

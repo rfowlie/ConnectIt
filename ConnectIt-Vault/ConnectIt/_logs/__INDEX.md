@@ -6,6 +6,10 @@ Vault-wide passes go in `_core/_logs/`.
 
 Newest first:
 
+- [2026-10-21-1405](2026-10-21-1405.md) — session — plan: one board change at a time (server lock until the change's
+  visuals complete; level changes queue, requests refused, AI waits). Not approved yet.
+- [2026-10-21-1344](2026-10-21-1344.md) — session — tile-powers plan's last points confirmed (Exit / Change faction,
+  display board on complete, Vacuum added as the fourth first power); phase direction for collapsing snapshots noted.
 - [2026-10-21-1328](2026-10-21-1328.md) — session — tile-powers plan reviewed against the code: Shift is not Enter / Exit,
   per-arrival survival, the search's turn number, display-board limits, `ScorePass`, `MinMultiplier` gate. Not approved yet.
 - [2026-10-21-0145](2026-10-21-0145.md) — session — each map names its board and default preset in World Settings
