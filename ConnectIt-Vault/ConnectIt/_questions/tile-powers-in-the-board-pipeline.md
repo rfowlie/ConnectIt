@@ -178,5 +178,70 @@ and a `_decisions/` note.
   randomness, faction passed down the chain, a power with no target still shows and starts its cooldown, events apply
   themselves to the display board, ready-again turn, wave cap, the new events).
 
+**2026-10-21, round 8: two phases, no post-scoring reactions (owner).**
+
+- **Owner:** post-scoring reactions are almost indistinguishable from scoring reactions and complicate the chain. Two
+  phases only: **pre scoring** and **scoring**. Resolve every pre-scoring reaction and its chain; then score; if scoring
+  sets off reactions, resolve them and score again; conclude only when there is no new scoring and no reaction to
+  scoring. A post-scoring step could be inserted at the end later; omitted for now.
+- **Director, checkpoint and win reactions** come after the chain, as new board requests (the Level director's existing
+  path already works this way).
+- **Effect on earlier rounds:** the per-power pre/post timing (round 6-7) is gone; a power's phase follows from its
+  trigger (Enter / Exit / Change: pre scoring; Scoring: scoring). The "React" step and its Enter, Exit, Scoring, Change
+  order are replaced by: settle (Enter, Exit, Change) → score → scoring powers → back to settle.
+- **Claude's reading, to confirm:** what scoring and the scoring powers change goes back through the settle step before
+  the next scoring pass -- the multipliers scoring raised (so Crumble, a Change power, fires there) and what scoring
+  powers moved (so a pushed piece landing on a Repel tile is repelled). The chain ends at the first scoring pass that
+  finds no lines. Written up in [tile-power-triggers](../design/tile-power-triggers.md).
+- **Confirmed (owner, round 8):** that reading is right -- scoring's and the scoring powers' changes go back through
+  settle before the next scoring pass, and the chain ends at the first scoring pass with no lines.
+
+**2026-10-21, round 9: the round-5 defaults (owner).**
+
+- **Agreed:** a piece cleared by scoring sets off Scoring powers, never Tile Exit (Tile Exit = a piece moved off the
+  tile by anything other than scoring); seeded randomness; a power with no effect still shows and starts its cooldown;
+  events apply themselves to the display board, with the before + events = after test; a cause index on events if it
+  stays cheap.
+- **Wave cap:** owner points out the once-per-action guard already guarantees the chain ends (finite tiles, one power
+  each, plus level-wide rules). Agreed: the cap is only a bug guard (log + stop), not a rule.
+- **Powers are operations (owner's direction):** "operation" covers player actions and tile powers alike -- anything
+  that changes the board. A power's effect is a board operation with its own event, so a power and a player action can
+  share it (a Push action and a Push tile). A power adds trigger, gate, cooldown and how it picks its target; an action
+  adds the loadout and the player's chosen target. Random targets are picked (from the board's seed) before the
+  operation runs, so the operation itself stays deterministic. Power Triggered stays as its own event, before the
+  operation's event.
+- **Clarification asked:** which faction a power's operation acts for (examples given); how a cooldown counts (stored as
+  the turn the power is ready again, compared rather than ticked).
+- **Decided (owner):** a power acts for the faction whose change set it off -- the scoring faction for Scoring powers,
+  the arriving piece's owner for Enter. (Claude's extension, to confirm in the plan: Exit = the leaving piece's owner;
+  Change = the faction of the change that caused it, e.g. the scoring faction for a multiplier raised by scoring; -1
+  when nobody, e.g. a Level director toggle.)
+- **Cooldown as explained:** a tile stores ready turn = the turn it fired + cooldown; it can fire when the current turn
+  ≥ ready turn. Cooldown 0 = again in a later action of the same turn; 1 = the opponent's turn; 2 = your next turn. The
+  Mediator stamps the current turn on the board (`LastModifiedTurn` is never updated today).
+
+**2026-10-21: plan written** at the owner's request: [tile-powers-plan](../design/tile-powers-plan.md) (six stages; not
+approved yet). Three points to confirm are listed at its end.
+
+**2026-10-21, round 10: the plan reviewed against the code (Claude; owner answered three calls).**
+
+- **Owner's calls:**
+  - **A shift is neither Tile Enter nor Tile Exit.** Board Shift moves whole tile data, so power, cooldown and piece
+    travel together; shifted positions are only scored (a separate `Moved` list in the change record).
+  - **The gate is a plain `MinMultiplier`** (0 = none) until a second kind of gate is needed.
+  - **`_SetTilePower` stays in Stage 5.**
+- **Fixed in the plan:**
+  - Scoring survival is per arrival (one pass mixes the action's pieces with pieces moved by powers).
+  - The AI's root board is stamped with the decision turn and `ApplyMove` adds 1 per ply. Otherwise cooldowns are off
+    by one at the root and never expire inside the search.
+  - A power's operations call `Apply`, not `CarryOutOperation` (which would nest a chain).
+  - The display board covers tiles and scores; match-level fields are copied from Current when the queue drains; it
+    resyncs and warns if it ends up different.
+  - The scoring rule gets one line-agnostic `ScorePass` call instead of `FindLines` / `ApplyLines` on the base.
+  - The once-per-action guard has a bit per level-wide power, not one for all of them.
+  - Crumble does nothing on an inactive tile (Toggle would otherwise reactivate it).
+- **Known issue noted, not fixed:** two board changes in one frame can reach a client as one snapshot, losing the first
+  change's events (predates powers).
+
 ## Resolution
 

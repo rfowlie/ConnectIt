@@ -37,6 +37,36 @@ The goal is to see what each level is for and what it needs at a glance.
 
 Also to cover: introduce basic multipliers (where in the module is still to be decided).
 
+### Tutorial levels, revised (owner, 2026-10-21)
+
+**Decided: one level per board shape**, for organization -- each a map, a match preset and a small Level director subclass
+on a shared tutorial base (lock every tile but the target, show the prompt, move on at the checkpoint). Phased levels (one
+level whose board changes) are still wanted for later levels -- see [phased-levels](phased-levels.md).
+
+1. **1x1:** place a piece on the only tile.
+2. **4x1, three tiles filled:** fill the last spot to score (introduces scoring).
+3. **4x4, two lines almost complete:** fill the one crossing tile for a double-line score.
+4. **5x1, two tiles filled:** the player makes three; then an opponent arrives and blocks one end; the player completes
+   the other end to score and win (introduces opponents).
+5. **4x4, opponent pieces placed:** the opponent makes pre-set moves; the player must block, and blocking correctly also
+   scores the player's winning line.
+
+In levels 1-3 (and at each scripted step) only the expected tile may be placed on; the UI says, writes or highlights it.
+
+What this needs, against the current code (design only):
+
+- **A tile lock** -- a per-tile "not placeable" flag checked by the one placement rule
+  (`FConnectItBoardOperation_PlacePiece::IsTilePlaceable`, which today checks only active + empty), set by a board
+  operation the Level director calls. Not built. Covers placement, hover highlights and the AI in one place.
+- **An opponent that joins later** -- works today: an AI with an empty loadout passes its turn; the Level director asks
+  the AI director to grant Place Piece.
+- **An opponent with pre-set moves** -- works today in Blueprint: an AI strategy subclass whose `BeginDecision` plays the
+  next position from a list.
+- **Step goals** -- win conditions with checkpoints on the Player director; `On Win Checkpoint Reached` starts the next
+  step.
+- **Level-to-level flow** (load the next level on a win) -- needed for adventure anyway; `ConnectIt_MatchSetupSubsystem`
+  already opens levels.
+
 ## Progression and gating
 
 - The first module is mandatory up to a certain point before other levels can be tried.

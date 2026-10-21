@@ -121,6 +121,7 @@ bool UConnectIt_BoardRequestMediator::ProcessRequest(const FTurnActionRequest& R
         return false;
     }
 
+    // TODO: why is this shift specific logic here?
     // A shift's Steps is client-supplied too: it must be exactly what the
     // sending action grants, or any client could ask for any shift distance.
     // (Direction is not checked -- it is runtime-settable on the action.)

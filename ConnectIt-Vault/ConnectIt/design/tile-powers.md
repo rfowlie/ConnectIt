@@ -7,7 +7,8 @@ through this tile" for free; a power just gives that number a second job.
 
 > **Under discussion (2026-10-21):** how powers fit the board pipeline is tracked in
 > [tile-powers-in-the-board-pipeline](../_questions/tile-powers-in-the-board-pipeline.md). Settled so far: powers run in
-> the rules' after-move step (`FConnectItRuleSet::ResolveBoardChange`), not in the Level director.
+> the rules' after-move step (`FConnectItRuleSet::ResolveBoardChange`), not in the Level director. Triggers and the
+> resolution loop: [tile-power-triggers](tile-power-triggers.md); plan: [tile-powers-plan](tile-powers-plan.md).
 
 ## Why this fits what already exists
 

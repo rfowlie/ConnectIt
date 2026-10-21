@@ -51,12 +51,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "ConnectIt/design/tile-powers.md",
+                "file": "ConnectIt/design/tile-powers-plan.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "tile-powers"
+              "title": "tile-powers-plan"
             }
           }
         ]
@@ -224,11 +224,16 @@
       "bases:Create new base": false
     }
   },
-  "active": "7e9d793cb5121f8b",
+  "active": "d21229c17b1e2e8b",
   "lastOpenFiles": [
+    "ConnectIt/design/tile-power-triggers.md",
+    "BRAIN DUMP.md",
+    "ConnectIt/design/tile-powers-plan.md",
+    "ConnectIt/design/tile-powers.md",
+    "ConnectIt/design/win-condition-stages.md",
+    "ConnectIt/_decisions/2026-10-13-win-condition-groups-as-ordered-stages.md",
     "ConnectIt/_decisions/2026-10-21-no-connectit-project-settings.md",
     "ConnectIt/_questions/tile-powers-in-the-board-pipeline.md.tmp.27632.79ebc63aad1d",
-    "ConnectIt/design/tile-power-triggers.md",
     "ConnectIt/_logs/2026-10-21-0145.md",
     "ConnectIt/_decisions/2026-10-21-map-names-board-and-preset.md",
     "ConnectIt/design/level-world-settings.md",
@@ -250,12 +255,7 @@
     "ConnectIt/_tasks/active.md",
     "ConnectIt/design/content-folders.md",
     "ConnectIt/design/three-directors.md",
-    "ConnectIt/design/tile-powers.md",
-    "BRAIN DUMP.md",
     "ConnectIt/_logs/2026-10-20-1500.md",
-    "ConnectIt/design/conditions-and-legal-moves.md",
-    "ConnectIt/_decisions/2026-10-16-ai-director-pipeline.md",
-    "ConnectIt/design/match-menu-options.md",
     "ConnectIt/code/recipes/set-up-a-custom-ai-opponent.md.tmp.11808.a39c3dc11615",
     "ConnectIt/_logs/2026-10-14-1500.md.tmp.20552.fff456794751",
     "ConnectIt/code/systems/__INDEX.md.tmp.20552.9dd57f9979ed",

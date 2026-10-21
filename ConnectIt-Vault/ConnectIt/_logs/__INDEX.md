@@ -6,9 +6,11 @@ Vault-wide passes go in `_core/_logs/`.
 
 Newest first:
 
+- [2026-10-21-1328](2026-10-21-1328.md) — session — tile-powers plan reviewed against the code: Shift is not Enter / Exit,
+  per-arrival survival, the search's turn number, display-board limits, `ScorePass`, `MinMultiplier` gate. Not approved yet.
 - [2026-10-21-0145](2026-10-21-0145.md) — session — each map names its board and default preset in World Settings
   (`AConnectIt_WorldSettings`); level config = reusable board; `LevelConfigs` registry removed (47/47 tests); then the
-  ConnectIt project settings deleted (build pending). PIE pending.
+  ConnectIt project settings deleted (47/47 tests). PIE pending.
 
 - [2026-10-21-0016](2026-10-21-0016.md) — session — tile powers design discussion: owner decided powers run in the rules'
   after-move step; opened `_questions/tile-powers-in-the-board-pipeline.md` for the rest.
