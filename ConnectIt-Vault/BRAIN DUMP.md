@@ -39,3 +39,8 @@ Post scoring creates a lot of complications. It is much simpler to track and rea
 
 
 Maybe were thinking of it wrong. Perhaps we have two distinct moments, actions and scoring. When a player performs and action, this can trigger reactions, which themselves can trigger reactions.
+
+## Level Director as Third Player
+
+- to better accomodate certain level changes should we give the level director a artificial turn? This way there is a clean oppertunity for it to enact changes and avoid collisions with player turns? It would likely be a turn after each players turn. A phase that provides a clean entry point for level changes again to avoid collisions.
+	- Not used in AI calculations

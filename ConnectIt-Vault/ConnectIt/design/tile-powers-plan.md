@@ -70,7 +70,8 @@ stages; nothing is committed by me.
 - **What events cover:** tiles and scores. The match-level fields no event carries (win progress, target score, game
   over, winner / loser, turn, seed) are copied from Current when the queue drains.
 - **Resync:** when the queue drains and the display board's tiles or scores differ from Current, it snaps to Current and
-  logs a warning. Covers snapshots that collapse on a client (see Not in this plan).
+  logs a warning. A guard: since one board change at a time, snapshots only collapse where the lock can't wait for
+  visuals (a dedicated server).
 - Server logic (directors, Mediator, influence map) keeps reading the real board.
 - Tests: for each operation and a scoring move, Previous + every event's `ApplyTo` == Current, comparing tiles and scores.
 - **Owner, editor:** move visual Blueprints that read the current board (tiles, score UI, `CI_PieceVisualHandler`) to
@@ -159,19 +160,12 @@ superseded (rules replicate); log.
   what powers do within its depth; Throughput is reported each stage.
 - Post-scoring reactions; powers on a turn timer; several switches per pole.
 - Player actions that send the new operations (possible once they exist).
-- **Known issue, not fixed here:** the board snapshot replicates as a property at the GameState's net update rate, so
-  two board changes closer together than one update reach a client as one snapshot, and the first change's events never
-  arrive. Likely, not yet observed; it predates powers. The display board's resync covers the board; the lost
-  animations stay lost.
-  - **Owner's direction:** lean on the turn / match phases -- an operation runs in an operation phase that ends only
-    when its visuals are complete, and level changes happen at turn end and turn start, so board changes are spaced
-    out.
-  - **Gaps against today's code:** an Immediately level change runs in the same call as the move
-    (`ConnectIt_GameMode.cpp`, `TakeAfterMove` right after `ProcessRequest`); several changes queued for one turn start
-    are applied back-to-back (`TakeNextTurn`). Either would need to wait for visuals, or same-moment changes become one
-    board change (one snapshot, event lists joined).
-  - **Being fixed separately:** [one-board-change-at-a-time-plan](one-board-change-at-a-time-plan.md) -- a server lock
-    from each board change until its visuals complete.
+- ~~**Known issue:** two board changes closer together than one network update reach a client as one snapshot, losing
+  the first change's events.~~ **Fixed 2026-10-21** by
+  [one board change at a time](../_decisions/2026-10-21-one-board-change-at-a-time.md): the server locks from each change
+  until its visuals have played out, and level changes play one by one. A whole power chain is one change, so this plan
+  is unaffected. The display board's resync (Stage 2) stays as a guard for what the lock doesn't cover: a dedicated
+  server, where there are no visuals to wait for.
 
 ## Verification
 

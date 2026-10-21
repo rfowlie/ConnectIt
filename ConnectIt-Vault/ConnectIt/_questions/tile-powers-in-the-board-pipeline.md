@@ -278,7 +278,10 @@ approved yet). Three points to confirm are listed at its end.
   - A ConnectIt-side state, not a new plugin turn phase.
   - Client acknowledgement before release comes later, with online play (still undecided).
 - **Decided (owner):** keep it ConnectIt-side; server visuals for now. Plan:
-  [one-board-change-at-a-time-plan](../design/one-board-change-at-a-time-plan.md) (not approved yet).
+  [one-board-change-at-a-time-plan](../design/one-board-change-at-a-time-plan.md).
+- **Built and settled (2026-10-21):** [one board change at a time](../_decisions/2026-10-21-one-board-change-at-a-time.md).
+  For tile powers this means a whole chain is one board change. The chain's events play before anything else changes
+  the board; director reactions follow as their own changes. The tile-powers plan's known issue is closed.
 
 ## Resolution
 

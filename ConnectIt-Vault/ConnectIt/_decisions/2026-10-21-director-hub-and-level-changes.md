@@ -1,7 +1,7 @@
 ---
 Date: 2026-10-21
-status: Active
-superseded by:
+status: Partly superseded
+superseded by: "[2026-10-21-one-board-change-at-a-time](2026-10-21-one-board-change-at-a-time.md) (Immediately = once the current board change has played out, its visuals included; level changes play one at a time)"
 tags:
   - ai
   - architecture

@@ -35,7 +35,8 @@ stages.
   (Class Defaults), replacing `WinConditions` / `LoseConditions` on `UConnectIt_PlayerDirector` and
   `UConnectIt_AIDirector`. `ResolveConditionGroups` reads them from the Level director's class at match setup.
 - **`SetWinConditions(Side, Conditions, Timing)` / `SetLoseConditions(Side, Conditions, Timing)`** on the Level director:
-  through the GameMode's existing level-change queue (Immediately = after the current move; Next Turn Start), re-resolve
+  through the GameMode's existing level-change queue (Immediately = once the current board change has played out --
+  [one board change at a time](../_decisions/2026-10-21-one-board-change-at-a-time.md); Next Turn Start), re-resolve
   that side's groups in the match rules, reset that side's `GroupsCompleted` to 0 when its win goals change, replicate
   the rules (`OnMatchRulesChanged`), restamp win progress / target score on the board.
 - Validation moves with the lists; a preset whose Level director has no goals for a side warns as today.

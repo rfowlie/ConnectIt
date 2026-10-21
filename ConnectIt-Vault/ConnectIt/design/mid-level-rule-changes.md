@@ -89,8 +89,9 @@ that shows it.
 ## Update (2026-10-21): the Level director changes the rules
 
 The Level director ([three-directors](three-directors.md)) now has Blueprint-callable **Set Scoring Rule** (a scoring rule
-struct, e.g. Lines with only some directions ticked) and **Apply Board Operation**, each with a timing (Immediately = right
-after the move being carried out; or Next Turn Start), through `AConnectIt_GameMode::SetScoringRule` /
+struct, e.g. Lines with only some directions ticked) and **Apply Board Operation**, each with a timing (Immediately = once
+the board change resolving has played out -- [one board change at a time](../_decisions/2026-10-21-one-board-change-at-a-time.md);
+or Next Turn Start), through `AConnectIt_GameMode::SetScoringRule` /
 `ApplyLevelOperation`. A per-turn rotation is now Level-director Blueprint work (e.g. On Turn Started -> Set Scoring Rule at
 Next Turn Start). Still open: the telegraphed-vs-hidden question ([rotating-rule-randomness](../_questions/rotating-rule-randomness.md))
 and UI showing the current mode (listen to the GameState's On Match Rules Changed). Recipe: [[script-a-level]].

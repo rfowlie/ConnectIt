@@ -16,7 +16,7 @@ spans:
   - Plugins/UnrealTurnBasedMechanics/Source/UnrealTurnBasedMechanics/Public/Framework/Controller/TurnBasedAIController.h
   - Plugins/UnrealGameIntelligence/Source/UnrealGameIntelligence/Public/Search/MinMax/GI_MinMaxAlphaBeta.h
 reconciled: 2026-10-21
-commit: bbf8daf
+commit: e00ad12
 ---
 
 # AI turn: who the opponent is, and how it takes a move
@@ -56,7 +56,9 @@ sequenceDiagram
     GM->>DI: OnMatchStarted (all directors: Level, Players, AI)
 
     Note over GM: its turn starts (turn-start phase, server)
+    GM->>GM: turn-start level changes join the waiting line, play one at a time
     GM->>DI: OnTurnStarted(AI faction, IsMine = true)
+    AC->>GM: IsBoardSettled? (no: wait for OnBoardChangeSettled)
     AC->>AC: BeginDecision: Director.ApplyPendingChanges; copy Board, Rules, loadouts, AvailableRequestTypes...
     AC->>CO: Begin(Context, Director.Strategies, Director.Selector, think time)
     CO->>ST: StartDecision (all at once; each told budget x share)
@@ -67,6 +69,7 @@ sequenceDiagram
     CO->>SE: Select(answers) -> Endorse -> RankCandidates -> keep MaxCandidates
     CO->>AC: HandleCoordinatorConcluded(candidates)
     AC->>AC: still current? wait out Director.MinThinkSeconds
+    AC->>GM: board changed or unsettled since it began? (yes: decide again once settled)
     loop candidates, best first, until one is accepted
         AC->>MED: GameMode.ProcessBoardRequest(as the loadout action producing it, own slot)
         MED-->>AC: accepted / rejected
@@ -75,7 +78,7 @@ sequenceDiagram
     alt turn-end requirements met
         AC->>PS: ServerSubmitTurnEnd
     else needs more moves (max 16 per turn)
-        AC->>AC: BeginDecision again (DecisionIndexThisTurn + 1)
+        AC->>AC: once the move has played out (settled): BeginDecision again (DecisionIndexThisTurn + 1)
     end
     GM->>DI: OnTurnEnded(AI faction, IsMine = true)
     Note over GM: the opponent's turn starts
@@ -94,7 +97,10 @@ sequenceDiagram
    `StartingLoadout`. No class on the preset = the default director (MinMax, First Available) **with no loadout**: every move
    is rejected. Once the board is initialised the GameMode sends every director `OnMatchStarted`.
 3. **Turn start.** The participant component notifies `TurnStart`/`TurnActive`; the controller starts one decision per turn
-   number. Pause, game over, turn end, timeout or skip cancel it (a pause resumes it if it is still this AI's turn).
+   number -- **once the board has settled** (`BeginDecisionWhenSettled`: `AConnectIt_GameMode::IsBoardSettled`, else it
+   waits for `OnBoardChangeSettled`), so the level's turn-start changes have played out first
+   ([one board change at a time](../../_decisions/2026-10-21-one-board-change-at-a-time.md)). Pause, game over, turn end,
+   timeout or skip cancel it, waiting included (a pause resumes it if it is still this AI's turn).
 4. **Context.** `BeginDecision` first applies the director's pending strategy / selector changes, then copies, on the game
    thread: `Board`, `OwnSlot`, `Rules` (plain thread-safe data), `OwnLoadout`/`OpponentLoadout` (assets: game thread only),
    `TurnNumber`, `DecisionIndexThisTurn`, `AvailableRequestTypes` (produced by its loadout, usable now, and with at least one
@@ -110,14 +116,17 @@ sequenceDiagram
    proposed it), orders them (`RankCandidates`: First Available, Top N with mistake chance, Greedy Scorer, Weighted by
    Confidence, or a Blueprint one) and keeps `MaxCandidates`.
 7. **Think time.** The controller holds the answer until the director's `MinThinkSeconds` have passed since the decision began.
-8. **Submit.** `SubmitDecision` re-checks the decision is current, then tries the candidates in order (`SubmitCandidate`): the
+8. **Submit.** `SubmitDecision` re-checks the decision is current. If the board changed while it thought
+   (`GetNumBoardChanges` differs from the decision's start, e.g. a director's Immediately change from `OnTurnStarted`) or
+   isn't settled, it decides again once settled. Otherwise it tries the candidates in order (`SubmitCandidate`): the
    loadout action whose class `ProducesRequestType` the operation's request type, sent through `GameMode->ProcessBoardRequest` as
    its own slot. The first accepted one wins; if every candidate is rejected it logs an error and ends the turn.
 9. **The gate.** [[UConnectIt_BoardRequestMediator]] holds the AI to the same rules as a human: the action must be in its loadout,
    produce that request type, be usable now (uses, per-turn cap, cooldown), and the operation must `CanApply` to the board. The
    requester's faction is supplied by the server, never by the payload.
-10. **End the turn, or go again.** `PlayerState->CanEndTurn()` true -> `ServerSubmitTurnEnd`. Otherwise the controller decides
-    again from the new board, up to 16 times per turn.
+10. **End the turn, or go again.** `PlayerState->CanEndTurn()` true -> `ServerSubmitTurnEnd` (the turn-end gate queues
+    behind the move's visuals). Otherwise the controller decides again from the new board **once the move, and anything
+    the level does in response, has played out**, up to 16 times per turn.
 11. **The director** hears, from the GameMode and in order Level -> Players -> AI: `OnTurnStarted` / `OnTurnEnded` (from the
     participant manager's turn phases; for the AI's own turn, before the controller starts deciding), and
     `OnWinCheckpointReached` / `OnLoseConditionMet` / `OnMatchWon` (from the server-side committed board change). It changes
@@ -133,6 +142,9 @@ sequenceDiagram
 - **Gameplay reacts to state, not to visual event tags.** The director's events come from committed state (board changes, turn
   notifications). Board event tags play through the visual queue, paced by animations; keying gameplay on them makes it depend
   on animation timing.
+- **One board change at a time.** A request before the board settles is refused, so the AI never submits while a change
+  is playing out ([[place-piece-request]]). Every move it makes waits for the previous one's visuals (the server's own
+  playback).
 - **Strategy and selector state is per controller** (inside its duplicate of the director), reset each match.
 - **Threads.** `Rules` and `Board` in the context are plain data and safe to hand to a background task; `OwnLoadout`,
   `OpponentLoadout` and the strategy / selector UObjects are not. Blueprint strategies and all selectors run on the game thread.
@@ -160,7 +172,8 @@ sequenceDiagram
 - Design: [ai-director-pipeline](../../design/ai-director-pipeline.md), [ai-selector-ideas](../../design/ai-selector-ideas.md),
   [blueprint-ai-strategy-surface](../../design/blueprint-ai-strategy-surface.md),
   [stage-and-match-preset](../../design/stage-and-match-preset.md)
-- Decisions: [director hub and level changes](../../_decisions/2026-10-21-director-hub-and-level-changes.md),
+- Decisions: [one board change at a time](../../_decisions/2026-10-21-one-board-change-at-a-time.md),
+  [director hub and level changes](../../_decisions/2026-10-21-director-hub-and-level-changes.md),
   [three directors](../../_decisions/2026-10-20-three-directors-and-match-conditions.md),
   [AI director pipeline](../../_decisions/2026-10-16-ai-director-pipeline.md),
   [AI controller runs its own turn](../../_decisions/2026-10-02-ai-controller-runs-its-own-turn.md)

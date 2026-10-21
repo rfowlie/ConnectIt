@@ -6,6 +6,8 @@ Vault-wide passes go in `_core/_logs/`.
 
 Newest first:
 
+- [2026-10-21-1429](2026-10-21-1429.md) — session — one board change at a time, Stage 3 (vault): decision; request and
+  snapshot system notes rewritten (they were stale); AI turn, recipe and design notes say what Immediately means now.
 - [2026-10-21-1425](2026-10-21-1425.md) — session — one board change at a time, Stage 2: GameState mirrors "board busy"
   (replicated + event); requests refused until settled; the player controller doesn't send while busy. 47/47 tests.
 - [2026-10-21-1421](2026-10-21-1421.md) — session — one board change at a time, Stage 1: server lock until the change's

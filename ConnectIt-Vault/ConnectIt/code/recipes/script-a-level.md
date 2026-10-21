@@ -48,9 +48,11 @@ rules**. A side's loadout belongs to that side's director: ask it.
    **Lines** with `Connect Length` / `Scoring Directions` set). Clients see it through the replicated rules (**On Match Rules
    Changed** on the GameState) -- that's where UI showing "only vertical lines score" listens. The AI uses it from its next
    decision (its look-ahead assumes it stays). **Get Match Rules** reads the current rules.
-7. **Timing** (both): **Immediately** = now, or -- while a move is being carried out, which is when triggers and checkpoint
-   reactions run -- right after that move finishes, never part-way through its scoring. **Next Turn Start** = when the next
-   turn begins, before the directors hear it started.
+7. **Timing** (both): **Immediately** = now, or -- while a board change is resolving, which is when triggers and checkpoint
+   reactions run -- once that change has played out, its visuals included. Several play one after another, each with its own
+   visuals ([one board change at a time](../../_decisions/2026-10-21-one-board-change-at-a-time.md)). **Next Turn Start** =
+   when the next turn begins: they join the same line, before the directors hear the turn started. The player can't act,
+   and the AI doesn't decide, until they have all played out.
 8. Other sides: **Get Player Director (Faction)** / **Get AI Director** -- e.g. a Player director Blueprint with a custom event
    "Grant Swap" that the level calls at a checkpoint; the Player director then changes its own loadout.
 

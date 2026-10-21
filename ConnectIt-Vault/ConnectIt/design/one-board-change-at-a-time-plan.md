@@ -2,7 +2,8 @@
 
 Discussion: round 12 of [tile-powers-in-the-board-pipeline](../_questions/tile-powers-in-the-board-pipeline.md). Closes the
 known issue in [tile-powers-plan](tile-powers-plan.md) ("Not in this plan"). Written 2026-10-21; approved the same day.
-**Stages 1-2 built** (47/47 tests).
+**All stages done** (code: 47/47 tests; vault: decision
+[2026-10-21-one-board-change-at-a-time](../_decisions/2026-10-21-one-board-change-at-a-time.md)). PIE pending.
 
 ## Context
 

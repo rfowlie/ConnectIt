@@ -51,7 +51,8 @@ happened.
 
 **After the chain:** anything a director does in response -- a checkpoint reaction, a level trigger, a win -- is a new
 board request with its own chain, through the Level director's existing path (`ApplyLevelOperation` →
-`ProcessLevelOperation`, run after the move is committed).
+`ProcessLevelOperation`, run once the move's chain has played out -- [one board change at a
+time](../_decisions/2026-10-21-one-board-change-at-a-time.md)).
 
 ## Decided (owner, 2026-10-21)
 
