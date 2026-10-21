@@ -35,6 +35,13 @@ That suggests it belongs to the level's win condition (per level), not a global 
 the search would need `IsTerminalState` to also report "no moves left" and `EvaluateTerminalState` to return the
 draw/loss/win value for it. Until decided, the AI keeps judging a full board with its evaluation terms.
 
+2026-10-20: the pieces to express it now exist. The condition *No Legal Move: Place Piece* (board-only) is met on a full
+board, and conditions are evaluated by the rule set, so the AI's search sees the same answer. Once lose conditions land
+with the three directors ([three-directors](../design/three-directors.md)), an adventure level can list it as the
+player's lose condition (or as a goal, for a fill-the-board level) -- the per-level answer above. A **draw** is still not
+expressible (no draw outcome exists). Separately, a side with no legal move now **passes**: the AI ends its turn at once,
+and the UI can grey out actions with *Has Any Legal Move*.
+
 ## Resolution
 
 <Filled when status moves to answered / parked.>

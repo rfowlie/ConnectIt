@@ -6,8 +6,8 @@ touches:
   - a Blueprint subclass of UConnectIt_AIDirector (only to change the AI during a match)
   - a Blueprint subclass of UConnectIt_AIStrategy (only for a bespoke strategy)
   - a Blueprint subclass of AConnectIt_AIController (only if you need one; see C)
-reconciled: 2026-10-19
-commit: fd369a4
+reconciled: 2026-10-20
+commit: f03d10d
 ---
 
 # Recipe: set up a custom AI opponent
@@ -51,8 +51,8 @@ director, not from the controller class.
 1. Open the match preset. **AI Director**: pick **ConnectIt AI Director** (the base class). As it comes it is the classic
    opponent: one **MinMax (Classic)** strategy and the **First Available** selector.
 2. **Starting Loadout**: the AI's action loadout.
-3. Under **Strategies > MinMax (Classic) > Search**: `Max Depth` (how many moves it looks ahead), `Time Budget Seconds` (stops
-   deepening when time runs out), the `Evaluation Weights` / `Ordering Weights` (what it values; ordering is speed only), and
+3. Under **Strategies > MinMax (Classic) > Search**: `Max Depth` (how many moves it looks ahead), `Default Time Budget
+   Seconds` (only used when nothing else gives a time; under a director the director's think time decides), the `Evaluation Weights` / `Ordering Weights` (what it values; ordering is speed only), and
    optionally `Own` / `Opponent Request Types` (empty = what each side may do). `Max Candidates` = how many fallback moves it
    hands over; `Label` = its name in logs.
 4. **Mistakes**: set **Selector** to **Top N (Mistake Chance)**: `Top Moves Considered` + `Mistake Chance` (how often it plays
@@ -137,8 +137,11 @@ director, not from the controller class.
   strategies included.
 - **The built-in MinMax only searches Place Piece.** Giving the AI swaps does nothing unless a strategy uses them. Validation
   warns when the loadout grants moves no strategy plays, or none they do (`Get Supported Request Types`).
-- **MinMax's think time is the smaller of its own `Time Budget Seconds` and the director's share.** A long search setting with a
-  short director budget is cut off; its deepest finished ranking is used.
+- **MinMax's think time comes from the director** (`Think Time Budget Seconds` x `Strategy Budget Share`); its own `Default
+  Time Budget Seconds` is only for when nothing gives one (e.g. the Find Best Moves node with a bare context). When time
+  runs out its deepest finished ranking is used.
+- **An AI with no legal move passes**: `Available Request Types` only lists kinds of move that can apply somewhere on the
+  board, and with none left the AI ends its turn (`no legal move -- passing` in the log).
 - **No AI Win Conditions** is the easy one to forget in a new preset: the AI then plays but cannot win.
 - Custom controllers do not change behaviour. If your change "had no effect", you almost certainly wanted the director or a
   strategy.

@@ -1,5 +1,8 @@
 # Plan: MinMax default budget, condition rename + context, Not Enough Pieces, legal moves (part 1 of 2)
 
+> **Status: built** 2026-10-20 (stages 0-5; 42/42 tests); not yet played in PIE. Part 2 (three directors, lose
+> conditions) is designed in [three-directors](three-directors.md). Log: [_logs/2026-10-20-1500](../_logs/2026-10-20-1500.md).
+
 ## Context
 
 The owner set up the first match presets after the AI director pipeline and came back with notes. The 2026-10-20 discussion

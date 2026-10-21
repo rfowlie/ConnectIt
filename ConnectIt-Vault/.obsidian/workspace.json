@@ -51,12 +51,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "ConnectIt/code/systems/ai-turn.md",
+                "file": "ConnectIt/design/tile-powers.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "ai-turn"
+              "title": "tile-powers"
             }
           }
         ]
@@ -226,6 +226,15 @@
   },
   "active": "7e9d793cb5121f8b",
   "lastOpenFiles": [
+    "ConnectIt/_decisions/2026-10-20-three-directors-and-match-conditions.md",
+    "ConnectIt/_questions/level-trigger-board-changes.md",
+    "ConnectIt/_questions/out-of-uses-condition.md",
+    "ConnectIt/_questions/lose-conditions-online.md",
+    "ConnectIt/_tasks/active.md",
+    "ConnectIt/design/content-folders.md",
+    "ConnectIt/design/three-directors.md",
+    "ConnectIt/design/tile-powers.md",
+    "BRAIN DUMP.md",
     "ConnectIt/_logs/2026-10-20-1500.md",
     "ConnectIt/design/conditions-and-legal-moves.md",
     "ConnectIt/_decisions/2026-10-16-ai-director-pipeline.md",
@@ -241,21 +250,12 @@
     "ConnectIt/code/recipes/direct-the-ai-during-a-match.md",
     "ConnectIt/code/recipes/combine-ai-strategies.md",
     "ConnectIt/design/composable-ai.md",
-    "BRAIN DUMP.md",
     "ConnectIt/_decisions/2026-09-20-legacy-action-system-removed-stage-3.md",
-    "ConnectIt/_tasks/active.md",
     "ConnectIt/code/systems/__INDEX.md",
     "ConnectIt/_logs/2026-10-14-1500.md",
     "ConnectIt/_logs/2026-10-14-1500.md.tmp.20552.fff456794751",
     "ConnectIt/code/systems/__INDEX.md.tmp.20552.9dd57f9979ed",
-    "ConnectIt/code/recipes/set-up-a-custom-ai-opponent.md",
     "ConnectIt/code/recipes/set-up-a-custom-ai-opponent.md.tmp.20552.a4b48728e5a1",
-    "ConnectIt/_logs/2026-10-14-1355.md",
-    "ConnectIt/_decisions/2026-10-14-stage-and-match-preset.md",
-    "ConnectIt/design/stage-and-match-preset.md",
-    "ConnectIt/_logs/2026-10-13-1826.md",
-    "ConnectIt/_logs/2026-10-13-1000.md",
-    "ConnectIt/_decisions/2026-10-13-win-condition-groups-as-ordered-stages.md",
     "ConnectIt/design/win-condition-stages.md.tmp.5796.6be027267ff8",
     "Portfolio/_discussions/__README.md.tmp.41572.7da243c4e254",
     "Portfolio/_discussions",

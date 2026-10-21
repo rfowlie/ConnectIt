@@ -45,6 +45,12 @@ presets and pastes them in. Until a level config is re-saved its old values are 
 - Menu choices live on the machine that made them: fine on a listen server (the host runs the GameMode); a lobby where
   clients choose, or a dedicated server, would need them sent to the server.
 
+## Wishlist
+
+- (2026-10-20, owner) **A reusable board data asset**: the board values in a level config (grid definition, registries, piece
+  class) are often the same across levels; one asset per board would let levels share them. Not urgent. See
+  [content-folders](content-folders.md).
+
 ## Status (2026-10-14): written, NOT yet built (on purpose)
 
 - All code is in the working tree: `UConnectIt_MatchPreset` (with the rules / loadout / AI validation that used to be

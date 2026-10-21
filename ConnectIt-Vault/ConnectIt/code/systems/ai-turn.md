@@ -14,8 +14,8 @@ spans:
   - Source/ConnectIt/Public/Board/ConnectIt_BoardRequestMediator.h
   - Plugins/UnrealTurnBasedMechanics/Source/UnrealTurnBasedMechanics/Public/Framework/Controller/TurnBasedAIController.h
   - Plugins/UnrealGameIntelligence/Source/UnrealGameIntelligence/Public/Search/MinMax/GI_MinMaxAlphaBeta.h
-reconciled: 2026-10-19
-commit: fd369a4
+reconciled: 2026-10-20
+commit: f03d10d
 ---
 
 # AI turn: who the opponent is, and how it takes a move
@@ -93,9 +93,12 @@ sequenceDiagram
    number. Pause, game over, turn end, timeout or skip cancel it (a pause resumes it if it is still this AI's turn).
 4. **Context.** `BeginDecision` first applies the director's pending strategy / selector changes, then copies, on the game
    thread: `Board`, `OwnSlot`, `Rules` (plain thread-safe data), `OwnLoadout`/`OpponentLoadout` (assets: game thread only),
-   `TurnNumber`, `DecisionIndexThisTurn`, `AvailableRequestTypes` (produced by its loadout and usable now).
+   `TurnNumber`, `DecisionIndexThisTurn`, `AvailableRequestTypes` (produced by its loadout, usable now, and with at least one
+   legal instance on the board -- `FConnectItBoardOperation::GetLegality`; a kind of move that can't tell stays in).
+   **Nothing available = the AI passes**: it logs `no legal move -- passing` and ends its turn without asking a strategy.
 5. **Decide.** The coordinator starts every strategy (`StartDecision` -> `BeginDecision`, C++ or Blueprint), each with
-   `TimeBudgetSeconds = think time x StrategyBudgetShare`. A strategy answers with `FinishDecision` (a ranked, capped candidate
+   `TimeBudgetSeconds = think time x StrategyBudgetShare` (MinMax uses that; its own `DefaultTimeBudgetSeconds` only when a
+   decision gives none). A strategy answers with `FinishDecision` (a ranked, capped candidate
    list), and may `PublishBestSoFar` while it works; **MinMax publishes each completed search depth** (a thread-safe progress
    holder the game thread reads). The coordinator polls; it concludes when all have finished, or at the think time with each
    strategy's best so far (nothing yet = it keeps waiting, with one warning naming the slow ones).

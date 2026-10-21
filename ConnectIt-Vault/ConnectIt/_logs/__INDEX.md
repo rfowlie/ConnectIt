@@ -6,10 +6,11 @@ Vault-wide passes go in `_core/_logs/`.
 
 Newest first:
 
-- [2026-10-20-1500](2026-10-20-1500.md) — session — conditions and legal moves (part 1 of the 2026-10-20 plan, in progress):
+- [2026-10-20-1500](2026-10-20-1500.md) — session — conditions and legal moves (part 1 of the 2026-10-20 plan, done):
   Stage 1, MinMax `DefaultTimeBudgetSeconds` (the director's think time wins); Stage 2, "match condition"
   rename with redirects; Stage 3, condition context + Not Enough Pieces To Score;
-  Stage 4, legal moves + No Legal Move + AI pass. 42/42 tests.
+  Stage 4, legal moves + No Legal Move + AI pass;
+  Stage 5, vault (three-directors design for part 2, swap rules, folders, questions, decision). 42/42 tests; PIE pending.
 
 - [2026-10-16-1700](2026-10-16-1700.md) — session — AI director pipeline, built in stages 0-7 (2026-10-16..19): plan moved into the vault; Stage 1, MinMax
   publishes each completed depth to a thread-safe progress holder; Stage 2, candidate confidence / score / tags / label and
