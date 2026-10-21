@@ -6,6 +6,9 @@ Vault-wide passes go in `_core/_logs/`.
 
 Newest first:
 
+- [2026-10-21-0016](2026-10-21-0016.md) — session — tile powers design discussion: owner decided powers run in the rules'
+  after-move step; opened `_questions/tile-powers-in-the-board-pipeline.md` for the rest.
+
 - [2026-10-20-2345](2026-10-20-2345.md) — session — filed the owner's Adventure modules / progression / reward notes as `design/adventure-modules-and-progression.md`.
 
 - [2026-10-20-2330](2026-10-20-2330.md) — session — three directors (part 2 of the 2026-10-20 plan, done): Stage 1,

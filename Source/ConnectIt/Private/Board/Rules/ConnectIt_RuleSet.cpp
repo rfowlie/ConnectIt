@@ -107,6 +107,7 @@ float FConnectItRuleSet::ResolveBoardChange(
         TotalPoints += Rule->ApplyScoring(
             Board, Position, Tile->FactionPiece, bArrivingPiecesSurvive, OutEvents);
     }
+    
     return TotalPoints;
 }
 

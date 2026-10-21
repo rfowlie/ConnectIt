@@ -5,6 +5,10 @@ alongside) just scoring points, a tile can trigger an effect on the board once i
 scored on enough. The multiplier already tracks "how many times has a line been completed
 through this tile" for free; a power just gives that number a second job.
 
+> **Under discussion (2026-10-21):** how powers fit the board pipeline is tracked in
+> [tile-powers-in-the-board-pipeline](../_questions/tile-powers-in-the-board-pipeline.md). Settled so far: powers run in
+> the rules' after-move step (`FConnectItRuleSet::ResolveBoardChange`), not in the Level director.
+
 ## Why this fits what already exists
 
 Every tile already has a `Multiplier` (`FConnectItTileData::Multiplier`) that increments by
