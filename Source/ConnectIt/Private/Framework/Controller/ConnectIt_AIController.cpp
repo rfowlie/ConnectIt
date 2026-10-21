@@ -339,6 +339,32 @@ void AConnectIt_AIController::BeginDecision()
             Consider(Config.ActionClass);
         }
     }
+
+    // ...and that can actually apply somewhere on this board (a kind of move
+    // that can't tell stays in)
+    FGameplayTagContainer Legal;
+    for (const FGameplayTag& RequestType : Context.AvailableRequestTypes)
+    {
+        if (FConnectItBoardOperation::GetLegality(RequestType, Context.Board, Context.OwnSlot)
+            != EConnectItMoveLegality::NoLegalMove)
+        {
+            Legal.AddTag(RequestType);
+        }
+    }
+    Context.AvailableRequestTypes = Legal;
+
+    // Nothing it can do: pass rather than wait out the turn timer
+    if (Context.AvailableRequestTypes.IsEmpty())
+    {
+        UE_LOG(LogTemp, Log,
+            TEXT("ConnectIt_AIController: no legal move -- passing (ending the turn)"));
+        if (IsValid(ParticipantComponent))
+        {
+            ParticipantComponent->ServerSubmitTurnEnd();
+        }
+        return;
+    }
+
     DecisionStartTime = FPlatformTime::Seconds();
 
     // May call HandleCoordinatorConcluded before returning (strategies that

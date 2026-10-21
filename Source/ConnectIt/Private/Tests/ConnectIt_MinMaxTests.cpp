@@ -16,6 +16,7 @@
 #include "Board/Rules/ConnectIt_ScoreThresholdCondition.h"
 #include "Board/Rules/ConnectIt_PieceCountCondition.h"
 #include "Board/Rules/ConnectIt_NotEnoughPiecesToScoreCondition.h"
+#include "Board/Rules/ConnectIt_NoLegalMoveCondition.h"
 #include "Board/Operations/ConnectIt_BoardOperations.h"
 #include "Board/Events/ConnectIt_BoardEvents.h"
 #include "ConnectIt_GameplayTags.h"
@@ -486,6 +487,66 @@ bool FConnectItNotEnoughPiecesTest::RunTest(const FString& Parameters)
     Warnings.Reset();
     Stuck.GetValidationWarnings(&Rules, Warnings);
     TestEqual(TEXT("no warning under Lines"), Warnings.Num(), 0);
+    return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FConnectItNoLegalMoveTest,
+    "ConnectIt.Board.Conditions.NoLegalMove", TestFlags)
+
+bool FConnectItNoLegalMoveTest::RunTest(const FString& Parameters)
+{
+    const FConnectItRuleSet Rules;
+    FConnectItMatchCondition_NoLegalMove NoPlace;
+    NoPlace.Move = ConnectIt_Game_PlacePiece;
+    FConnectItMatchCondition_NoLegalMove NoSwap;
+    NoSwap.Move = ConnectIt_Game_SwapPieces;
+
+    // Place: a full board has none, one free tile is enough
+    FConnectItBoardState Full = MakeBoard(2);
+    Full.ScoreBoard = { 0.f, 0.f };
+    Place(Full, 0, 0, 0);
+    Place(Full, 0, 1, 0);
+    Place(Full, 1, 0, 1);
+    const FConnectItConditionContext OneFree{ Full, Rules };
+    TestFalse(TEXT("one free tile: a legal place"), NoPlace.IsMetFor(OneFree, 0));
+    TestTrue(TEXT("the helper agrees"),
+        UConnectIt_BoardStateLibrary::HasAnyLegalMove(Full, ConnectIt_Game_PlacePiece, 0) == EConnectItMoveLegality::Legal);
+    Place(Full, 1, 1, 1);
+    const FConnectItConditionContext NoneFree{ Full, Rules };
+    TestTrue(TEXT("a full board: no legal place"), NoPlace.IsMetFor(NoneFree, 0));
+    TestTrue(TEXT("the helper agrees"),
+        UConnectIt_BoardStateLibrary::HasAnyLegalMove(Full, ConnectIt_Game_PlacePiece, 0) == EConnectItMoveLegality::NoLegalMove);
+
+    // Swap: needs a piece of its own and another piece to trade with
+    FConnectItBoardState Board = MakeBoard(5);
+    Board.ScoreBoard = { 0.f, 0.f };
+    Place(Board, 0, 0, 0);
+    Place(Board, 1, 0, 0);
+    const FConnectItConditionContext Ctx{ Board, Rules };
+    TestTrue(TEXT("no opposing piece: no legal swap"), NoSwap.IsMetFor(Ctx, 0));
+    TestTrue(TEXT("no own piece: no legal swap"), NoSwap.IsMetFor(Ctx, 1));
+    Place(Board, 4, 4, 1);
+    TestFalse(TEXT("one of each: a legal swap"), NoSwap.IsMetFor(Ctx, 0));
+    TestFalse(TEXT("...for both"), NoSwap.IsMetFor(Ctx, 1));
+    TestFalse(TEXT("an unknown faction never"), NoSwap.IsMetFor(Ctx, 5));
+
+    // A kind of move that can't tell yet: Unknown, never met, and validation says so
+    FConnectItMatchCondition_NoLegalMove NoShift;
+    NoShift.Move = ConnectIt_Game_Shift;
+    TestTrue(TEXT("shift can't tell yet"),
+        FConnectItBoardOperation::GetLegality(ConnectIt_Game_Shift, Board, 0) == EConnectItMoveLegality::Unknown);
+    TestFalse(TEXT("so No Legal Move: Shift never holds"), NoShift.IsMetFor(Ctx, 0));
+    TArray<FText> Warnings;
+    NoShift.GetValidationWarnings(nullptr, Warnings);
+    TestEqual(TEXT("...and validation warns"), Warnings.Num(), 1);
+    Warnings.Reset();
+    NoSwap.GetValidationWarnings(nullptr, Warnings);
+    TestEqual(TEXT("no warning for swap"), Warnings.Num(), 0);
+    FConnectItMatchCondition_NoLegalMove Unset;
+    Unset.GetValidationWarnings(nullptr, Warnings);
+    TestEqual(TEXT("no Move set: warned"), Warnings.Num(), 1);
+    TestTrue(TEXT("a tag that isn't a move: Unknown"),
+        FConnectItBoardOperation::GetLegality(FGameplayTag(), Board, 0) == EConnectItMoveLegality::Unknown);
     return true;
 }
 

@@ -20,30 +20,56 @@ namespace
     }
 }
 
+namespace
+{
+    // Every kind of board operation: its request type and a default instance
+    // to ask type-level questions of (HasAnyLegalInstance)
+    struct FOperationCatalog
+    {
+        TArray<FGameplayTag> RequestTypes;
+        TMap<FGameplayTag, FInstancedStruct> Defaults;
+    };
+
+    const FOperationCatalog& GetOperationCatalog()
+    {
+        // Built on first use (game thread, after modules have loaded -- the
+        // GameMode asks at match setup, before any background search).
+        // Blueprint structs can't derive from a C++ struct, so the set never
+        // changes at runtime; afterwards it is only read, from any thread.
+        static const FOperationCatalog Catalog = []()
+        {
+            FOperationCatalog Found;
+            const UScriptStruct* Base = FConnectItBoardOperation::StaticStruct();
+            for (TObjectIterator<UScriptStruct> It; It; ++It)
+            {
+                if (*It == Base || !It->IsChildOf(Base)) continue;
+
+                FInstancedStruct Instance;
+                Instance.InitializeAs(*It);
+                const FGameplayTag RequestType = Instance.Get<FConnectItBoardOperation>().GetRequestType();
+                if (RequestType.IsValid() && !Found.Defaults.Contains(RequestType))
+                {
+                    Found.RequestTypes.Add(RequestType);
+                    Found.Defaults.Add(RequestType, MoveTemp(Instance));
+                }
+            }
+            return Found;
+        }();
+        return Catalog;
+    }
+}
+
 const TArray<FGameplayTag>& FConnectItBoardOperation::GetAllRequestTypes()
 {
-    // Built on first use (game thread, after modules have loaded). Blueprint
-    // structs can't derive from a C++ struct, so the set never changes at
-    // runtime.
-    static const TArray<FGameplayTag> RequestTypes = []()
-    {
-        TArray<FGameplayTag> Found;
-        const UScriptStruct* Base = FConnectItBoardOperation::StaticStruct();
-        for (TObjectIterator<UScriptStruct> It; It; ++It)
-        {
-            if (*It == Base || !It->IsChildOf(Base)) continue;
+    return GetOperationCatalog().RequestTypes;
+}
 
-            FInstancedStruct Instance;
-            Instance.InitializeAs(*It);
-            const FGameplayTag RequestType = Instance.Get<FConnectItBoardOperation>().GetRequestType();
-            if (RequestType.IsValid())
-            {
-                Found.AddUnique(RequestType);
-            }
-        }
-        return Found;
-    }();
-    return RequestTypes;
+EConnectItMoveLegality FConnectItBoardOperation::GetLegality(
+    FGameplayTag RequestType, const FConnectItBoardState& Board, int32 ForFaction)
+{
+    const FInstancedStruct* Default = GetOperationCatalog().Defaults.Find(RequestType);
+    const FConnectItBoardOperation* Operation = Default ? Default->GetPtr<FConnectItBoardOperation>() : nullptr;
+    return Operation ? Operation->HasAnyLegalInstance(Board, ForFaction) : EConnectItMoveLegality::Unknown;
 }
 
 // ---------------------------------------------------------------------------
@@ -64,6 +90,16 @@ bool FConnectItBoardOperation_PlacePiece::CanApply(const FConnectItBoardState& B
         return false;
     }
     return true;
+}
+
+EConnectItMoveLegality FConnectItBoardOperation_PlacePiece::HasAnyLegalInstance(
+    const FConnectItBoardState& Board, int32 ForFaction) const
+{
+    for (int32 TileIndex = 0; TileIndex < Board.NumTiles(); TileIndex++)
+    {
+        if (IsTilePlaceable(Board, TileIndex)) return EConnectItMoveLegality::Legal;
+    }
+    return EConnectItMoveLegality::NoLegalMove;
 }
 
 void FConnectItBoardOperation_PlacePiece::Apply(
@@ -123,6 +159,23 @@ bool FConnectItBoardOperation_SwapPieces::CanApply(const FConnectItBoardState& B
     }
 
     return true;
+}
+
+EConnectItMoveLegality FConnectItBoardOperation_SwapPieces::HasAnyLegalInstance(
+    const FConnectItBoardState& Board, int32 ForFaction) const
+{
+    // CanApply's rule: both tiles occupied, exactly one of them the
+    // faction's -- so a piece of its own and any other occupied tile
+    bool bHasOwn = false;
+    bool bHasOther = false;
+    for (const FConnectItTileData& Tile : Board.TileDataArray)
+    {
+        if (!Tile.bIsOccupied) continue;
+        if (Tile.FactionPiece == ForFaction) bHasOwn = true;
+        else bHasOther = true;
+        if (bHasOwn && bHasOther) return EConnectItMoveLegality::Legal;
+    }
+    return EConnectItMoveLegality::NoLegalMove;
 }
 
 void FConnectItBoardOperation_SwapPieces::Apply(

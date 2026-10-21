@@ -14,6 +14,19 @@
 // storage: no heap allocation for ordinary moves in the AI's search.
 using FConnectItTouchedPositions = TArray<FGridPosition, TInlineAllocator<8>>;
 
+// Whether a faction has any legal move of one kind on a board
+// (FConnectItBoardOperation::HasAnyLegalInstance)
+UENUM(BlueprintType)
+enum class EConnectItMoveLegality : uint8
+{
+    // This kind of move can't tell (yet): treat it as possibly legal
+    Unknown         UMETA(DisplayName = "Unknown"),
+    // At least one is possible
+    Legal           UMETA(DisplayName = "Legal"),
+    // None is possible
+    NoLegalMove     UMETA(DisplayName = "No Legal Move"),
+};
+
 // One specific change to the board, carrying everything it needs: who is
 // making it (Faction) and, in each kind of operation, what it acts on (place
 // a piece on THIS tile, swap THESE two...). It knows whether it may be made
@@ -79,6 +92,22 @@ struct CONNECTIT_API FConnectItBoardOperation
 
     // Short text for logs, e.g. "(3,2)"
     virtual FString Describe() const { return FString(); }
+
+    // Whether ForFaction could make ANY operation of this kind on Board -- e.g.
+    // Place Piece: is any tile placeable? Asked of a default instance (this
+    // operation's own fields are ignored). Board only: says nothing about the
+    // faction's loadout or uses left. Default: Unknown (this kind of move
+    // can't tell yet).
+    virtual EConnectItMoveLegality HasAnyLegalInstance(const FConnectItBoardState& Board, int32 ForFaction) const
+    {
+        return EConnectItMoveLegality::Unknown;
+    }
+
+    // HasAnyLegalInstance for the kind of operation whose request type is
+    // RequestType. Unknown for a tag that isn't a board operation. Safe on any
+    // thread once GetAllRequestTypes has run on the game thread (the GameMode
+    // does it at match setup).
+    static EConnectItMoveLegality GetLegality(FGameplayTag RequestType, const FConnectItBoardState& Board, int32 ForFaction);
 
     // The request type of every kind of board operation there is (every
     // C++ struct deriving from this one), found once by reflection. Lets

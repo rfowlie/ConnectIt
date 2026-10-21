@@ -22,6 +22,7 @@
 #include "Tile/GridTileRegistryBase.h"
 #include "Turn/Participant/TurnBasedParticipantManagerComponent.h"
 #include "AI/ConnectIt_AIDirector.h"
+#include "Board/Operations/ConnectIt_BoardOperation.h"
 
 
 AConnectIt_GameMode::AConnectIt_GameMode()
@@ -109,6 +110,10 @@ void AConnectIt_GameMode::EnsureMatchSetupResolved()
 {
     if (bMatchSetupResolved) return;
     bMatchSetupResolved = true;
+
+    // Build the board-operation catalog here, on the game thread, before any
+    // background search can ask for it (FConnectItBoardOperation::GetLegality)
+    FConnectItBoardOperation::GetAllRequestTypes();
 
     // Main-menu match setup for this level, if any
     FConnectItMatchSettings MatchSettings;

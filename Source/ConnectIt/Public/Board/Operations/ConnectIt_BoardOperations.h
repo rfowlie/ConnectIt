@@ -68,6 +68,7 @@ struct CONNECTIT_API FConnectItBoardOperation_PlacePiece : public FConnectItBoar
         FConnectItTouchedPositions& OutTouched,
         FConnectItBoardChangeEvent* OutEvents) const override;
     virtual FString Describe() const override;
+    virtual EConnectItMoveLegality HasAnyLegalInstance(const FConnectItBoardState& Board, int32 ForFaction) const override;
 };
 
 // Trade places between one of the faction's own pieces and one of another
@@ -95,6 +96,7 @@ struct CONNECTIT_API FConnectItBoardOperation_SwapPieces : public FConnectItBoar
         FConnectItTouchedPositions& OutTouched,
         FConnectItBoardChangeEvent* OutEvents) const override;
     virtual FString Describe() const override;
+    virtual EConnectItMoveLegality HasAnyLegalInstance(const FConnectItBoardState& Board, int32 ForFaction) const override;
 };
 
 // Shift a line of tiles Steps places. Positions is the full line, in line order

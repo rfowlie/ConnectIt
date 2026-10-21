@@ -139,6 +139,12 @@ TArray<FGridPosition> UConnectIt_BoardStateLibrary::GetPlaceablePositions(const 
     return Result;
 }
 
+EConnectItMoveLegality UConnectIt_BoardStateLibrary::HasAnyLegalMove(
+    const FConnectItBoardState& State, FGameplayTag Move, int32 Faction)
+{
+    return FConnectItBoardOperation::GetLegality(Move, State, Faction);
+}
+
 bool UConnectIt_BoardStateLibrary::SimulateOperation(
     const FConnectItBoardState& Board,
     const FConnectItRuleSet& Rules,

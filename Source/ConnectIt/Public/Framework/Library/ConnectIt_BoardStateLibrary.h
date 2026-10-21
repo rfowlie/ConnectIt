@@ -7,6 +7,7 @@
 #include "ConnectIt_Structs.h"
 #include "StructUtils/InstancedStruct.h"
 #include "Board/Rules/ConnectIt_RuleSet.h"
+#include "Board/Operations/ConnectIt_BoardOperation.h"
 #include "ConnectIt_BoardStateLibrary.generated.h"
 
 // Blueprint-callable queries over FConnectItBoardState/FConnectItTileData,
@@ -100,6 +101,15 @@ public:
     UFUNCTION(BlueprintPure, Category = "ConnectIt|Board State",
         meta = (DisplayName = "Get Placeable Positions (Board State)"))
     static TArray<FGridPosition> GetPlaceablePositions(const FConnectItBoardState& State);
+
+    // Whether Faction has any legal move of one kind (Move: its request type,
+    // e.g. Swap Pieces) on the board -- e.g. to grey out an action that has no
+    // possible use, so the player sees they must pass. Board only (not the
+    // loadout or uses left). Unknown: that kind of move can't tell yet --
+    // treat it as possible.
+    UFUNCTION(BlueprintPure, Category = "ConnectIt|Board State",
+        meta = (DisplayName = "Has Any Legal Move (Board State)"))
+    static EConnectItMoveLegality HasAnyLegalMove(const FConnectItBoardState& State, FGameplayTag Move, int32 Faction);
 
     // "What would happen if Faction made this move?" -- without making it.
     // Operation is a board operation struct (e.g. Place Piece with a
