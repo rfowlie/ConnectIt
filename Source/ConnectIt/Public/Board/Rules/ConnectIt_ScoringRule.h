@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "ConnectIt_Structs.h"
 #include "GridMechanicsBaseStructs.h"
+#include "Board/ConnectIt_BoardChanges.h"
 #include "ConnectIt_ScoringRule.generated.h"
 
 
@@ -21,8 +22,8 @@
 // ----------------------------------------------------------------------------
 
 
-// What scores, and how the board changes as a result, after a piece has
-// arrived at a tile.
+// What scores, and how the board changes as a result, after pieces have
+// arrived on tiles.
 USTRUCT(BlueprintType)
 struct CONNECTIT_API FConnectItScoringRule
 {
@@ -30,18 +31,20 @@ struct CONNECTIT_API FConnectItScoringRule
 
     virtual ~FConnectItScoringRule() = default;
 
-    // Faction now has a piece on Position (placed, swapped in, shifted in,
-    // captured...). Apply any scoring to Board -- its ScoreBoard, and whatever
-    // else scoring does to tiles and pieces -- and return the points scored.
-    // bArrivingPieceSurvives: whether that piece stays on Position if it
-    // scores (FConnectItBoardOperation::ArrivingPiecesSurviveScoring).
+    // One scoring pass: Arrivals are the pieces that may now score (placed,
+    // swapped in, shifted, captured...), each with whether it stays on its
+    // tile if it scores. Everything that scores is found on Board as it is,
+    // then all of it is applied at once -- so two arrivals can't break each
+    // other's scores. Apply it to Board (its ScoreBoard, and whatever else
+    // scoring does to tiles and pieces) and return the points scored.
+    // OutChanges gets what scoring did: the positions it ran through
+    // (ScoredThrough) and the tiles whose multiplier changed (TileChanged).
     // OutEvents, if not null, gets one FConnectItBoardEvent_Scored appended
     // per thing that scored (for visuals); the AI's search passes null.
-    virtual float ApplyScoring(
+    virtual float ScorePass(
         FConnectItBoardState& Board,
-        FGridPosition Position,
-        int32 Faction,
-        bool bArrivingPieceSurvives,
+        TConstArrayView<FConnectItPieceArrival> Arrivals,
+        FConnectItBoardChanges& OutChanges,
         FConnectItBoardChangeEvent* OutEvents) const
     {
         return 0.f;

@@ -66,7 +66,7 @@ struct CONNECTIT_API FConnectItBoardOperation_PlacePiece : public FConnectItBoar
     virtual bool CanApply(const FConnectItBoardState& Board, FString* OutWhyNot = nullptr) const override;
     virtual void Apply(
         FConnectItBoardState& Board,
-        FConnectItTouchedPositions& OutTouched,
+        FConnectItBoardChanges& OutChanges,
         FConnectItBoardChangeEvent* OutEvents) const override;
     virtual FString Describe() const override;
     virtual EConnectItMoveLegality HasAnyLegalInstance(const FConnectItBoardState& Board, int32 ForFaction) const override;
@@ -94,7 +94,7 @@ struct CONNECTIT_API FConnectItBoardOperation_SwapPieces : public FConnectItBoar
     virtual bool CanApply(const FConnectItBoardState& Board, FString* OutWhyNot = nullptr) const override;
     virtual void Apply(
         FConnectItBoardState& Board,
-        FConnectItTouchedPositions& OutTouched,
+        FConnectItBoardChanges& OutChanges,
         FConnectItBoardChangeEvent* OutEvents) const override;
     virtual FString Describe() const override;
     virtual EConnectItMoveLegality HasAnyLegalInstance(const FConnectItBoardState& Board, int32 ForFaction) const override;
@@ -132,7 +132,7 @@ struct CONNECTIT_API FConnectItBoardOperation_Shift : public FConnectItBoardOper
     virtual bool CanApply(const FConnectItBoardState& Board, FString* OutWhyNot = nullptr) const override;
     virtual void Apply(
         FConnectItBoardState& Board,
-        FConnectItTouchedPositions& OutTouched,
+        FConnectItBoardChanges& OutChanges,
         FConnectItBoardChangeEvent* OutEvents) const override;
     virtual FString Describe() const override;
 };
@@ -153,7 +153,7 @@ struct CONNECTIT_API FConnectItBoardOperation_ForcePlacePiece : public FConnectI
     virtual bool CanApply(const FConnectItBoardState& Board, FString* OutWhyNot = nullptr) const override;
     virtual void Apply(
         FConnectItBoardState& Board,
-        FConnectItTouchedPositions& OutTouched,
+        FConnectItBoardChanges& OutChanges,
         FConnectItBoardChangeEvent* OutEvents) const override;
     virtual FString Describe() const override;
 };
@@ -172,7 +172,7 @@ struct CONNECTIT_API FConnectItBoardOperation_CapturePiece : public FConnectItBo
     virtual bool CanApply(const FConnectItBoardState& Board, FString* OutWhyNot = nullptr) const override;
     virtual void Apply(
         FConnectItBoardState& Board,
-        FConnectItTouchedPositions& OutTouched,
+        FConnectItBoardChanges& OutChanges,
         FConnectItBoardChangeEvent* OutEvents) const override;
     virtual FString Describe() const override;
 };
@@ -196,7 +196,7 @@ struct CONNECTIT_API FConnectItBoardOperation_RemovePiece : public FConnectItBoa
     virtual bool CanApply(const FConnectItBoardState& Board, FString* OutWhyNot = nullptr) const override;
     virtual void Apply(
         FConnectItBoardState& Board,
-        FConnectItTouchedPositions& OutTouched,
+        FConnectItBoardChanges& OutChanges,
         FConnectItBoardChangeEvent* OutEvents) const override;
     virtual FString Describe() const override;
 };
@@ -215,7 +215,7 @@ struct CONNECTIT_API FConnectItBoardOperation_DestroyTileMultiplier : public FCo
     virtual bool CanApply(const FConnectItBoardState& Board, FString* OutWhyNot = nullptr) const override;
     virtual void Apply(
         FConnectItBoardState& Board,
-        FConnectItTouchedPositions& OutTouched,
+        FConnectItBoardChanges& OutChanges,
         FConnectItBoardChangeEvent* OutEvents) const override;
     virtual FString Describe() const override;
 };
@@ -249,7 +249,7 @@ struct CONNECTIT_API FConnectItBoardOperation_ChangeGoals : public FConnectItBoa
     virtual bool CanApply(const FConnectItBoardState& Board, FString* OutWhyNot = nullptr) const override;
     virtual void Apply(
         FConnectItBoardState& Board,
-        FConnectItTouchedPositions& OutTouched,
+        FConnectItBoardChanges& OutChanges,
         FConnectItBoardChangeEvent* OutEvents) const override;
     virtual FString Describe() const override;
 };
@@ -268,7 +268,7 @@ struct CONNECTIT_API FConnectItBoardOperation_BeginPhase : public FConnectItBoar
     virtual bool CanApply(const FConnectItBoardState& Board, FString* OutWhyNot = nullptr) const override;
     virtual void Apply(
         FConnectItBoardState& Board,
-        FConnectItTouchedPositions& OutTouched,
+        FConnectItBoardChanges& OutChanges,
         FConnectItBoardChangeEvent* OutEvents) const override;
     virtual FString Describe() const override;
 };
@@ -279,7 +279,8 @@ struct CONNECTIT_API FConnectItBoardOperation_BeginPhase : public FConnectItBoar
 // tile class for the visuals -- a class reference, the one UObject reference
 // an operation carries; the AI's search never builds these.
 
-// Take tiles off the board, with whatever is on them. Refused if a position
+// Take tiles off the board, with whatever is on them. A tile disappearing sets
+// off nothing (its piece goes with it, no Piece Exit). Refused if a position
 // isn't a tile (or is given twice).
 USTRUCT(BlueprintType, meta = (DisplayName = "Remove Tiles"))
 struct CONNECTIT_API FConnectItBoardOperation_RemoveTiles : public FConnectItBoardOperation
@@ -293,15 +294,15 @@ struct CONNECTIT_API FConnectItBoardOperation_RemoveTiles : public FConnectItBoa
     virtual bool CanApply(const FConnectItBoardState& Board, FString* OutWhyNot = nullptr) const override;
     virtual void Apply(
         FConnectItBoardState& Board,
-        FConnectItTouchedPositions& OutTouched,
+        FConnectItBoardChanges& OutChanges,
         FConnectItBoardChangeEvent* OutEvents) const override;
     virtual FString Describe() const override;
 };
 
-// Put tiles on the board with their starting values. A starting piece is an
-// ordinary arrival: it can complete a line and score, like a placed piece
-// (and stays, as a placed piece does). Refused if a position is already a
-// tile (or is given twice).
+// Put tiles on the board with their starting values. A tile appearing sets off
+// nothing (no Piece Enter), but its starting piece is scored: it can complete
+// a line, like a placed piece (and stays, as a placed piece does). Refused if
+// a position is already a tile (or is given twice).
 USTRUCT(BlueprintType, meta = (DisplayName = "Add Tiles"))
 struct CONNECTIT_API FConnectItBoardOperation_AddTiles : public FConnectItBoardOperation
 {
@@ -314,7 +315,7 @@ struct CONNECTIT_API FConnectItBoardOperation_AddTiles : public FConnectItBoardO
     virtual bool CanApply(const FConnectItBoardState& Board, FString* OutWhyNot = nullptr) const override;
     virtual void Apply(
         FConnectItBoardState& Board,
-        FConnectItTouchedPositions& OutTouched,
+        FConnectItBoardChanges& OutChanges,
         FConnectItBoardChangeEvent* OutEvents) const override;
     virtual FString Describe() const override;
 };
@@ -353,7 +354,7 @@ struct CONNECTIT_API FConnectItBoardOperation_ChangeLayout : public FConnectItBo
     virtual bool CanApply(const FConnectItBoardState& Board, FString* OutWhyNot = nullptr) const override;
     virtual void Apply(
         FConnectItBoardState& Board,
-        FConnectItTouchedPositions& OutTouched,
+        FConnectItBoardChanges& OutChanges,
         FConnectItBoardChangeEvent* OutEvents) const override;
     virtual FString Describe() const override;
 };
@@ -371,7 +372,7 @@ struct CONNECTIT_API FConnectItBoardOperation_ToggleTileActive : public FConnect
     virtual bool CanApply(const FConnectItBoardState& Board, FString* OutWhyNot = nullptr) const override;
     virtual void Apply(
         FConnectItBoardState& Board,
-        FConnectItTouchedPositions& OutTouched,
+        FConnectItBoardChanges& OutChanges,
         FConnectItBoardChangeEvent* OutEvents) const override;
     virtual FString Describe() const override;
 };

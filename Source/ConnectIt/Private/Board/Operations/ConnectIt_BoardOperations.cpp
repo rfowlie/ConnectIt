@@ -104,13 +104,13 @@ EConnectItMoveLegality FConnectItBoardOperation_PlacePiece::HasAnyLegalInstance(
 
 void FConnectItBoardOperation_PlacePiece::Apply(
     FConnectItBoardState& Board,
-    FConnectItTouchedPositions& OutTouched,
+    FConnectItBoardChanges& OutChanges,
     FConnectItBoardChangeEvent* OutEvents) const
 {
     if (FConnectItTileData* Tile = Board.GetTileDataMutable(Position))
     {
         Tile->SetFactionPiece(Faction);
-        OutTouched.Add(Position);
+        OutChanges.AddEntered(Position, Faction, ArrivingPiecesSurviveScoring());
     }
 
     if (OutEvents)
@@ -180,7 +180,7 @@ EConnectItMoveLegality FConnectItBoardOperation_SwapPieces::HasAnyLegalInstance(
 
 void FConnectItBoardOperation_SwapPieces::Apply(
     FConnectItBoardState& Board,
-    FConnectItTouchedPositions& OutTouched,
+    FConnectItBoardChanges& OutChanges,
     FConnectItBoardChangeEvent* OutEvents) const
 {
     FConnectItTileData* DataA = Board.GetTileDataMutable(PositionA);
@@ -192,9 +192,12 @@ void FConnectItBoardOperation_SwapPieces::Apply(
         DataA->SetFactionPiece(PieceB);
         DataB->SetFactionPiece(PieceA);
 
-        // A first, then B -- the order the after-move step scores them in
-        OutTouched.Add(PositionA);
-        OutTouched.Add(PositionB);
+        // Each tile's piece left and the other's arrived. A first, then B --
+        // the order the after-move step scores them in.
+        OutChanges.AddExited(PositionA, PieceA);
+        OutChanges.AddExited(PositionB, PieceB);
+        OutChanges.AddEntered(PositionA, PieceB, ArrivingPiecesSurviveScoring());
+        OutChanges.AddEntered(PositionB, PieceA, ArrivingPiecesSurviveScoring());
     }
 
     if (OutEvents)
@@ -273,7 +276,7 @@ bool FConnectItBoardOperation_Shift::CanApply(const FConnectItBoardState& Board,
 
 void FConnectItBoardOperation_Shift::Apply(
     FConnectItBoardState& Board,
-    FConnectItTouchedPositions& OutTouched,
+    FConnectItBoardChanges& OutChanges,
     FConnectItBoardChangeEvent* OutEvents) const
 {
     // A tile with bCanShift false is skipped -- it keeps its own data
@@ -317,13 +320,15 @@ void FConnectItBoardOperation_Shift::Apply(
         ShiftEndPositions.Add(ShiftablePositions[Index]);
     }
 
-    // Any position in the line that now holds a piece might complete a line
+    // Any position in the line that now holds a piece might complete a line.
+    // Moved, not entered: each piece travelled with its tile (and the tile's
+    // power, if it has one), so no piece arrived on a tile.
     for (const FGridPosition& Position : Positions)
     {
         const FConnectItTileData* Data = Board.GetTileData(Position);
         if (Data && Data->bIsOccupied)
         {
-            OutTouched.Add(Position);
+            OutChanges.AddMoved(Position, Data->FactionPiece, ArrivingPiecesSurviveScoring());
         }
     }
 
@@ -370,13 +375,13 @@ bool FConnectItBoardOperation_ForcePlacePiece::CanApply(const FConnectItBoardSta
 
 void FConnectItBoardOperation_ForcePlacePiece::Apply(
     FConnectItBoardState& Board,
-    FConnectItTouchedPositions& OutTouched,
+    FConnectItBoardChanges& OutChanges,
     FConnectItBoardChangeEvent* OutEvents) const
 {
     if (FConnectItTileData* Tile = Board.GetTileDataMutable(Position))
     {
         Tile->SetFactionPiece(Faction);
-        OutTouched.Add(Position);
+        OutChanges.AddEntered(Position, Faction, ArrivingPiecesSurviveScoring());
     }
 
     if (OutEvents)
@@ -424,7 +429,7 @@ bool FConnectItBoardOperation_CapturePiece::CanApply(const FConnectItBoardState&
 
 void FConnectItBoardOperation_CapturePiece::Apply(
     FConnectItBoardState& Board,
-    FConnectItTouchedPositions& OutTouched,
+    FConnectItBoardChanges& OutChanges,
     FConnectItBoardChangeEvent* OutEvents) const
 {
     int32 PreviousFaction = INDEX_NONE;
@@ -432,7 +437,7 @@ void FConnectItBoardOperation_CapturePiece::Apply(
     {
         PreviousFaction = Tile->FactionPiece;
         Tile->SetFactionPiece(Faction);
-        OutTouched.Add(Position);
+        OutChanges.AddPieceChanged(Position, Faction, PreviousFaction, ArrivingPiecesSurviveScoring());
     }
 
     if (OutEvents)
@@ -482,15 +487,16 @@ bool FConnectItBoardOperation_RemovePiece::CanApply(const FConnectItBoardState& 
 
 void FConnectItBoardOperation_RemovePiece::Apply(
     FConnectItBoardState& Board,
-    FConnectItTouchedPositions& OutTouched,
+    FConnectItBoardChanges& OutChanges,
     FConnectItBoardChangeEvent* OutEvents) const
 {
-    // No piece arrives anywhere, so nothing is reported in OutTouched
+    // A piece leaves; nothing arrives, so nothing scores
     int32 RemovedFaction = INDEX_NONE;
     if (FConnectItTileData* Tile = Board.GetTileDataMutable(Position))
     {
         RemovedFaction = Tile->FactionPiece;
         Tile->SetFactionPiece(-1);
+        OutChanges.AddExited(Position, RemovedFaction);
     }
 
     if (OutEvents)
@@ -538,12 +544,13 @@ bool FConnectItBoardOperation_DestroyTileMultiplier::CanApply(const FConnectItBo
 
 void FConnectItBoardOperation_DestroyTileMultiplier::Apply(
     FConnectItBoardState& Board,
-    FConnectItTouchedPositions& OutTouched,
+    FConnectItBoardChanges& OutChanges,
     FConnectItBoardChangeEvent* OutEvents) const
 {
     if (FConnectItTileData* Tile = Board.GetTileDataMutable(Position))
     {
         Tile->Multiplier = 1.0f;
+        OutChanges.AddTileChanged(Position, EConnectItTileChange::Multiplier, Faction);
     }
 
     if (OutEvents)
@@ -581,7 +588,7 @@ bool FConnectItBoardOperation_ToggleTileActive::CanApply(const FConnectItBoardSt
 
 void FConnectItBoardOperation_ToggleTileActive::Apply(
     FConnectItBoardState& Board,
-    FConnectItTouchedPositions& OutTouched,
+    FConnectItBoardChanges& OutChanges,
     FConnectItBoardChangeEvent* OutEvents) const
 {
     bool bNowActive = false;
@@ -589,6 +596,7 @@ void FConnectItBoardOperation_ToggleTileActive::Apply(
     {
         Tile->bIsActive = !Tile->bIsActive;
         bNowActive = Tile->bIsActive;
+        OutChanges.AddTileChanged(Position, EConnectItTileChange::Active, Faction);
     }
 
     if (OutEvents)
@@ -635,7 +643,7 @@ bool FConnectItBoardOperation_ChangeGoals::CanApply(const FConnectItBoardState& 
 
 void FConnectItBoardOperation_ChangeGoals::Apply(
     FConnectItBoardState& Board,
-    FConnectItTouchedPositions& OutTouched,
+    FConnectItBoardChanges& OutChanges,
     FConnectItBoardChangeEvent* OutEvents) const
 {
     // New win goals start from the first; lose conditions keep no progress
@@ -699,7 +707,7 @@ bool FConnectItBoardOperation_BeginPhase::CanApply(const FConnectItBoardState& B
 
 void FConnectItBoardOperation_BeginPhase::Apply(
     FConnectItBoardState& Board,
-    FConnectItTouchedPositions& OutTouched,
+    FConnectItBoardChanges& OutChanges,
     FConnectItBoardChangeEvent* OutEvents) const
 {
     const FGameplayTag Previous = Board.CurrentPhase;
@@ -811,11 +819,12 @@ namespace
         }
     }
 
-    // Puts the tiles on. A starting piece arrives (reported for scoring) and
-    // counts as one of its faction's starting pieces, like a designer-placed
-    // piece at the start of the match (piece-count goals measure from those).
+    // Puts the tiles on. A starting piece is scored (reported as moved: a tile
+    // appearing sets off no Piece Enter) and counts as one of its faction's
+    // starting pieces, like a designer-placed piece at the start of the match
+    // (piece-count goals measure from those).
     void AddTilesTo(FConnectItBoardState& Board, TConstArrayView<FConnectItBoardLayoutCell> Cells,
-        FConnectItTouchedPositions& OutTouched, FConnectItBoardEvent_TilesAdded& OutEvent)
+        FConnectItBoardChanges& OutChanges, FConnectItBoardEvent_TilesAdded& OutEvent)
     {
         const int32 NumFactions = Board.ScoreBoard.Num();
         for (const FConnectItBoardLayoutCell& Cell : Cells)
@@ -825,7 +834,7 @@ namespace
             Board.SetTileData(Cell.Position, Cell.TileData.ToTileData(NumFactions));
             if (Cell.TileData.HasStartingPiece(NumFactions))
             {
-                OutTouched.Add(Cell.Position);
+                OutChanges.AddMoved(Cell.Position, Cell.TileData.StartingFactionPiece, true);
                 if (Board.StartingPieces.IsValidIndex(Cell.TileData.StartingFactionPiece))
                 {
                     Board.StartingPieces[Cell.TileData.StartingFactionPiece]++;
@@ -863,7 +872,7 @@ bool FConnectItBoardOperation_RemoveTiles::CanApply(const FConnectItBoardState& 
 
 void FConnectItBoardOperation_RemoveTiles::Apply(
     FConnectItBoardState& Board,
-    FConnectItTouchedPositions& OutTouched,
+    FConnectItBoardChanges& OutChanges,
     FConnectItBoardChangeEvent* OutEvents) const
 {
     FConnectItBoardEvent_TilesRemoved Event;
@@ -896,11 +905,11 @@ bool FConnectItBoardOperation_AddTiles::CanApply(const FConnectItBoardState& Boa
 
 void FConnectItBoardOperation_AddTiles::Apply(
     FConnectItBoardState& Board,
-    FConnectItTouchedPositions& OutTouched,
+    FConnectItBoardChanges& OutChanges,
     FConnectItBoardChangeEvent* OutEvents) const
 {
     FConnectItBoardEvent_TilesAdded Event;
-    AddTilesTo(Board, Cells, OutTouched, Event);
+    AddTilesTo(Board, Cells, OutChanges, Event);
     if (OutEvents)
     {
         OutEvents->Add(Event);
@@ -932,14 +941,14 @@ bool FConnectItBoardOperation_ChangeLayout::CanApply(const FConnectItBoardState&
 
 void FConnectItBoardOperation_ChangeLayout::Apply(
     FConnectItBoardState& Board,
-    FConnectItTouchedPositions& OutTouched,
+    FConnectItBoardChanges& OutChanges,
     FConnectItBoardChangeEvent* OutEvents) const
 {
     FConnectItBoardEvent_TilesRemoved Removed;
     RemoveTilesFrom(Board, RemovePositions, Removed);
 
     FConnectItBoardEvent_TilesAdded Added;
-    AddTilesTo(Board, AddCells, OutTouched, Added);
+    AddTilesTo(Board, AddCells, OutChanges, Added);
 
     if (OutEvents)
     {

@@ -115,26 +115,50 @@ int32 FConnectItRuleSet::GetLosingFaction(const FConnectItBoardState& Board, con
 
 float FConnectItRuleSet::ResolveBoardChange(
     FConnectItBoardState& Board,
-    TConstArrayView<FGridPosition> TouchedPositions,
-    bool bArrivingPiecesSurvive,
+    const FConnectItBoardChanges& Changes,
     FConnectItBoardChangeEvent* OutEvents) const
 {
     const FConnectItScoringRule* Rule = GetScoringRule();
     if (!Rule) return 0.f;
 
-    float TotalPoints = 0.f;
-    for (const FGridPosition& Position : TouchedPositions)
-    {
-        // Read now, not up front: scoring an earlier position can clear
-        // pieces. A tile holding no faction's piece (empty, or a non-faction
-        // blocker) can't score.
-        const FConnectItTileData* Tile = Board.GetTileData(Position);
-        if (!Tile || Tile->FactionPiece == INDEX_NONE) continue;
+    // A bug guard, not a rule: each tile power fires at most once per action,
+    // which is what ends every chain
+    constexpr int32 MaxPasses = 64;
 
-        TotalPoints += Rule->ApplyScoring(
-            Board, Position, Tile->FactionPiece, bArrivingPiecesSurvive, OutEvents);
+    float TotalPoints = 0.f;
+
+    // What the last step changed: the operation's record, then each pass's
+    FConnectItBoardChanges Next;
+    const FConnectItBoardChanges* Step = &Changes;
+    for (int32 Pass = 0; Pass < MaxPasses; Pass++)
+    {
+        // 1. Settle: pre-scoring reactions to Step (tile powers -- not built
+        //    yet), adding to what arrived
+
+        // 2. Score every piece that arrived since the last pass
+        if (!Step->HasScoringArrivals()) return TotalPoints;
+
+        FConnectItScoringArrivals Arrivals;
+        Step->GetScoringArrivals(Arrivals);
+
+        FConnectItBoardChanges Scored;
+        Scored.Faction = Step->Faction;
+        TotalPoints += Rule->ScorePass(Board, Arrivals, Scored, OutEvents);
+
+        // The chain ends at the first pass that scores nothing
+        if (Scored.ScoredThrough.IsEmpty()) return TotalPoints;
+
+        // 3. Scoring reactions (tile powers -- not built yet), adding to
+        //    Scored
+
+        // Back to settle with what scoring and its reactions changed
+        Next = MoveTemp(Scored);
+        Step = &Next;
     }
-    
+
+    UE_LOG(LogTemp, Error,
+        TEXT("ConnectIt_RuleSet: ResolveBoardChange stopped after %d passes -- a chain that never ends is a bug"),
+        MaxPasses);
     return TotalPoints;
 }
 
@@ -143,26 +167,30 @@ float FConnectItRuleSet::CarryOutOperation(
     FConnectItBoardState& Board,
     FConnectItBoardChangeEvent* OutEvents) const
 {
-    // The change itself: the operation only changes the board (and appends
-    // the event saying what it did)...
-    FConnectItTouchedPositions TouchedPositions;
-    Operation.Apply(Board, TouchedPositions, OutEvents);
+    // The change itself: the operation only changes the board, reporting
+    // what it did (and appending the event saying so)...
+    FConnectItBoardChanges Changes;
+    Changes.Faction = Operation.Faction;
+    Operation.Apply(Board, Changes, OutEvents);
 
     // ...what follows from the change is a separate step: scoring where
     // pieces arrived (appending Scored events)
-    return ResolveBoardChange(
-        Board, TouchedPositions, Operation.ArrivingPiecesSurviveScoring(), OutEvents);
+    return ResolveBoardChange(Board, Changes, OutEvents);
 }
 
 float FConnectItRuleSet::ApplyScoring(
     FConnectItBoardState& Board,
     FGridPosition Position,
-    int32 Faction,
     bool bArrivingPieceSurvives,
     FConnectItBoardChangeEvent* OutEvents) const
 {
     const FConnectItScoringRule* Rule = GetScoringRule();
-    return Rule ? Rule->ApplyScoring(Board, Position, Faction, bArrivingPieceSurvives, OutEvents) : 0.f;
+    const FConnectItTileData* Tile = Board.GetTileData(Position);
+    if (!Rule || !Tile) return 0.f;
+
+    const FConnectItPieceArrival Arrival{ Position, Tile->FactionPiece, bArrivingPieceSurvives };
+    FConnectItBoardChanges Scored;
+    return Rule->ScorePass(Board, MakeArrayView(&Arrival, 1), Scored, OutEvents);
 }
 
 void FConnectItRuleSet::AdvanceWinGroups(

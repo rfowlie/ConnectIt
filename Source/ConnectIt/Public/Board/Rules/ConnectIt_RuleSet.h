@@ -122,24 +122,27 @@ struct CONNECTIT_API FConnectItRuleSet
 
     // The step AFTER an operation has changed the board
     // (FConnectItBoardOperation::Apply), kept separate from the change
-    // itself: every touched position that now holds a faction's piece is
-    // scored for that faction, in order. bArrivingPiecesSurvive is the
-    // operation's own answer (FConnectItBoardOperation::
-    // ArrivingPiecesSurviveScoring): whether a touched piece that scores
-    // stays on its tile. Other
-    // follow-on effects of a board change (reactions) will run here too.
+    // itself, starting from what the operation reported (Changes). A loop:
+    //   1. settle -- pre-scoring reactions to what changed (tile powers:
+    //      empty until they are built);
+    //   2. score -- one scoring pass over every piece that arrived since the
+    //      last pass (FConnectItScoringRule::ScorePass: all found first, then
+    //      all applied);
+    //   3. scoring reactions (tile powers: empty until built);
+    //   then back to 1 with what scoring and its reactions changed. The chain
+    //   ends at the first pass that scores nothing (a bug guard stops it
+    //   after 64 passes).
     // Returns the points scored; OutEvents, if given, gets one Scored event
-    // appended per thing that scored (the AI's search passes none). Does not check for
-    // a win -- see GetWinningFaction / StampWinState.
+    // appended per thing that scored (the AI's search passes none). Does not
+    // check for a win -- see GetWinningFaction / StampWinState.
     float ResolveBoardChange(
         FConnectItBoardState& Board,
-        TConstArrayView<FGridPosition> TouchedPositions,
-        bool bArrivingPiecesSurvive,
+        const FConnectItBoardChanges& Changes,
         FConnectItBoardChangeEvent* OutEvents = nullptr) const;
 
     // An operation carried out on Board under these rules: the operation
-    // changes the board (FConnectItBoardOperation::Apply), then
-    // ResolveBoardChange scores what it touched. Returns the points scored;
+    // changes the board (FConnectItBoardOperation::Apply, its faction stamped
+    // on the change record), then ResolveBoardChange resolves what it did. Returns the points scored;
     // OutEvents, if given, gets the operation's event followed by any Scored
     // events. Only call when Operation.CanApply(Board). Does not check for a
     // win (StampWinState). The server's Mediator and the Blueprint
@@ -152,10 +155,11 @@ struct CONNECTIT_API FConnectItRuleSet
 
     // --- Convenience: each is a no-op / "no" when its rule is unset ---
 
+    // One scoring pass for the piece on Position alone (it stays if it scores
+    // and bArrivingPieceSurvives)
     float ApplyScoring(
         FConnectItBoardState& Board,
         FGridPosition Position,
-        int32 Faction,
         bool bArrivingPieceSurvives,
         FConnectItBoardChangeEvent* OutEvents = nullptr) const;
 

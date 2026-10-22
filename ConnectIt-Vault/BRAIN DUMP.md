@@ -44,3 +44,13 @@ Maybe were thinking of it wrong. Perhaps we have two distinct moments, actions a
 
 - to better accomodate certain level changes should we give the level director a artificial turn? This way there is a clean oppertunity for it to enact changes and avoid collisions with player turns? It would likely be a turn after each players turn. A phase that provides a clean entry point for level changes again to avoid collisions.
 	- Not used in AI calculations
+
+
+## Treating Tiles as Generic
+
+- In regards to tile powers
+- For the purposes of the board resolving system, do we need resolutions to be in plain C++?
+- I was thinking that perhaps we could just have tile blueprints implement a tile power interface which then the reactions system uses to run the it's algorithm. This should work in theory but it would couple the logic to a hierarchy of actors and would not be useable for async calculations for AI
+- So should the setup and best practice be the BP actor is just for visual handling. Any actual logic for resolving board stuff is handled in C++. But the BP's should implement a tile power handler interface so that we can align when things happen?
+	- Can we afford to make it that generic? Or should we have an interface for each operation/tile power? HandleChainedTilePower() the actor would implement various visual effects/changes only when that tile power fires?
+	- Could it be HandleTilePower(FGameplayTag) then just query for the correct one for that BP setup?

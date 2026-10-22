@@ -6,6 +6,8 @@ Vault-wide passes go in `_core/_logs/`.
 
 Newest first:
 
+- [2026-10-22-1435](2026-10-22-1435.md) — session — tile powers, Stage 1: change record (`FConnectItBoardChanges`),
+  one find-all-then-apply scoring pass, the after-move loop shape. 53/53 tests; Throughput unchanged.
 - [2026-10-22-1018](2026-10-22-1018.md) — session — phased levels, Stage 7 (vault): two decisions, recipe "script a phased
   level", goals-on-the-Level-director recipe updates, question answered, plan complete.
 - [2026-10-22-1012](2026-10-22-1012.md) — session — phased levels, Stage 6: layout tool C++ (`Capture Layout From Level`,

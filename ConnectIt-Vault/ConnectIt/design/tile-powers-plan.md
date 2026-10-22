@@ -1,6 +1,6 @@
 ---
 type: plan
-status: not-started
+status: in-progress
 approved: true
 approved-on: 2026-10-22
 completed-on:
@@ -76,6 +76,38 @@ stages; nothing is committed by me.
 - Tests: all existing pass; new -- a shift making two lines that share a tile scores both; each operation's change record
   (Shift: `Moved` only; Add Tiles: scored, no enter; Remove Tiles: nothing); a swap-in and a placed piece in one pass keep
   their own survival; an added tile whose piece completes a line scores.
+- *As built (2026-10-22; 53/53 tests; Throughput 374,539 nodes/s against 366k-379k earlier today -- no measurable
+  cost):*
+  - **`FConnectItBoardChanges`** is in its own header, `Public/Board/ConnectIt_BoardChanges.h` (plain structs, inline
+    storage), so the scoring rule can use it without depending on the operations header.
+    - **Lists:** `Entered` / `Moved` (`FConnectItPieceArrival`: position, faction, `bSurvivesScoring`), `Exited`,
+      `PieceChanged` (new + previous owner, survival), `TileChanged` (position, what, **faction** -- whose change it
+      was), `ScoredThrough`, `Faction`.
+    - **Helpers:** `Add*`, `GetScoringArrivals` (entered, piece changed, moved -- in that order), `HasScoringArrivals`,
+      `IsEmpty`.
+  - **What each operation reports:**
+    - Swap reports both exits and both enters.
+    - Remove reports its exit with the owner.
+    - Toggle / Destroy Multiplier: tile changed, with the operation's faction.
+    - Add Tiles / Change Layout: their starting pieces as moved.
+    - Each operation stamps its own `ArrivingPiecesSurviveScoring()` on what it reports.
+    - `CarryOutOperation` and the AI's `ApplyMove` stamp the operation's faction on the record.
+  - **`FConnectItScoringRule::ScorePass(Board, Arrivals, OutChanges, OutEvents)`** replaces `ApplyScoring`. **Lines**,
+    when several arrivals are involved (the owner had approved the plan; this filled a gap it didn't cover):
+    - every line from every arrival is found first;
+    - a line two arrivals share counts once;
+    - each line keeps at most one piece, the first arrival on it that survives scoring (as today's per-position loop
+      did);
+    - a kept piece is never cleared by another line;
+    - lines are then applied in the order found, so a tile in two lines gains +1 for each and the second sums the
+      raised multiplier (as crossing lines already did).
+    - The pass reports `ScoredThrough` and a Multiplier tile change (scoring faction) per tile.
+  - **`ResolveBoardChange(Board, Changes, OutEvents)`** is the settle → score → reactions loop, with settle and
+    reactions empty; it ends at the first pass with no lines (64-pass guard, logged). The rule set's `ApplyScoring`
+    convenience lost its faction parameter (the faction comes from the tile).
+  - **Tests:** `ConnectIt.Board.ScoringPass` (two arrivals' lines sharing a tile both score; two arrivals on one line
+    count once; mixed survival in one pass; what a pass reports) and `ConnectIt.Board.ChangeRecord`. The operation
+    tests now check the record lists; the added-tile-scores case was already in `TileOperations`.
 
 ## Stage 2: self-applying events and the display board
 

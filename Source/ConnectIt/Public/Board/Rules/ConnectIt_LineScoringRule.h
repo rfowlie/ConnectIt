@@ -26,12 +26,15 @@ enum class EConnectItScoringDirection : uint8
 ENUM_CLASS_FLAGS(EConnectItScoringDirection);
 
 // The classic rule: a straight line of ConnectLength or more of one faction's
-// pieces through the arriving piece scores, if it runs in an allowed
+// pieces through an arriving piece scores, if it runs in an allowed
 // direction (ScoringDirections). Points = the sum of the line's
 // tile multipliers; every tile in the line then loses its piece and gains +1
-// multiplier, except the arriving piece, which stays (unless the operation
-// that brought it says its pieces don't survive scoring). Each completed line is
-// its own Scored event.
+// multiplier, except the line's kept piece: the first arrival on it that
+// survives scoring (none when the operation says its pieces don't survive).
+// A kept piece is never cleared by another line through it. A pass finds
+// every line from every arrival first (a line two arrivals share counts
+// once), then applies them in order -- a tile in two lines scores in both and
+// gains +1 for each. Each completed line is its own Scored event.
 USTRUCT(BlueprintType, meta = (DisplayName = "Lines"))
 struct CONNECTIT_API FConnectItScoringRule_Lines : public FConnectItScoringRule
 {
@@ -55,11 +58,10 @@ struct CONNECTIT_API FConnectItScoringRule_Lines : public FConnectItScoringRule
         return (ScoringDirections & static_cast<int32>(Direction)) != 0;
     }
 
-    virtual float ApplyScoring(
+    virtual float ScorePass(
         FConnectItBoardState& Board,
-        FGridPosition Position,
-        int32 Faction,
-        bool bArrivingPieceSurvives,
+        TConstArrayView<FConnectItPieceArrival> Arrivals,
+        FConnectItBoardChanges& OutChanges,
         FConnectItBoardChangeEvent* OutEvents) const override;
 
     virtual int32 GetMinPiecesToScore() const override { return ConnectLength; }
@@ -80,13 +82,12 @@ private:
         int32 FactionSlot) const;
 
     // Clears the line's pieces, raises its tiles' multipliers, returns the
-    // points. The piece on CompletingPosition is left standing only if
-    // bKeepCompletingPiece. OutClearedPositions, if not null, gets every
-    // position a piece was actually removed from.
+    // points. A piece on a position in KeptPositions is left standing.
+    // OutClearedPositions, if not null, gets every position a piece was
+    // actually removed from.
     static float ApplyScoringLine(
         FConnectItBoardState& MutableState,
         const TArray<FGridPosition>& Line,
-        FGridPosition CompletingPosition,
-        bool bKeepCompletingPiece,
+        TConstArrayView<FGridPosition> KeptPositions,
         TArray<FGridPosition>* OutClearedPositions);
 };
