@@ -604,3 +604,76 @@ FString FConnectItBoardOperation_ToggleTileActive::Describe() const
 {
     return PositionText(Position);
 }
+
+// ---------------------------------------------------------------------------
+// Change Goals
+// ---------------------------------------------------------------------------
+
+FGameplayTag FConnectItBoardOperation_ChangeGoals::GetRequestType() const
+{
+    return ConnectIt_Game_ChangeGoals;
+}
+
+bool FConnectItBoardOperation_ChangeGoals::CanApply(const FConnectItBoardState& Board, FString* OutWhyNot) const
+{
+    if (Factions.IsEmpty())
+    {
+        SetWhyNot(OutWhyNot, TEXT("no factions to change the goals of"));
+        return false;
+    }
+    for (const int32 GoalFaction : Factions)
+    {
+        if (!Board.ScoreBoard.IsValidIndex(GoalFaction))
+        {
+            SetWhyNot(OutWhyNot, FString::Printf(
+                TEXT("faction %d is not on this board (%d factions)"), GoalFaction, Board.ScoreBoard.Num()));
+            return false;
+        }
+    }
+    return true;
+}
+
+void FConnectItBoardOperation_ChangeGoals::Apply(
+    FConnectItBoardState& Board,
+    FConnectItTouchedPositions& OutTouched,
+    FConnectItBoardChangeEvent* OutEvents) const
+{
+    // New win goals start from the first; lose conditions keep no progress
+    if (bWinGoals)
+    {
+        Board.GroupsCompleted.SetNumZeroed(Board.ScoreBoard.Num());
+        for (const int32 GoalFaction : Factions)
+        {
+            if (Board.GroupsCompleted.IsValidIndex(GoalFaction))
+            {
+                Board.GroupsCompleted[GoalFaction] = 0;
+            }
+        }
+    }
+
+    if (OutEvents)
+    {
+        FConnectItBoardEvent_GoalsChanged Event;
+        Event.Factions   = Factions;
+        Event.bWinGoals  = bWinGoals;
+        Event.GroupNames = GroupNames;
+        OutEvents->Add(Event);
+    }
+}
+
+FString FConnectItBoardOperation_ChangeGoals::Describe() const
+{
+    FString FactionText;
+    for (const int32 GoalFaction : Factions)
+    {
+        FactionText += FString::Printf(TEXT("%s%d"), FactionText.IsEmpty() ? TEXT("") : TEXT(","), GoalFaction);
+    }
+    FString Names;
+    for (const FName& Name : GroupNames)
+    {
+        Names += (Names.IsEmpty() ? TEXT("") : TEXT(", ")) + Name.ToString();
+    }
+    return FString::Printf(TEXT("%s for faction(s) %s: %s"),
+        bWinGoals ? TEXT("win goals") : TEXT("lose conditions"), *FactionText,
+        Names.IsEmpty() ? TEXT("none") : *Names);
+}

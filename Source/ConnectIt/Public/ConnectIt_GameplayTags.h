@@ -22,6 +22,8 @@ UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_Game_ForcePlacePiece);
 UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_Game_ToggleTileActive);
 UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_Game_CapturePiece);
 UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_Game_Shift);
+// Level only (FConnectItBoardOperation_ChangeGoals): no action produces it
+UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_Game_ChangeGoals);
 
 UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_Tile_ValidHover);
 UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_Tile_InvalidHover);
@@ -42,6 +44,8 @@ UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_Event_PlayerWin);
 UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_Event_WinCheckpointReached);
 // A faction met one of its lose conditions (see FConnectItBoardEvent_LoseConditionMet)
 UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_Event_LoseConditionMet);
+// A side's goals were replaced mid-match (see FConnectItBoardEvent_GoalsChanged)
+UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_Event_GoalsChanged);
 UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_Event_TurnEnd);
 // Server only, not a board event: queued right after a board change's events,
 // so it completes once they have all played out -- the end of that change

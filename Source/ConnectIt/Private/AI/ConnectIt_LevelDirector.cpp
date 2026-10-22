@@ -88,6 +88,32 @@ bool UConnectIt_LevelDirector::SetScoringRule(const FInstancedStruct& ScoringRul
     return IsValid(GameMode) && GameMode->SetScoringRule(ScoringRule, Timing);
 }
 
+void UConnectIt_LevelDirector::SetWinConditions(
+    EConnectItRole Side, const TArray<UConnectIt_MatchConditionAsset*>& Conditions, EConnectItChangeTiming Timing)
+{
+    if (AConnectIt_GameMode* GameMode = GetGameMode())
+    {
+        GameMode->SetConditions(Side, true, Conditions, Timing);
+    }
+    else
+    {
+        UE_LOG(LogTemp, Warning, TEXT("ConnectIt_LevelDirector: %s has no GameMode -- goals not changed"), *GetName());
+    }
+}
+
+void UConnectIt_LevelDirector::SetLoseConditions(
+    EConnectItRole Side, const TArray<UConnectIt_MatchConditionAsset*>& Conditions, EConnectItChangeTiming Timing)
+{
+    if (AConnectIt_GameMode* GameMode = GetGameMode())
+    {
+        GameMode->SetConditions(Side, false, Conditions, Timing);
+    }
+    else
+    {
+        UE_LOG(LogTemp, Warning, TEXT("ConnectIt_LevelDirector: %s has no GameMode -- lose conditions not changed"), *GetName());
+    }
+}
+
 FConnectItRuleSet UConnectIt_LevelDirector::GetMatchRules() const
 {
     const AConnectIt_GameMode* GameMode = GetGameMode();
@@ -108,12 +134,36 @@ TArray<TObjectPtr<UConnectIt_MatchConditionAsset>> UConnectIt_LevelDirector::Get
 EDataValidationResult UConnectIt_LevelDirector::IsDataValid(FDataValidationContext& Context) const
 {
     EDataValidationResult Result = Super::IsDataValid(Context);
+
+    // No defaults and no borrowing between sides: each side's own goals
+    if (PlayerWinConditions.IsEmpty())
+    {
+        Context.AddError(FText::FromString(TEXT(
+            "ConnectIt_LevelDirector: No Player Win Conditions -- the player can never win.")));
+        Result = EDataValidationResult::Invalid;
+    }
+    // Not invalid (a level may be played versus only), but an AI with no
+    // goals can't win
+    if (AIWinConditions.IsEmpty())
+    {
+        Context.AddWarning(FText::FromString(TEXT(
+            "ConnectIt_LevelDirector: No AI Win Conditions -- played against the AI, it can never win.")));
+    }
+
+    ValidateConditionList(this, TEXT("Player Win Conditions"), PlayerWinConditions, Context, Result);
+    ValidateConditionList(this, TEXT("Player Lose Conditions"), PlayerLoseConditions, Context, Result);
+    ValidateConditionList(this, TEXT("AI Win Conditions"), AIWinConditions, Context, Result);
+    ValidateConditionList(this, TEXT("AI Lose Conditions"), AILoseConditions, Context, Result);
     ValidateConditionList(this, TEXT("Triggers"), GetTriggerConditions(), Context, Result);
     return Result;
 }
 
 void UConnectIt_LevelDirector::AddConditionRuleWarnings(const FConnectItRuleSet& Rules, FDataValidationContext& Context) const
 {
+    AddConditionListRuleWarnings(this, TEXT("Player Win Conditions"), PlayerWinConditions, Rules, Context);
+    AddConditionListRuleWarnings(this, TEXT("Player Lose Conditions"), PlayerLoseConditions, Rules, Context);
+    AddConditionListRuleWarnings(this, TEXT("AI Win Conditions"), AIWinConditions, Rules, Context);
+    AddConditionListRuleWarnings(this, TEXT("AI Lose Conditions"), AILoseConditions, Rules, Context);
     AddConditionListRuleWarnings(this, TEXT("Triggers"), GetTriggerConditions(), Rules, Context);
 }
 #endif

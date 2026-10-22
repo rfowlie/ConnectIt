@@ -103,23 +103,7 @@ EDataValidationResult UConnectIt_AIDirector::IsDataValid(FDataValidationContext&
         }
     }
 
-    // Not invalid (a preset may be played versus only), but an AI with no
-    // goals can't win
-    if (WinConditions.IsEmpty())
-    {
-        Context.AddWarning(FText::FromString(TEXT(
-            "ConnectIt_AIDirector: No Win Conditions -- this AI can never win.")));
-    }
-    ValidateConditionList(this, TEXT("Win Conditions"), WinConditions, Context, Result);
-    ValidateConditionList(this, TEXT("Lose Conditions"), LoseConditions, Context, Result);
-
     return Result;
-}
-
-void UConnectIt_AIDirector::AddConditionRuleWarnings(const FConnectItRuleSet& Rules, FDataValidationContext& Context) const
-{
-    AddConditionListRuleWarnings(this, TEXT("Win Conditions"), WinConditions, Rules, Context);
-    AddConditionListRuleWarnings(this, TEXT("Lose Conditions"), LoseConditions, Rules, Context);
 }
 #endif
 

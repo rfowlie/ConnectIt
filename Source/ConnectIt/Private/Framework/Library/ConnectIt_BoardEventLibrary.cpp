@@ -47,6 +47,12 @@ bool UConnectIt_BoardEventLibrary::GetActiveTileActiveToggledEvent(
     return TryGetActiveBoardEvent(WorldContextObject, OutEvent, TEXT("GetActiveTileActiveToggledEvent"));
 }
 
+bool UConnectIt_BoardEventLibrary::GetActiveGoalsChangedEvent(
+    const UObject* WorldContextObject, FConnectItBoardEvent_GoalsChanged& OutEvent)
+{
+    return TryGetActiveBoardEvent(WorldContextObject, OutEvent, TEXT("GetActiveGoalsChangedEvent"));
+}
+
 bool UConnectIt_BoardEventLibrary::GetActiveScoredEvent(
     const UObject* WorldContextObject, FConnectItBoardEvent_Scored& OutEvent)
 {

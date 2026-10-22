@@ -219,6 +219,40 @@ struct CONNECTIT_API FConnectItBoardOperation_DestroyTileMultiplier : public FCo
     virtual FString Describe() const override;
 };
 
+// The board's record of a side's goals being replaced mid-match. Level only:
+// no action produces it. The GameMode replaces the goals in the match's rules
+// first (AConnectIt_GameMode::SetConditions), then carries this out: for new
+// win goals it restarts those factions' goal progress (GroupsCompleted) at 0
+// -- score carries over -- and it says what changed (Goals Changed). The win
+// check that follows every board change then measures the new goals, so a
+// goal already met completes at once.
+USTRUCT(BlueprintType, meta = (DisplayName = "Change Goals"))
+struct CONNECTIT_API FConnectItBoardOperation_ChangeGoals : public FConnectItBoardOperation
+{
+    GENERATED_BODY()
+
+    // The side's factions (the AI's, or every human one)
+    UPROPERTY(BlueprintReadWrite, Category = "Operation")
+    TArray<int32> Factions;
+
+    // Win goals (progress restarts) or lose conditions (nothing on the board
+    // to restart)
+    UPROPERTY(BlueprintReadWrite, Category = "Operation")
+    bool bWinGoals = true;
+
+    // The new goals' names, in order -- for the event
+    UPROPERTY(BlueprintReadWrite, Category = "Operation")
+    TArray<FName> GroupNames;
+
+    virtual FGameplayTag GetRequestType() const override;
+    virtual bool CanApply(const FConnectItBoardState& Board, FString* OutWhyNot = nullptr) const override;
+    virtual void Apply(
+        FConnectItBoardState& Board,
+        FConnectItTouchedPositions& OutTouched,
+        FConnectItBoardChangeEvent* OutEvents) const override;
+    virtual FString Describe() const override;
+};
+
 // Flip a tile between active and inactive. Nothing sends this yet.
 USTRUCT(BlueprintType, meta = (DisplayName = "Toggle Tile Active"))
 struct CONNECTIT_API FConnectItBoardOperation_ToggleTileActive : public FConnectItBoardOperation

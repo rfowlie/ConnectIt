@@ -26,6 +26,8 @@
 #include "AI/ConnectIt_LevelDirector.h"
 #include "Board/Events/ConnectIt_BoardEvents.h"
 #include "Board/Operations/ConnectIt_BoardOperation.h"
+#include "Board/Operations/ConnectIt_BoardOperations.h"
+#include "Board/Rules/ConnectIt_MatchConditionAsset.h"
 #include "TimerManager.h"
 
 
@@ -149,14 +151,13 @@ void AConnectIt_GameMode::EnsureMatchSetupResolved()
     PlayerDirectorClass = IsValid(Preset) ? Preset->PlayerDirectorClass : nullptr;
     AIDirectorClass = IsValid(Preset) ? Preset->AIDirectorClass : nullptr;
 
-    // The directors' goals (their classes' -- goals are fixed for the match),
-    // copied into the plain groups the match plays with
-    const UConnectIt_PlayerDirector* PlayerDefaults = GetDefault<UConnectIt_PlayerDirector>(
-        PlayerDirectorClass ? *PlayerDirectorClass : UConnectIt_PlayerDirector::StaticClass());
-    const UConnectIt_AIDirector* AIDefaults = GetDefault<UConnectIt_AIDirector>(
-        AIDirectorClass ? *AIDirectorClass : UConnectIt_AIDirector::StaticClass());
-    Rules.ResolveConditionGroups(PlayerDefaults->WinConditions, AIDefaults->WinConditions,
-        PlayerDefaults->LoseConditions, AIDefaults->LoseConditions);
+    // Both sides' starting goals, from the Level director's class (the level
+    // can replace them later: SetConditions), copied into the plain groups
+    // the match plays with
+    const UConnectIt_LevelDirector* LevelDefaults = GetDefault<UConnectIt_LevelDirector>(
+        LevelDirectorClass ? *LevelDirectorClass : UConnectIt_LevelDirector::StaticClass());
+    Rules.ResolveConditionGroups(LevelDefaults->PlayerWinConditions, LevelDefaults->AIWinConditions,
+        LevelDefaults->PlayerLoseConditions, LevelDefaults->AILoseConditions);
 
     // Tweaks from the menu, on top of whichever preset plays
     if (bHasMatchSettings)
@@ -432,22 +433,22 @@ void AConnectIt_GameMode::WarnAboutMissingWinConditions() const
     if (Rules.AIFaction == INDEX_NONE && !Rules.PlayerLoseGroups.IsEmpty())
     {
         UE_LOG(LogTemp, Warning,
-            TEXT("ConnectIt_GameMode: the Player director has Lose Conditions, but this match has no AI -- "
+            TEXT("ConnectIt_GameMode: the Level director has Player Lose Conditions, but this match has no AI -- "
                  "they are ignored"));
     }
 
     if (Rules.PlayerWinGroups.IsEmpty())
     {
         UE_LOG(LogTemp, Warning,
-            TEXT("ConnectIt_GameMode: the Player director has no Win Conditions -- "
-                 "the player can never win"));
+            TEXT("ConnectIt_GameMode: the Level director has no Player Win Conditions -- "
+                 "the player can never win (does the match preset name a Level Director Class?)"));
     }
 
     // Only an AI in the match needs its own
     if (Rules.AIFaction != INDEX_NONE && Rules.AIWinGroups.IsEmpty())
     {
         UE_LOG(LogTemp, Warning,
-            TEXT("ConnectIt_GameMode: the AI director has no Win Conditions -- "
+            TEXT("ConnectIt_GameMode: the Level director has no AI Win Conditions -- "
                  "the AI opponent can never win (it does not borrow the player's)"));
     }
 
@@ -591,6 +592,20 @@ bool AConnectIt_GameMode::SetScoringRule(const FInstancedStruct& ScoringRule, EC
     return true;
 }
 
+void AConnectIt_GameMode::SetConditions(EConnectItRole Side, bool bWinGoals,
+    const TArray<UConnectIt_MatchConditionAsset*>& Conditions, EConnectItChangeTiming Timing)
+{
+    FConnectItLevelChange Change;
+    Change.bHasGoals = true;
+    Change.bGoalsForAI = Side == EConnectItRole::AI;
+    Change.bWinGoals = bWinGoals;
+    for (UConnectIt_MatchConditionAsset* Condition : Conditions)
+    {
+        Change.Goals.Add(Condition);
+    }
+    QueueLevelChange(Change, Timing);
+}
+
 void AConnectIt_GameMode::QueueLevelChange(const FConnectItLevelChange& Change, EConnectItChangeTiming Timing)
 {
     if (LevelChanges.Add(Change, Timing, IsBoardChangeResolving()))
@@ -726,6 +741,12 @@ void AConnectIt_GameMode::ApplyLevelChange(const FConnectItLevelChange& Change)
         return;
     }
 
+    if (Change.bHasGoals)
+    {
+        ApplyGoalsChange(Change);
+        return;
+    }
+
     if (!IsValid(BoardRequestMediator)) return;
 
     const bool bApplied = BoardRequestMediator->ProcessLevelOperation(Change.Operation, Change.AsFaction);
@@ -733,6 +754,63 @@ void AConnectIt_GameMode::ApplyLevelChange(const FConnectItLevelChange& Change)
     if (!bApplied)
     {
         UE_LOG(LogTemp, Warning, TEXT("ConnectIt_GameMode: a level operation could not be carried out (see above)"));
+    }
+}
+
+void AConnectIt_GameMode::ApplyGoalsChange(const FConnectItLevelChange& Change)
+{
+    const TCHAR* What = Change.bWinGoals ? TEXT("win goals") : TEXT("lose conditions");
+    if (Change.bGoalsForAI && Rules.AIFaction == INDEX_NONE)
+    {
+        UE_LOG(LogTemp, Warning,
+            TEXT("ConnectIt_GameMode: new AI %s ignored -- this match has no AI"), What);
+        return;
+    }
+
+    // An asset gone since it was asked for resolves as an empty entry
+    // (skipped, with a warning)
+    TArray<TObjectPtr<UConnectIt_MatchConditionAsset>> Conditions;
+    for (const TWeakObjectPtr<UConnectIt_MatchConditionAsset>& Goal : Change.Goals)
+    {
+        Conditions.Add(Goal.Get());
+    }
+
+    // 1. The rules (they replicate; the AI uses them from its next decision)
+    ModifyRules([&Change, &Conditions](FConnectItRuleSet& MatchRules)
+    {
+        MatchRules.SetConditionGroups(Change.bGoalsForAI, Change.bWinGoals, Conditions);
+    });
+
+    // 2. The board: that side's progress restarts and the change is played
+    //    like any other, followed by the win check against the new goals
+    FConnectItBoardOperation_ChangeGoals Operation;
+    Operation.bWinGoals = Change.bWinGoals;
+    for (const FConnectItMatchConditionGroup& Group : Rules.GetConditionGroups(Change.bGoalsForAI, Change.bWinGoals))
+    {
+        Operation.GroupNames.Add(Group.Name);
+    }
+    if (Change.bGoalsForAI)
+    {
+        Operation.Factions.Add(Rules.AIFaction);
+    }
+    else
+    {
+        // Every human faction (both, in a match with no AI)
+        for (int32 Faction = 0; Faction < NumFactions; Faction++)
+        {
+            if (Faction != Rules.AIFaction) Operation.Factions.Add(Faction);
+        }
+    }
+
+    UE_LOG(LogTemp, Log, TEXT("ConnectIt_GameMode: %s %s replaced (%d)"),
+        Change.bGoalsForAI ? TEXT("AI") : TEXT("player"), What, Operation.GroupNames.Num());
+
+    if (!IsValid(BoardRequestMediator)
+        || !BoardRequestMediator->ProcessLevelOperation(FInstancedStruct::Make(Operation), INDEX_NONE))
+    {
+        UE_LOG(LogTemp, Warning,
+            TEXT("ConnectIt_GameMode: the goals changed in the rules, but the board change could not be carried out "
+                 "(see above) -- progress wasn't restarted"));
     }
 }
 

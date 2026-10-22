@@ -194,6 +194,30 @@ struct CONNECTIT_API FConnectItBoardEvent_TileActiveToggled : public FConnectItB
     virtual FGameplayTag GetEventTag() const override;
 };
 
+// The level replaced a side's goals mid-match (the Level director's Set Win
+// Conditions / Set Lose Conditions). For new win goals, those factions'
+// progress restarts at 0 -- score carries over. Any checkpoint or win the new
+// goals already meet follows in the same change.
+USTRUCT(BlueprintType, meta = (DisplayName = "Goals Changed"))
+struct CONNECTIT_API FConnectItBoardEvent_GoalsChanged : public FConnectItBoardOperationEvent
+{
+    GENERATED_BODY()
+
+    // The side's factions (the AI's, or every human one)
+    UPROPERTY(BlueprintReadOnly, Category = "Event")
+    TArray<int32> Factions;
+
+    // Win goals (true) or lose conditions (false)
+    UPROPERTY(BlueprintReadOnly, Category = "Event")
+    bool bWinGoals = true;
+
+    // The new goals' names (their assets' names), in order
+    UPROPERTY(BlueprintReadOnly, Category = "Event")
+    TArray<FName> GroupNames;
+
+    virtual FGameplayTag GetEventTag() const override;
+};
+
 // ---------------------------------------------------------------------------
 // Result events
 // ---------------------------------------------------------------------------
@@ -231,8 +255,8 @@ struct CONNECTIT_API FConnectItBoardEvent_Scored : public FConnectItBoardResultE
 // A faction just completed one of its win condition groups, and it was not the
 // last one (completing the last is the win: see GameWon). One per group
 // completed, in order -- a move that completes two in a row produces two. The
-// match's goals are listed in the rule set
-// (the Player / AI directors' WinConditions).
+// match's goals are listed in the rule set (from the Level director's
+// Player / AI Win Conditions).
 USTRUCT(BlueprintType, meta = (DisplayName = "Win Checkpoint Reached"))
 struct CONNECTIT_API FConnectItBoardEvent_WinCheckpointReached : public FConnectItBoardResultEvent
 {

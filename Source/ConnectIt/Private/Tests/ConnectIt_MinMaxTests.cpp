@@ -5,6 +5,7 @@
 #include "AI/ConnectIt_AIStrategy_MinMax.h"
 #include "AI/ConnectIt_AIDirector.h"
 #include "Framework/Data/ConnectIt_MatchPreset.h"
+#include "Framework/Data/ConnectIt_BoardLayout.h"
 #include "AI/ConnectIt_AICoordinator.h"
 #include "Framework/GameMode/ConnectIt_LevelChange.h"
 #include "AI/ConnectIt_MinMaxSearch.h"
@@ -1617,7 +1618,8 @@ bool FConnectItAICandidatesTest::RunTest(const FString& Parameters)
         AllTypes.Contains(FGameplayTag(ConnectIt_Game_PlacePiece))
         && AllTypes.Contains(FGameplayTag(ConnectIt_Game_SwapPieces))
         && AllTypes.Contains(FGameplayTag(ConnectIt_Game_Shift)));
-    TestEqual(TEXT("one per kind of operation"), AllTypes.Num(), 8);
+    // The eight player-facing ones and the level's Change Goals
+    TestEqual(TEXT("one per kind of operation"), AllTypes.Num(), 9);
     return true;
 }
 
@@ -2107,7 +2109,7 @@ bool FConnectItMatchConditionAssetsTest::RunTest(const FString& Parameters)
     FConnectItRuleSet Rules;
     TestEqual(TEXT("nothing to play with before resolving"), Rules.PlayerWinGroups.Num(), 0);
 
-    // As the GameMode does with the Player / AI directors' WinConditions
+    // As the GameMode does with the Level director's Player / AI Win Conditions
     AddExpectedError(TEXT("Player win condition 1 is empty"), EAutomationExpectedErrorFlags::Contains, 1);
     Rules.ResolveConditionGroups({ ScoreGoal, nullptr, ClearGoal }, { ScoreGoal });
     if (!TestEqual(TEXT("one group per goal, the empty one skipped"), Rules.PlayerWinGroups.Num(), 2)) return false;
@@ -2402,45 +2404,209 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(FConnectItDirectorConditionsTest,
 
 bool FConnectItDirectorConditionsTest::RunTest(const FString& Parameters)
 {
-    // Each side's goals live on its director
+    // Both sides' goals live on the Level director
     UConnectIt_MatchConditionAsset* ScoreGoal = NewObject<UConnectIt_MatchConditionAsset>(
         GetTransientPackage(), TEXT("WC_Test_DirectorScore"));
     ScoreGoal->Conditions.Add(TInstancedStruct<FConnectItMatchCondition>::Make<FConnectItMatchCondition_ScoreThreshold>(ScoreAtLeast(4.f)));
     UConnectIt_MatchConditionAsset* EmptyGoal = NewObject<UConnectIt_MatchConditionAsset>(
         GetTransientPackage(), TEXT("WC_Test_DirectorEmpty"));
 
-    UConnectIt_PlayerDirector* Player = NewObject<UConnectIt_PlayerDirector>();
-    Player->WinConditions = { ScoreGoal, nullptr };
-    UConnectIt_TestAIDirector* AI = NewObject<UConnectIt_TestAIDirector>();
-    AI->WinConditions = { ScoreGoal };
+    UConnectIt_LevelDirector* Level = NewObject<UConnectIt_LevelDirector>();
+    Level->PlayerWinConditions = { ScoreGoal, nullptr };
+    Level->AIWinConditions = { ScoreGoal };
 
-    // Resolving from the directors' lists: what the match plays with
+    // Resolving from the Level director's lists: what the match plays with
     FConnectItRuleSet Rules;
     AddExpectedError(TEXT("Player win condition 1 is empty"), EAutomationExpectedErrorFlags::Contains, 1);
-    Rules.ResolveConditionGroups(Player->WinConditions, AI->WinConditions);
+    Rules.ResolveConditionGroups(Level->PlayerWinConditions, Level->AIWinConditions);
     TestEqual(TEXT("the player's goal, the empty entry skipped"), Rules.PlayerWinGroups.Num(), 1);
     TestTrue(TEXT("the AI's goal"), Rules.AIWinGroups.Num() == 1 && Rules.AIWinGroups[0].Source == ScoreGoal);
+
+    // One side's goals replaced: only that list changes
+    Rules.SetConditionGroups(/*bForAI=*/true, /*bWinGoals=*/true, { ScoreGoal, ScoreGoal });
+    TestEqual(TEXT("the AI's goals replaced"), Rules.GetConditionGroups(true, true).Num(), 2);
+    TestEqual(TEXT("...the player's untouched"), Rules.PlayerWinGroups.Num(), 1);
+    Rules.SetConditionGroups(false, false, { ScoreGoal });
+    TestEqual(TEXT("the player's lose conditions"), Rules.PlayerLoseGroups.Num(), 1);
 
 #if WITH_EDITOR
     {
         // An empty entry is a warning; a goal with no conditions is invalid
         FDataValidationContext Validation;
-        Player->StartingLoadout = nullptr;
-        Player->IsDataValid(Validation);
-        TestEqual(TEXT("player: the missing loadout is the only error"), static_cast<int32>(Validation.GetNumErrors()), 1);
-        TestTrue(TEXT("player: the empty entry is a warning"), Validation.GetNumWarnings() >= 1);
+        Level->IsDataValid(Validation);
+        TestEqual(TEXT("level: no errors"), static_cast<int32>(Validation.GetNumErrors()), 0);
+        TestTrue(TEXT("level: the empty entry is a warning"), Validation.GetNumWarnings() >= 1);
 
         FDataValidationContext Broken;
-        Player->WinConditions = { EmptyGoal };
-        Player->IsDataValid(Broken);
-        TestEqual(TEXT("a goal with no conditions is an error"), static_cast<int32>(Broken.GetNumErrors()), 2);
+        Level->PlayerWinConditions = { EmptyGoal };
+        Level->IsDataValid(Broken);
+        TestEqual(TEXT("a goal with no conditions is an error"), static_cast<int32>(Broken.GetNumErrors()), 1);
 
         FDataValidationContext NoGoals;
-        AI->WinConditions.Reset();
-        AI->IsDataValid(NoGoals);
-        TestTrue(TEXT("an AI with no goals is warned about"), NoGoals.GetNumWarnings() >= 1);
+        Level->PlayerWinConditions.Reset();
+        Level->AIWinConditions.Reset();
+        Level->IsDataValid(NoGoals);
+        TestEqual(TEXT("no player goals is an error"), static_cast<int32>(NoGoals.GetNumErrors()), 1);
+        TestTrue(TEXT("no AI goals is warned about"), NoGoals.GetNumWarnings() >= 1);
     }
 #endif
+    return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FConnectItBoardLayoutTest,
+    "ConnectIt.Board.Layout", TestFlags)
+
+bool FConnectItBoardLayoutTest::RunTest(const FString& Parameters)
+{
+    // Layouts and what changes between them: tiles that go, tiles that come,
+    // shared positions untouched
+    const auto MakeLayout = [](std::initializer_list<FGridPosition> Positions)
+    {
+        UConnectIt_BoardLayout* Layout = NewObject<UConnectIt_BoardLayout>();
+        for (const FGridPosition& Position : Positions)
+        {
+            FConnectItBoardLayoutCell& Cell = Layout->Cells.AddDefaulted_GetRef();
+            Cell.Position = Position;
+        }
+        return Layout;
+    };
+    const auto Has = [](const TArray<FGridPosition>& Positions, int32 X, int32 Y)
+    {
+        return Positions.Contains(FGridPosition(X, Y));
+    };
+
+    const UConnectIt_BoardLayout* Row = MakeLayout({ {0, 0}, {1, 0}, {2, 0}, {3, 0} });
+    const UConnectIt_BoardLayout* Square = MakeLayout({ {0, 0}, {1, 0}, {0, 1}, {1, 1} });
+
+    // Identical: nothing changes
+    TestTrue(TEXT("identical: no change"), Row->DiffFrom(*Row).IsEmpty());
+
+    // Grow: a 4x1 row to a 4x4 square -- only the new tiles come
+    UConnectIt_BoardLayout* Big = NewObject<UConnectIt_BoardLayout>();
+    for (int32 X = 0; X < 4; X++)
+    {
+        for (int32 Y = 0; Y < 4; Y++)
+        {
+            Big->Cells.AddDefaulted_GetRef().Position = FGridPosition(X, Y);
+        }
+    }
+    const FConnectItBoardLayoutDiff Grow = Big->DiffFrom(*Row);
+    TestEqual(TEXT("grow: nothing goes"), Grow.Removed.Num(), 0);
+    TestEqual(TEXT("grow: 12 tiles come"), Grow.Added.Num(), 12);
+
+    // Shrink: back again -- only the extra tiles go
+    const FConnectItBoardLayoutDiff Shrink = Row->DiffFrom(*Big);
+    TestEqual(TEXT("shrink: 12 tiles go"), Shrink.Removed.Num(), 12);
+    TestEqual(TEXT("shrink: nothing comes"), Shrink.Added.Num(), 0);
+
+    // Move: a row to a square sharing two tiles
+    const FConnectItBoardLayoutDiff Move = Square->DiffFrom(*Row);
+    TestTrue(TEXT("move: the row's far end goes"),
+        Move.Removed.Num() == 2 && Has(Move.Removed, 2, 0) && Has(Move.Removed, 3, 0));
+    TestTrue(TEXT("move: the square's top comes, in layout order"),
+        Move.Added.Num() == 2 && Move.Added[0].Position == FGridPosition(0, 1) && Move.Added[1].Position == FGridPosition(1, 1));
+
+    // From a live board: the board's tiles are the "current" side
+    const FConnectItBoardState Board = MakeBoard(2);
+    const FConnectItBoardLayoutDiff FromBoard = Row->DiffFrom(Board);
+    TestTrue(TEXT("from a board: its top row goes, the row's far end comes"),
+        FromBoard.Removed.Num() == 2 && Has(FromBoard.Removed, 0, 1) && Has(FromBoard.Removed, 1, 1)
+        && FromBoard.Added.Num() == 2);
+
+    // A cell keeps its data on the way through
+    UConnectIt_BoardLayout* Charged = MakeLayout({ {5, 5} });
+    Charged->Cells[0].TileData.Multiplier = 3.f;
+    Charged->Cells[0].TileData.StartingFactionPiece = 1;
+    const FConnectItBoardLayoutDiff Carry = Charged->DiffFrom(Board);
+    TestTrue(TEXT("added cells carry their tile data"),
+        Carry.Added.Num() == 1 && Carry.Added[0].TileData.Multiplier == 3.f && Carry.Added[0].TileData.StartingFactionPiece == 1);
+    TestNotNull(TEXT("find a cell by position"), Charged->FindCell(FGridPosition(5, 5)));
+    TestNull(TEXT("...and not one that isn't there"), Charged->FindCell(FGridPosition(0, 0)));
+
+#if WITH_EDITOR
+    {
+        FDataValidationContext Fine;
+        TestTrue(TEXT("a plain layout is valid"), Square->IsDataValid(Fine) != EDataValidationResult::Invalid);
+
+        UConnectIt_BoardLayout* Twice = MakeLayout({ {0, 0}, {0, 0} });
+        FDataValidationContext Duplicate;
+        TestTrue(TEXT("a repeated position is invalid"), Twice->IsDataValid(Duplicate) == EDataValidationResult::Invalid);
+        TestTrue(TEXT("...and the diff keeps one"), Twice->DiffFrom(*Row).Added.IsEmpty() && Twice->DiffFrom(*Row).Removed.Num() == 3);
+
+        UConnectIt_BoardLayout* ThirdSide = MakeLayout({ {0, 0} });
+        ThirdSide->Cells[0].TileData.StartingFactionPiece = 2;
+        FDataValidationContext Faction;
+        ThirdSide->IsDataValid(Faction);
+        TestTrue(TEXT("a piece for a faction no match has is warned about"), Faction.GetNumWarnings() >= 1);
+    }
+#endif
+    return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FConnectItChangeGoalsTest,
+    "ConnectIt.Board.ChangeGoals", TestFlags)
+
+bool FConnectItChangeGoalsTest::RunTest(const FString& Parameters)
+{
+    // The board's side of a goals change: progress restarts, score stays,
+    // and the win check that follows measures the new goals
+    UConnectIt_MatchConditionAsset* Score4 = NewObject<UConnectIt_MatchConditionAsset>(GetTransientPackage(), TEXT("WC_Test_Goals4"));
+    Score4->Conditions.Add(TInstancedStruct<FConnectItMatchCondition>::Make<FConnectItMatchCondition_ScoreThreshold>(ScoreAtLeast(4.f)));
+    UConnectIt_MatchConditionAsset* Score20 = NewObject<UConnectIt_MatchConditionAsset>(GetTransientPackage(), TEXT("WC_Test_Goals20"));
+    Score20->Conditions.Add(TInstancedStruct<FConnectItMatchCondition>::Make<FConnectItMatchCondition_ScoreThreshold>(ScoreAtLeast(20.f)));
+
+    FConnectItRuleSet Rules;
+    Rules.AIFaction = 1;
+    Rules.ResolveConditionGroups({ Score20, Score20 }, { Score20 });
+
+    FConnectItBoardState Board = MakeBoard(5);
+    Board.ScoreBoard = { 6.f, 0.f };
+    Board.GroupsCompleted = { 1, 0 };
+
+    // New player goals: 20 points (not met), then 4 points
+    Rules.SetConditionGroups(false, true, { Score20, Score4 });
+    FConnectItBoardOperation_ChangeGoals Change;
+    Change.Factions = { 0 };
+    Change.bWinGoals = true;
+    Change.GroupNames = { Score20->GetFName(), Score4->GetFName() };
+    TestTrue(TEXT("can apply"), Change.CanApply(Board));
+
+    FConnectItBoardChangeEvent Events;
+    const float Points = Rules.CarryOutOperation(Change, Board, &Events);
+    Rules.StampWinState(Board, &Events);
+    TestEqual(TEXT("nothing scores"), Points, 0.f);
+    TestEqual(TEXT("score carries over"), Board.ScoreBoard[0], 6.f);
+    TestEqual(TEXT("progress restarted (the first new goal isn't met)"), Board.GroupsCompleted[0], 0);
+    TestFalse(TEXT("no win yet"), Board.bGameOver);
+    const FConnectItBoardEvent_GoalsChanged* Changed =
+        Events.Events.Num() > 0 ? Events.Events[0].GetPtr<FConnectItBoardEvent_GoalsChanged>() : nullptr;
+    TestTrue(TEXT("Goals Changed comes first, with the new goals"),
+        Changed && Changed->Factions == TArray<int32>{ 0 } && Changed->bWinGoals && Changed->GroupNames.Num() == 2);
+
+    // New goals already met: they complete at once (with the win)
+    Rules.SetConditionGroups(false, true, { Score4 });
+    Change.GroupNames = { Score4->GetFName() };
+    FConnectItBoardChangeEvent MetEvents;
+    Rules.CarryOutOperation(Change, Board, &MetEvents);
+    Rules.StampWinState(Board, &MetEvents);
+    TestTrue(TEXT("a goal already met wins at once"), Board.bGameOver && Board.WinningFactionSlot == 0);
+
+    // Lose conditions keep no progress on the board
+    FConnectItBoardState Other = MakeBoard(5);
+    Other.ScoreBoard = { 0.f, 0.f };
+    Other.GroupsCompleted = { 0, 1 };
+    FConnectItBoardOperation_ChangeGoals Lose;
+    Lose.Factions = { 1 };
+    Lose.bWinGoals = false;
+    FConnectItTouchedPositions Touched;
+    Lose.Apply(Other, Touched, nullptr);
+    TestEqual(TEXT("lose conditions don't touch win progress"), Other.GroupsCompleted[1], 1);
+
+    // Refusals
+    FConnectItBoardOperation_ChangeGoals Nobody;
+    TestFalse(TEXT("no factions: refused"), Nobody.CanApply(Board));
+    Nobody.Factions = { 5 };
+    TestFalse(TEXT("a faction not on the board: refused"), Nobody.CanApply(Board));
     return true;
 }
 

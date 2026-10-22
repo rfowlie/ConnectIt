@@ -39,7 +39,15 @@ EDataValidationResult UConnectIt_MatchPreset::IsDataValid(
         Result = EDataValidationResult::Invalid;
     }
 
-    if (LevelDirectorClass && GetDefault<UConnectIt_LevelDirector>(LevelDirectorClass)->IsDataValid(Context) == EDataValidationResult::Invalid)
+    // The Level director holds both sides' goals: without one nobody can win
+    if (!LevelDirectorClass)
+    {
+        Context.AddError(FText::FromString(TEXT(
+            "ConnectIt_MatchPreset: No Level Director Class -- the match has no goals (the Level director holds "
+            "both sides' win and lose conditions). Use a generic one for a standard way of playing.")));
+        Result = EDataValidationResult::Invalid;
+    }
+    else if (GetDefault<UConnectIt_LevelDirector>(LevelDirectorClass)->IsDataValid(Context) == EDataValidationResult::Invalid)
     {
         Result = EDataValidationResult::Invalid;
     }

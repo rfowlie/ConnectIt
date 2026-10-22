@@ -44,6 +44,11 @@ FGameplayTag FConnectItBoardEvent_TileActiveToggled::GetEventTag() const
     return ConnectIt_Event_TileActiveToggled;
 }
 
+FGameplayTag FConnectItBoardEvent_GoalsChanged::GetEventTag() const
+{
+    return ConnectIt_Event_GoalsChanged;
+}
+
 FGameplayTag FConnectItBoardEvent_Scored::GetEventTag() const
 {
     return ConnectIt_Event_Scored;

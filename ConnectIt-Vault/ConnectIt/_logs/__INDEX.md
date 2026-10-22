@@ -6,6 +6,12 @@ Vault-wide passes go in `_core/_logs/`.
 
 Newest first:
 
+- [2026-10-22-0948](2026-10-22-0948.md) — session — side directors' unused goal lists removed; phased levels, Stage 2:
+  `UConnectIt_BoardLayout` asset, layout cell + diff structs, `DefaultTileClass`. 49/49 tests.
+- [2026-10-22-0920](2026-10-22-0920.md) — session — `ConnectIt_Game_Post` tag string fixed (`"ConnectIt.Game.Pre"` → `"ConnectIt.Game.Post"`); nothing
+  depended on the collision. 48/48 tests.
+- [2026-10-21-1727](2026-10-21-1727.md) — session — phased levels, Stage 1: goals on the Level director; Set Win / Lose
+  Conditions as a board change (Change Goals operation, Goals Changed event). 48/48 tests; migration and PIE pending.
 - [2026-10-21-1442](2026-10-21-1442.md) — session — phased-levels plan reviewed: one Change Layout operation; condition
   changes and phases as board changes; `DefaultTileClass`; Stage 5 / tool scope tightened.
 - [2026-10-21-1436](2026-10-21-1436.md) — session — plan status properties: frontmatter on the seven `# Plan:` notes;

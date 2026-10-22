@@ -46,7 +46,8 @@ public:
     // UConnectIt_Director). One per adventure level of each kind, or shared
     // ones for a way of playing (Classic, versus...).
 
-    // The level's script. None = no level script.
+    // The level's script, and both sides' goals (win and lose conditions).
+    // Required: with none, nobody has goals.
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "ConnectIt|Directors")
     TSubclassOf<UConnectIt_LevelDirector> LevelDirectorClass;
 

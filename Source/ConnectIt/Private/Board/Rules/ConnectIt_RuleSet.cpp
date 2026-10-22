@@ -7,18 +7,10 @@
 #include "Board/Rules/ConnectIt_MatchConditionAsset.h"
 
 
-FConnectItRuleSet::FConnectItRuleSet()
+namespace
 {
-    ScoringRule = TInstancedStruct<FConnectItScoringRule>::Make<FConnectItScoringRule_Lines>();
-}
-
-void FConnectItRuleSet::ResolveConditionGroups(
-    const TArray<TObjectPtr<UConnectIt_MatchConditionAsset>>& PlayerWinConditions,
-    const TArray<TObjectPtr<UConnectIt_MatchConditionAsset>>& AIWinConditions,
-    const TArray<TObjectPtr<UConnectIt_MatchConditionAsset>>& PlayerLoseConditions,
-    const TArray<TObjectPtr<UConnectIt_MatchConditionAsset>>& AILoseConditions)
-{
-    const auto Resolve = [](const TCHAR* Side,
+    // Condition assets -> the plain groups the match plays with, in order
+    void ResolveGroups(const TCHAR* Side,
         const TArray<TObjectPtr<UConnectIt_MatchConditionAsset>>& Assets, TArray<FConnectItMatchConditionGroup>& OutGroups)
     {
         OutGroups.Reset();
@@ -37,11 +29,46 @@ void FConnectItRuleSet::ResolveConditionGroups(
             Group.Conditions = Asset->Conditions;
             Group.Source = Asset;
         }
-    };
-    Resolve(TEXT("Player"), PlayerWinConditions, PlayerWinGroups);
-    Resolve(TEXT("AI"), AIWinConditions, AIWinGroups);
-    Resolve(TEXT("Player lose"), PlayerLoseConditions, PlayerLoseGroups);
-    Resolve(TEXT("AI lose"), AILoseConditions, AILoseGroups);
+    }
+
+    const TCHAR* SideText(bool bForAI, bool bWinGoals)
+    {
+        return bForAI ? (bWinGoals ? TEXT("AI") : TEXT("AI lose"))
+                      : (bWinGoals ? TEXT("Player") : TEXT("Player lose"));
+    }
+}
+
+FConnectItRuleSet::FConnectItRuleSet()
+{
+    ScoringRule = TInstancedStruct<FConnectItScoringRule>::Make<FConnectItScoringRule_Lines>();
+}
+
+void FConnectItRuleSet::ResolveConditionGroups(
+    const TArray<TObjectPtr<UConnectIt_MatchConditionAsset>>& PlayerWinConditions,
+    const TArray<TObjectPtr<UConnectIt_MatchConditionAsset>>& AIWinConditions,
+    const TArray<TObjectPtr<UConnectIt_MatchConditionAsset>>& PlayerLoseConditions,
+    const TArray<TObjectPtr<UConnectIt_MatchConditionAsset>>& AILoseConditions)
+{
+    SetConditionGroups(false, true, PlayerWinConditions);
+    SetConditionGroups(true, true, AIWinConditions);
+    SetConditionGroups(false, false, PlayerLoseConditions);
+    SetConditionGroups(true, false, AILoseConditions);
+}
+
+void FConnectItRuleSet::SetConditionGroups(bool bForAI, bool bWinGoals,
+    const TArray<TObjectPtr<UConnectIt_MatchConditionAsset>>& Conditions)
+{
+    TArray<FConnectItMatchConditionGroup>& Groups = bForAI
+        ? (bWinGoals ? AIWinGroups : AILoseGroups)
+        : (bWinGoals ? PlayerWinGroups : PlayerLoseGroups);
+    ResolveGroups(SideText(bForAI, bWinGoals), Conditions, Groups);
+}
+
+const TArray<FConnectItMatchConditionGroup>& FConnectItRuleSet::GetConditionGroups(bool bForAI, bool bWinGoals) const
+{
+    return bForAI
+        ? (bWinGoals ? AIWinGroups : AILoseGroups)
+        : (bWinGoals ? PlayerWinGroups : PlayerLoseGroups);
 }
 
 bool FConnectItRuleSet::IsScoringRule(const FInstancedStruct& Rule)

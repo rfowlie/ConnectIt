@@ -67,6 +67,11 @@ public:
         meta = (WorldContext = "WorldContextObject", ExpandBoolAsExecs = "ReturnValue"))
     static bool GetActiveTileActiveToggledEvent(const UObject* WorldContextObject, FConnectItBoardEvent_TileActiveToggled& OutEvent);
 
+    // For listeners of ConnectIt.Event.GoalsChanged
+    UFUNCTION(BlueprintCallable, Category = "ConnectIt|Board Events",
+        meta = (WorldContext = "WorldContextObject", ExpandBoolAsExecs = "ReturnValue"))
+    static bool GetActiveGoalsChangedEvent(const UObject* WorldContextObject, FConnectItBoardEvent_GoalsChanged& OutEvent);
+
     // For listeners of ConnectIt.Event.Scored
     UFUNCTION(BlueprintCallable, Category = "ConnectIt|Board Events",
         meta = (WorldContext = "WorldContextObject", ExpandBoolAsExecs = "ReturnValue"))

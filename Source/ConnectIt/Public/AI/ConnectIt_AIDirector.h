@@ -10,7 +10,6 @@ class AConnectIt_AIController;
 class UActionLoadoutDataAsset;
 class UConnectIt_AIStrategy;
 class UConnectIt_AISelector;
-class UConnectIt_MatchConditionAsset;
 struct FConnectItRuleSet;
 
 // The AI opponent of a match, and how it changes as the match goes on. Named
@@ -25,7 +24,8 @@ struct FConnectItRuleSet;
 //   * Strategies -- what proposes moves, in priority order, configured inline;
 //   * Selector -- how the move is picked from the strategies' answers;
 //   * the think-time settings.
-// The base class as it comes is the classic opponent: one MinMax strategy,
+// Its goals are the level's (UConnectIt_LevelDirector's AI Win / Lose
+// Conditions). The base class as it comes is the classic opponent: one MinMax strategy,
 // First Available (and no loadout -- a subclass sets one).
 //
 // Examples (see the recipe "Direct the AI during a match"):
@@ -77,20 +77,6 @@ public:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AI|Director", meta = (ClampMin = 0.0, Units = "s"))
     float MinThinkSeconds = 0.6f;
 
-    // The AI's goals, in the order they are completed (checkpoints, then the
-    // win). Set them: the AI never borrows the player's, and none means it
-    // can't win. Copied into the match's rules when it starts.
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "AI|Conditions")
-    TArray<TObjectPtr<UConnectIt_MatchConditionAsset>> WinConditions;
-
-    // Ways this side LOSES: if any one holds after a move (all of its
-    // conditions at once), this side loses and the other side wins -- unless
-    // a win was completed in that same move (wins are checked first). Only in
-    // a match with an AI (ignored online for now). E.g. Not Enough Pieces To
-    // Score, No Legal Move: Swap Pieces on an exhaustion level.
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "AI|Conditions")
-    TArray<TObjectPtr<UConnectIt_MatchConditionAsset>> LoseConditions;
-
     // --- For the controller ---
 
     // Adopts strategy / selector changes made since the last decision. Called
@@ -108,7 +94,6 @@ public:
     // The setup can play: a starting loadout, strategies, and a loadout that
     // grants moves the strategies play (checked by the match preset holding it)
     virtual EDataValidationResult IsDataValid(FDataValidationContext& Context) const override;
-    virtual void AddConditionRuleWarnings(const FConnectItRuleSet& Rules, FDataValidationContext& Context) const override;
 #endif
 
 protected:

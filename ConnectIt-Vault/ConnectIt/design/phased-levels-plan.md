@@ -1,6 +1,6 @@
 ---
 type: plan
-status: not-started
+status: in-progress
 approved: true
 approved-on: 2026-10-21
 completed-on:
@@ -75,6 +75,23 @@ stages.
   - changing a side's goals mid-match resets its progress, leaves score alone, and appends `GoalsChanged`;
   - goals already met when set win at once;
   - the AI's next decision uses the new goals.
+- *As built (2026-10-21; 48/48 tests):*
+  - **Names:** the operation is **`FConnectItBoardOperation_ChangeGoals`** {Factions, bWinGoals, GroupNames}
+    (request type `ConnectIt.Game.State.ChangeGoals`). The event is **`FConnectItBoardEvent_GoalsChanged`** (tag
+    `ConnectIt.Event.GoalsChanged`, getter `Get Active Goals Changed Event`).
+  - **Rules and GameMode:** the rule set gained `SetConditionGroups` / `GetConditionGroups`. The GameMode gained
+    `SetConditions(Side, bWinGoals, Conditions, Timing)`, applied by `ApplyGoalsChange`.
+  - **Which factions:** the player side is every non-AI faction (both, in a match with no AI). New AI goals in a match
+    with no AI are ignored, with a warning.
+  - **Migration aid (not in the plan), now removed:** the Player / AI directors briefly kept their old `WinConditions` /
+    `LoseConditions` as "(unused)", so goals already set in director Blueprints still loaded while the owner copied
+    them to the Level directors. Deleted 2026-10-22 at the owner's request, after the migration.
+  - **Preset validation:** a preset with **no Level Director Class is an error** (nobody would have goals). A Level
+    director with no Player Win Conditions is an error; no AI Win Conditions is a warning.
+  - **Not unit-tested:** "the AI's next decision uses the new goals" holds by construction (each decision copies the
+    GameMode's rules); it's left to PIE. The GameMode's apply path also needs a world, so it's covered in PIE too.
+  - **Tests:** `ConnectIt.AI.DirectorConditions` (rewritten for the Level director) and the new
+    `ConnectIt.Board.ChangeGoals`. The operation catalog count is now 9.
 
 ## Stage 2: the board layout asset
 
@@ -89,6 +106,21 @@ stages.
   class today): the class for a cell that names none. Validation: a layout cell with no class on a board with no default.
 - Helper: **diff** two layouts / a board and a layout → positions to remove, cells to add (shared positions untouched).
 - Tests: diff cases (grow, shrink, move, identical).
+- *As built (2026-10-22; 49/49 tests):*
+  - **The cell and the diff** are plain structs in `Public/Board/ConnectIt_BoardLayoutCell.h`, not in the asset's
+    header, so Stage 3's operations can carry them without depending on `Framework/Data`:
+    - `FConnectItBoardLayoutCell` {Position, TileClass (`TSubclassOf<AGridTileBase>`), TileData, VisualVariant};
+    - `FConnectItBoardLayoutDiff` {Removed, Added}, with `Between(CurrentPositions, Cells)`.
+  - **The asset** is `UConnectIt_BoardLayout` (`Public/Framework/Data/ConnectIt_BoardLayout.h`): `Cells`, `bHasCamera`
+    + `CameraTransform`, `FindCell`, `DiffFrom(Board)`, `DiffFrom(OtherLayout)`.
+  - **Validation:**
+    - No cells is a warning; a repeated position is an error (the diff keeps the first).
+    - A starting piece for faction 2 or higher is a warning: every match has 2 factions today, and a layout isn't tied
+      to a level.
+  - **`DefaultTileClass`** has no validation of its own. A layout isn't tied to a level config, so "a cell with no class
+    on a board with no default" can only be checked when a layout is applied: a runtime warning in Stage 5.
+  - **Tests:** `ConnectIt.Board.Layout` (grow, shrink, move, identical, from a live board, cell data carried, `FindCell`,
+    validation).
 
 ## Stage 3: Remove Tiles, Add Tiles and Change Layout operations
 

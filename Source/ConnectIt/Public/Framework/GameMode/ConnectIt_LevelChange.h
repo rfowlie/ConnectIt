@@ -8,7 +8,7 @@
 
 
 // When a change made from outside a move (a director replacing a loadout, the
-// level changing the board or the scoring rule) takes effect.
+// level changing the board, the scoring rule or a side's goals) takes effect.
 // (Formerly EConnectItLoadoutTiming.)
 UENUM(BlueprintType)
 enum class EConnectItChangeTiming : uint8
@@ -27,8 +27,10 @@ enum class EConnectItChangeTiming : uint8
     Immediately     UMETA(DisplayName = "Immediately")
 };
 
-// A change the level makes outside any player's move: a board operation, or a
-// new scoring rule (exactly one is set)
+class UConnectIt_MatchConditionAsset;
+
+// A change the level makes outside any player's move: a board operation, a
+// new scoring rule, or a side's new goals (exactly one is set)
 struct FConnectItLevelChange
 {
     // A board operation struct (e.g. Force Place Piece), made by AsFaction
@@ -38,6 +40,14 @@ struct FConnectItLevelChange
 
     // A scoring rule struct (e.g. Lines) replacing the match's
     FInstancedStruct ScoringRule;
+
+    // A side's goals replaced (bHasGoals): the AI's or the human side's, win
+    // goals or lose conditions. Weak: this queue isn't seen by the garbage
+    // collector (the assets are held by the Level director that asked).
+    bool bHasGoals = false;
+    bool bGoalsForAI = false;
+    bool bWinGoals = true;
+    TArray<TWeakObjectPtr<UConnectIt_MatchConditionAsset>> Goals;
 };
 
 // The GameMode's level changes that can't be applied yet: those waiting for

@@ -170,6 +170,14 @@ public:
     // isn't a scoring rule struct.
     bool SetScoringRule(const FInstancedStruct& ScoringRule, EConnectItChangeTiming Timing);
 
+    // Replaces a side's win goals (bWinGoals) or lose conditions at Timing.
+    // Applied as a board change: the rules are re-resolved (and replicate),
+    // then a Change Goals operation restarts that side's goal progress and
+    // says so, and the win check measures the new goals (one already met
+    // completes at once). Score carries over.
+    void SetConditions(EConnectItRole Side, bool bWinGoals,
+        const TArray<UConnectIt_MatchConditionAsset*>& Conditions, EConnectItChangeTiming Timing);
+
     // The same for one player (what a Player director calls for its own player)
     void SetLoadoutForPlayer(ATurnBasedPlayerState* PlayerState, UActionLoadoutDataAsset* Loadout,
         EConnectItChangeTiming Timing = EConnectItChangeTiming::NextTurnStart);
@@ -294,6 +302,7 @@ private:
     void DrainLevelChanges();
 
     void ApplyLevelChange(const FConnectItLevelChange& Change);
+    void ApplyGoalsChange(const FConnectItLevelChange& Change);
     void QueueLevelChange(const FConnectItLevelChange& Change, EConnectItChangeTiming Timing);
 
     // Loadouts parked by SetLoadout (NextTurnStart), by faction slot

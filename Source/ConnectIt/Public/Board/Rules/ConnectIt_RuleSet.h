@@ -28,14 +28,15 @@ class UConnectIt_MatchConditionAsset;
 // it). (Which moves a player can make is not a rule: it is their loadout's
 // actions, each sending a FConnectItBoardOperation.)
 //
-// How a match is won: each side's director lists its goals (condition assets)
-// in the order they are to be completed (UConnectIt_PlayerDirector /
-// UConnectIt_AIDirector::WinConditions). Completing a goal that is not the
-// last is a checkpoint; completing the last is the win. When the match starts,
-// ResolveConditionGroups copies the assets' conditions into PlayerWinGroups /
-// AIWinGroups, which is what everything plays with (server, clients, the AI's
-// search). How far each faction has got lives on the board
-// (FConnectItBoardState::GroupsCompleted), not here.
+// How a match is won: the Level director lists each side's goals (condition
+// assets) in the order they are to be completed
+// (UConnectIt_LevelDirector::PlayerWinConditions / AIWinConditions).
+// Completing a goal that is not the last is a checkpoint; completing the last
+// is the win. When the match starts, ResolveConditionGroups copies the assets'
+// conditions into PlayerWinGroups / AIWinGroups, which is what everything
+// plays with (server, clients, the AI's search); the level can replace a
+// side's mid-match (SetConditionGroups). How far each faction has got lives
+// on the board (FConnectItBoardState::GroupsCompleted), not here.
 USTRUCT(BlueprintType)
 struct CONNECTIT_API FConnectItRuleSet
 {
@@ -43,8 +44,8 @@ struct CONNECTIT_API FConnectItRuleSet
 
     FConnectItRuleSet();
 
-    // What the match plays with: the directors' goals as plain groups, copied
-    // by ResolveConditionGroups when the match starts (empty before). The
+    // What the match plays with: the Level director's goals as plain groups,
+    // copied by ResolveConditionGroups when the match starts (empty before). The
     // player's apply to every faction in a match with no AI (Online). Not
     // authored.
     UPROPERTY(Transient, BlueprintReadOnly, Category = "Rules")
@@ -53,7 +54,7 @@ struct CONNECTIT_API FConnectItRuleSet
     UPROPERTY(Transient, BlueprintReadOnly, Category = "Rules")
     TArray<FConnectItMatchConditionGroup> AIWinGroups;
 
-    // The directors' lose conditions as plain groups (any one met = that side
+    // The Level director's lose conditions as plain groups (any one met = that side
     // loses), copied by ResolveConditionGroups. Only apply in a match with an
     // AI (see GetLoseGroupsFor).
     UPROPERTY(Transient, BlueprintReadOnly, Category = "Rules")
@@ -71,14 +72,24 @@ struct CONNECTIT_API FConnectItRuleSet
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Rules", meta = (ExcludeBaseStruct))
     TInstancedStruct<FConnectItScoringRule> ScoringRule;
 
-    // Copies the directors' condition assets into the win and lose groups,
-    // in order (empty entries skipped, with a warning). Game thread, once per
-    // match, before the rules are used -- the GameMode does it.
+    // Copies the Level director's condition assets into the win and lose
+    // groups, in order (empty entries skipped, with a warning). Game thread,
+    // once per match, before the rules are used -- the GameMode does it.
     void ResolveConditionGroups(
         const TArray<TObjectPtr<UConnectIt_MatchConditionAsset>>& PlayerWinConditions,
         const TArray<TObjectPtr<UConnectIt_MatchConditionAsset>>& AIWinConditions,
         const TArray<TObjectPtr<UConnectIt_MatchConditionAsset>>& PlayerLoseConditions = {},
         const TArray<TObjectPtr<UConnectIt_MatchConditionAsset>>& AILoseConditions = {});
+
+    // Replaces one side's win goals (bWinGoals) or lose conditions with
+    // Conditions, resolved the same way. Game thread. The progress the board
+    // keeps for them is the caller's to restart (the GameMode commits a
+    // Change Goals operation).
+    void SetConditionGroups(bool bForAI, bool bWinGoals,
+        const TArray<TObjectPtr<UConnectIt_MatchConditionAsset>>& Conditions);
+
+    // One side's win goals (bWinGoals) or lose conditions, in order
+    const TArray<FConnectItMatchConditionGroup>& GetConditionGroups(bool bForAI, bool bWinGoals) const;
 
     // --- The rules themselves (null if a slot was cleared / left empty) ---
 

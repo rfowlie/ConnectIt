@@ -7,6 +7,7 @@
 #include "ConnectIt_LevelConfigDataAsset.generated.h"
 
 class AConnectIt_GridPiece;
+class AGridTileBase;
 class UConnectIt_TileRegistry;
 class UConnectIt_PieceRegistry;
 class UGridDefinition;
@@ -62,6 +63,12 @@ public:
     // own class comment for why this isn't just TileRegistry's business.
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Instanced, Category = "ConnectIt|Board")
     TObjectPtr<UGridDefinition> GridDefinition;
+
+    // The tile actor spawned for a layout cell that names none, when a phased
+    // level changes the board to a new layout (UConnectIt_BoardLayout).
+    // Unused by levels that keep their placed tiles.
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "ConnectIt|Board")
+    TSubclassOf<AGridTileBase> DefaultTileClass;
 
 #if WITH_EDITOR
     virtual EDataValidationResult IsDataValid(

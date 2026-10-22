@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "AI/ConnectIt_Director.h"
 #include "StructUtils/InstancedStruct.h"
+#include "Framework/GameMode/ConnectIt_GameMode.h"
 #include "Framework/GameMode/ConnectIt_LevelChange.h"
 #include "Board/Rules/ConnectIt_RuleSet.h"
 #include "ConnectIt_LevelDirector.generated.h"
@@ -44,8 +45,13 @@ struct CONNECTIT_API FConnectItLevelTrigger
 // anything it can reach through the world) and, being the level, is the one
 // director that changes the board and the rules -- not a side's loadout
 // (ask that side's director). One instance per match, owned by the GameMode;
-// named by class on the match preset (none = no level script). Subclass it in
-// Blueprint per adventure level.
+// named by class on the match preset. Subclass it in Blueprint per adventure
+// level, plus a generic one per standard way of playing (classic, versus).
+//
+// Goals: it holds both sides' win goals and lose conditions -- a level's whole
+// script in one place, so the Player / AI directors are reusable loadout and
+// AI setup. Set Win Conditions / Set Lose Conditions replace a side's
+// mid-match. With no Level Director Class on the preset, nobody has goals.
 //
 // Triggers: after every committed board change, each armed trigger whose
 // condition now holds (for its side) fires On Trigger Fired once and disarms;
@@ -64,6 +70,33 @@ class CONNECTIT_API UConnectIt_LevelDirector : public UConnectIt_Director
     GENERATED_BODY()
 
 public:
+
+    // --- Goals (each side's, at the start of the match) ---
+
+    // The player's goals, in the order they are completed: completing one
+    // that isn't the last is a checkpoint, completing the last is the win.
+    // Also every faction's goals in a match with no AI.
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Level|Conditions")
+    TArray<TObjectPtr<UConnectIt_MatchConditionAsset>> PlayerWinConditions;
+
+    // Ways the player LOSES: if any one holds after a move (all of its
+    // conditions at once), the player loses and the other side wins -- unless
+    // a win was completed in that same move (wins are checked first). Only in
+    // a match with an AI (ignored online for now). E.g. Not Enough Pieces To
+    // Score, No Legal Move: Swap Pieces on an exhaustion level.
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Level|Conditions")
+    TArray<TObjectPtr<UConnectIt_MatchConditionAsset>> PlayerLoseConditions;
+
+    // The AI's goals, in order. Set them: the AI never borrows the player's,
+    // and none means it can't win.
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Level|Conditions")
+    TArray<TObjectPtr<UConnectIt_MatchConditionAsset>> AIWinConditions;
+
+    // Ways the AI loses (as Player Lose Conditions)
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Level|Conditions")
+    TArray<TObjectPtr<UConnectIt_MatchConditionAsset>> AILoseConditions;
+
+    // --- Triggers ---
 
     // What the level watches for. Each fires once (until re-armed).
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Level|Triggers")
@@ -116,7 +149,25 @@ protected:
         UPARAM(meta = (BaseStruct = "/Script/ConnectIt.ConnectItScoringRule")) const FInstancedStruct& ScoringRule,
         EConnectItChangeTiming Timing = EConnectItChangeTiming::NextTurnStart);
 
-    // The match's rules as they are now (a copy)
+    // Replaces Side's goals, in order (completing the last is the win). That
+    // side's goal progress restarts at 0 -- score carries over, so a score
+    // goal already reached completes at once. A board change like any other:
+    // it plays a Goals Changed event, then any checkpoint or win the new goals
+    // already meet. Set them before changing the layout in the same moment, so
+    // the new layout is checked against the new goals.
+    UFUNCTION(BlueprintCallable, Category = "Level|Changes")
+    void SetWinConditions(EConnectItRole Side, const TArray<UConnectIt_MatchConditionAsset*>& Conditions,
+        EConnectItChangeTiming Timing = EConnectItChangeTiming::Immediately);
+
+    // Replaces Side's lose conditions (any one met = that side loses; only in
+    // a match with an AI). A board change, with a Goals Changed event and the
+    // usual win check.
+    UFUNCTION(BlueprintCallable, Category = "Level|Changes")
+    void SetLoseConditions(EConnectItRole Side, const TArray<UConnectIt_MatchConditionAsset*>& Conditions,
+        EConnectItChangeTiming Timing = EConnectItChangeTiming::Immediately);
+
+    // The match's rules as they are now (a copy) -- including each side's
+    // current goals (Player / AI Win Groups)
     UFUNCTION(BlueprintPure, Category = "Level|Changes")
     FConnectItRuleSet GetMatchRules() const;
 

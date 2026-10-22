@@ -11,10 +11,10 @@
 
 // One goal of a match, as an asset: one or more conditions that must ALL
 // hold at the same time (e.g. Piece Count Equal 0 AND Score Threshold 4: clear
-// the board, having scored). A side's director lists its goals as these
-// assets, in the order they must be completed (UConnectIt_PlayerDirector /
-// UConnectIt_AIDirector::WinConditions); a variant of a goal is just another
-// asset.
+// the board, having scored). The Level director lists each side's goals as
+// these assets, in the order they must be completed
+// (UConnectIt_LevelDirector::PlayerWinConditions / AIWinConditions); a variant
+// of a goal is just another asset.
 //
 // The conditions are the same plain thread-safe structs as before: when a
 // match starts, the rule set copies them out of the assets
