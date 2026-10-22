@@ -67,6 +67,34 @@ What this needs, against the current code (design only):
 - **Level-to-level flow** (load the next level on a win) -- needed for adventure anyway; `ConnectIt_MatchSetupSubsystem`
   already opens levels.
 
+### Level 1 draft: "Placing pieces" as one phased level (2026-10-22, under discussion)
+
+The owner now wants the first level to use phases ([phased-levels-plan](phased-levels-plan.md), in progress): several
+small boards in one level, teaching where a piece can go. This refines the 10-21 call above (one level per board
+shape) for this first level; scoring and opponents stay later levels.
+
+Owner's proposed phases:
+
+1. **1x1:** the tile is highlighted; select the Place Piece skill in the UI, then click the only tile.
+2. **2x1, one tile holding a piece:** you can't place on a tile that already has a piece.
+3. **3x3, the outer ring not placeable:** some tiles don't take pieces.
+4. **A tile with a power?** Owner unsure if too advanced.
+
+Claude's notes (to discuss):
+
+- Phase 2: make the existing piece the **opponent's colour** (starting pieces must belong to a faction slot; there are
+  no neutral blockers) -- it also foreshadows the opponent. Clicking it should give feedback ("occupied"), which means a
+  refused-click message in the UI, not just a missing highlight.
+- Phase 3 depends on **which "not placeable"**: a **locked** tile (on the board, visible, counts in lines, players can't
+  place -- the tile lock above, not built) or an **inactive** tile (out of play, a hole; exists today). Teach locked
+  here; holes later with layouts that change shape. A 3x3 with the whole ring locked is really a 1x1; mixing a few
+  locked, a few occupied and two or three free tiles makes the player read the board.
+- A closing phase that **scores** (4x1, three pieces, fill the gap) gives the level a payoff and leads into level 2.
+- Tile powers: too advanced here (not designed for teaching yet, not built); give them their own
+  concept-introduction level once the placement / scoring / opponent basics are done.
+- Phase goals: Piece Count (≥ N pieces for the player) per phase; the last phase's goal (or a score) is the win.
+  Note Piece Count counts *all* the player's pieces, including any left from earlier phases on shared tiles.
+
 ## Progression and gating
 
 - The first module is mandatory up to a certain point before other levels can be tried.

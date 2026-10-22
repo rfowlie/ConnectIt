@@ -29,6 +29,16 @@ FConnectItBoardLayoutDiff UConnectIt_BoardLayout::DiffFrom(const UConnectIt_Boar
     return FConnectItBoardLayoutDiff::Between(OtherPositions, Cells);
 }
 
+FConnectItBoardOperation_ChangeLayout UConnectIt_BoardLayout::MakeChangeFrom(const FConnectItBoardState& Board) const
+{
+    FConnectItBoardOperation_ChangeLayout Change;
+    Change.SetDiff(DiffFrom(Board));
+    Change.LayoutName = GetFName();
+    Change.bHasCamera = bHasCamera;
+    Change.CameraTransform = CameraTransform;
+    return Change;
+}
+
 #if WITH_EDITOR
 EDataValidationResult UConnectIt_BoardLayout::IsDataValid(FDataValidationContext& Context) const
 {

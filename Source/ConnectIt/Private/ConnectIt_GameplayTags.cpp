@@ -20,6 +20,7 @@ UE_DEFINE_GAMEPLAY_TAG_COMMENT(ConnectIt_Game_Shift, "ConnectIt.Game.State.Shift
 UE_DEFINE_GAMEPLAY_TAG_COMMENT(ConnectIt_Game_ChangeGoals, "ConnectIt.Game.State.ChangeGoals", "Level only: a side's goals replaced mid-match (FConnectItBoardOperation_ChangeGoals)");
 UE_DEFINE_GAMEPLAY_TAG_COMMENT(ConnectIt_Game_RemoveTiles, "ConnectIt.Game.State.RemoveTiles", "Tiles taken off the board (FConnectItBoardOperation_RemoveTiles)");
 UE_DEFINE_GAMEPLAY_TAG_COMMENT(ConnectIt_Game_AddTiles, "ConnectIt.Game.State.AddTiles", "Tiles put on the board (FConnectItBoardOperation_AddTiles)");
+UE_DEFINE_GAMEPLAY_TAG_COMMENT(ConnectIt_Game_BeginPhase, "ConnectIt.Game.State.BeginPhase", "Level only: a phased level moves to a new phase (FConnectItBoardOperation_BeginPhase)");
 UE_DEFINE_GAMEPLAY_TAG_COMMENT(ConnectIt_Game_ChangeLayout, "ConnectIt.Game.State.ChangeLayout", "The board's tiles changed to a layout in one change (FConnectItBoardOperation_ChangeLayout)");
 
 UE_DEFINE_GAMEPLAY_TAG_COMMENT(ConnectIt_Tile_ValidHover, "ConnectIt.Tile.ValidHover", "");
@@ -35,6 +36,7 @@ UE_DEFINE_GAMEPLAY_TAG_COMMENT(ConnectIt_Event_LoseConditionMet, "ConnectIt.Even
 UE_DEFINE_GAMEPLAY_TAG_COMMENT(ConnectIt_Event_GoalsChanged, "ConnectIt.Event.GoalsChanged", "A side's goals were replaced mid-match (see FConnectItBoardEvent_GoalsChanged)");
 UE_DEFINE_GAMEPLAY_TAG_COMMENT(ConnectIt_Event_TilesRemoved, "ConnectIt.Event.TilesRemoved", "Tiles left the board, with any pieces on them (see FConnectItBoardEvent_TilesRemoved)");
 UE_DEFINE_GAMEPLAY_TAG_COMMENT(ConnectIt_Event_TilesAdded, "ConnectIt.Event.TilesAdded", "Tiles joined the board, with their starting pieces (see FConnectItBoardEvent_TilesAdded)");
+UE_DEFINE_GAMEPLAY_TAG_COMMENT(ConnectIt_Event_PhaseChanged, "ConnectIt.Event.PhaseChanged", "A phased level moved to a new phase (see FConnectItBoardEvent_PhaseChanged)");
 UE_DEFINE_GAMEPLAY_TAG_COMMENT(ConnectIt_Event_LayoutChanged, "ConnectIt.Event.LayoutChanged", "The board changed to a new layout -- after its tiles went and came (see FConnectItBoardEvent_LayoutChanged)");
 UE_DEFINE_GAMEPLAY_TAG_COMMENT(ConnectIt_Event_WinCheckpointReached, "ConnectIt.Event.WinCheckpointReached", "A faction completed a win condition group that was not its last (see FConnectItBoardEvent_WinCheckpointReached)");
 UE_DEFINE_GAMEPLAY_TAG_COMMENT(ConnectIt_Event_BoardChangeComplete, "ConnectIt.Event.BoardChangeComplete", "Server only: queued after a board change's events, so it completes once they have all played out");

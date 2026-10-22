@@ -11,6 +11,7 @@
 #include "ConnectIt_LevelDirector.generated.h"
 
 class UConnectIt_MatchConditionAsset;
+class UConnectIt_BoardLayout;
 struct FConnectItBoardState;
 struct FConnectItRuleSet;
 
@@ -164,6 +165,26 @@ protected:
     // usual win check.
     UFUNCTION(BlueprintCallable, Category = "Level|Changes")
     void SetLoseConditions(EConnectItRole Side, const TArray<UConnectIt_MatchConditionAsset*>& Conditions,
+        EConnectItChangeTiming Timing = EConnectItChangeTiming::Immediately);
+
+    // Moves the level to Phase (a ConnectIt.Phase.* tag). A board change: the
+    // phase is recorded on the board (clients and UI read it with the
+    // GameState's Get Current Phase), a Phase Changed event plays, and once it
+    // is committed every director hears On Phase Changed. At a checkpoint, the
+    // usual order is Begin Phase, then Set Win / Lose Conditions, then Set
+    // Layout -- they play in the order asked.
+    UFUNCTION(BlueprintCallable, Category = "Level|Changes")
+    void BeginPhase(UPARAM(meta = (Categories = "ConnectIt.Phase")) FGameplayTag Phase,
+        EConnectItChangeTiming Timing = EConnectItChangeTiming::Immediately);
+
+    // Changes the board's tiles to Layout, as one board change: tiles not in
+    // it go (with their pieces), new ones come (with their starting values;
+    // a starting piece can score), shared ones keep their piece and
+    // multiplier; then the camera moves to the layout's, if it has one. One
+    // win check, on the final board. Worked out against the board when it is
+    // applied, so a layout queued behind other changes still lands right.
+    UFUNCTION(BlueprintCallable, Category = "Level|Changes")
+    void SetLayout(UConnectIt_BoardLayout* Layout,
         EConnectItChangeTiming Timing = EConnectItChangeTiming::Immediately);
 
     // The match's rules as they are now (a copy) -- including each side's

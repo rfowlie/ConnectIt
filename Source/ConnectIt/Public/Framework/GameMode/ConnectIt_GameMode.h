@@ -19,6 +19,7 @@ class UConnectIt_LevelDirector;
 class UConnectIt_PlayerDirector;
 class UConnectIt_Director;
 class UConnectIt_MatchConditionAsset;
+class UConnectIt_BoardLayout;
 class UTurnBasedParticipantManagerComponent;
 class UConnectIt_BoardRequestMediator;
 
@@ -178,6 +179,10 @@ public:
     void SetConditions(EConnectItRole Side, bool bWinGoals,
         const TArray<UConnectIt_MatchConditionAsset*>& Conditions, EConnectItChangeTiming Timing);
 
+    // Changes the board's tiles to Layout at Timing, as one board change
+    // (Change Layout, worked out against the board when it is applied)
+    void SetLayout(UConnectIt_BoardLayout* Layout, EConnectItChangeTiming Timing);
+
     // The same for one player (what a Player director calls for its own player)
     void SetLoadoutForPlayer(ATurnBasedPlayerState* PlayerState, UActionLoadoutDataAsset* Loadout,
         EConnectItChangeTiming Timing = EConnectItChangeTiming::NextTurnStart);
@@ -303,6 +308,7 @@ private:
 
     void ApplyLevelChange(const FConnectItLevelChange& Change);
     void ApplyGoalsChange(const FConnectItLevelChange& Change);
+    void ApplyLayoutChange(const FConnectItLevelChange& Change);
     void QueueLevelChange(const FConnectItLevelChange& Change, EConnectItChangeTiming Timing);
 
     // Loadouts parked by SetLoadout (NextTurnStart), by faction slot

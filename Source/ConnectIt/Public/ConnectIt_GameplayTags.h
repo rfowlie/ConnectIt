@@ -28,6 +28,8 @@ UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_Game_ChangeGoals);
 UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_Game_RemoveTiles);
 UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_Game_AddTiles);
 UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_Game_ChangeLayout);
+// Level only (FConnectItBoardOperation_BeginPhase)
+UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_Game_BeginPhase);
 
 UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_Tile_ValidHover);
 UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_Tile_InvalidHover);
@@ -55,6 +57,8 @@ UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_Event_GoalsChanged);
 UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_Event_TilesRemoved);
 UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_Event_TilesAdded);
 UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_Event_LayoutChanged);
+// A phased level moved to a new phase (see FConnectItBoardEvent_PhaseChanged)
+UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_Event_PhaseChanged);
 UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_Event_TurnEnd);
 // Server only, not a board event: queued right after a board change's events,
 // so it completes once they have all played out -- the end of that change

@@ -151,6 +151,19 @@ FConnectItBoardStateSnapshot AConnectIt_GameState::GetBoardSnapshot() const
     return FConnectItBoardStateSnapshot();
 }
 
+FGameplayTag AConnectIt_GameState::GetCurrentPhase() const
+{
+    if (UConnectIt_BoardStateComponent* BSC = GetBoardStateComponent())
+    {
+        if (const FConnectItBoardState* Current = BSC->GetBoardSnapShotCurrent())
+        {
+            return Current->CurrentPhase;
+        }
+    }
+
+    return FGameplayTag();
+}
+
 float AConnectIt_GameState::GetTargetScore() const
 {
     if (UConnectIt_BoardStateComponent* BSC = GetBoardStateComponent())

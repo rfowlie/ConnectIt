@@ -6,6 +6,10 @@ Vault-wide passes go in `_core/_logs/`.
 
 Newest first:
 
+- [2026-10-22-0959](2026-10-22-0959.md) — session — phased levels, Stage 4: Begin Phase (board change, Phase Changed,
+  On Phase Changed), Set Layout (one Change Layout, made at apply), phase tags, Get Current Phase. 51/51 tests.
+- [2026-10-22-0956](2026-10-22-0956.md) — session — first adventure level as a phased level: owner's draft phases + notes in the adventure design note.
+
 - [2026-10-22-0955](2026-10-22-0955.md) — session — phased levels, Stage 3: Remove Tiles / Add Tiles / Change Layout
   operations and events (one change, one win check). 50/50 tests.
 - [2026-10-22-0948](2026-10-22-0948.md) — session — side directors' unused goal lists removed; phased levels, Stage 2:

@@ -82,6 +82,11 @@ public:
         meta = (WorldContext = "WorldContextObject", ExpandBoolAsExecs = "ReturnValue"))
     static bool GetActiveTilesAddedEvent(const UObject* WorldContextObject, FConnectItBoardEvent_TilesAdded& OutEvent);
 
+    // For listeners of ConnectIt.Event.PhaseChanged
+    UFUNCTION(BlueprintCallable, Category = "ConnectIt|Board Events",
+        meta = (WorldContext = "WorldContextObject", ExpandBoolAsExecs = "ReturnValue"))
+    static bool GetActivePhaseChangedEvent(const UObject* WorldContextObject, FConnectItBoardEvent_PhaseChanged& OutEvent);
+
     // For listeners of ConnectIt.Event.LayoutChanged
     UFUNCTION(BlueprintCallable, Category = "ConnectIt|Board Events",
         meta = (WorldContext = "WorldContextObject", ExpandBoolAsExecs = "ReturnValue"))

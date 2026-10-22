@@ -196,6 +196,31 @@ stages.
 - Tests: Set Layout queues one Change Layout and produces the expected board; a layout queued behind another change
   diffs against the later board; Begin Phase writes the phase and appends `PhaseChanged`; On Phase Changed reaches
   directors in order, after the commit.
+- *As built (2026-10-22; 51/51 tests):*
+  - **Phase tags** are in `Config/DefaultGameplayTags.ini`: `ConnectIt.Phase` (the parent, for the tag picker),
+    `.1` to `.4`, and `.Final`.
+  - **`FConnectItBoardState::CurrentPhase`** (an `FGameplayTag`). Begin Phase is
+    `FConnectItBoardOperation_BeginPhase` {Phase} (request type `ConnectIt.Game.State.BeginPhase`); it is refused with
+    no phase.
+    - Its event is `FConnectItBoardEvent_PhaseChanged` {PreviousPhase, Phase}, with a `Get Active Phase Changed Event`
+      getter.
+    - The Level director's **`Begin Phase(Phase, Timing)`** goes through the existing Apply Board Operation path, so
+      there is no new kind of level change.
+  - **Set Layout:**
+    - **`UConnectIt_BoardLayout::MakeChangeFrom(Board)`** builds the Change Layout: the diff, the layout's name, its
+      camera.
+    - The GameMode's **`SetLayout(Layout, Timing)`** queues a new layout kind of level change. It holds the asset
+      (weak) and calls `MakeChangeFrom` when applied, against the board as it is then.
+    - The Level director's **`Set Layout(Layout, Timing)`** calls it.
+  - **The director base** gained **`On Phase Changed(Phase)`**. The GameMode hub sends it when a committed change
+    holds Phase Changed, in list order with the checkpoint / lose / win events.
+  - **`AConnectIt_GameState::GetCurrentPhase()`** reads the committed board. It is ahead of a Phase Changed still
+    playing; for a banner, use the event.
+  - **Not unit-tested** (they need a world; covered in PIE):
+    - the GameMode's queueing / apply of a layout;
+    - the hub's On Phase Changed dispatch order.
+  - **Tests:** `ConnectIt.Board.PhasesAndLayouts` (Begin Phase and its event, refusal, `MakeChangeFrom` name / camera /
+    diff, a layout made against a later board, the board ends as the layout). The operation catalog count is now 13.
 
 ## Stage 5: visuals follow the board's tiles
 

@@ -171,6 +171,12 @@ public:
     UFUNCTION(BlueprintPure, Category = "ConnectIt|Board")
     FConnectItBoardStateSnapshot GetBoardSnapshot() const;
 
+    // The phase a phased level is in (a ConnectIt.Phase.* tag); empty until
+    // the Level director begins one. Read from the committed board, so it
+    // jumps ahead of a Phase Changed event still playing.
+    UFUNCTION(BlueprintPure, Category = "ConnectIt|Board")
+    FGameplayTag GetCurrentPhase() const;
+
     // Score needed to win, published by whichever win condition is active.
     // 0 means the active win condition isn't score-based. See
     // FConnectItBoardState::TargetScore.

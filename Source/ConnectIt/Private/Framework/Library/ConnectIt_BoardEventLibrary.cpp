@@ -65,6 +65,12 @@ bool UConnectIt_BoardEventLibrary::GetActiveTilesAddedEvent(
     return TryGetActiveBoardEvent(WorldContextObject, OutEvent, TEXT("GetActiveTilesAddedEvent"));
 }
 
+bool UConnectIt_BoardEventLibrary::GetActivePhaseChangedEvent(
+    const UObject* WorldContextObject, FConnectItBoardEvent_PhaseChanged& OutEvent)
+{
+    return TryGetActiveBoardEvent(WorldContextObject, OutEvent, TEXT("GetActivePhaseChangedEvent"));
+}
+
 bool UConnectIt_BoardEventLibrary::GetActiveLayoutChangedEvent(
     const UObject* WorldContextObject, FConnectItBoardEvent_LayoutChanged& OutEvent)
 {

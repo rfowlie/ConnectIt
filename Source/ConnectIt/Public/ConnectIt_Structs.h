@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "GridMechanicsBaseEnums.h"
 #include "GridMechanicsBaseStructs.h"
+#include "GameplayTagContainer.h"
 #include "StructUtils/InstancedStruct.h"
 #include "ConnectIt_Structs.generated.h"
 
@@ -122,6 +123,13 @@ struct FConnectItBoardState
     // to type the number in. Empty on a board built without it.
     UPROPERTY(BlueprintReadOnly)
     TArray<int32> StartingPieces;
+
+    // The phase a phased level is in (a ConnectIt.Phase.* tag), set by the
+    // Level director's Begin Phase; empty until one begins. On the board so
+    // clients and UI can read it, and so it changes in order with everything
+    // else.
+    UPROPERTY(BlueprintReadOnly)
+    FGameplayTag CurrentPhase;
 
     // --- Accessors ---
 

@@ -250,6 +250,25 @@ struct CONNECTIT_API FConnectItBoardEvent_TilesAdded : public FConnectItBoardOpe
     virtual FGameplayTag GetEventTag() const override;
 };
 
+// A phased level moved to a new phase (the Level director's Begin Phase). The
+// directors hear it as On Phase Changed once the change is committed; UI can
+// show a banner as it plays. What a phase changes is up to the scripts --
+// their reactions (new goals, a new layout) follow as their own changes.
+USTRUCT(BlueprintType, meta = (DisplayName = "Phase Changed"))
+struct CONNECTIT_API FConnectItBoardEvent_PhaseChanged : public FConnectItBoardOperationEvent
+{
+    GENERATED_BODY()
+
+    // The phase before (empty for the level's first)
+    UPROPERTY(BlueprintReadOnly, Category = "Event")
+    FGameplayTag PreviousPhase;
+
+    UPROPERTY(BlueprintReadOnly, Category = "Event")
+    FGameplayTag Phase;
+
+    virtual FGameplayTag GetEventTag() const override;
+};
+
 // The board changed to a new layout: follows that change's Tiles Removed /
 // Tiles Added. For the camera and anything that marks the new layout.
 USTRUCT(BlueprintType, meta = (DisplayName = "Layout Changed"))

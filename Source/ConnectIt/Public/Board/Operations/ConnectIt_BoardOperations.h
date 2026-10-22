@@ -254,6 +254,25 @@ struct CONNECTIT_API FConnectItBoardOperation_ChangeGoals : public FConnectItBoa
     virtual FString Describe() const override;
 };
 
+// A phased level moves to a new phase: the board records it (CurrentPhase)
+// and says so (Phase Changed). Level only. Refused for an empty tag.
+USTRUCT(BlueprintType, meta = (DisplayName = "Begin Phase"))
+struct CONNECTIT_API FConnectItBoardOperation_BeginPhase : public FConnectItBoardOperation
+{
+    GENERATED_BODY()
+
+    UPROPERTY(BlueprintReadWrite, Category = "Operation", meta = (Categories = "ConnectIt.Phase"))
+    FGameplayTag Phase;
+
+    virtual FGameplayTag GetRequestType() const override;
+    virtual bool CanApply(const FConnectItBoardState& Board, FString* OutWhyNot = nullptr) const override;
+    virtual void Apply(
+        FConnectItBoardState& Board,
+        FConnectItTouchedPositions& OutTouched,
+        FConnectItBoardChangeEvent* OutEvents) const override;
+    virtual FString Describe() const override;
+};
+
 // --- The board's tiles themselves ---
 // The set of tiles can change during a match (a phased level changing
 // layout). Level only for now: no action produces these. Their cells name a

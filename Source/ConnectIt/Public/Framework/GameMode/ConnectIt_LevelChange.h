@@ -28,9 +28,10 @@ enum class EConnectItChangeTiming : uint8
 };
 
 class UConnectIt_MatchConditionAsset;
+class UConnectIt_BoardLayout;
 
 // A change the level makes outside any player's move: a board operation, a
-// new scoring rule, or a side's new goals (exactly one is set)
+// new scoring rule, a side's new goals, or a new layout (exactly one is set)
 struct FConnectItLevelChange
 {
     // A board operation struct (e.g. Force Place Piece), made by AsFaction
@@ -48,6 +49,13 @@ struct FConnectItLevelChange
     bool bGoalsForAI = false;
     bool bWinGoals = true;
     TArray<TWeakObjectPtr<UConnectIt_MatchConditionAsset>> Goals;
+
+    // A layout the board's tiles change to (bHasLayout). Kept as the asset,
+    // not as a ready-made operation: the change is worked out against the
+    // board as it is when this is applied, not when it was asked for. Weak,
+    // as above.
+    bool bHasLayout = false;
+    TWeakObjectPtr<UConnectIt_BoardLayout> Layout;
 };
 
 // The GameMode's level changes that can't be applied yet: those waiting for

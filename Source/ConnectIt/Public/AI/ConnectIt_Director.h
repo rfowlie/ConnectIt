@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "UObject/Object.h"
+#include "GameplayTagContainer.h"
 #include "ConnectIt_Director.generated.h"
 
 class AConnectIt_GameMode;
@@ -71,6 +72,13 @@ public:
     UFUNCTION(BlueprintNativeEvent, Category = "Director")
     void OnLoseConditionMet(int32 Faction, bool bIsMine, UConnectIt_MatchConditionAsset* Condition);
     virtual void OnLoseConditionMet_Implementation(int32 Faction, bool bIsMine, UConnectIt_MatchConditionAsset* Condition) {}
+
+    // A phased level moved to Phase (a ConnectIt.Phase.* tag: the Level
+    // director's Begin Phase). What a phase changes is up to each director's
+    // script -- the level's new goals or layout, a side's new loadout...
+    UFUNCTION(BlueprintNativeEvent, Category = "Director")
+    void OnPhaseChanged(FGameplayTag Phase);
+    virtual void OnPhaseChanged_Implementation(FGameplayTag Phase) {}
 
     // Faction has won the match (the match ends right after)
     UFUNCTION(BlueprintNativeEvent, Category = "Director")

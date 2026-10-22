@@ -28,6 +28,7 @@
 #include "Board/Operations/ConnectIt_BoardOperation.h"
 #include "Board/Operations/ConnectIt_BoardOperations.h"
 #include "Board/Rules/ConnectIt_MatchConditionAsset.h"
+#include "Framework/Data/ConnectIt_BoardLayout.h"
 #include "TimerManager.h"
 
 
@@ -384,6 +385,16 @@ void AConnectIt_GameMode::HandleBoardStateChangedForDirectors()
                 Director.OnLoseConditionMet(Lost->Faction, Director.IsMine(Lost->Faction), Lost->Asset);
             });
         }
+        else if (const FConnectItBoardEvent_PhaseChanged* PhaseChanged = Entry.GetPtr<FConnectItBoardEvent_PhaseChanged>())
+        {
+            UE_LOG(LogTemp, Log, TEXT("ConnectIt_GameMode: phase '%s' begins"), *PhaseChanged->Phase.ToString());
+
+            const FGameplayTag Phase = PhaseChanged->Phase;
+            ForEachDirector([Phase](UConnectIt_Director& Director)
+            {
+                Director.OnPhaseChanged(Phase);
+            });
+        }
         else if (const FConnectItBoardEvent_GameWon* Won = Entry.GetPtr<FConnectItBoardEvent_GameWon>())
         {
             const int32 Winner = Won->WinningFaction;
@@ -606,6 +617,20 @@ void AConnectIt_GameMode::SetConditions(EConnectItRole Side, bool bWinGoals,
     QueueLevelChange(Change, Timing);
 }
 
+void AConnectIt_GameMode::SetLayout(UConnectIt_BoardLayout* Layout, EConnectItChangeTiming Timing)
+{
+    if (!IsValid(Layout))
+    {
+        UE_LOG(LogTemp, Warning, TEXT("ConnectIt_GameMode: SetLayout called with no layout -- ignored"));
+        return;
+    }
+
+    FConnectItLevelChange Change;
+    Change.bHasLayout = true;
+    Change.Layout = Layout;
+    QueueLevelChange(Change, Timing);
+}
+
 void AConnectIt_GameMode::QueueLevelChange(const FConnectItLevelChange& Change, EConnectItChangeTiming Timing)
 {
     if (LevelChanges.Add(Change, Timing, IsBoardChangeResolving()))
@@ -747,6 +772,12 @@ void AConnectIt_GameMode::ApplyLevelChange(const FConnectItLevelChange& Change)
         return;
     }
 
+    if (Change.bHasLayout)
+    {
+        ApplyLayoutChange(Change);
+        return;
+    }
+
     if (!IsValid(BoardRequestMediator)) return;
 
     const bool bApplied = BoardRequestMediator->ProcessLevelOperation(Change.Operation, Change.AsFaction);
@@ -754,6 +785,27 @@ void AConnectIt_GameMode::ApplyLevelChange(const FConnectItLevelChange& Change)
     if (!bApplied)
     {
         UE_LOG(LogTemp, Warning, TEXT("ConnectIt_GameMode: a level operation could not be carried out (see above)"));
+    }
+}
+
+void AConnectIt_GameMode::ApplyLayoutChange(const FConnectItLevelChange& Change)
+{
+    const UConnectIt_BoardLayout* Layout = Change.Layout.Get();
+    const UConnectIt_BoardStateComponent* BoardState = UConnectIt_GameUtilityLibrary::GetBoardStateComponent(this);
+    if (!IsValid(Layout) || !IsValid(BoardState) || !IsValid(BoardRequestMediator))
+    {
+        UE_LOG(LogTemp, Warning,
+            TEXT("ConnectIt_GameMode: layout change skipped -- the layout is gone, or there is no board"));
+        return;
+    }
+
+    // Against the board as it is now -- other changes may have played since
+    // this was asked for
+    const FConnectItBoardOperation_ChangeLayout Operation = Layout->MakeChangeFrom(BoardState->GetCurrentState());
+    if (!BoardRequestMediator->ProcessLevelOperation(FInstancedStruct::Make(Operation), INDEX_NONE))
+    {
+        UE_LOG(LogTemp, Warning,
+            TEXT("ConnectIt_GameMode: layout '%s' could not be applied (see above)"), *Layout->GetName());
     }
 }
 

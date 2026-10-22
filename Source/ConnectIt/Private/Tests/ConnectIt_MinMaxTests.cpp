@@ -1618,9 +1618,9 @@ bool FConnectItAICandidatesTest::RunTest(const FString& Parameters)
         AllTypes.Contains(FGameplayTag(ConnectIt_Game_PlacePiece))
         && AllTypes.Contains(FGameplayTag(ConnectIt_Game_SwapPieces))
         && AllTypes.Contains(FGameplayTag(ConnectIt_Game_Shift)));
-    // The eight player-facing ones and the level's Change Goals, Remove
-    // Tiles, Add Tiles and Change Layout
-    TestEqual(TEXT("one per kind of operation"), AllTypes.Num(), 12);
+    // The eight player-facing ones and the level's Change Goals, Begin
+    // Phase, Remove Tiles, Add Tiles and Change Layout
+    TestEqual(TEXT("one per kind of operation"), AllTypes.Num(), 13);
     return true;
 }
 
@@ -2673,6 +2673,75 @@ bool FConnectItTileOperationsTest::RunTest(const FString& Parameters)
         Bad.AddCells = { MakeCell(1, 1) };
         TestFalse(TEXT("layout: adding over a tile that stays is refused"), Bad.CanApply(Board));
     }
+    return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FConnectItPhasesAndLayoutsTest,
+    "ConnectIt.Board.PhasesAndLayouts", TestFlags)
+
+bool FConnectItPhasesAndLayoutsTest::RunTest(const FString& Parameters)
+{
+    // --- Begin Phase: the board records the phase and says so ---
+    const FGameplayTag Phase1 = FGameplayTag::RequestGameplayTag(TEXT("ConnectIt.Phase.1"), false);
+    const FGameplayTag Phase2 = FGameplayTag::RequestGameplayTag(TEXT("ConnectIt.Phase.2"), false);
+    if (!TestTrue(TEXT("the phase tags exist (DefaultGameplayTags.ini)"), Phase1.IsValid() && Phase2.IsValid()))
+    {
+        return false;
+    }
+
+    FConnectItRuleSet Rules;
+    FConnectItBoardState Board = MakeBoard(3);
+    TestFalse(TEXT("no phase before one begins"), Board.CurrentPhase.IsValid());
+
+    FConnectItBoardOperation_BeginPhase Begin;
+    Begin.Phase = Phase1;
+    TestTrue(TEXT("begin: can apply"), Begin.CanApply(Board));
+    FConnectItBoardChangeEvent First;
+    Rules.CarryOutOperation(Begin, Board, &First);
+    TestTrue(TEXT("begin: the board is in phase 1"), Board.CurrentPhase == Phase1);
+    const FConnectItBoardEvent_PhaseChanged* FirstEvent =
+        First.Events.Num() == 1 ? First.Events[0].GetPtr<FConnectItBoardEvent_PhaseChanged>() : nullptr;
+    TestTrue(TEXT("begin: Phase Changed, from no phase"), FirstEvent && FirstEvent->Phase == Phase1 && !FirstEvent->PreviousPhase.IsValid());
+
+    Begin.Phase = Phase2;
+    FConnectItBoardChangeEvent Second;
+    Rules.CarryOutOperation(Begin, Board, &Second);
+    const FConnectItBoardEvent_PhaseChanged* SecondEvent =
+        Second.Events.Num() == 1 ? Second.Events[0].GetPtr<FConnectItBoardEvent_PhaseChanged>() : nullptr;
+    TestTrue(TEXT("begin: the next phase names the one before"), SecondEvent && SecondEvent->PreviousPhase == Phase1 && SecondEvent->Phase == Phase2);
+
+    FConnectItBoardOperation_BeginPhase NoPhase;
+    TestFalse(TEXT("begin: no phase is refused"), NoPhase.CanApply(Board));
+
+    // --- Set Layout's change: worked out against the board it will change ---
+    UConnectIt_BoardLayout* Layout = NewObject<UConnectIt_BoardLayout>(GetTransientPackage(), TEXT("CIBL_TestRow"));
+    for (int32 X = 0; X < 4; X++)
+    {
+        Layout->Cells.AddDefaulted_GetRef().Position = FGridPosition(X, 0);
+    }
+    Layout->bHasCamera = true;
+    Layout->CameraTransform.SetLocation(FVector(1.f, 2.f, 3.f));
+
+    const FConnectItBoardOperation_ChangeLayout FromNow = Layout->MakeChangeFrom(Board);
+    TestEqual(TEXT("layout: the 3x3 board's rows 1-2 go"), FromNow.RemovePositions.Num(), 6);
+    TestEqual(TEXT("layout: (3,0) comes"), FromNow.AddCells.Num(), 1);
+    TestTrue(TEXT("layout: it carries the layout's name and camera"),
+        FromNow.LayoutName == FName(TEXT("CIBL_TestRow")) && FromNow.bHasCamera
+        && FromNow.CameraTransform.GetLocation().Equals(FVector(1.f, 2.f, 3.f)));
+
+    // The board changes before the layout is applied (another change queued
+    // ahead of it): the layout's change is worked out against the later board
+    FConnectItBoardOperation_RemoveTiles Earlier;
+    Earlier.Positions = { FGridPosition(0, 2), FGridPosition(1, 2), FGridPosition(2, 2) };
+    FConnectItTouchedPositions Touched;
+    Earlier.Apply(Board, Touched, nullptr);
+    const FConnectItBoardOperation_ChangeLayout Later = Layout->MakeChangeFrom(Board);
+    TestEqual(TEXT("layout: against the later board, only row 1 goes"), Later.RemovePositions.Num(), 3);
+    TestTrue(TEXT("layout: and it applies"), Later.CanApply(Board));
+
+    Rules.CarryOutOperation(Later, Board, nullptr);
+    TestEqual(TEXT("layout: the board is the layout"), Board.NumTiles(), 4);
+    TestTrue(TEXT("layout: every cell is a tile"), Layout->DiffFrom(Board).IsEmpty());
     return true;
 }
 

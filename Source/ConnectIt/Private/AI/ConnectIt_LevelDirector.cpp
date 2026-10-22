@@ -5,6 +5,7 @@
 #include "Board/Rules/ConnectIt_RuleSet.h"
 #include "Misc/DataValidation.h"
 #include "Framework/GameMode/ConnectIt_GameMode.h"
+#include "Board/Operations/ConnectIt_BoardOperations.h"
 
 
 void UConnectIt_LevelDirector::RearmTrigger(UConnectIt_MatchConditionAsset* Condition)
@@ -111,6 +112,31 @@ void UConnectIt_LevelDirector::SetLoseConditions(
     else
     {
         UE_LOG(LogTemp, Warning, TEXT("ConnectIt_LevelDirector: %s has no GameMode -- lose conditions not changed"), *GetName());
+    }
+}
+
+void UConnectIt_LevelDirector::BeginPhase(FGameplayTag Phase, EConnectItChangeTiming Timing)
+{
+    if (!Phase.IsValid())
+    {
+        UE_LOG(LogTemp, Warning, TEXT("ConnectIt_LevelDirector: Begin Phase with no phase -- ignored"));
+        return;
+    }
+
+    FConnectItBoardOperation_BeginPhase Operation;
+    Operation.Phase = Phase;
+    ApplyBoardOperation(FInstancedStruct::Make(Operation), INDEX_NONE, Timing);
+}
+
+void UConnectIt_LevelDirector::SetLayout(UConnectIt_BoardLayout* Layout, EConnectItChangeTiming Timing)
+{
+    if (AConnectIt_GameMode* GameMode = GetGameMode())
+    {
+        GameMode->SetLayout(Layout, Timing);
+    }
+    else
+    {
+        UE_LOG(LogTemp, Warning, TEXT("ConnectIt_LevelDirector: %s has no GameMode -- layout not changed"), *GetName());
     }
 }
 

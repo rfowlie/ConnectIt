@@ -59,6 +59,11 @@ FGameplayTag FConnectItBoardEvent_TilesAdded::GetEventTag() const
     return ConnectIt_Event_TilesAdded;
 }
 
+FGameplayTag FConnectItBoardEvent_PhaseChanged::GetEventTag() const
+{
+    return ConnectIt_Event_PhaseChanged;
+}
+
 FGameplayTag FConnectItBoardEvent_LayoutChanged::GetEventTag() const
 {
     return ConnectIt_Event_LayoutChanged;

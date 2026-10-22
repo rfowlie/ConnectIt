@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "Engine/DataAsset.h"
 #include "Board/ConnectIt_BoardLayoutCell.h"
+#include "Board/Operations/ConnectIt_BoardOperations.h"
 #include "ConnectIt_BoardLayout.generated.h"
 
 struct FConnectItBoardState;
@@ -40,6 +41,11 @@ public:
 
     // What changes to turn Other's tiles into this layout
     FConnectItBoardLayoutDiff DiffFrom(const UConnectIt_BoardLayout& Other) const;
+
+    // The one board change that turns Board into this layout: Change Layout
+    // with the diff, this layout's name and its camera. Made when the change
+    // is applied, so it diffs against the board it will actually change.
+    FConnectItBoardOperation_ChangeLayout MakeChangeFrom(const FConnectItBoardState& Board) const;
 
 #if WITH_EDITOR
     // Duplicate positions are invalid; starting pieces for a faction no match

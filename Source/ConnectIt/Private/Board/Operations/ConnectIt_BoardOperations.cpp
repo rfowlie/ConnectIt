@@ -679,6 +679,47 @@ FString FConnectItBoardOperation_ChangeGoals::Describe() const
 }
 
 // ---------------------------------------------------------------------------
+// Begin Phase
+// ---------------------------------------------------------------------------
+
+FGameplayTag FConnectItBoardOperation_BeginPhase::GetRequestType() const
+{
+    return ConnectIt_Game_BeginPhase;
+}
+
+bool FConnectItBoardOperation_BeginPhase::CanApply(const FConnectItBoardState& Board, FString* OutWhyNot) const
+{
+    if (!Phase.IsValid())
+    {
+        SetWhyNot(OutWhyNot, TEXT("no phase given"));
+        return false;
+    }
+    return true;
+}
+
+void FConnectItBoardOperation_BeginPhase::Apply(
+    FConnectItBoardState& Board,
+    FConnectItTouchedPositions& OutTouched,
+    FConnectItBoardChangeEvent* OutEvents) const
+{
+    const FGameplayTag Previous = Board.CurrentPhase;
+    Board.CurrentPhase = Phase;
+
+    if (OutEvents)
+    {
+        FConnectItBoardEvent_PhaseChanged Event;
+        Event.PreviousPhase = Previous;
+        Event.Phase         = Phase;
+        OutEvents->Add(Event);
+    }
+}
+
+FString FConnectItBoardOperation_BeginPhase::Describe() const
+{
+    return Phase.ToString();
+}
+
+// ---------------------------------------------------------------------------
 // Remove Tiles / Add Tiles / Change Layout
 // ---------------------------------------------------------------------------
 
