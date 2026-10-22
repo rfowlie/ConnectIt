@@ -26,13 +26,13 @@ events, and each changes only its own context. The level's own script is the **L
 
 - An Adventure match preset whose **AI Director Class** names your director Blueprint ([[set-up-a-custom-ai-opponent]]).
 - The extra loadouts (action loadout assets), strategies and selectors you want to switch to.
-- For checkpoint reactions: the director's **Win Conditions** (or the player director's) with more than one goal (completing
+- For checkpoint reactions: the Level director's **AI** (or **Player**) **Win Conditions** with more than one goal (completing
   one that isn't the last is a checkpoint; see [[add-a-win-condition]]).
 
 ## Steps
 
 1. Open your AI director Blueprint (parent `ConnectIt_AIDirector`). Its Class Defaults are the starting setup: `Starting
-   Loadout`, `Strategies`, `Selector`, think times, `Win Conditions`, `Lose Conditions`.
+   Loadout`, `Strategies`, `Selector`, think times. (Its goals are on the Level director.)
 2. Add variables for what you'll switch to: `Action Loadout Data Asset` references, **Instanced** strategy / selector variables
    (`ConnectIt_AIStrategy` / `ConnectIt_AISelector`, with Instanced checked) to configure them inline, and `ConnectIt Match
    Condition Asset` references for the goals you react to.

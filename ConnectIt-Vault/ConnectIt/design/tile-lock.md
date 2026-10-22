@@ -47,7 +47,44 @@ A **locked** tile is on the board, visible and in play, but a player **can't pla
   (`ConnectIt_MinMaxRules`, "open window" check) should treat an **empty locked** tile as blocking a window, since nothing
   can be placed there; it can't foresee a chain unlocking.
 
-## Open (owner)
+## Decided (owner, 2026-10-22): each operation declares whether it works on locked tiles
+
+No single rule: **every operation decides for itself**, through a virtual on the operation base -- owner's suggestion
+`CanOperateOnLockedTiles()`. A swap shouldn't work on locked tiles; a board shift could.
+
+Claude's notes on the shape:
+
+- **Default `false`** on `FConnectItBoardOperation`, so a new operation is safe until someone decides otherwise.
+- **Check it in one place, not in every `CanApply`**: each operation also reports the tiles it acts on
+  (`GetTargetPositions()`), and the shared step that runs every operation (the Mediator's dispatch, `Simulate Operation`,
+  the search's `ApplyMove`, a power firing) refuses it if any target is locked and the operation says no. One check,
+  one log message ("tile (3,2) is locked").
+- **One bool may be too coarse for Move Piece** (planned for tile powers): moving a piece *off* a locked tile and moving
+  one *onto* it are different. Either it overrides `CanApply` for that case, or the virtual becomes per role (source /
+  destination). Lean: keep the bool; Move Piece handles its own case.
+- `IsTilePlaceable` still gains "not locked": Place Piece's hover highlight and legality go through it.
+
+### Every operation (owner decides; Claude's lean in brackets)
+
+| Operation | Works on a locked tile? |
+| --- | --- |
+| Place Piece | **No** (the point of the lock) |
+| Swap Pieces | **No** (owner) |
+| Board Shift | **Yes** (owner: could) -- the lock moves with its tile |
+| Capture Piece | **Yes** (owner) |
+| Remove Piece | **Yes** (owner) |
+| Force Place Piece | [Yes -- the level's override] |
+| Destroy Tile Multiplier | [Yes -- doesn't touch pieces] |
+| Toggle Tile Active | [Yes] |
+| Remove Tiles | [Yes -- a layout change must be able to remove any tile] |
+| Add Tiles | n/a (the tiles don't exist yet) |
+| Change Layout | [Yes] |
+| Change Goals, Begin Phase | n/a (no tiles) |
+| *Planned:* Set Tile Locked | Yes, necessarily |
+| *Planned:* Adjust Multiplier, Set Tile Power | [Yes] |
+| *Planned:* Move Piece | [Off a locked tile: yes. Onto one: no] |
+
+## Open (owner) -- earlier list, now mostly answered
 
 - **Which other moves does a lock stop?** Place Piece: yes. Force Place: no. Shift: no (the lock moves with the tile).
   Still to decide:

@@ -120,6 +120,19 @@ sequenceDiagram
   schedules the drain (next tick) instead of applying anything.
 - `ClientNotifyBoardChangeOutcome` is called on **every** exit path of the server RPC.
 
+## Level-only operations
+
+The Level director's changes join this flow at `ProcessLevelOperation` (no loadout gate, no action use), queued while the
+board is busy. These operations exist for it alone -- no action produces them (they are in the operation catalog, so a
+loadout could grant one, but none does):
+
+- **Change Goals** -- a side's goals replaced (`Set Win / Lose Conditions`): goal progress restarts, `Goals Changed`.
+- **Begin Phase** -- `CurrentPhase` on the board, `Phase Changed`; directors then hear On Phase Changed.
+- **Remove Tiles / Add Tiles / Change Layout** -- the board's set of tiles (`Set Layout` queues one Change Layout):
+  `Tiles Removed`, `Tiles Added`, `Layout Changed`.
+
+Recipe: [[script-a-phased-level]].
+
 ## Cross-impact
 
 - Adding an operation: [[add-a-board-request-type]].

@@ -6,6 +6,8 @@ Vault-wide passes go in `_core/_logs/`.
 
 Newest first:
 
+- [2026-10-22-1018](2026-10-22-1018.md) — session — phased levels, Stage 7 (vault): two decisions, recipe "script a phased
+  level", goals-on-the-Level-director recipe updates, question answered, plan complete.
 - [2026-10-22-1012](2026-10-22-1012.md) — session — phased levels, Stage 6: layout tool C++ (`Capture Layout From Level`,
   `Load Layout Into Level`, `Set Layout Camera`) and the tile interface's `Apply Layout Cell`. 51/51 tests; widget pending.
 - [2026-10-22-1006](2026-10-22-1006.md) — session — phased levels, Stage 5: tile registry follows the board (plugin

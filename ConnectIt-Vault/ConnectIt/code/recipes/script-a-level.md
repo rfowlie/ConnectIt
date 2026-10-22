@@ -1,12 +1,12 @@
 ---
 schema: recipes
-task: Script an adventure level -- react to the match (turns, checkpoints, triggers you define), change the board or the scoring rule on the level's behalf, and work with the Player and AI directors -- through a Level director Blueprint.
+task: Script an adventure level -- set both sides' goals, react to the match (turns, checkpoints, triggers you define), change the board, the scoring rule or a side's goals on the level's behalf, and work with the Player and AI directors -- through a Level director Blueprint.
 touches:
-  - a Blueprint subclass of UConnectIt_LevelDirector (named by the match preset's Level Director Class)
-  - condition assets for its triggers
+  - a Blueprint subclass of UConnectIt_LevelDirector (named by the match preset's Level Director Class -- required)
+  - condition assets for its goals and triggers
   - (board changes) board operation structs; (rule changes) scoring rule structs
-reconciled: 2026-10-21
-commit: bbf8daf
+reconciled: 2026-10-22
+commit: 1d514b1
 ---
 
 # Recipe: script a level
@@ -16,8 +16,9 @@ commit: bbf8daf
 A level with its own script: "when the player reaches 10 points, the multipliers vanish", "every third turn a blocker
 appears", "after the first checkpoint, only vertical lines score". That is the **Level director**: one of three directors
 (Level, Player, AI -- [three-directors](../../design/three-directors.md)), the one that speaks for the level itself. It hears
-the same events as the others, watches **triggers** you define, and is the one director that changes **the board** and **the
-rules**. A side's loadout belongs to that side's director: ask it.
+the same events as the others, holds **both sides' goals**, watches **triggers** you define, and is the one director that changes
+**the board**, **the rules** and **the goals**. A side's loadout belongs to that side's director: ask it. A level that changes
+layout and goals as it goes is a phased level: [[script-a-phased-level]].
 
 ## Prerequisites
 
@@ -27,7 +28,8 @@ rules**. A side's loadout belongs to that side's director: ask it.
 ## Steps
 
 1. Content Browser: **Blueprint Class** with parent `ConnectIt_LevelDirector` (e.g. `CILD_Puzzle_Swap_01`). In the match
-   preset: **Directors > Level Director Class** = it.
+   preset: **Directors > Level Director Class** = it (required -- a preset without one is invalid: nobody would have goals).
+   **Level|Conditions**: each side's **Win / Lose Conditions** ([[add-a-win-condition]]).
 2. **Triggers** (Class Defaults): add entries, each a **Condition** (asset) and a **Side**: **Player** (the human side), **AI**,
    or **Either**. After every committed board change, an armed trigger whose condition holds for its side fires once.
 3. Override **On Trigger Fired (Condition, Faction)**: compare **Condition** with your asset variables and react. The trigger
@@ -35,7 +37,7 @@ rules**. A side's loadout belongs to that side's director: ask it.
    holds. **Is Trigger Armed** tells you.
 4. Override the shared director events as needed: **On Match Started**, **On Turn Started / Ended (Faction, Is Mine, Turn
    Number)** (Is Mine is always false for the level), **On Win Checkpoint Reached**, **On Lose Condition Met**, **On Match
-   Won**.
+   Won**, **On Phase Changed** (a phased level).
 5. Change the board: **Apply Board Operation (Operation, As Faction, Timing)**:
    - **Operation**: **Make Instanced Struct** of a board operation -- **Force Place Piece** (a piece anywhere, even on an
      occupied tile), **Toggle Tile Active**, **Destroy Tile Multiplier**, **Remove Piece**, **Capture Piece**... with its
@@ -48,7 +50,9 @@ rules**. A side's loadout belongs to that side's director: ask it.
    **Lines** with `Connect Length` / `Scoring Directions` set). Clients see it through the replicated rules (**On Match Rules
    Changed** on the GameState) -- that's where UI showing "only vertical lines score" listens. The AI uses it from its next
    decision (its look-ahead assumes it stays). **Get Match Rules** reads the current rules.
-7. **Timing** (both): **Immediately** = now, or -- while a board change is resolving, which is when triggers and checkpoint
+   Change a side's goals: **Set Win Conditions / Set Lose Conditions (Side, Conditions, Timing)**. Phases and layouts: **Begin
+   Phase**, **Set Layout** ([[script-a-phased-level]]).
+7. **Timing** (all of them): **Immediately** = now, or -- while a board change is resolving, which is when triggers and checkpoint
    reactions run -- once that change has played out, its visuals included. Several play one after another, each with its own
    visuals ([one board change at a time](../../_decisions/2026-10-21-one-board-change-at-a-time.md)). **Next Turn Start** =
    when the next turn begins: they join the same line, before the directors hear the turn started. The player can't act,
@@ -73,7 +77,8 @@ rules**. A side's loadout belongs to that side's director: ask it.
 
 ## Pitfalls
 
-- **Triggers don't win or lose**: a goal is a Win / Lose Condition on a side's director. Triggers are the level reacting.
+- **Triggers don't win or lose**: a goal is one of this director's Player / AI Win / Lose Conditions. Triggers are the level
+  reacting.
 - **Fires once**: a trigger that should keep firing must be re-armed in its own reaction -- and then fires on every board change
   while its condition holds.
 - **Board operations score and can win**: forcing a piece that completes a line scores it for As Faction, and can end the match.
@@ -85,5 +90,6 @@ rules**. A side's loadout belongs to that side's director: ask it.
 ## See also
 
 - Design: [three-directors](../../design/three-directors.md), [mid-level-rule-changes](../../design/mid-level-rule-changes.md)
-- Recipes: [[add-a-win-condition]], [[direct-the-ai-during-a-match]], [[set-up-a-custom-ai-opponent]], [[add-a-board-request-type]]
+- Recipes: [[script-a-phased-level]], [[add-a-win-condition]], [[direct-the-ai-during-a-match]], [[set-up-a-custom-ai-opponent]],
+  [[add-a-board-request-type]]
 - Flow: [[ai-turn]]

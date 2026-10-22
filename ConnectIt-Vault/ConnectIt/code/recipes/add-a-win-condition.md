@@ -3,7 +3,7 @@ schema: recipes
 task: Set up a match's conditions -- each side's goals (in order) and ways to lose, plus the level's triggers -- as condition assets on the directors, react when one is met, and (C++) add a new kind of condition or make a kind of move answer "any legal move?".
 touches:
   - a UConnectIt_MatchConditionAsset per condition (Content Browser)
-  - the Player / AI director Blueprints (Win Conditions, Lose Conditions) and the Level director (Triggers)
+  - the Level director Blueprint (Player / AI Win and Lose Conditions, Triggers; Set Win / Lose Conditions mid-match)
   - (reacting) the directors' events
   - (new condition type, C++) a struct deriving FConnectItMatchCondition, Source/ConnectIt/Public/Board/Rules/
   - (legal-move support, C++) FConnectItBoardOperation::HasAnyLegalInstance on an operation type
@@ -20,17 +20,21 @@ commit: bbf8daf
 
 A match whose sides win and lose the way you designed: "score 20", "clear the board having scored", or a sequence ("score 10,
 then clear the board") where each step is a checkpoint; "the player is stuck" as a loss. Each is a **condition asset**, listed
-on the side's director ([three directors](../../design/three-directors.md)):
+on the **Level director** -- both sides' goals live there, so a level's whole script is in one place and the Player / AI
+directors stay reusable loadout and AI setup ([conditions on the Level director](../../_decisions/2026-10-22-conditions-on-the-level-director.md)):
 
-- **Win Conditions** (Player / AI director): goals in the order they must be completed. Completing one that isn't the side's
-  last is a **checkpoint**; completing the last is the **win**.
-- **Lose Conditions** (Player / AI director): if **any one** holds after a move, that side **loses** and the other side wins --
-  unless a goal was completed in the same move (wins are checked first). Only in a match with an AI.
-- **Triggers** (Level director): conditions the level reacts to, without winning or losing ([[script-a-level]]).
+- **Player / AI Win Conditions**: each side's goals in the order they must be completed. Completing one that isn't the
+  side's last is a **checkpoint**; completing the last is the **win**.
+- **Player / AI Lose Conditions**: if **any one** holds after a move, that side **loses** and the other side wins -- unless a
+  goal was completed in the same move (wins are checked first). Only in a match with an AI.
+- **Triggers**: conditions the level reacts to, without winning or losing ([[script-a-level]]).
+- **Mid-match**: **Set Win Conditions / Set Lose Conditions (Side, Conditions, Timing)** replace a side's list (a board change;
+  that side's goal progress restarts, score carries over -- see [[script-a-phased-level]]).
 
 ## Prerequisites
 
-- A match preset naming a Player director (and an AI director for a match against the AI) -- see
+- A match preset naming a **Level director** (required -- it holds the goals; a generic one per standard way of playing),
+  a Player director, and an AI director for a match against the AI -- see [[script-a-level]] and
   [[set-up-a-custom-ai-opponent]].
 - The condition types that exist:
   - **Score Threshold** (`Win Score Threshold`): reach this score.
@@ -46,11 +50,11 @@ on the side's director ([three directors](../../design/three-directors.md)):
 1. Content Browser: **Data Asset** of class `ConnectIt_MatchConditionAsset` (e.g. `CIWC_Score20`, `CIWC_ClearBoard`).
 2. **Display Name**: what UI shows ("Score 20"). **Conditions**: add one or more and pick each type; **all of them must hold at
    the same time** (Piece Count Equal 0 + Score Threshold 4 = clear the board, having scored 4).
-3. Open the **Player director** Blueprint's Class Defaults: **Win Conditions** = the player's goals, in order; **Lose
-   Conditions** = ways the player loses (e.g. an exhaustion level: *Not Enough Pieces To Score*, *No Legal Move: Swap Pieces*).
-   The **AI director**: its own Win / Lose Conditions -- set its goals whenever the match has an AI (it never borrows the
-   player's; none = it can't win). In a match with no AI (online), every faction plays the player's goals, and lose
-   conditions are ignored.
+3. Open the **Level director** Blueprint's Class Defaults (**Level|Conditions**): **Player Win Conditions** = the player's
+   goals, in order; **Player Lose Conditions** = ways the player loses (e.g. an exhaustion level: *Not Enough Pieces To
+   Score*, *No Legal Move: Swap Pieces*). **AI Win / Lose Conditions**: the AI's own -- set its goals whenever the match has an
+   AI (it never borrows the player's; none = it can't win). In a match with no AI (online), every faction plays the player's
+   goals, and lose conditions are ignored.
 4. A variant ("score 30 instead") is a **new asset**: assets are shared, so editing one changes every director using it.
 5. Validate the preset (**Asset Actions > Validate**): it validates its directors -- empty entries and assets with no
    conditions are reported -- and each condition's own warnings given the preset's rules (e.g. Not Enough Pieces To Score
@@ -85,7 +89,7 @@ on the side's director ([three directors](../../design/three-directors.md)):
 ## Verify
 
 - Output Log, filter `ConnectIt_`: `faction N completed win group I ('<asset name>')` at each checkpoint; `faction N met lose
-  condition '<asset>'` on a loss; no `director has no Win Conditions` warnings at match start. The match result's reason is
+  condition '<asset>'` on a loss; no `Level director has no Player / AI Win Conditions` warnings at match start. The match result's reason is
   **Opponent Lost** after a loss.
 - The UI's target / progress (board `TargetScore`, `WinProgress`) follows the current goal.
 

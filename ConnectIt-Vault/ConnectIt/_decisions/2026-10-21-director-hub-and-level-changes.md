@@ -1,7 +1,7 @@
 ---
 Date: 2026-10-21
 status: Partly superseded
-superseded by: "[2026-10-21-one-board-change-at-a-time](2026-10-21-one-board-change-at-a-time.md) (Immediately = once the current board change has played out, its visuals included; level changes play one at a time)"
+superseded by: "[2026-10-21-one-board-change-at-a-time](2026-10-21-one-board-change-at-a-time.md) (Immediately = once the current board change has played out, its visuals included; level changes play one at a time); [2026-10-22-conditions-on-the-level-director](2026-10-22-conditions-on-the-level-director.md) (win / lose conditions move from the side directors to the Level director, changeable mid-match)"
 tags:
   - ai
   - architecture

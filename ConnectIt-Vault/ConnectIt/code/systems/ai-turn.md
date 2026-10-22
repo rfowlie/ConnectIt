@@ -88,9 +88,9 @@ sequenceDiagram
 ## Steps
 
 1. **Setup (match start).** [[AConnectIt_GameMode]] resolves the live setup (`EnsureMatchSetupResolved`: the menu's preset, else
-   the map's World Settings' Default Match Preset): copies the preset's rules, reads its three director classes, **copies the Player
-   and AI directors' Win / Lose Conditions into plain groups** (`FConnectItRuleSet::ResolveConditionGroups`, from the
-   classes' defaults), applies the menu's tweaks (target score).
+   the map's World Settings' Default Match Preset): copies the preset's rules, reads its three director classes, **copies the
+   Level director's Player / AI Win and Lose Conditions into plain groups** (`FConnectItRuleSet::ResolveConditionGroups`,
+   from the class's defaults; the level can replace a side's mid-match), applies the menu's tweaks (target score).
    Then, for `MatchType == Adventure`, `SpawnAndRegisterAI`, and tells the rule set which slot is the AI's (`AIFaction`).
 2. **Seeding.** The controller's `BeginPlay` makes its director from the preset's class (strategies and selector instanced
    with it, so decision state is per match), creates its coordinator and seeds its PlayerState from the director's

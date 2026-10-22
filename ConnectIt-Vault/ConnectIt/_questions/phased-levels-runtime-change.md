@@ -1,8 +1,8 @@
 ---
 created: 2026-10-21
 question: "How should a level change its board layout, rules and goals at runtime when a phase ends?"
-status: open
-closed-by:
+status: answered
+closed-by: "[2026-10-22-phases-as-events-layouts-as-data](../_decisions/2026-10-22-phases-as-events-layouts-as-data.md)"
 tags:
   - question
 ---
@@ -94,3 +94,20 @@ built; closes with the decision notes in the plan's Stage 7.
 
 ## Resolution
 
+**Answered 2026-10-22, built** ([phased-levels-plan](../design/phased-levels-plan.md), all seven stages):
+
+- **A phase is an event.** The Level director's Begin Phase (a shared `ConnectIt.Phase.*` tag) is a board change; every
+  director hears On Phase Changed and changes what it owns.
+- **Layouts are data.** `UConnectIt_BoardLayout` assets are made with a layout tool in a sandbox level.
+- **Set Layout is one board change.** A Change Layout is worked out against the board when it is applied, with one win
+  check. Tile actors follow on every machine.
+- **Only the Level director changes conditions**, and it holds both sides' goals. Set Win / Lose Conditions is a board
+  change: goal progress restarts, score carries over.
+
+Decisions: [phases as events, layouts as data](../_decisions/2026-10-22-phases-as-events-layouts-as-data.md),
+[conditions on the Level director](../_decisions/2026-10-22-conditions-on-the-level-director.md). Recipe:
+[[script-a-phased-level]].
+
+Still open, outside this question:
+- range rules for player actions that add / remove tiles;
+- an optional "layout already scores" warning in the tool.

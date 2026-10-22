@@ -1,8 +1,9 @@
 # Phased levels: changing the whole match at runtime
 
-Design note (2026-10-21). **Nothing built.** Open thread:
+Design note (2026-10-21). **Built 2026-10-22** -- recipe [[script-a-phased-level]], decision
+[phases as events, layouts as data](../_decisions/2026-10-22-phases-as-events-layouts-as-data.md). Thread (answered):
 [phased-levels-runtime-change](../_questions/phased-levels-runtime-change.md). Plan:
-[phased-levels-plan](phased-levels-plan.md) (**approved 2026-10-21**, not built).
+[phased-levels-plan](phased-levels-plan.md) (complete). The pitfalls list below became the recipe.
 
 ## Goal (owner)
 

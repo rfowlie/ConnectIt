@@ -53,8 +53,8 @@ director, not from the controller class.
 1. Content Browser: **Blueprint Class** with parent `ConnectIt_AIDirector` (e.g. `CIAD_Classic_Hard`). Open its **Class
    Defaults** -- everything below is set there. As it comes it is the classic opponent: one **MinMax (Classic)** strategy and
    the **First Available** selector.
-2. **Starting Loadout**: the AI's action loadout. **Win Conditions**: the AI's goals, in order (and **Lose Conditions** if it
-   can lose by something other than the player winning).
+2. **Starting Loadout**: the AI's action loadout. (The AI's goals are not here: they are the **Level director's AI Win / Lose
+   Conditions** -- see [[add-a-win-condition]].)
 3. Under **Strategies > MinMax (Classic) > Search**: `Max Depth` (how many moves it looks ahead), `Default Time Budget
    Seconds` (only used when nothing else gives a time; under a director the director's think time decides), the `Evaluation Weights` / `Ordering Weights` (what it values; ordering is speed only), and
    optionally `Own` / `Opponent Request Types` (empty = what each side may do). `Max Candidates` = how many fallback moves it
@@ -113,8 +113,8 @@ director, not from the controller class.
 ### Wire it into the level (all variants)
 
 7. In the **match preset** set **Directors > AI Director Class** to your AI director Blueprint, and **Player Director Class**
-   to the human side's (required). The AI's goals are the AI director's **Win Conditions**: it never borrows the player's,
-   and none means it can never win (you get a warning).
+   to the human side's (required), and **Level Director Class** (required: it holds both sides' goals). The AI's goals are the
+   Level director's **AI Win Conditions**: it never borrows the player's, and none means it can never win (you get a warning).
 8. Confirm the map's **World Settings > ConnectIt > Default Match Preset** points at that preset (and **Level Config** at its
    board), and the GameMode's `Match Type` is **Adventure**.
 9. Right-click the preset > **Asset Actions > Validate**: it checks the directors too (a starting loadout, at least one strategy,
@@ -128,7 +128,7 @@ director, not from the controller class.
 - Warnings that mean something is not set up: `the match preset has no AI Director Class` (the default director has no
   loadout, so every move is rejected), `no AI loadout`, `no strategy of director ... proposed a move`, `REJECTED`, `decision is stale`,
   `hit the per-turn decision cap`, from the coordinator `think time is up but no strategy has a move yet`, and from the
-  GameMode `the AI director has no Win Conditions`.
+  GameMode `the Level director has no AI Win Conditions`.
 
 ## Pitfalls
 
@@ -148,7 +148,7 @@ director, not from the controller class.
   runs out its deepest finished ranking is used.
 - **An AI with no legal move passes**: `Available Request Types` only lists kinds of move that can apply somewhere on the
   board, and with none left the AI ends its turn (`no legal move -- passing` in the log).
-- **No Win Conditions on the AI director** is the easy one to forget: the AI then plays but cannot win.
+- **No AI Win Conditions on the Level director** is the easy one to forget: the AI then plays but cannot win.
 - Custom controllers do not change behaviour. If your change "had no effect", you almost certainly wanted the director or a
   strategy.
 

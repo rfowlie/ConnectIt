@@ -1,13 +1,13 @@
 ---
 type: plan
-status: in-progress
+status: complete
 approved: true
 approved-on: 2026-10-21
-completed-on:
+completed-on: 2026-10-22
 playtested: false
 design: "[phased-levels](phased-levels.md)"
 question: "[phased-levels-runtime-change](../_questions/phased-levels-runtime-change.md)"
-decision:
+decision: "[2026-10-22-phases-as-events-layouts-as-data](../_decisions/2026-10-22-phases-as-events-layouts-as-data.md)"
 ---
 
 # Plan: phased levels (runtime layouts, phase events, condition changes)
@@ -299,6 +299,21 @@ Decision notes (phases as events and layouts as data, each phase change a board 
 director -- partly supersedes the 2026-10-21 hub decision); recipe "script a phased level" from the pitfalls list, with
 the checkpoint order (Begin Phase, conditions, layout); update `script-a-level` and the condition recipes (conditions now
 on the Level director); `code/systems/place-piece-request.md` lists the level-only operations; close the question; log.
+- *As built (2026-10-22):*
+  - **Decisions:** [phases as events, layouts as data](../_decisions/2026-10-22-phases-as-events-layouts-as-data.md) and
+    [conditions on the Level director](../_decisions/2026-10-22-conditions-on-the-level-director.md). The hub decision
+    is marked partly superseded by the latter.
+  - **Recipes:**
+    - **[[script-a-phased-level]]** -- the pitfalls list plus the checkpoint order;
+    - **[[script-a-level]]**, **[[add-a-win-condition]]**, **[[set-up-a-custom-ai-opponent]]** and
+      **[[direct-the-ai-during-a-match]]** -- goals now on the Level director;
+    - the recipes index.
+  - **Flows:** [[place-piece-request]] gained "Level-only operations"; [[ai-turn]] covers setup from the Level director.
+  - **Plugin:** the UnrealGridMechanics index row for the registry bases notes the runtime spawn / unregister.
+  - **Closed and marked:** the question is answered and closed; the design note is marked built; this plan is
+    `complete`.
+  - **Not done:** `code/__INDEX.md` (the ConnectIt type inventory) is stale well beyond this plan -- it lists none of the
+    directors, World Settings, operations or events. That's a `/process-code` pass, not part of this stage.
 
 ## Not in this plan
 
