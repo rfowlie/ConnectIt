@@ -270,6 +270,28 @@ stages.
     - write a camera transform to a layout.
   - **Owner:** the editor utility widget around them, and saving the asset (`Editor Asset Library`).
 - Optional: warn when a layout holds complete lines under a chosen scoring rule.
+- *As built (2026-10-22; 51/51 tests -- the helpers need an editor world, so they're checked in the editor):*
+  - **`UConnectIt_LayoutToolLibrary`** (`Framework/Library/`); the functions are inside `WITH_EDITOR`:
+    - **`Capture Layout From Level(Layout)`** replaces the layout's cells with the level's placed tiles.
+      - Position comes through the sandbox map's board grid; starting values from `Get Initial Tile Data`.
+      - The class is left empty when it is the board's Default Tile Class.
+      - A Visual Variant already set at that position is kept.
+      - Two tiles on one position: the second is skipped, with a warning.
+      - Cells are sorted by row, then column.
+    - **`Load Layout Into Level(Layout, bClearLevelTiles)`** places a layout's tiles to edit, clearing the level's tiles
+      first by default. Each tile is labelled `<Layout>_<X>_<Y>` and given its cell (see below).
+    - **`Set Layout Camera(Layout, bHasCamera, Transform)`**.
+    - All three mark the asset dirty. None can be undone with Ctrl+Z: a runtime module can't open an editor
+      transaction.
+  - **Tile data interface:** **`IConnectIt_TileDataProvider::ApplyLayoutCell(Data, VisualVariant)`**, a new
+    BlueprintNativeEvent (default: nothing). A tile Blueprint implements it to take its starting values and look.
+    - The tool calls it on load.
+    - **Runtime `Spawn Layout Tiles` calls it too**, so a phased level's new tiles get their Visual Variant without
+      extra Blueprint.
+  - **The sandbox map needs a Level Config in its World Settings:** its Grid Definition converts positions, and its
+    Default Tile Class fills empty cells.
+  - **The optional "complete lines" warning** is not built. That's no speculative work; it's easy to add if a layout
+    ever ships scoring by accident.
 
 ## Stage 7: vault
 

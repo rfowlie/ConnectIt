@@ -7,6 +7,7 @@
 #include "Framework/Data/ConnectIt_WorldSettings.h"
 #include "Registry/GridDefinition.h"
 #include "Tile/GridTileBase.h"
+#include "Board/ConnectIt_TileDataProvider.h"
 #include "Engine/World.h"
 
 
@@ -56,8 +57,15 @@ TArray<AGridTileBase*> UConnectIt_TileRegistry::SpawnLayoutTiles(const TArray<FC
         // Registers itself through the actor-spawned listener
         FActorSpawnParameters Params;
         Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
-        Spawned[Index] = World->SpawnActor<AGridTileBase>(
+        AGridTileBase* Tile = World->SpawnActor<AGridTileBase>(
             TileClass, FTransform(GridDefinition->GridPositionToWorld(Cell.Position)), Params);
+
+        // Its cell's values and look, for a tile that takes them
+        if (IsValid(Tile) && Tile->Implements<UConnectIt_TileDataProvider>())
+        {
+            IConnectIt_TileDataProvider::Execute_ApplyLayoutCell(Tile, Cell.TileData, Cell.VisualVariant);
+        }
+        Spawned[Index] = Tile;
     }
     return Spawned;
 }

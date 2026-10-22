@@ -283,5 +283,12 @@ approved yet). Three points to confirm are listed at its end.
   For tile powers this means a whole chain is one board change. The chain's events play before anything else changes
   the board; director reactions follow as their own changes. The tile-powers plan's known issue is closed.
 
+**2026-10-22 (owner, from the chained-tiles discussion):** a capture is **not** Tile Exit + Tile Enter (replaces round
+7). The piece only changes faction; as exit + enter, the visuals would show a destroy, a chained tile snapping shut, a
+place and the chain reopening for something that isn't happening. New pre-scoring trigger **Piece Change** (acts for the
+new owner); settle order Enter → Exit → Piece Change → Tile Change. Updated in
+[tile-power-triggers](../design/tile-power-triggers.md) and [tile-powers-plan](../design/tile-powers-plan.md) (change
+record, faction, tests, Vacuum). See [chained-tiles](../design/chained-tiles.md).
+
 ## Resolution
 

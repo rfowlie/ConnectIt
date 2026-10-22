@@ -20,15 +20,16 @@ can be placed on it. A piece placed on the partner **unchains** it. If the piece
   - **Model it as derived state, not as reactions to events.** "A chained tile is chained exactly when its partner has no
     piece" -- one rule, re-checked after every change, idempotent.
 - **Why derived state matters here** -- two cases where reacting to Enter / Exit events gets it wrong:
-  - **Capture** counts as Exit + Enter (tile-power decision). As events: the partner's piece "leaves" (re-chain, destroy
-    the chained tile's piece), then "arrives" (unchain) -- the piece is lost for nothing. As derived state: the partner
-    never stopped being occupied, nothing happens.
+  - **Capture** counted as Exit + Enter at the time (tile-power round 7). As events: the partner's piece "leaves"
+    (re-chain, destroy the chained tile's piece), then "arrives" (unchain) -- the piece is lost for nothing. As derived
+    state: the partner never stopped being occupied, nothing happens. *(Owner, 2026-10-22: this is why a capture is now
+    a **Piece Change**, its own trigger, not Exit + Enter -- see [tile-power-triggers](tile-power-triggers.md).)*
   - **Scoring clears the partner's piece**, which is *not* an Exit (tile-power decision). As events the chained tile would
     stay open forever. As derived state it re-chains in the next settle step (destroying its piece).
 - **One power, one trigger** (tile-power decision) doesn't fit either: the partner needs both "on enter" and "on exit".
   Derived state sidesteps that: a **level-wide rule** ("sync chains") checked in the settle step whenever something
   changed, like Crumble but on occupancy.
-- **It needs the tile lock** -- the "not placeable" state from the tutorial notes, not designed in a plan yet. A chained
+- **It needs the tile lock** -- the "not placeable" state; designed in [tile-lock](tile-lock.md) (2026-10-22). A chained
   tile is a locked tile whose lock is driven by its partner. So: design the lock state first (a tile data flag checked by
   `IsTilePlaceable`, replicated, readable by visuals), then chains as the rule that sets it.
 - **Events**: `TileChained` / `TileUnchained` {Position, Partner}, and the destroyed piece as an ordinary `Piece Removed`
@@ -44,9 +45,13 @@ Chains are checked in the **settle (pre-scoring) step**, so:
   so it can break a line that would otherwise have scored. That's the interesting part for puzzles.
 - If scoring clears the partner, the chained tile re-chains in the settle step after scoring (next pass).
 
-## Open
+## Decided (owner, 2026-10-22)
 
-- Does scoring clearing the partner re-chain (derived-state answer: yes)? Or does only a piece *moving* off re-chain?
+- **Scoring clearing the partner's piece re-chains the tile** and destroys any piece on it -- the derived-state rule:
+  chained whenever the partner has no piece, for any reason.
+- **A capture on the partner changes nothing** (the piece only changes faction; Piece Change, not Exit + Enter).
+
+## Open
 - Can the **opponent** unchain your tile by placing on the partner, and does that destroy your piece later if their
   piece leaves? (Derived state: any piece on the partner holds it open, whoever's.)
 - Is the destroyed piece's loss announced (a "chain snaps" visual) beyond Piece Removed?

@@ -16,20 +16,23 @@ action).
 
 | Trigger | Phase | Fires when | Examples |
 | --- | --- | --- | --- |
-| **Tile Enter** | Pre scoring | A piece arrives: place, force place, swap in, moved in by a power, captured | **Repel**: the arriving piece is pushed one tile before lines are checked, so it scores where it lands, not where it was put |
-| **Tile Exit** | Pre scoring | A piece leaves: remove, swap out, moved off by a power, captured (not cleared by scoring) | **Vacuum**: the nearest piece behind it is pulled into the empty tile and can complete a line |
+| **Tile Enter** | Pre scoring | A piece arrives: place, force place, swap in, moved in by a power | **Repel**: the arriving piece is pushed one tile before lines are checked, so it scores where it lands, not where it was put |
+| **Tile Exit** | Pre scoring | A piece leaves: remove, swap out, moved off by a power (not cleared by scoring) | **Vacuum**: the nearest piece behind it is pulled into the empty tile and can complete a line |
+| **Piece Change** | Pre scoring | The piece on the tile changes but stays: a capture (new owner) | **Loyal** (sketch): a captured piece flips back once |
 | **Tile Change** | Pre scoring | The tile itself changes: multiplier, active/inactive, power given or lost | **Crumble** (level-wide): multiplier reaches 5, the tile deactivates and its piece is removed. **Overflow**: multiplier past 4, each neighbour gets +1. **Fuse**: multiplier changed, the tile turns inactive |
 | **Scoring** | Scoring | A line scores through the tile (whether or not its piece is cleared) | **Push** (the owner's chain example), **Poison**, **Overgrowth**, **Siphon** |
 
-Pre-scoring powers fire in the order Enter, Exit, Change, each in tile order. Scoring powers fire in tile order.
+Pre-scoring powers fire in the order Enter, Exit, Piece Change, Tile Change, each in tile order. Scoring powers fire in
+tile order.
 
 **A shift is neither an exit nor an enter** (review, 2026-10-21): Board Shift moves whole tile data, so a tile's power,
 cooldown and piece travel together and no piece changes tile. Shifted positions are only scored.
 
-**A capture is both an exit and an enter** (the old owner's piece leaves, the new owner's arrives), the same way a swap
-reads on each tile it touches. Since a tile holds one power with one trigger, a capture fires it once whichever
-of the two it is. Quirk: an Exit power whose effect needs an empty tile (Vacuum) finds the tile still occupied after a
-capture and does nothing; a gate can handle that later if it matters.
+**A capture is a Piece Change, not an exit and an enter** (owner, 2026-10-22; replaces the round-7 call): the piece
+doesn't leave, it only changes faction. Treating it as exit + enter made the visuals tangle (the piece "destroyed", a
+chained tile closing and destroying its piece, the piece "placed", the chain reopening) for something that isn't
+happening. Piece Change acts for the new owner. It is scored like an arrival (a captured piece can complete a line), as
+today.
 
 ## How one action resolves
 
@@ -61,7 +64,8 @@ time](../_decisions/2026-10-21-one-board-change-at-a-time.md)).
 - What scoring and the scoring powers change goes back through settle before the next scoring pass; the chain ends at
   the first scoring pass that finds no lines.
 - One trigger per power.
-- A capture counts as both Tile Exit and Tile Enter.
+- ~~A capture counts as both Tile Exit and Tile Enter.~~ Replaced 2026-10-22: a capture is a **Piece Change** (new
+  trigger, pre scoring, acts for the new owner).
 - Director, checkpoint and win reactions happen after the chain, as new board requests.
 - A power acts for the faction whose change set it off: the scoring faction for Scoring, the arriving piece's owner
   for Enter, the leaving piece's owner for Exit, and the faction of the change that caused it for Change (-1 when

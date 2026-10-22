@@ -34,7 +34,8 @@ played back one event at a time. Settled in the 2026-10-21 discussion:
 - **One power per tile, one trigger per power**, plus an optional gate (a minimum multiplier) and a cooldown in turns
   (all turns; 0 = every time). Level-wide rules (Crumble) are powers that apply to every tile, on top of a tile's own.
 - Each power on a tile fires at most once per action -- that alone ends every chain; a cap stays only as a bug guard.
-- A capture is both a Tile Exit and a Tile Enter. A piece cleared by scoring sets off Scoring powers, never Exit.
+- A capture is a **Piece Change** (fourth pre-scoring trigger, owner 2026-10-22), not an Exit + Enter. A piece cleared
+  by scoring sets off Scoring powers, never Exit.
   **A shift is neither** (review): Shift moves whole tile data, so a tile's power, cooldown and piece travel together
   and no piece changes tile -- shifted positions are only scored.
 - **A power's effect is a board operation**, the same kind a player action sends, so powers and actions can share
@@ -51,9 +52,10 @@ stages; nothing is committed by me.
 - **`FConnectItBoardChanges`** replaces `FConnectItTouchedPositions` (`ConnectIt_BoardOperation.h`): what a step
   changed, inline-allocated -- `Entered` and `Exited` (position + the piece's faction; `Entered` also
   `bSurvivesScoring`, from the operation that made it), `Moved` (positions a shift gave a new occupant: scored, but no
-  Enter / Exit), `TileChanged` (position + what: multiplier / active / power), plus the faction of the change.
+  Enter / Exit), `PieceChanged` (position + new and previous owner; scored like an arrival), `TileChanged` (position +
+  what: multiplier / active / power), plus the faction of the change.
   `FConnectItBoardOperation::Apply` fills it; each of the eight operations reports what it really does (Place / Force
-  Place: enter; Swap: exit + enter on both tiles; Shift: moved; Capture: exit + enter; Remove: exit; Toggle / Destroy
+  Place: enter; Swap: exit + enter on both tiles; Shift: moved; Capture: piece changed; Remove: exit; Toggle / Destroy
   Multiplier: tile changed).
 - **Survival is per arrival:** one scoring pass can mix the action's arrivals with pieces moved by powers, so each
   arrival carries its own `bSurvivesScoring` (replaces the single `bArrivingPiecesSurvive` argument).
@@ -115,9 +117,9 @@ stages; nothing is committed by me.
 
 ## Stage 4: firing powers in the chain
 
-- In `ResolveBoardChange`: **settle** collects powers set off by the record's Enter / Exit / Change (tile's own power
-  and level-wide ones), skips gated-out, cooling-down and already-fired ones, fires them in Enter → Exit → Change, tile
-  order, and loops on what they changed until nothing fires. **Scoring reactions** fire the Scoring powers on the tiles
+- In `ResolveBoardChange`: **settle** collects powers set off by the record's Enter / Exit / Piece Change / Tile Change
+  (tile's own power and level-wide ones), skips gated-out, cooling-down and already-fired ones, fires them in Enter →
+  Exit → Piece Change → Tile Change, tile order, and loops on what they changed until nothing fires. **Scoring reactions** fire the Scoring powers on the tiles
   the pass's lines ran through, in tile order.
 - **Firing a power:** append **`PowerTriggered`** {Position, power name, Faction, `bNoEffect`, CauseIndex}; set
   `PowerReadyTurn = TurnNumber + CooldownTurns`; ask the effect for operations; for each whose `CanApply` holds, call
@@ -127,13 +129,14 @@ stages; nothing is committed by me.
   - Scoring: the scoring faction.
   - Enter: the arriving piece's owner.
   - Exit: the leaving piece's owner.
+  - Piece Change: the new owner.
   - Change: the faction of the change that caused it -- the scoring faction for a multiplier scoring raised, a power's
     faction for its effect, the operation's faction for a Level director change (-1 when it has none).
   - An effect that needs a faction (Capture, placing) finds nothing to do at -1: its operation's `CanApply` fails.
 - Once-per-action guard: a bit per (tile, power slot) -- the slots are the tile's own power plus each level-wide power
   (there can be several). Bug guard: 64 settle loops or scoring passes, log + stop.
 - Tests: the owner's chain (place → score through a Push tile → pushed piece completes a line → its tile's power fires);
-  settle until quiet; capture fires an Enter or Exit power once; cooldown 0 / 1 / 2 against the turn number; a power with
+  settle until quiet; a capture fires a Piece Change power and no Enter / Exit power; cooldown 0 / 1 / 2 against the turn number; a power with
   no target still shows and cools down; same seed, same result; before + events = after on a chain.
 
 ## Stage 5: new operations and the first powers
@@ -146,7 +149,7 @@ stages; nothing is committed by me.
   - **Push** (Scoring): a random adjacent piece moved one tile away; no free tile = no effect.
   - **Repel** (Enter): the arriving piece moved one tile in a random free direction.
   - **Vacuum** (Exit): the nearest piece in the tile's four orthogonal lines (ties broken by the seed) moved along its
-    line into the emptied tile. The tile occupied again (a capture or swap) or no piece in any line = no effect.
+    line into the emptied tile. The tile occupied again (a swap) or no piece in any line = no effect.
     *(Claude's reading of the sketch's "the piece behind it": a Remove has no direction. Any distance; a range value
     only if playtesting asks for one.)*
   - **Crumble** (level-wide, Change, gate multiplier ≥ N): piece removed, then tile deactivated. **Does nothing on an
@@ -154,7 +157,7 @@ stages; nothing is committed by me.
   - Poison / Overgrowth / Siphon after playtesting.
 - Typed Blueprint getters in `UConnectIt_BoardEventLibrary` for the new events.
 - Tests: each operation's `CanApply` / `Apply` / change record / event; each power's effect on a small board; a crumbled
-  tile stays crumbled when its multiplier changes again; Vacuum after a Remove pulls the nearest piece, after a capture
+  tile stays crumbled when its multiplier changes again; Vacuum after a Remove pulls the nearest piece, after a swap
   does nothing; a Vacuum pull fires the Exit power of the tile it pulled from.
 
 ## Stage 6: vault

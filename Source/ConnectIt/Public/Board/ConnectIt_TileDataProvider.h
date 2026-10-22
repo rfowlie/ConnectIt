@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "UObject/Interface.h"
+#include "GameplayTagContainer.h"
 #include "ConnectIt_Structs.h"
 #include "ConnectIt_TileDataProvider.generated.h"
 
@@ -73,4 +74,14 @@ public:
     {
         return FConnectItTileInitialData();
     }
+
+    // The tile is being set up from a board layout cell: take these starting
+    // values (what Get Initial Tile Data should return from now on) and this
+    // look (VisualVariant, empty for the default). Called on tiles spawned
+    // from a layout -- by the layout tool when it loads a layout into a
+    // level, and at runtime when a phased level's board changes layout. A
+    // tile that ignores it keeps its own values. Default: nothing.
+    UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "ConnectIt|Tile")
+    void ApplyLayoutCell(const FConnectItTileInitialData& Data, FGameplayTag VisualVariant);
+    virtual void ApplyLayoutCell_Implementation(const FConnectItTileInitialData& Data, FGameplayTag VisualVariant) {}
 };
