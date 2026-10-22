@@ -146,6 +146,34 @@ stages.
 - Tests: add / remove on a board; Change Layout on a board (shared tiles keep piece and multiplier; one win check, on
   the final board -- a lose condition met only by the in-between board doesn't fire); added pieces completing a line
   score; removing an occupied tile; refusals.
+- *As built (2026-10-22; 50/50 tests):*
+  - **The operations:** `FConnectItBoardOperation_RemoveTiles` {Positions}, `_AddTiles` {Cells}, and `_ChangeLayout`
+    {RemovePositions, AddCells, LayoutName, bHasCamera, CameraTransform; `SetDiff(Diff)`}. Their request types are
+    `ConnectIt.Game.State.RemoveTiles / AddTiles / ChangeLayout`.
+    - Change Layout carries the layout's **name**, not the asset: operations stay free of object references, apart
+      from the cells' tile class.
+    - An empty Change Layout is allowed (a layout that only moves the camera).
+    - A position may be removed and added in the same change.
+  - **The events:** `FConnectItBoardEvent_TilesRemoved` {Positions, PieceFactions}, `_TilesAdded` {Cells} and
+    `_LayoutChanged` {LayoutName, bHasCamera, CameraTransform}, each with a `Get Active ... Event` getter.
+    - Change Layout appends Tiles Removed / Tiles Added only when non-empty, and always appends Layout Changed.
+  - **Board state:** `FConnectItBoardState::RemoveTileData` (the other tiles keep their order).
+    `FConnectItTileInitialData::ToTileData(NumFactions)` / `HasStartingPiece` are now the one conversion, used by board
+    setup too.
+  - **Starting pieces on added tiles:** they arrive (scored, and they stay, as placed pieces do) and **count as their
+    faction's starting pieces** (`StartingPieces`), the baseline piece-count goals measure progress from. A piece
+    removed with its tile doesn't lower it.
+  - **Audit:**
+    - **AI search geometry:** rebuilt each decision from the board's positions, and the AI only decides from a settled
+      board. Fine.
+    - **Influence map:** iterates `TilePositions` on every board change. Fine.
+    - **Scoring, conditions, Level triggers:** read the board by position. Fine.
+    - **Hover subsystems and tile actors:** stale until Stage 5 reconciles them (a removed tile's actor stays and can
+      still be hovered).
+    - **Shift:** the client computes a line from its tile registry (actors), so it is stale until Stage 5. The server's
+      `CanApply` refuses positions that aren't tiles.
+  - **Tests:** `ConnectIt.Board.TileOperations` (remove / add / change layout, refusals, an added piece scoring, no loss
+    from the in-between board, event order). The operation catalog count is now 12.
 
 ## Stage 4: Set Layout and phase events on the Level director
 

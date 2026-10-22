@@ -24,6 +24,10 @@ UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_Game_CapturePiece);
 UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_Game_Shift);
 // Level only (FConnectItBoardOperation_ChangeGoals): no action produces it
 UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_Game_ChangeGoals);
+// Level only for now: tiles leaving / joining the board, and a whole new layout
+UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_Game_RemoveTiles);
+UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_Game_AddTiles);
+UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_Game_ChangeLayout);
 
 UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_Tile_ValidHover);
 UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_Tile_InvalidHover);
@@ -46,6 +50,11 @@ UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_Event_WinCheckpointReached);
 UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_Event_LoseConditionMet);
 // A side's goals were replaced mid-match (see FConnectItBoardEvent_GoalsChanged)
 UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_Event_GoalsChanged);
+// Tiles left / joined the board, and the board changed to a new layout (see
+// FConnectItBoardEvent_TilesRemoved / _TilesAdded / _LayoutChanged)
+UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_Event_TilesRemoved);
+UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_Event_TilesAdded);
+UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_Event_LayoutChanged);
 UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_Event_TurnEnd);
 // Server only, not a board event: queued right after a board change's events,
 // so it completes once they have all played out -- the end of that change

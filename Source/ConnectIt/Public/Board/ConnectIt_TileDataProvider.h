@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "UObject/Interface.h"
+#include "ConnectIt_Structs.h"
 #include "ConnectIt_TileDataProvider.generated.h"
 
 // The starting values a designer can set on a placed tile. A separate struct
@@ -30,6 +31,24 @@ struct CONNECTIT_API FConnectItTileInitialData
     // or -1 for an empty tile. Must be a valid faction slot for the level.
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Tile", meta = (ClampMin = -1))
     int32 StartingFactionPiece = -1;
+
+    // Whether StartingFactionPiece is a piece a board with NumFactions can hold
+    bool HasStartingPiece(int32 NumFactions) const
+    {
+        return StartingFactionPiece >= 0 && StartingFactionPiece < NumFactions;
+    }
+
+    // The board tile these values start as. A starting piece for a faction the
+    // board doesn't have is left off (the tile starts empty).
+    FConnectItTileData ToTileData(int32 NumFactions) const
+    {
+        FConnectItTileData Tile;
+        Tile.Multiplier = Multiplier;
+        Tile.bIsActive  = bIsActive;
+        Tile.bCanShift  = bCanShift;
+        Tile.SetFactionPiece(HasStartingPiece(NumFactions) ? StartingFactionPiece : -1);
+        return Tile;
+    }
 };
 
 UINTERFACE(Blueprintable)

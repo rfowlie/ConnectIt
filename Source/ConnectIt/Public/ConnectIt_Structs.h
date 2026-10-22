@@ -160,6 +160,18 @@ struct FConnectItBoardState
         }
     }
 
+    // Take a tile off the board, with whatever is on it (the other tiles keep
+    // their order). False if there was no tile there.
+    bool RemoveTileData(const FGridPosition& Position)
+    {
+        const int32 Index = TilePositions.IndexOfByKey(Position);
+        if (!TileDataArray.IsValidIndex(Index)) return false;
+
+        TilePositions.RemoveAt(Index);
+        TileDataArray.RemoveAt(Index);
+        return true;
+    }
+
     // --- Helper queries ---
 
     bool IsTileOccupied(const FGridPosition& Position) const

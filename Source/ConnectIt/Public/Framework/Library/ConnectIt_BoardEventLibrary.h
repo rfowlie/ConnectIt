@@ -72,6 +72,21 @@ public:
         meta = (WorldContext = "WorldContextObject", ExpandBoolAsExecs = "ReturnValue"))
     static bool GetActiveGoalsChangedEvent(const UObject* WorldContextObject, FConnectItBoardEvent_GoalsChanged& OutEvent);
 
+    // For listeners of ConnectIt.Event.TilesRemoved
+    UFUNCTION(BlueprintCallable, Category = "ConnectIt|Board Events",
+        meta = (WorldContext = "WorldContextObject", ExpandBoolAsExecs = "ReturnValue"))
+    static bool GetActiveTilesRemovedEvent(const UObject* WorldContextObject, FConnectItBoardEvent_TilesRemoved& OutEvent);
+
+    // For listeners of ConnectIt.Event.TilesAdded
+    UFUNCTION(BlueprintCallable, Category = "ConnectIt|Board Events",
+        meta = (WorldContext = "WorldContextObject", ExpandBoolAsExecs = "ReturnValue"))
+    static bool GetActiveTilesAddedEvent(const UObject* WorldContextObject, FConnectItBoardEvent_TilesAdded& OutEvent);
+
+    // For listeners of ConnectIt.Event.LayoutChanged
+    UFUNCTION(BlueprintCallable, Category = "ConnectIt|Board Events",
+        meta = (WorldContext = "WorldContextObject", ExpandBoolAsExecs = "ReturnValue"))
+    static bool GetActiveLayoutChangedEvent(const UObject* WorldContextObject, FConnectItBoardEvent_LayoutChanged& OutEvent);
+
     // For listeners of ConnectIt.Event.Scored
     UFUNCTION(BlueprintCallable, Category = "ConnectIt|Board Events",
         meta = (WorldContext = "WorldContextObject", ExpandBoolAsExecs = "ReturnValue"))

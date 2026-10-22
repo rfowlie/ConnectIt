@@ -6,6 +6,8 @@ Vault-wide passes go in `_core/_logs/`.
 
 Newest first:
 
+- [2026-10-22-0955](2026-10-22-0955.md) — session — phased levels, Stage 3: Remove Tiles / Add Tiles / Change Layout
+  operations and events (one change, one win check). 50/50 tests.
 - [2026-10-22-0948](2026-10-22-0948.md) — session — side directors' unused goal lists removed; phased levels, Stage 2:
   `UConnectIt_BoardLayout` asset, layout cell + diff structs, `DefaultTileClass`. 49/49 tests.
 - [2026-10-22-0920](2026-10-22-0920.md) — session — `ConnectIt_Game_Post` tag string fixed (`"ConnectIt.Game.Pre"` → `"ConnectIt.Game.Post"`); nothing

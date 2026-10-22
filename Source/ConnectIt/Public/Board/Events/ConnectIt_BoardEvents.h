@@ -6,6 +6,7 @@
 #include "GameplayTagContainer.h"
 #include "GridMechanicsBaseEnums.h"
 #include "GridMechanicsBaseStructs.h"
+#include "Board/ConnectIt_BoardLayoutCell.h"
 #include "ConnectIt_BoardEvents.generated.h"
 
 class UConnectIt_MatchConditionAsset;
@@ -214,6 +215,58 @@ struct CONNECTIT_API FConnectItBoardEvent_GoalsChanged : public FConnectItBoardO
     // The new goals' names (their assets' names), in order
     UPROPERTY(BlueprintReadOnly, Category = "Event")
     TArray<FName> GroupNames;
+
+    virtual FGameplayTag GetEventTag() const override;
+};
+
+// Tiles left the board, with any pieces on them. The visuals remove those
+// tile actors (and their pieces).
+USTRUCT(BlueprintType, meta = (DisplayName = "Tiles Removed"))
+struct CONNECTIT_API FConnectItBoardEvent_TilesRemoved : public FConnectItBoardOperationEvent
+{
+    GENERATED_BODY()
+
+    UPROPERTY(BlueprintReadOnly, Category = "Event")
+    TArray<FGridPosition> Positions;
+
+    // Per position: the faction of the piece that went with the tile, or -1
+    UPROPERTY(BlueprintReadOnly, Category = "Event")
+    TArray<int32> PieceFactions;
+
+    virtual FGameplayTag GetEventTag() const override;
+};
+
+// Tiles joined the board, each with its starting values (and starting piece,
+// which then counts as an arrival: it can score). The visuals spawn each
+// cell's tile class -- or the board's Default Tile Class -- at its position.
+USTRUCT(BlueprintType, meta = (DisplayName = "Tiles Added"))
+struct CONNECTIT_API FConnectItBoardEvent_TilesAdded : public FConnectItBoardOperationEvent
+{
+    GENERATED_BODY()
+
+    UPROPERTY(BlueprintReadOnly, Category = "Event")
+    TArray<FConnectItBoardLayoutCell> Cells;
+
+    virtual FGameplayTag GetEventTag() const override;
+};
+
+// The board changed to a new layout: follows that change's Tiles Removed /
+// Tiles Added. For the camera and anything that marks the new layout.
+USTRUCT(BlueprintType, meta = (DisplayName = "Layout Changed"))
+struct CONNECTIT_API FConnectItBoardEvent_LayoutChanged : public FConnectItBoardOperationEvent
+{
+    GENERATED_BODY()
+
+    // The layout asset's name (none if the change wasn't made from one)
+    UPROPERTY(BlueprintReadOnly, Category = "Event")
+    FName LayoutName;
+
+    // Where the camera moves to, if the layout gives one
+    UPROPERTY(BlueprintReadOnly, Category = "Event")
+    bool bHasCamera = false;
+
+    UPROPERTY(BlueprintReadOnly, Category = "Event")
+    FTransform CameraTransform;
 
     virtual FGameplayTag GetEventTag() const override;
 };

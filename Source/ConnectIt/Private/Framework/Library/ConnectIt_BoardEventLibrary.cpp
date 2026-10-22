@@ -53,6 +53,24 @@ bool UConnectIt_BoardEventLibrary::GetActiveGoalsChangedEvent(
     return TryGetActiveBoardEvent(WorldContextObject, OutEvent, TEXT("GetActiveGoalsChangedEvent"));
 }
 
+bool UConnectIt_BoardEventLibrary::GetActiveTilesRemovedEvent(
+    const UObject* WorldContextObject, FConnectItBoardEvent_TilesRemoved& OutEvent)
+{
+    return TryGetActiveBoardEvent(WorldContextObject, OutEvent, TEXT("GetActiveTilesRemovedEvent"));
+}
+
+bool UConnectIt_BoardEventLibrary::GetActiveTilesAddedEvent(
+    const UObject* WorldContextObject, FConnectItBoardEvent_TilesAdded& OutEvent)
+{
+    return TryGetActiveBoardEvent(WorldContextObject, OutEvent, TEXT("GetActiveTilesAddedEvent"));
+}
+
+bool UConnectIt_BoardEventLibrary::GetActiveLayoutChangedEvent(
+    const UObject* WorldContextObject, FConnectItBoardEvent_LayoutChanged& OutEvent)
+{
+    return TryGetActiveBoardEvent(WorldContextObject, OutEvent, TEXT("GetActiveLayoutChangedEvent"));
+}
+
 bool UConnectIt_BoardEventLibrary::GetActiveScoredEvent(
     const UObject* WorldContextObject, FConnectItBoardEvent_Scored& OutEvent)
 {

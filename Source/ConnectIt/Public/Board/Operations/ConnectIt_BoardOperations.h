@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "GridMechanicsBaseStructs.h"
 #include "Board/Operations/ConnectIt_BoardOperation.h"
+#include "Board/ConnectIt_BoardLayoutCell.h"
 #include "ConnectIt_BoardOperations.generated.h"
 
 // Every kind of change that can be made to the board. See
@@ -243,6 +244,91 @@ struct CONNECTIT_API FConnectItBoardOperation_ChangeGoals : public FConnectItBoa
     // The new goals' names, in order -- for the event
     UPROPERTY(BlueprintReadWrite, Category = "Operation")
     TArray<FName> GroupNames;
+
+    virtual FGameplayTag GetRequestType() const override;
+    virtual bool CanApply(const FConnectItBoardState& Board, FString* OutWhyNot = nullptr) const override;
+    virtual void Apply(
+        FConnectItBoardState& Board,
+        FConnectItTouchedPositions& OutTouched,
+        FConnectItBoardChangeEvent* OutEvents) const override;
+    virtual FString Describe() const override;
+};
+
+// --- The board's tiles themselves ---
+// The set of tiles can change during a match (a phased level changing
+// layout). Level only for now: no action produces these. Their cells name a
+// tile class for the visuals -- a class reference, the one UObject reference
+// an operation carries; the AI's search never builds these.
+
+// Take tiles off the board, with whatever is on them. Refused if a position
+// isn't a tile (or is given twice).
+USTRUCT(BlueprintType, meta = (DisplayName = "Remove Tiles"))
+struct CONNECTIT_API FConnectItBoardOperation_RemoveTiles : public FConnectItBoardOperation
+{
+    GENERATED_BODY()
+
+    UPROPERTY(BlueprintReadWrite, Category = "Operation")
+    TArray<FGridPosition> Positions;
+
+    virtual FGameplayTag GetRequestType() const override;
+    virtual bool CanApply(const FConnectItBoardState& Board, FString* OutWhyNot = nullptr) const override;
+    virtual void Apply(
+        FConnectItBoardState& Board,
+        FConnectItTouchedPositions& OutTouched,
+        FConnectItBoardChangeEvent* OutEvents) const override;
+    virtual FString Describe() const override;
+};
+
+// Put tiles on the board with their starting values. A starting piece is an
+// ordinary arrival: it can complete a line and score, like a placed piece
+// (and stays, as a placed piece does). Refused if a position is already a
+// tile (or is given twice).
+USTRUCT(BlueprintType, meta = (DisplayName = "Add Tiles"))
+struct CONNECTIT_API FConnectItBoardOperation_AddTiles : public FConnectItBoardOperation
+{
+    GENERATED_BODY()
+
+    UPROPERTY(BlueprintReadWrite, Category = "Operation")
+    TArray<FConnectItBoardLayoutCell> Cells;
+
+    virtual FGameplayTag GetRequestType() const override;
+    virtual bool CanApply(const FConnectItBoardState& Board, FString* OutWhyNot = nullptr) const override;
+    virtual void Apply(
+        FConnectItBoardState& Board,
+        FConnectItTouchedPositions& OutTouched,
+        FConnectItBoardChangeEvent* OutEvents) const override;
+    virtual FString Describe() const override;
+};
+
+// Change the board's tiles to a layout in ONE board change: remove, then add
+// (the same steps as the two operations above), then Layout Changed. One
+// change means one win check, on the final board -- no in-between board is
+// ever checked against the goals or shown. Shared positions are untouched
+// (pieces and multipliers stay). Usually built from a layout's diff
+// (UConnectIt_BoardLayout::DiffFrom).
+USTRUCT(BlueprintType, meta = (DisplayName = "Change Layout"))
+struct CONNECTIT_API FConnectItBoardOperation_ChangeLayout : public FConnectItBoardOperation
+{
+    GENERATED_BODY()
+
+    UPROPERTY(BlueprintReadWrite, Category = "Operation")
+    TArray<FGridPosition> RemovePositions;
+
+    UPROPERTY(BlueprintReadWrite, Category = "Operation")
+    TArray<FConnectItBoardLayoutCell> AddCells;
+
+    // For the Layout Changed event: the layout's name, and its camera if it has one
+    UPROPERTY(BlueprintReadWrite, Category = "Operation")
+    FName LayoutName;
+
+    UPROPERTY(BlueprintReadWrite, Category = "Operation")
+    bool bHasCamera = false;
+
+    UPROPERTY(BlueprintReadWrite, Category = "Operation")
+    FTransform CameraTransform;
+
+    // Removals and additions from a diff
+    void SetDiff(const FConnectItBoardLayoutDiff& Diff);
 
     virtual FGameplayTag GetRequestType() const override;
     virtual bool CanApply(const FConnectItBoardState& Board, FString* OutWhyNot = nullptr) const override;

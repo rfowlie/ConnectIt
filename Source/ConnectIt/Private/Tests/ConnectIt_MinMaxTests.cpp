@@ -1618,8 +1618,9 @@ bool FConnectItAICandidatesTest::RunTest(const FString& Parameters)
         AllTypes.Contains(FGameplayTag(ConnectIt_Game_PlacePiece))
         && AllTypes.Contains(FGameplayTag(ConnectIt_Game_SwapPieces))
         && AllTypes.Contains(FGameplayTag(ConnectIt_Game_Shift)));
-    // The eight player-facing ones and the level's Change Goals
-    TestEqual(TEXT("one per kind of operation"), AllTypes.Num(), 9);
+    // The eight player-facing ones and the level's Change Goals, Remove
+    // Tiles, Add Tiles and Change Layout
+    TestEqual(TEXT("one per kind of operation"), AllTypes.Num(), 12);
     return true;
 }
 
@@ -2540,6 +2541,138 @@ bool FConnectItBoardLayoutTest::RunTest(const FString& Parameters)
         TestTrue(TEXT("a piece for a faction no match has is warned about"), Faction.GetNumWarnings() >= 1);
     }
 #endif
+    return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FConnectItTileOperationsTest,
+    "ConnectIt.Board.TileOperations", TestFlags)
+
+bool FConnectItTileOperationsTest::RunTest(const FString& Parameters)
+{
+    const auto MakeCell = [](int32 X, int32 Y, int32 StartingFaction = -1, float Multiplier = 1.f)
+    {
+        FConnectItBoardLayoutCell Cell;
+        Cell.Position = FGridPosition(X, Y);
+        Cell.TileData.StartingFactionPiece = StartingFaction;
+        Cell.TileData.Multiplier = Multiplier;
+        return Cell;
+    };
+    const auto EventAt = [](const FConnectItBoardChangeEvent& Events, int32 Index) -> const FInstancedStruct*
+    {
+        return Events.Events.IsValidIndex(Index) ? &Events.Events[Index] : nullptr;
+    };
+
+    // --- Remove Tiles ---
+    {
+        FConnectItBoardState Board = MakeBoard(3);
+        Place(Board, 1, 1, 0);
+        FConnectItBoardOperation_RemoveTiles Remove;
+        Remove.Positions = { FGridPosition(1, 1), FGridPosition(2, 2) };
+        TestTrue(TEXT("remove: can apply"), Remove.CanApply(Board));
+
+        FConnectItTouchedPositions Touched;
+        FConnectItBoardChangeEvent Events;
+        Remove.Apply(Board, Touched, &Events);
+        TestEqual(TEXT("remove: two tiles fewer"), Board.NumTiles(), 7);
+        TestNull(TEXT("remove: the tile is gone"), Board.GetTileData(FGridPosition(1, 1)));
+        TestEqual(TEXT("remove: nothing arrived"), Touched.Num(), 0);
+        const FConnectItBoardEvent_TilesRemoved* Removed =
+            EventAt(Events, 0) ? EventAt(Events, 0)->GetPtr<FConnectItBoardEvent_TilesRemoved>() : nullptr;
+        TestTrue(TEXT("remove: the event says which, and the piece that went"),
+            Removed && Removed->Positions.Num() == 2 && Removed->PieceFactions == TArray<int32>({ 0, -1 }));
+
+        FConnectItBoardOperation_RemoveTiles Bad;
+        TestFalse(TEXT("remove: nothing to remove is refused"), Bad.CanApply(Board));
+        Bad.Positions = { FGridPosition(1, 1) };
+        TestFalse(TEXT("remove: a position that isn't a tile is refused"), Bad.CanApply(Board));
+        Bad.Positions = { FGridPosition(0, 0), FGridPosition(0, 0) };
+        TestFalse(TEXT("remove: a repeated position is refused"), Bad.CanApply(Board));
+    }
+
+    // --- Add Tiles: an added starting piece is an arrival and can score ---
+    {
+        FConnectItRuleSet Rules;   // Lines of 4
+        FConnectItBoardState Board = MakeBoard(3);
+        Board.StartingPieces = { 0, 0 };
+        Place(Board, 0, 0, 0);
+        Place(Board, 1, 0, 0);
+        Place(Board, 2, 0, 0);
+
+        FConnectItBoardOperation_AddTiles Add;
+        Add.Faction = INDEX_NONE;
+        Add.Cells = { MakeCell(3, 0, 0, 2.f), MakeCell(3, 1) };
+        TestTrue(TEXT("add: can apply"), Add.CanApply(Board));
+
+        FConnectItBoardChangeEvent Events;
+        const float Points = Rules.CarryOutOperation(Add, Board, &Events);
+        TestEqual(TEXT("add: two tiles more"), Board.NumTiles(), 11);
+        TestTrue(TEXT("add: the starting piece completed a line of 4"), Points > 0.f);
+        TestTrue(TEXT("add: and stays, like a placed piece"), Board.IsTileOccupied(FGridPosition(3, 0)));
+        TestEqual(TEXT("add: it counts as a starting piece"), Board.StartingPieces[0], 1);
+        const FConnectItBoardEvent_TilesAdded* Added =
+            EventAt(Events, 0) ? EventAt(Events, 0)->GetPtr<FConnectItBoardEvent_TilesAdded>() : nullptr;
+        TestTrue(TEXT("add: Tiles Added first, carrying the cells"), Added && Added->Cells.Num() == 2);
+        TestTrue(TEXT("add: then Scored"),
+            EventAt(Events, 1) && EventAt(Events, 1)->GetPtr<FConnectItBoardEvent_Scored>() != nullptr);
+
+        FConnectItBoardOperation_AddTiles Bad;
+        TestFalse(TEXT("add: nothing to add is refused"), Bad.CanApply(Board));
+        Bad.Cells = { MakeCell(0, 0) };
+        TestFalse(TEXT("add: a position that is already a tile is refused"), Bad.CanApply(Board));
+        Bad.Cells = { MakeCell(9, 9), MakeCell(9, 9) };
+        TestFalse(TEXT("add: a repeated position is refused"), Bad.CanApply(Board));
+    }
+
+    // --- Change Layout: one change, one win check on the final board ---
+    {
+        // The player loses with no pieces left. The in-between board (old
+        // tiles gone, new ones not yet added) has none; the final board has one.
+        FConnectItRuleSet Rules;
+        Rules.AIFaction = 1;
+        AddCondition(AddGroup(Rules.PlayerWinGroups), ScoreAtLeast(100.f));
+        AddCondition(AddGroup(Rules.PlayerLoseGroups), PiecesIs(EConnectItPieceCountComparison::Equal, 0));
+
+        FConnectItBoardState Board = MakeBoard(2);
+        Place(Board, 0, 0, 0);
+        Board.GetTileDataMutable(FGridPosition(1, 1))->Multiplier = 3.f;
+        Place(Board, 1, 1, 1);
+
+        FConnectItBoardOperation_ChangeLayout Change;
+        Change.RemovePositions = { FGridPosition(0, 0), FGridPosition(0, 1) };
+        Change.AddCells = { MakeCell(5, 5, 0), MakeCell(0, 0) };
+        Change.LayoutName = TEXT("CIBL_Test");
+        Change.bHasCamera = true;
+        TestTrue(TEXT("layout: a position removed and added again is fine"), Change.CanApply(Board));
+
+        FConnectItBoardChangeEvent Events;
+        Rules.CarryOutOperation(Change, Board, &Events);
+        Rules.StampWinState(Board, &Events);
+        TestFalse(TEXT("layout: no loss from the in-between board"), Board.bGameOver);
+        TestTrue(TEXT("layout: shared tiles keep piece and multiplier"),
+            Board.IsTileOccupied(FGridPosition(1, 1)) && Board.GetTileData(FGridPosition(1, 1))->Multiplier == 3.f);
+        TestTrue(TEXT("layout: (0,0) is a fresh, empty tile"), Board.GetTileData(FGridPosition(0, 0)) && !Board.IsTileOccupied(FGridPosition(0, 0)));
+        TestEqual(TEXT("layout: tile count"), Board.NumTiles(), 4);
+
+        TestTrue(TEXT("layout: Tiles Removed, Tiles Added, Layout Changed, in that order"),
+            EventAt(Events, 0) && EventAt(Events, 0)->GetPtr<FConnectItBoardEvent_TilesRemoved>()
+            && EventAt(Events, 1) && EventAt(Events, 1)->GetPtr<FConnectItBoardEvent_TilesAdded>()
+            && EventAt(Events, 2) && EventAt(Events, 2)->GetPtr<FConnectItBoardEvent_LayoutChanged>());
+        const FConnectItBoardEvent_LayoutChanged* Changed =
+            EventAt(Events, 2) ? EventAt(Events, 2)->GetPtr<FConnectItBoardEvent_LayoutChanged>() : nullptr;
+        TestTrue(TEXT("layout: the event names the layout and its camera"),
+            Changed && Changed->LayoutName == FName(TEXT("CIBL_Test")) && Changed->bHasCamera);
+
+        // From a diff; an identical layout changes no tile but still says so
+        FConnectItBoardOperation_ChangeLayout Same;
+        Same.SetDiff(FConnectItBoardLayoutDiff::Between(Board.TilePositions, {}));
+        TestEqual(TEXT("layout: a diff to nothing removes every tile"), Same.RemovePositions.Num(), 4);
+        FConnectItBoardOperation_ChangeLayout Nothing;
+        TestTrue(TEXT("layout: an empty change is allowed (camera only)"), Nothing.CanApply(Board));
+
+        FConnectItBoardOperation_ChangeLayout Bad;
+        Bad.AddCells = { MakeCell(1, 1) };
+        TestFalse(TEXT("layout: adding over a tile that stays is refused"), Bad.CanApply(Board));
+    }
     return true;
 }
 

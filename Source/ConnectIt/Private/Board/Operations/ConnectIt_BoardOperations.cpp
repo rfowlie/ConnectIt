@@ -677,3 +677,244 @@ FString FConnectItBoardOperation_ChangeGoals::Describe() const
         bWinGoals ? TEXT("win goals") : TEXT("lose conditions"), *FactionText,
         Names.IsEmpty() ? TEXT("none") : *Names);
 }
+
+// ---------------------------------------------------------------------------
+// Remove Tiles / Add Tiles / Change Layout
+// ---------------------------------------------------------------------------
+
+namespace
+{
+    // Whether every position is given only once; OutRepeat gets the first one that isn't
+    bool AllDifferent(TConstArrayView<FGridPosition> Positions, FGridPosition& OutRepeat)
+    {
+        TSet<FGridPosition> Seen;
+        for (const FGridPosition& Position : Positions)
+        {
+            bool bSeen = false;
+            Seen.Add(Position, &bSeen);
+            if (bSeen)
+            {
+                OutRepeat = Position;
+                return false;
+            }
+        }
+        return true;
+    }
+
+    TArray<FGridPosition> CellPositions(TConstArrayView<FConnectItBoardLayoutCell> Cells)
+    {
+        TArray<FGridPosition> Positions;
+        Positions.Reserve(Cells.Num());
+        for (const FConnectItBoardLayoutCell& Cell : Cells)
+        {
+            Positions.Add(Cell.Position);
+        }
+        return Positions;
+    }
+
+    // Removal checks: every position is a tile, given once
+    bool CanRemoveTiles(const FConnectItBoardState& Board, TConstArrayView<FGridPosition> Positions, FString* OutWhyNot)
+    {
+        FGridPosition Repeat;
+        if (!AllDifferent(Positions, Repeat))
+        {
+            SetWhyNot(OutWhyNot, FString::Printf(TEXT("position %s is removed twice"), *PositionText(Repeat)));
+            return false;
+        }
+        for (const FGridPosition& Position : Positions)
+        {
+            if (!Board.GetTileData(Position))
+            {
+                SetWhyNot(OutWhyNot, FString::Printf(TEXT("position %s is not a tile"), *PositionText(Position)));
+                return false;
+            }
+        }
+        return true;
+    }
+
+    // Addition checks: every cell's position is free (or about to be freed by
+    // Removing), given once
+    bool CanAddTiles(const FConnectItBoardState& Board, TConstArrayView<FConnectItBoardLayoutCell> Cells,
+        TConstArrayView<FGridPosition> Removing, FString* OutWhyNot)
+    {
+        FGridPosition Repeat;
+        if (!AllDifferent(CellPositions(Cells), Repeat))
+        {
+            SetWhyNot(OutWhyNot, FString::Printf(TEXT("position %s is added twice"), *PositionText(Repeat)));
+            return false;
+        }
+        for (const FConnectItBoardLayoutCell& Cell : Cells)
+        {
+            if (Board.GetTileData(Cell.Position) && !Removing.Contains(Cell.Position))
+            {
+                SetWhyNot(OutWhyNot, FString::Printf(TEXT("position %s is already a tile"), *PositionText(Cell.Position)));
+                return false;
+            }
+        }
+        return true;
+    }
+
+    // Takes the tiles off, recording any piece that went with each
+    void RemoveTilesFrom(FConnectItBoardState& Board, TConstArrayView<FGridPosition> Positions,
+        FConnectItBoardEvent_TilesRemoved& OutEvent)
+    {
+        for (const FGridPosition& Position : Positions)
+        {
+            const FConnectItTileData* Tile = Board.GetTileData(Position);
+            const int32 PieceFaction = Tile ? Tile->FactionPiece : INDEX_NONE;
+            if (Board.RemoveTileData(Position))
+            {
+                OutEvent.Positions.Add(Position);
+                OutEvent.PieceFactions.Add(PieceFaction);
+            }
+        }
+    }
+
+    // Puts the tiles on. A starting piece arrives (reported for scoring) and
+    // counts as one of its faction's starting pieces, like a designer-placed
+    // piece at the start of the match (piece-count goals measure from those).
+    void AddTilesTo(FConnectItBoardState& Board, TConstArrayView<FConnectItBoardLayoutCell> Cells,
+        FConnectItTouchedPositions& OutTouched, FConnectItBoardEvent_TilesAdded& OutEvent)
+    {
+        const int32 NumFactions = Board.ScoreBoard.Num();
+        for (const FConnectItBoardLayoutCell& Cell : Cells)
+        {
+            if (Board.GetTileData(Cell.Position)) continue;
+
+            Board.SetTileData(Cell.Position, Cell.TileData.ToTileData(NumFactions));
+            if (Cell.TileData.HasStartingPiece(NumFactions))
+            {
+                OutTouched.Add(Cell.Position);
+                if (Board.StartingPieces.IsValidIndex(Cell.TileData.StartingFactionPiece))
+                {
+                    Board.StartingPieces[Cell.TileData.StartingFactionPiece]++;
+                }
+            }
+            OutEvent.Cells.Add(Cell);
+        }
+    }
+
+    FString PositionsText(TConstArrayView<FGridPosition> Positions)
+    {
+        FString Text;
+        for (const FGridPosition& Position : Positions)
+        {
+            Text += (Text.IsEmpty() ? TEXT("") : TEXT(" ")) + PositionText(Position);
+        }
+        return Text.IsEmpty() ? TEXT("none") : Text;
+    }
+}
+
+FGameplayTag FConnectItBoardOperation_RemoveTiles::GetRequestType() const
+{
+    return ConnectIt_Game_RemoveTiles;
+}
+
+bool FConnectItBoardOperation_RemoveTiles::CanApply(const FConnectItBoardState& Board, FString* OutWhyNot) const
+{
+    if (Positions.IsEmpty())
+    {
+        SetWhyNot(OutWhyNot, TEXT("no tiles to remove"));
+        return false;
+    }
+    return CanRemoveTiles(Board, Positions, OutWhyNot);
+}
+
+void FConnectItBoardOperation_RemoveTiles::Apply(
+    FConnectItBoardState& Board,
+    FConnectItTouchedPositions& OutTouched,
+    FConnectItBoardChangeEvent* OutEvents) const
+{
+    FConnectItBoardEvent_TilesRemoved Event;
+    RemoveTilesFrom(Board, Positions, Event);
+    if (OutEvents)
+    {
+        OutEvents->Add(Event);
+    }
+}
+
+FString FConnectItBoardOperation_RemoveTiles::Describe() const
+{
+    return PositionsText(Positions);
+}
+
+FGameplayTag FConnectItBoardOperation_AddTiles::GetRequestType() const
+{
+    return ConnectIt_Game_AddTiles;
+}
+
+bool FConnectItBoardOperation_AddTiles::CanApply(const FConnectItBoardState& Board, FString* OutWhyNot) const
+{
+    if (Cells.IsEmpty())
+    {
+        SetWhyNot(OutWhyNot, TEXT("no tiles to add"));
+        return false;
+    }
+    return CanAddTiles(Board, Cells, {}, OutWhyNot);
+}
+
+void FConnectItBoardOperation_AddTiles::Apply(
+    FConnectItBoardState& Board,
+    FConnectItTouchedPositions& OutTouched,
+    FConnectItBoardChangeEvent* OutEvents) const
+{
+    FConnectItBoardEvent_TilesAdded Event;
+    AddTilesTo(Board, Cells, OutTouched, Event);
+    if (OutEvents)
+    {
+        OutEvents->Add(Event);
+    }
+}
+
+FString FConnectItBoardOperation_AddTiles::Describe() const
+{
+    return PositionsText(CellPositions(Cells));
+}
+
+void FConnectItBoardOperation_ChangeLayout::SetDiff(const FConnectItBoardLayoutDiff& Diff)
+{
+    RemovePositions = Diff.Removed;
+    AddCells = Diff.Added;
+}
+
+FGameplayTag FConnectItBoardOperation_ChangeLayout::GetRequestType() const
+{
+    return ConnectIt_Game_ChangeLayout;
+}
+
+bool FConnectItBoardOperation_ChangeLayout::CanApply(const FConnectItBoardState& Board, FString* OutWhyNot) const
+{
+    // An empty change is allowed: the layout may only move the camera
+    return CanRemoveTiles(Board, RemovePositions, OutWhyNot)
+        && CanAddTiles(Board, AddCells, RemovePositions, OutWhyNot);
+}
+
+void FConnectItBoardOperation_ChangeLayout::Apply(
+    FConnectItBoardState& Board,
+    FConnectItTouchedPositions& OutTouched,
+    FConnectItBoardChangeEvent* OutEvents) const
+{
+    FConnectItBoardEvent_TilesRemoved Removed;
+    RemoveTilesFrom(Board, RemovePositions, Removed);
+
+    FConnectItBoardEvent_TilesAdded Added;
+    AddTilesTo(Board, AddCells, OutTouched, Added);
+
+    if (OutEvents)
+    {
+        if (!Removed.Positions.IsEmpty()) OutEvents->Add(Removed);
+        if (!Added.Cells.IsEmpty()) OutEvents->Add(Added);
+
+        FConnectItBoardEvent_LayoutChanged Changed;
+        Changed.LayoutName      = LayoutName;
+        Changed.bHasCamera      = bHasCamera;
+        Changed.CameraTransform = CameraTransform;
+        OutEvents->Add(Changed);
+    }
+}
+
+FString FConnectItBoardOperation_ChangeLayout::Describe() const
+{
+    return FString::Printf(TEXT("'%s': -%d tile(s), +%d tile(s)"),
+        *LayoutName.ToString(), RemovePositions.Num(), AddCells.Num());
+}

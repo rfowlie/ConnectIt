@@ -48,16 +48,13 @@ void UConnectIt_BoardStateComponent::InitialiseBoardState(
             const FConnectItTileInitialData Designer =
                 IConnectIt_TileDataProvider::Execute_GetInitialTileData(Tile);
 
-            TileData.Multiplier = Designer.Multiplier;
-            TileData.bIsActive  = Designer.bIsActive;
-            TileData.bCanShift  = Designer.bCanShift;
+            TileData = Designer.ToTileData(NumFactions);
             TilesWithDesignerData++;
 
             if (Designer.StartingFactionPiece >= 0)
             {
-                if (Designer.StartingFactionPiece < NumFactions)
+                if (Designer.HasStartingPiece(NumFactions))
                 {
-                    TileData.SetFactionPiece(Designer.StartingFactionPiece);
                     StartingPieces++;
                     StartingPiecesPerFaction[Designer.StartingFactionPiece]++;
                 }

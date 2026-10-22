@@ -49,6 +49,21 @@ FGameplayTag FConnectItBoardEvent_GoalsChanged::GetEventTag() const
     return ConnectIt_Event_GoalsChanged;
 }
 
+FGameplayTag FConnectItBoardEvent_TilesRemoved::GetEventTag() const
+{
+    return ConnectIt_Event_TilesRemoved;
+}
+
+FGameplayTag FConnectItBoardEvent_TilesAdded::GetEventTag() const
+{
+    return ConnectIt_Event_TilesAdded;
+}
+
+FGameplayTag FConnectItBoardEvent_LayoutChanged::GetEventTag() const
+{
+    return ConnectIt_Event_LayoutChanged;
+}
+
 FGameplayTag FConnectItBoardEvent_Scored::GetEventTag() const
 {
     return ConnectIt_Event_Scored;
