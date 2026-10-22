@@ -5,8 +5,8 @@ role: primary
 source:
   - Plugins/UnrealTurnBasedMechanics/Source/UnrealTurnBasedMechanics/Public/Action/TurnBasedActionsComponent.h
   - Plugins/UnrealTurnBasedMechanics/Source/UnrealTurnBasedMechanics/Private/Action/TurnBasedActionsComponent.cpp
-reconciled: 2026-09-21
-commit: aa8373e
+reconciled: 2026-10-22
+commit: ee95bc5
 ---
 
 # UTurnBasedActionsComponent
@@ -27,7 +27,9 @@ the plugin (~25 UPROPERTY / ~32 UFUNCTION).
 
 ## Entry points
 
-- **Setup:** `InitialiseFromLoadout(UActionLoadoutDataAsset*)`.
+- **Setup:** `InitialiseFromLoadout(UActionLoadoutDataAsset*)` -- builds the actions; it does **not** seed the
+  PlayerState's action state (the game's server-side setup does that, and the controller builds this component
+  *from* the PlayerState's loadout).
 - **Turn lifecycle (called by the coordinator):** `NotifyTurnStarted(FTurnStartContext)`,
   `NotifyOpponentTurnStarted`, `NotifyTurnEnded`, `NotifyPaused` / `NotifyUnpaused`,
   `NotifyMatchEnded`.
@@ -39,9 +41,9 @@ the plugin (~25 UPROPERTY / ~32 UFUNCTION).
   result — true only if actually pushed, false if no such action or the push was refused by limbo /
   awaiting-confirmation / `CanActivate()`),
   `CancelTopAction`.
-- **Turn end:** `CanEndTurn()` → `CanAutoEndTurn()` (BlueprintNativeEvent) — default evaluates the loadout's
-  `TurnEndRequirements` tree, each leaf comparing its action's uses this turn (read from the owner's
-  `ATurnBasedPlayerState`) to its required count; **no tree ⇒ true**. `HasTurnEndRequirementTree()`;
+- **Turn end:** `CanEndTurn()` → `CanAutoEndTurn()` (BlueprintNativeEvent) — default asks the owner's
+  `ATurnBasedPlayerState::AreTurnEndRequirementsMet(Loadout)` (the same check AI controllers use), which walks
+  the loadout's `TurnEndRequirements` tree against the uses this turn; **no tree ⇒ true**. `HasTurnEndRequirementTree()`;
   overrides should defer to `Super` when a tree exists. `RequestTurnEnd()` broadcasts `OnTurnEndRequested`.
   (`GetRequiredActions()` and the `bIsRequired`-based logic are gone.)
 - **Post-completion limbo:** `IsAwaitingRuntimeState()`, `StateSyncTimeoutSeconds` (default 3s). After the
@@ -59,8 +61,8 @@ the plugin (~25 UPROPERTY / ~32 UFUNCTION).
 
 - **Loadout:** `UActionLoadoutDataAsset` — one runtime action instance is built per `PermanentActions` /
   `NumberedActions` entry (reused every turn), plus the 5 system actions.
-- **PlayerState:** `ATurnBasedPlayerState` holds the authoritative per-action state the component reads (turn
-  end) and signals via `OnActionRuntimeStateUpdated`. Cooldown ticking (`TickCooldowns`) moved off the
+- **PlayerState:** `ATurnBasedPlayerState` holds the authoritative per-action state (seeded by the game, not by
+  this component), evaluates turn end (`AreTurnEndRequirementsMet`) and signals via `OnActionRuntimeStateUpdated`. Cooldown ticking (`TickCooldowns`) moved off the
   component to the server's `StartTurn`.
 - **Actions:** creates & owns `UTurnBasedAction` runtime instances +
   `UTurnBasedSpectatorAction` system instances; binds each action's
@@ -101,6 +103,9 @@ Change the slot set or lifecycle and also update:
 
 ## Changes
 
+- 2026-10-22 — **no longer seeds the PlayerState** in `InitialiseFromLoadout` (the game's server setup does --
+  seeding here would loop, since the controller builds this component from the PlayerState's loadout);
+  `CanAutoEndTurn` delegates to `ATurnBasedPlayerState::AreTurnEndRequirementsMet`, shared with AI controllers.
 - 2026-09-21 — **turn-end and state moved to the loadout/PlayerState model**: tree-based `CanAutoEndTurn`,
   post-completion limbo + `EnsureBoundToPlayerState`, `TryPushActionByClass` returns the real result,
   `TickCooldowns`/`GetRequiredActions` removed. See

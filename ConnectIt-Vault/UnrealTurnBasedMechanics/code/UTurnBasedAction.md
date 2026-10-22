@@ -5,8 +5,8 @@ role: primary
 source:
   - Plugins/UnrealTurnBasedMechanics/Source/UnrealTurnBasedMechanics/Public/Action/TurnBasedAction.h
   - Plugins/UnrealTurnBasedMechanics/Source/UnrealTurnBasedMechanics/Private/Action/TurnBasedAction.cpp
-reconciled: 2026-09-21
-commit: aa8373e
+reconciled: 2026-10-22
+commit: ee45a98
 ---
 
 # UTurnBasedAction
@@ -43,8 +43,10 @@ Blueprint).
   `HandleValidSelection`, `ClearSelectionState`; `ConstructInputBindings()` (populates
   `InputBindings`, called once from `InitialiseAction` before the input binder is built —
   see Collaborators).
-- **Protected helpers:** `RequestBoardChange(FTurnActionRequest)` (call from
-  `HandleValidSelection`; **stamps `Request.ActionTag`** with this action's tag), `BindInput()` / `UnbindInput()`, `BindGridSubsystem()` /
+- **Protected helpers:** `RequestBoardChange(const FInstancedStruct& Payload)` (call from
+  `HandleValidSelection` with just the project's change struct; it **builds the
+  `FTurnActionRequest`** -- `ActionTag` = this action's tag, `Payload` = the struct -- and
+  refuses an empty payload), `BindInput()` / `UnbindInput()`, `BindGridSubsystem()` /
   `UnbindGridSubsystem()`, `CurrentHoveredTile`.
 
 ## Collaborators
@@ -84,11 +86,16 @@ A new subclass must be registered in
 [[UnrealTurnBasedMechanics/code/UActionLoadoutDataAsset|UActionLoadoutDataAsset]]
 (a `PermanentActions` / `NumberedActions` entry keyed by class, or a system slot), and, if it should gate
 turn end, referenced from a `TurnEndRequirements` leaf. Adding `InputBindings` needs matching
-`FInputTagBinding` entries; new gameplay-tag request types need a project `USTRUCT` for
-`FTurnActionRequest::Payload`.
+`FInputTagBinding` entries; a new kind of request is a new project `USTRUCT` handed to
+`RequestBoardChange` as the payload (ConnectIt: a board operation; its request type comes from
+the payload, not from the action).
 
 ## Changes
 
+- 2026-10-22 — **`RequestBoardChange` takes the payload only** (`const FInstancedStruct&`) and
+  builds the request itself (`ActionTag` + `Payload`), instead of taking a whole
+  `FTurnActionRequest` to stamp. See
+  [payload is the request](../../ConnectIt/_decisions/2026-10-07-payload-is-the-request-server-supplies-faction.md).
 - 2026-09-21 — **budget/cap/cooldown state removed from the action** (moved to loadout config + PlayerState);
   added `GetTagForClass`, `ProducesRequestType`, the pull accessors, `GetOwnerPlayerState`; `RequestBoardChange`
   stamps `ActionTag`. See [legacy removal](../../ConnectIt/_decisions/2026-09-20-legacy-action-system-removed-stage-3.md).

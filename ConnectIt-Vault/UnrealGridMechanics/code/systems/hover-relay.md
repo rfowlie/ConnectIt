@@ -5,8 +5,8 @@ spans:
   - Plugins/UnrealGridMechanics/Source/UnrealGridMechanics/Private/Subsystem/GridHoverSubsystem.cpp
   - Plugins/UnrealGridMechanics/Source/UnrealGridMechanics/Public/Tile/GridTileRegistryComponent.h
   - Plugins/UnrealGridMechanics/Source/UnrealGridMechanics/Public/Piece/GridPieceRegistryComponent.h
-reconciled: 2026-09-10
-commit: f694874
+reconciled: 2026-10-22
+commit: 9830b97
 ---
 
 # Hover relay

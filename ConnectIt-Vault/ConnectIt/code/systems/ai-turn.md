@@ -15,8 +15,8 @@ spans:
   - Source/ConnectIt/Public/Board/ConnectIt_BoardRequestMediator.h
   - Plugins/UnrealTurnBasedMechanics/Source/UnrealTurnBasedMechanics/Public/Framework/Controller/TurnBasedAIController.h
   - Plugins/UnrealGameIntelligence/Source/UnrealGameIntelligence/Public/Search/MinMax/GI_MinMaxAlphaBeta.h
-reconciled: 2026-10-21
-commit: e00ad12
+reconciled: 2026-10-22
+commit: 1e0d5cf
 ---
 
 # AI turn: who the opponent is, and how it takes a move
@@ -129,7 +129,8 @@ sequenceDiagram
     the level does in response, has played out**, up to 16 times per turn.
 11. **The director** hears, from the GameMode and in order Level -> Players -> AI: `OnTurnStarted` / `OnTurnEnded` (from the
     participant manager's turn phases; for the AI's own turn, before the controller starts deciding), and
-    `OnWinCheckpointReached` / `OnLoseConditionMet` / `OnMatchWon` (from the server-side committed board change). It changes
+    `OnWinCheckpointReached` / `OnLoseConditionMet` / `OnPhaseChanged` / `OnMatchWon` (from the server-side committed board
+    change; a phased level's phase change is the place to give the AI a new loadout -- [[script-a-phased-level]]). It changes
     the loadout (during the AI's own turn: deferred to its end) and the strategies / selector (from the next decision).
 
 ## Gotchas

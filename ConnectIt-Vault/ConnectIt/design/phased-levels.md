@@ -144,8 +144,8 @@ To become the "script a phased level" recipe once built.
   replaced), loadouts, triggers, the scoring rule.
 - **Score carries over**: a score goal set in a later phase may already be met. Reset the score in the phase change, or
   set the target relative to the current score.
-- **A new layout can score the moment it appears** if it holds complete lines under the scoring rule in force (and set
-  off Tile Enter powers). Use it on purpose (instant pressure) or avoid it; check the layout under the level's rule.
+- **A new layout can score the moment it appears** if it holds complete lines under the scoring rule in force (it
+  sets off no powers: tiles appearing don't trigger Piece Enter). Use it on purpose (instant pressure) or avoid it; check the layout under the level's rule.
 - **Tiles in both layouts keep their piece and multiplier.** Clear them explicitly if the phase should start clean.
 - **Replacing a side's goals restarts its goal progress** at the first goal of the new list.
 - **The AI can't foresee a phase change**; it plays the current phase until the change happens.
@@ -156,11 +156,13 @@ To become the "script a phased level" recipe once built.
   or disappear change.** So Set Layout is exactly Remove Tiles + Add Tiles, no "update tiles" step. (A phase that wants
   shared tiles reset can follow with ordinary operations: Remove Piece, Destroy Multiplier.)
 - ~~Pieces arriving with added tiles~~ -- **decided (owner): they are ordinary arrivals.** Add Tiles is an operation like
-  any other, so it goes through the normal chain (settle powers, then scoring): pieces on added tiles set off Tile Enter
-  powers and score if they complete lines. Whether an arriving piece stays after scoring is the operation's own answer,
+  any other, so it goes through the normal chain (settle powers, then scoring): pieces on added tiles score if they complete lines.
+  **Revised (owner, 2026-10-22):** they do **not** set off Piece Enter powers -- tiles appearing or disappearing trigger
+  nothing (see the tile-powers plan, Stage 1). Whether an arriving piece stays after scoring is the operation's own answer,
   as for every operation. Consequence for designers: a phase layout that already holds a complete line scores the moment
   it appears -- avoid it, or use it on purpose.
-- **Removing a tile with a piece on it**: the piece goes too (a Tile Exit for tile powers).
+- **Removing a tile with a piece on it**: the piece goes too -- and **sets off nothing** (no Piece Exit; owner,
+  2026-10-22).
 - **Range limits** for player add/remove actions: adjacent to existing tiles? within the layout's bounds?
 
 - Score between phases: keep, reset, or per phase.

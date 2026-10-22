@@ -4,8 +4,8 @@ spans:
   - Plugins/UnrealTurnBasedMechanics/Source/UnrealTurnBasedMechanics/Public/Turn/Participant/TurnBasedParticipantManagerComponent.h
   - Plugins/UnrealTurnBasedMechanics/Source/UnrealTurnBasedMechanics/Private/Turn/Participant/TurnBasedParticipantManagerComponent.cpp
   - Plugins/UnrealTurnBasedMechanics/Source/UnrealTurnBasedMechanics/Public/Turn/Participant/TurnBasedParticipantComponent.h
-reconciled: 2026-09-18
-commit: 1d1c70f
+reconciled: 2026-10-22
+commit: 19d1772
 ---
 
 # Turn-end tag gate
@@ -46,7 +46,7 @@ sequenceDiagram
     M->>M: AdvanceToNextParticipant(Tag)
     M->>M: TurnOrderStrategy->GetNextParticipantIndex(...)
     alt next participant found
-        M->>M: StartTurn(NextIndex) -> SetPhase(TurnStart), BroadcastTurnStart
+        M->>M: StartTurn(NextIndex) -> InProgress; next PlayerState: TickActionCooldowns, ResetActionTurnCounters; SetPhase(TurnStart), BroadcastTurnStart
         M-->>PC: ClientReceiveTurnNotification / ClientReceiveOpponentTurnStarted
     else none
         M->>M: NotifyInvalidNumberOfPlayers() -> OnInvalidNumberOfPlayers
@@ -69,6 +69,11 @@ sequenceDiagram
 6. It asks `TurnOrderStrategy` ([[UnrealTurnBasedMechanics/code/ITurnOrderInterface|ITurnOrderInterface]])
    for the next index, then `StartTurn` — or `NotifyInvalidNumberOfPlayers` if there is
    no valid next participant.
+7. **`StartTurn`** sets the match phase back to `InProgress`, then does the incoming
+   participant's per-turn action bookkeeping on its `ATurnBasedPlayerState` --
+   `TickActionCooldowns` (its own turns only) and `ResetActionTurnCounters` -- **before** the
+   turn-start notification, so no client sees last turn's counts as this turn's; then
+   `SetPhase(TurnStart)` and the notifications.
 
 ## Gotchas
 

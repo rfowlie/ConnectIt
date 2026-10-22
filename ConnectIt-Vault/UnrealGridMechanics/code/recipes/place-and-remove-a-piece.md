@@ -5,8 +5,8 @@ touches:
   - Plugins/UnrealGridMechanics/Source/UnrealGridMechanics/Public/Piece/GridPieceRegistryComponent.h
   - your AGridPieceBase subclass (optionally implementing IActorPoolInterface)
   - Blueprint or C++ that positions the piece at its tile (see the known gap)
-reconciled: 2026-09-10
-commit: f694874
+reconciled: 2026-10-22
+commit: 9830b97
 ---
 
 # Recipe: place and remove a piece

@@ -3,14 +3,15 @@ schema: recipes
 task: Add a new player move / ability as a UTurnBasedAction subclass and make it selectable during a turn.
 touches:
   - a new UTurnBasedAction subclass (C++ or Blueprint)
-  - the controller's UActionLoadoutDataAsset (Actions array)
+  - the controller's UActionLoadoutDataAsset (PermanentActions / NumberedActions entry)
   - Plugins/UnrealTurnBasedMechanics/Source/UnrealTurnBasedMechanics/Public/Action/TurnBasedAction.h
+  - Plugins/UnrealTurnBasedMechanics/Source/UnrealTurnBasedMechanics/Public/Action/ActionConfig.h
   - GetActionTag() override (C++ or the Blueprint event), ConstructInputBindings() override
-    (if it needs named inputs), project gameplay tags (FTurnActionRequest.RequestType)
-  - project USTRUCT for FTurnActionRequest::Payload (only if the action changes the board)
+    (if it needs named inputs), ProducesRequestType() (if it changes the board)
+  - a project USTRUCT for the request payload (only if the action changes the board)
   - UDWidget_TurnBasedActionsComponent (only if an action bar surfaces the new action)
-reconciled: 2026-09-18
-commit: 9187568
+reconciled: 2026-10-22
+commit: ee45a98
 ---
 
 # Recipe: add a turn action
@@ -24,18 +25,19 @@ A new [[UnrealTurnBasedMechanics/code/UTurnBasedAction|UTurnBasedAction]] subcla
 - The controller already has a
   [[UnrealTurnBasedMechanics/code/UTurnBasedActionsComponent|UTurnBasedActionsComponent]]
   initialised from a
-  [[UnrealTurnBasedMechanics/code/UActionLoadoutDataAsset|UActionLoadoutDataAsset]].
-- A gameplay tag exists (or add one) for — if it changes the board — the
-  `FTurnActionRequest::RequestType`.
+  [[UnrealTurnBasedMechanics/code/UActionLoadoutDataAsset|UActionLoadoutDataAsset]], and the server seeds
+  the player's `ATurnBasedPlayerState` action state from that loadout (the game's setup does; the
+  component doesn't).
+- If it changes the board: a project `USTRUCT` describing the change (ConnectIt: a board operation).
 
 ## Steps
 
 1. **Create the subclass.** Derive from `UTurnBasedAction` (Blueprint child of a C++
    base is the common path). Implement `GetActionTag()` (a `BlueprintNativeEvent` — a
    C++ override, or the Blueprint event node) to return this action's identity tag; it's
-   not a settable data field, each concrete action hardcodes its own. Set config:
-   `bIsRequired`, `bIsCancellable`, `MaxCompletionsPerTurn`, `CooldownTurns`, and
-   `bRequiresSelection` if it needs a tile.
+   not a settable data field, each concrete action hardcodes its own. Action config on the
+   class is only `bIsCancellable` and `bRequiresSelection` (if it needs a tile), plus the
+   presentation fields.
 2. **Selection behaviour (if `bRequiresSelection`).** Override the BlueprintNativeEvents:
    `IsValidHoverTile` / `IsValidSelectionTile` (predicate on `AGridTileBase`),
    `HandleValidHover` / `HandleHoverCleared` (preview), `HandleValidSelection` (commit),
@@ -46,49 +48,53 @@ A new [[UnrealTurnBasedMechanics/code/UTurnBasedAction|UTurnBasedAction]] subcla
    `InitialiseAction`, before the input binder is built) to populate `InputBindings` —
    for each `FInputTagBinding`, set `InputAction`/`TriggerEvent`/`Key` and bind
    `InputActionDelegate` (e.g. `BindDynamic`) directly to whatever handler this input
-   should run. No shared tag-switch consumer to extend — each binding names its own
-   behaviour.
-4. **Board change (if it mutates the board).** From `HandleValidSelection`, build an
-   `FTurnActionRequest` (`RequestType` tag, `FactionID`, and a project `USTRUCT` wrapped
-   in `Payload`) and call the protected `RequestBoardChange(Request)`. Do **not** apply
-   the change locally — wait for the server. See
-   [[UnrealTurnBasedMechanics/code/systems/action-stack-lifecycle|action-stack-lifecycle]] step 4–5.
-5. **Completion.** Call `Complete()` on success (increments `CompletionsThisTurn`) or
-   `Cancel()` if the player backs out. Override `OnCompleted` / `OnCancelled` for
-   cleanup.
-6. **Register it.** Add an instance to the loadout asset's `Actions` array (or, for a
-   system action, a slot). Make sure its `GetActionTag()` value is not in `BannedActionTags`,
-   and check the loadout's Data Validation output — it warns per-action if `GetActionTag()`
-   comes back empty or duplicates another action's.
+   should run.
+4. **Board change (if it mutates the board).** From `HandleValidSelection`, build the
+   payload struct and call the protected `RequestBoardChange(FInstancedStruct::Make(...))`:
+   it wraps it in an `FTurnActionRequest` stamped with this action's tag. Override
+   `ProducesRequestType` to say which request types this action may send (the server's gate
+   checks it). Do **not** apply the change locally — wait for the server. See
+   [[UnrealTurnBasedMechanics/code/systems/action-stack-lifecycle|action-stack-lifecycle]].
+5. **Completion.** Call `Complete()` on success or `Cancel()` if the player backs out;
+   override `OnCompleted` / `OnCancelled` for cleanup. Uses are counted by the server when a
+   request commits, not by `Complete()`.
+6. **Register it in the loadout**, keyed by class:
+   - **`PermanentActions`** (`FPermanentActionConfig`): always available -- `MaxUsesPerTurn`
+     (0 = unlimited), `CooldownTurns`.
+   - **`NumberedActions`** (`FNumberedActionConfig`): a budget -- `StartingMatchUses`,
+     `MaxUsesPerTurn`, `MaxHeldUses`, `CooldownTurns`.
+   - Or a system slot (root / idle / spectator / pause / awaiting confirmation).
+   - If the turn should only end once it's been used, reference it from a leaf of the
+     loadout's `TurnEndRequirements` tree.
+   Check the loadout's Data Validation output (empty or duplicate action tags are warned).
 7. **Chaining (optional).** To push a follow-up action, call
    `RequestNextAction(TSubclassOf<UTurnBasedAction>)`.
 
 ## Verify
 
-- PIE with the loadout assigned. On your turn, the action is in
-  `UTurnBasedActionsComponent::GetPermittedActions()` and `TryPushAction(ActionTag)`
-  activates it.
+- PIE with the loadout assigned. On your turn, `TryPushActionByClass` / `TryPushAction(ActionTag)`
+  activates it, and `CanActivate()` (asks the PlayerState) reflects its uses, per-turn cap and
+  cooldown.
 - Watch `UDWidget_TurnBasedActionsComponent` (`GetInfo()` → `TopActionTag`, `StackDepth`,
   `bAwaitingRequestConfirmation`) as you activate, select, and complete.
 - For a board-change action: after `HandleValidSelection`, `IsAwaitingRequestConfirmation()`
-  is true and the stack is frozen until your project glue calls
-  `NotifyBoardChangeOutcome`.
-- `CompletionsThisTurn` increments on `Complete()` only; confirm `MaxCompletionsPerTurn`
-  and `CooldownTurns` gate re-activation via `CanActivate()`.
+  is true and the stack is frozen until your project glue calls `NotifyBoardChangeOutcome`;
+  after a success the component sits in limbo until the PlayerState's updated counts arrive.
 
 ## Pitfalls
 
-- **Forgetting to register in the loadout** — the class compiles but never appears.
+- **Forgetting to register in the loadout** — the class compiles but never appears, and the
+  server refuses its requests (not in the loadout).
 - **Applying the board change locally** instead of routing through `RequestBoardChange`
   → desync and a stuck confirmation freeze.
-- **Never calling `Complete()` / `Cancel()`** — the turn can't auto-end and the stack
-  entry lingers.
+- **`ProducesRequestType` left at its default (true)** lets the action send any request type;
+  override it so the server's gate can refuse the wrong one.
+- **Never calling `Complete()` / `Cancel()`** — the stack entry lingers.
 - Leaving `bRequiresSelection` true but not overriding the selection hooks → input bound,
   nothing happens on click.
 - A new action bar surfacing the action must bind the `OnAction*Safe` snapshot delegates,
   not the raw-pointer ones.
-- If the action is `bIsRequired`, it now factors into `CanAutoEndTurn()` — an unreachable
-  required action blocks turn end.
+- A `TurnEndRequirements` leaf that can never be satisfied blocks turn end.
 
 ## See also
 

@@ -7,8 +7,8 @@ spans:
   - Source/ConnectIt/Public/Board/Events/ConnectIt_BoardEvents.h
   - Source/ConnectIt/Public/Framework/GameState/ConnectIt_GameState.h
   - Source/ConnectIt/Public/Framework/GameMode/ConnectIt_GameMode.h
-reconciled: 2026-10-21
-commit: e00ad12
+reconciled: 2026-10-22
+commit: 1e0d5cf
 ---
 
 # Board state — single source of truth
@@ -77,6 +77,9 @@ flowchart TD
 ## Gotchas
 
 - **Never write `CurrentState` directly** -- only `SetBoardState`.
+- **The set of tiles can change mid-match** (a phased level's Change Layout: Tiles Removed / Tiles Added;
+  `FConnectItBoardState::RemoveTileData`). Indices into `TilePositions` / `TileDataArray` are only good for one board --
+  look tiles up by position. The board also carries the level's `CurrentPhase`.
 - `OnBoardStateChanged` carries **no parameters** by design: data comes from `GetCurrentState()` / `GetChangeEvent()`.
   That list is the latest change's, not necessarily the one playing.
 - `EnqueueBoardEventTags` runs on clients too: anything it triggers must be safe without authority.

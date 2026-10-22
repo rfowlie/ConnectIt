@@ -1,6 +1,6 @@
 # Chained tiles
 
-Design note (2026-10-22), owner's idea; **nothing decided beyond the idea, nothing built**. First use: teaching "some
+Design note (2026-10-22), owner's idea; **nothing built**. Plan: [tile-lock-and-chained-tiles-plan](tile-lock-and-chained-tiles-plan.md) (approved 2026-10-22, not built). First use: teaching "some
 tiles aren't placeable" in the first adventure level
 ([adventure-modules-and-progression](adventure-modules-and-progression.md), Level 1 draft).
 
@@ -23,7 +23,7 @@ can be placed on it. A piece placed on the partner **unchains** it. If the piece
   - **Capture** counted as Exit + Enter at the time (tile-power round 7). As events: the partner's piece "leaves"
     (re-chain, destroy the chained tile's piece), then "arrives" (unchain) -- the piece is lost for nothing. As derived
     state: the partner never stopped being occupied, nothing happens. *(Owner, 2026-10-22: this is why a capture is now
-    a **Piece Change**, its own trigger, not Exit + Enter -- see [tile-power-triggers](tile-power-triggers.md).)*
+    a **Piece Changed**, its own trigger, not Exit + Enter -- see [tile-power-triggers](tile-power-triggers.md).)*
   - **Scoring clears the partner's piece**, which is *not* an Exit (tile-power decision). As events the chained tile would
     stay open forever. As derived state it re-chains in the next settle step (destroying its piece).
 - **One power, one trigger** (tile-power decision) doesn't fit either: the partner needs both "on enter" and "on exit".
@@ -33,7 +33,7 @@ can be placed on it. A piece placed on the partner **unchains** it. If the piece
   tile is a locked tile whose lock is driven by its partner. So: design the lock state first (a tile data flag checked by
   `IsTilePlaceable`, replicated, readable by visuals), then chains as the rule that sets it.
 - **Events**: `TileChained` / `TileUnchained` {Position, Partner}, and the destroyed piece as an ordinary `Piece Removed`
-  (so it counts as a Tile Exit for tile powers, and the display board applies it).
+  (so it counts as a Piece Exit for tile powers, and the display board applies it).
 
 ## Timing
 
@@ -49,12 +49,17 @@ Chains are checked in the **settle (pre-scoring) step**, so:
 
 - **Scoring clearing the partner's piece re-chains the tile** and destroys any piece on it -- the derived-state rule:
   chained whenever the partner has no piece, for any reason.
-- **A capture on the partner changes nothing** (the piece only changes faction; Piece Change, not Exit + Enter).
+- **A capture on the partner changes nothing** (the piece only changes faction; Piece Changed, not Exit + Enter).
+
+- **Order when re-chaining:** remove the piece, then lock -- the [tile lock](tile-lock.md) refuses Remove Piece on a tile
+  that is already locked.
 
 ## Open
 - Can the **opponent** unchain your tile by placing on the partner, and does that destroy your piece later if their
   piece leaves? (Derived state: any piece on the partner holds it open, whoever's.)
 - Is the destroyed piece's loss announced (a "chain snaps" visual) beyond Piece Removed?
-- One partner → one chained tile, or many?
+- ~~One partner → one chained tile, or many?~~ Decided for now (owner, 2026-10-22): a chain is a pair; more per group
+  to be tested later.
+- Where the rule runs: decided -- a sync rule in the tile-powers settle step (built next), see the plan.
 - Board Shift with chains: do chained tiles / partners shift (tags make it safe), or are they unshiftable anchors?
 - The AI: as a rule in the after-move step it's seen by the search automatically.

@@ -5,8 +5,8 @@ role: primary
 source:
   - Plugins/UnrealGridMechanics/Source/UnrealGridMechanics/Public/Piece/GridPieceRegistryComponent.h
   - Plugins/UnrealGridMechanics/Source/UnrealGridMechanics/Private/Piece/GridPieceRegistryComponent.cpp
-reconciled: 2026-09-10
-commit: f694874
+reconciled: 2026-10-22
+commit: 9830b97
 ---
 
 # UGridPieceRegistryComponent
@@ -41,7 +41,7 @@ registration, and the `IActorPoolInterface` activate/deactivate calls all live h
   (register/unregister — pooled inactive pieces are **not** hover-registered),
   [[UnrealGridMechanics/code/UGridTileRegistryComponent|UGridTileRegistryComponent]]
   (`ResolveTileRegistry`).
-- Reference callers: `UConnectIt_PlacePieceGameEvent`, `UConnectIt_LineScoreGameEvent`
+- Reference callers: `UConnectIt_PlacePieceGameEvent`, `UConnectIt_ScoreGameEvent`
   (game module) — **both currently stubbed pending rewiring**.
 
 ## Gotchas

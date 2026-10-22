@@ -290,5 +290,12 @@ new owner); settle order Enter → Exit → Piece Change → Tile Change. Update
 [tile-power-triggers](../design/tile-power-triggers.md) and [tile-powers-plan](../design/tile-powers-plan.md) (change
 record, faction, tests, Vacuum). See [chained-tiles](../design/chained-tiles.md).
 
+**2026-10-22, plan walkthrough (owner).** Trigger names: Piece Enter, Piece Exit, Piece Changed, Tile Changed (pre
+scoring) and Scoring. Tiles appearing or disappearing (Add / Remove Tiles, Change Layout) set off nothing; pieces on
+added tiles are still scored. A tile names its power by gameplay tag, not an index (an index breaks silently when the
+list changes). Stage 5 (operations and first powers) deferred to its own design; the plan proves the system with
+test-only powers. Plan updated: [tile-powers-plan](../design/tile-powers-plan.md). **Plan approved by the owner
+2026-10-22**; the question stays open until it is built and closes with its Stage 6 decision note.
+
 ## Resolution
 

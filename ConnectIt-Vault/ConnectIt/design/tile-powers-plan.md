@@ -1,8 +1,8 @@
 ---
 type: plan
 status: not-started
-approved: false
-approved-on:
+approved: true
+approved-on: 2026-10-22
 completed-on:
 playtested: false
 design: "[tile-power-triggers](tile-power-triggers.md)"
@@ -16,7 +16,7 @@ Design: [tile-power-triggers](tile-power-triggers.md). Discussion and every deci
 [tile-powers-in-the-board-pipeline](../_questions/tile-powers-in-the-board-pipeline.md). Power sketches:
 [tile-powers](tile-powers.md). Written 2026-10-21; reviewed against the code the same day (round 10 in the question:
 Shift, per-arrival survival, the search's turn number, the display board's limits, the scoring-rule interface, the
-gate, the guard, Crumble); **not approved yet**.
+gate, the guard, Crumble); walked through with the owner and **approved 2026-10-22**. Not built -- building happens in its own session.
 
 ## Context
 
@@ -25,7 +25,7 @@ played back one event at a time. Settled in the 2026-10-21 discussion:
 
 - Powers run in the rules' after-move step, `FConnectItRuleSet::ResolveBoardChange`, so every path gets them: the
   Mediator (player actions and Level director operations), `Simulate Operation`, and the AI's search.
-- **Two phases.** *Settle* (pre scoring): Piece Enter / Piece Exit / Change powers fire, in that order and tile order, until
+- **Two phases.** *Settle* (pre scoring): Piece Enter / Piece Exit / Piece Changed / Tile Changed powers fire, in that order and tile order, until
   nothing more fires. *Score*: find every line made by pieces that arrived since the last pass, apply them all at once.
   If anything scored, the Scoring powers on those lines' tiles fire, and what scoring and they changed goes back through
   settle. **The chain ends at the first scoring pass with no lines.** Win checked once, after the chain. No post-scoring
@@ -34,7 +34,7 @@ played back one event at a time. Settled in the 2026-10-21 discussion:
 - **One power per tile, one trigger per power**, plus an optional gate (a minimum multiplier) and a cooldown in turns
   (all turns; 0 = every time). Level-wide rules (Crumble) are powers that apply to every tile, on top of a tile's own.
 - Each power on a tile fires at most once per action -- that alone ends every chain; a cap stays only as a bug guard.
-- A capture is a **Piece Change** (fourth pre-scoring trigger, owner 2026-10-22), not an Exit + Enter. A piece cleared
+- A capture is a **Piece Changed** (a pre-scoring trigger of its own, owner 2026-10-22), not an Exit + Enter. A piece cleared
   by scoring sets off Scoring powers, never Exit.
   **A shift is neither** (review): Shift moves whole tile data, so a tile's power, cooldown and piece travel together
   and no piece changes tile -- shifted positions are only scored.
@@ -54,9 +54,15 @@ stages; nothing is committed by me.
   `bSurvivesScoring`, from the operation that made it), `Moved` (positions a shift gave a new occupant: scored, but no
   Enter / Exit), `PieceChanged` (position + new and previous owner; scored like an arrival), `TileChanged` (position +
   what: multiplier / active / power), plus the faction of the change.
-  `FConnectItBoardOperation::Apply` fills it; each of the eight operations reports what it really does (Place / Force
-  Place: enter; Swap: exit + enter on both tiles; Shift: moved; Capture: piece changed; Remove: exit; Toggle / Destroy
-  Multiplier: tile changed).
+  `FConnectItBoardOperation::Apply` fills it; each operation reports what it really does:
+  - Place / Force Place: enter. Swap: exit + enter on both tiles. Shift: moved. Capture: piece changed. Remove: exit.
+    Toggle / Destroy Multiplier: tile changed.
+  - **Tiles appearing or disappearing set off nothing** (owner, 2026-10-22): **Remove Tiles** destroys the pieces on
+    them with no Piece Exit; **Add Tiles** brings its starting pieces in with no Piece Enter -- but they **are scored**,
+    so an added piece that completes a line counts. They go in the record like `Moved` (scored, no triggers).
+    **Change Layout** does both.
+  - Change Goals, Begin Phase: nothing.
+  - (When built) Set Tile Locked: tile changed.
 - **Survival is per arrival:** one scoring pass can mix the action's arrivals with pieces moved by powers, so each
   arrival carries its own `bSurvivesScoring` (replaces the single `bArrivingPiecesSurvive` argument).
 - **Scoring rule: one pass call** (`ConnectIt_ScoringRule.h`, `ConnectIt_LineScoringRule.*`): the base
@@ -68,12 +74,14 @@ stages; nothing is committed by me.
   back), with empty settle and reaction steps. Callers: `CarryOutOperation`, `FConnectItMinMaxRules::ApplyMove`.
 - Behaviour change: two arrivals in one step (a shift) can no longer break each other's lines.
 - Tests: all existing pass; new -- a shift making two lines that share a tile scores both; each operation's change record
-  (Shift: `Moved` only); a swap-in and a placed piece in one pass keep their own survival.
+  (Shift: `Moved` only; Add Tiles: scored, no enter; Remove Tiles: nothing); a swap-in and a placed piece in one pass keep
+  their own survival; an added tile whose piece completes a line scores.
 
 ## Stage 2: self-applying events and the display board
 
 - **Events carry their full change** (`ConnectIt_BoardEvents.h`): `Scored` gains each tile's new multiplier;
-  `TileMultiplierDestroyed` its previous value; base `FConnectItBoardEvent` gains `CauseIndex` (index of the event that
+  `TileMultiplierDestroyed` its previous value; the phased-levels events (`TilesRemoved`, `TilesAdded`,
+  `LayoutChanged`, `GoalsChanged`, `PhaseChanged`) checked and completed so each can apply itself too; base `FConnectItBoardEvent` gains `CauseIndex` (index of the event that
   set it off in the same list, -1 = the action).
 - **`virtual void ApplyTo(FConnectItBoardState&) const`** on every event: what it changed, from its own data.
 - **Display board** on `UConnectIt_BoardStateComponent` (every machine): starts as the seeded board; each event is
@@ -94,16 +102,20 @@ stages; nothing is committed by me.
 ## Stage 3: power data, authoring and turn stamping
 
 - **`FConnectItTilePower`** (new, `Public/Board/Powers/ConnectIt_TilePower.h`, plain thread-safe struct): `Name`
-  (gameplay tag), `Trigger` (Enter / Exit / Change / Scoring), `bLevelWide`, `MinMultiplier` (the gate; 0 = none -- a
+  (gameplay tag, `ConnectIt.TilePower.*` -- the power's identity), `Trigger` (Piece Enter / Piece Exit / Piece Changed /
+  Tile Changed / Scoring), `bLevelWide`, `MinMultiplier` (the gate; 0 = none -- a
   plain field until a second kind of gate is needed), `CooldownTurns`, `Effect` (an instanced
   `FConnectItTilePowerEffect`: chooses targets
   from the board, the tile, the faction and the seeded random stream, and returns the board operations to carry out).
 - **Rule set:** `TilePowers` (array). Authored on the **Level director** (`TilePowers`, Class Defaults) and copied in
   at match start, like win conditions; replicates with the rules (clients read cooldowns / thresholds for visuals).
-- **Tile data:** `PowerIndex` (uint8, 0 = none) and `PowerReadyTurn` (int32) on `FConnectItTileData`. A tile Blueprint
-  names its starting power by tag in `FConnectItTileInitialData`; resolved to the index when the board is built
-  (`InitialiseBoardState` takes the power list -- the rules are set up before the board is built; unknown tag:
-  warning, no power).
+- **Tile data:** `PowerTag` (gameplay tag, empty = none) and `PowerReadyTurn` (int32) on `FConnectItTileData`, and
+  `PowerTag` on `FConnectItTileInitialData` (so placed tiles and layout cells name their power). **A tag, not an index**
+  (owner, 2026-10-22): an index into the power list breaks silently if the list is reordered or changed mid-match; a
+  tag survives both and reads clearly in the editor and logs. A gameplay tag is plain data (cheap to copy into the AI's
+  search, safe on its thread) and replicates compactly. Firing looks the tag up in the rule set's `TilePowers` (a short
+  list; a lookup cache only if Throughput says so). A tag the level doesn't list: warning when the board is built or
+  tiles are added, and the tile has no power.
 - **Board:** `TurnNumber` (replaces the unused `LastModifiedTurn`) and `RandomSeed` (advanced as powers roll).
 - **Every copy of the board resolves at the right turn:**
   - the Mediator stamps the GameState's turn before resolving;
@@ -113,52 +125,50 @@ stages; nothing is committed by me.
   - `Simulate Operation`'s callers stamp the current turn.
 - Validation: duplicate power names, a tile naming a power the level doesn't list (or a level-wide one), an effect left
   empty.
-- Tests: tag → index resolution; rules copy; a fresh board has no powers; `ApplyMove` advances the turn.
+- Tests: a tile's power tag finds its power; an unknown tag warns and gives no power; Add Tiles carries a cell's power;
+  rules copy; a fresh board has no powers; `ApplyMove` advances the turn.
 
 ## Stage 4: firing powers in the chain
 
-- In `ResolveBoardChange`: **settle** collects powers set off by the record's Enter / Exit / Piece Change / Tile Change
-  (tile's own power and level-wide ones), skips gated-out, cooling-down and already-fired ones, fires them in Enter →
-  Exit → Piece Change → Tile Change, tile order, and loops on what they changed until nothing fires. **Scoring reactions** fire the Scoring powers on the tiles
+- In `ResolveBoardChange`: **settle** collects powers set off by the record's Piece Enter / Piece Exit / Piece Changed / Tile Changed
+  (tile's own power and level-wide ones), skips gated-out, cooling-down and already-fired ones, fires them in Piece Enter →
+  Piece Exit → Piece Changed → Tile Changed, tile order, and loops on what they changed until nothing fires. **Scoring reactions** fire the Scoring powers on the tiles
   the pass's lines ran through, in tile order.
 - **Firing a power:** append **`PowerTriggered`** {Position, power name, Faction, `bNoEffect`, CauseIndex}; set
   `PowerReadyTurn = TurnNumber + CooldownTurns`; ask the effect for operations; for each whose `CanApply` holds, call
   its **`Apply`** (never `CarryOutOperation`, which would start a chain inside the chain) -- its own event, `CauseIndex`
-  = the PowerTriggered event; add what it changed to the next step.
+  = the PowerTriggered event; add what it changed to the next step. **When the tile lock is built**
+  ([tile-lock-and-chained-tiles-plan](tile-lock-and-chained-tiles-plan.md), after this plan), this check becomes its
+  lock-aware `FConnectItRuleSet::CanCarryOut`, so an effect can't act on a locked tile.
 - **Faction** (confirmed by the owner): the change that set it off.
   - Scoring: the scoring faction.
-  - Enter: the arriving piece's owner.
-  - Exit: the leaving piece's owner.
-  - Piece Change: the new owner.
-  - Change: the faction of the change that caused it -- the scoring faction for a multiplier scoring raised, a power's
+  - Piece Enter: the arriving piece's owner.
+  - Piece Exit: the leaving piece's owner.
+  - Piece Changed: the new owner.
+  - Tile Changed: the faction of the change that caused it -- the scoring faction for a multiplier scoring raised, a power's
     faction for its effect, the operation's faction for a Level director change (-1 when it has none).
   - An effect that needs a faction (Capture, placing) finds nothing to do at -1: its operation's `CanApply` fails.
+- **Sync rules in the settle step** (added 2026-10-22 for
+  [tile-lock-and-chained-tiles-plan](tile-lock-and-chained-tiles-plan.md)): besides triggered powers, the rule set can
+  hold rules that run on **every settle pass** and keep some state true (first one: chained tiles). They check state,
+  not the change record, so they catch what no trigger reports (a partner cleared by scoring). Each appends its own
+  events and its changes feed the same settle pass's triggers. They must be idempotent. This stage only adds the hook
+  (an ordered list on the rule set, empty by default); chained tiles fill it.
 - Once-per-action guard: a bit per (tile, power slot) -- the slots are the tile's own power plus each level-wide power
   (there can be several). Bug guard: 64 settle loops or scoring passes, log + stop.
-- Tests: the owner's chain (place → score through a Push tile → pushed piece completes a line → its tile's power fires);
-  settle until quiet; a capture fires a Piece Change power and no Enter / Exit power; cooldown 0 / 1 / 2 against the turn number; a power with
+- Tests use **test-only powers** (simple effects defined in the test code, since the first real powers are deferred):
+  the owner's chain (place → score through a "move a neighbour" tile → the moved piece completes a line → its tile's
+  power fires);
+  settle until quiet; a capture fires a Piece Changed power and no Piece Enter / Piece Exit power; cooldown 0 / 1 / 2 against the turn number; a power with
   no target still shows and cools down; same seed, same result; before + events = after on a chain.
 
-## Stage 5: new operations and the first powers
+## Stage 5: new operations and the first powers -- deferred
 
-- **Operations** (`ConnectIt_BoardOperations.h/.cpp`), each with its event and `ApplyTo`:
-  - `_MovePiece` {From, To} → `PieceMoved` (Push / Repel / Vacuum use it; usable as a player action later).
-  - `_AdjustMultiplier` {Position, Delta, floor 1} → `MultiplierChanged` {Position, From, To}.
-  - `_SetTilePower` {Position, power name or none} → `PowerChanged` (the Level director's way to give a tile a power).
-- **First powers** -- one per trigger, to prove the loop (confirmed by the owner, Vacuum added so all four ship):
-  - **Push** (Scoring): a random adjacent piece moved one tile away; no free tile = no effect.
-  - **Repel** (Enter): the arriving piece moved one tile in a random free direction.
-  - **Vacuum** (Exit): the nearest piece in the tile's four orthogonal lines (ties broken by the seed) moved along its
-    line into the emptied tile. The tile occupied again (a swap) or no piece in any line = no effect.
-    *(Claude's reading of the sketch's "the piece behind it": a Remove has no direction. Any distance; a range value
-    only if playtesting asks for one.)*
-  - **Crumble** (level-wide, Change, gate multiplier ≥ N): piece removed, then tile deactivated. **Does nothing on an
-    inactive tile** -- Toggle flips, so a later change on a crumbled tile would otherwise reactivate it.
-  - Poison / Overgrowth / Siphon after playtesting.
-- Typed Blueprint getters in `UConnectIt_BoardEventLibrary` for the new events.
-- Tests: each operation's `CanApply` / `Apply` / change record / event; each power's effect on a small board; a crumbled
-  tile stays crumbled when its multiplier changes again; Vacuum after a Remove pulls the nearest piece, after a swap
-  does nothing; a Vacuum pull fires the Exit power of the tile it pulled from.
+**Deferred (owner, 2026-10-22): to be designed another time**, in its own plan. Kept here as the starting point:
+`_MovePiece` / `_AdjustMultiplier` / `_SetTilePower` operations with their events, and the first powers sketched in the
+2026-10-21 rounds (Push, Repel, Vacuum, Crumble). Without it, this plan builds the **system** (record, scoring pass,
+events, display board, power data, firing) and proves it with **test-only powers** defined in the tests (Stage 4); no
+power ships to levels yet.
 
 ## Stage 6: vault
 
@@ -185,15 +195,24 @@ superseded (rules replicate); log.
 ## Verification
 
 - Each stage: build (editor closed); `Automation RunTests ConnectIt` all pass; Throughput against today's.
-- Owner, PIE: a level with a Push tile, a Repel tile, a Vacuum tile and Crumble on; place into each (and remove next to
-  the Vacuum tile); watch the chain play one event at a time, multipliers and score stepping with it; a 2-player match
-  shows the same chain on the client.
+- Owner, PIE: no power ships with this plan, so the in-editor check is the display board -- ordinary moves (place,
+  swap, shift, a scoring move, a layout change) play their events one at a time with tiles, multipliers and score
+  stepping along, the same on a 2-player client. Seeing powers in PIE waits for the first-powers design (Stage 5).
 
 ## Settled before building (owner, 2026-10-21)
 
-- In the review: a shift is not an Enter / Exit; the gate is a plain `MinMultiplier`; `_SetTilePower` stays in Stage 5.
-- Exit acts for the leaving piece's owner; Change for the faction of the change that caused it (Stage 4).
+- In the review: a shift is not a Piece Enter / Exit; the gate is a plain `MinMultiplier`.
+- Piece Exit acts for the leaving piece's owner; Tile Changed for the faction of the change that caused it (Stage 4).
 - The display board applies an event when its entry **completes** (Stage 2).
-- First powers: Push, Repel, Vacuum, Crumble -- one per trigger (Stage 5).
 
-Nothing left to confirm; the plan waits for approval.
+## Walkthrough changes (owner, 2026-10-22)
+
+- Trigger names everywhere: **Piece Enter, Piece Exit, Piece Changed, Tile Changed** (pre scoring) and **Scoring**.
+- A capture is Piece Changed, not Exit + Enter.
+- Tiles appearing or disappearing set off nothing; pieces on added tiles are still scored (Stage 1).
+- The phased-levels events also apply themselves (Stage 2).
+- A tile names its power by **gameplay tag**, not an index (Stage 3).
+- Powers use the lock-aware check once the tile lock exists (Stage 4).
+- **Stage 5 (operations and first powers) deferred**; the system is proved with test-only powers.
+
+Approved by the owner 2026-10-22.

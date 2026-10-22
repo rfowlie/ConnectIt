@@ -10,8 +10,8 @@ spans:
   - Source/ConnectIt/Public/Board/ConnectIt_BoardRequestMediator.h
   - Source/ConnectIt/Public/Board/Rules/ConnectIt_RuleSet.h
   - Source/ConnectIt/Public/Board/ConnectIt_BoardStateComponent.h
-reconciled: 2026-10-21
-commit: e00ad12
+reconciled: 2026-10-22
+commit: 1e0d5cf
 ---
 
 # Board-change request (server-authoritative)

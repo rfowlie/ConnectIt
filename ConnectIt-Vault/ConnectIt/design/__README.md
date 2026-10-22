@@ -20,6 +20,7 @@ playtested: false      # true once the owner has checked it in PIE
 design:                # "[note](note.md)" -- the design note it builds
 question:              # "[note](../_questions/note.md)" -- the discussion behind it, if any
 decision:              # "[note](../_decisions/note.md)" -- the decision it produced, once built
+requires:              # "[plan](other-plan.md)" -- a plan that must be built first (or a YAML list of them); omit if none
 ---
 ```
 
@@ -27,6 +28,7 @@ decision:              # "[note](../_decisions/note.md)" -- the decision it prod
   from the first stage built; `complete` when every stage is done; `suspended` paused on purpose; `dropped` abandoned
   (keep the note, say why in it).
 - **approved** is separate from status: a plan can be approved and not started.
+- **requires** names prerequisite plans; say in the body which stages wait for them (often only some do).
 - **playtested** tracks the PIE check that "built" plans used to note in prose ("PIE pending").
 - Whoever changes a plan's state updates these properties in the same edit (a status line in the body may stay as the
   human-readable summary).

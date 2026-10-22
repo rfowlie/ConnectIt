@@ -125,10 +125,10 @@ stages.
 ## Stage 3: Remove Tiles, Add Tiles and Change Layout operations
 
 - **`FConnectItBoardOperation_RemoveTiles`** {Positions}: removes those tiles from the board state (and any piece on
-  them). Event **`TilesRemoved`** {Positions, the faction of each removed piece}. A removed piece is a piece leaving
-  (Tile Exit, once tile powers exist). Refused if a position isn't a tile.
+  them). Event **`TilesRemoved`** {Positions, the faction of each removed piece}. A removed piece sets off **nothing**
+  (no Piece Exit; owner, 2026-10-22). Refused if a position isn't a tile.
 - **`FConnectItBoardOperation_AddTiles`** {Cells}: adds tiles with their starting data. Event **`TilesAdded`** {Cells}.
-  Starting pieces are arrivals -- reported for scoring (and Enter powers later). Refused if a position is already a tile.
+  Starting pieces are reported for scoring only -- **no Piece Enter** (owner, 2026-10-22). Refused if a position is already a tile.
 - **`FConnectItBoardOperation_ChangeLayout`** {RemovePositions, AddCells, optional CameraTransform, the layout asset}
   (review): one operation, one board change.
   - Its `Apply` removes, then adds (the same code as the two above), appending `TilesRemoved`, `TilesAdded`, then

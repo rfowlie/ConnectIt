@@ -5,8 +5,8 @@ role: primary
 source:
   - Plugins/UnrealGameMechanics/Source/UnrealGameMechanics/Public/GameEvent/GameEventTaskSubsystem.h
   - Plugins/UnrealGameMechanics/Source/UnrealGameMechanics/Private/GameEvent/GameEventTaskSubsystem.cpp
-reconciled: 2026-09-21
-commit: 6abda4a
+reconciled: 2026-10-22
+commit: faab026
 ---
 
 # UGameEventTaskSubsystem
@@ -28,9 +28,16 @@ subsystem. Managers are created lazily per tag and live for the world's lifetime
 
 ## Entry points
 
-- `QueueTagContainer(const FGameplayTagContainer&)` — the **only** public way to fire.
+- `QueueTagContainer(const FGameplayTagContainer&)` — the public way to fire.
   Enqueues the container; every tag in it runs in parallel; the queue does not advance to
   the next container until every tag's sequence fully completes.
+- `QueueTagContainerWithPayload(Tags, const FInstancedStruct& Payload)` — the same, with data
+  that travels with the entry (the subsystem never looks inside it). `QueueTagContainer` is
+  this with an empty payload.
+- `GetActivePayload()` (BlueprintPure) — the payload of the entry being processed, readable
+  from the first tag callback on; empty when nothing is running or the entry had none. This
+  is how a listener reads *its* event's data however many entries are queued behind it
+  (ConnectIt queues one entry per board event, the event as payload).
 - `RegisterAsyncTask(FGameplayTag, UGameEventTask_Async*, int32 Phase = 0)` — add a gated
   task at a phase. Refused if that tag's sequence is currently running or the task's
   `OnExecuteDelegate` is unbound.
@@ -52,13 +59,18 @@ subsystem. Managers are created lazily per tag and live for the world's lifetime
 
 - Owns `TMap<FGameplayTag, UGameEventTaskManager*>`; `GetOrCreateManager` stamps the
   manager's `EventTag`.
-- `HandleOnManagerComplete` advances `ContainerQueue` via `TryExecuteNextContainer`, and
-  (since 2026-09-18) broadcasts `OnAnyTagComplete` — one line, additive, doesn't touch the
-  per-tag `OnManagerComplete` delegate `BindOnTagComplete` binds to.
+- `ContainerQueue` holds `FGameEventQueueEntry` {Tags, Payload}. `TryExecuteNextContainer`
+  sets `ActiveTagContainer` and `ActivePayload` before triggering any tag.
+- `HandleOnManagerComplete` broadcasts `OnAnyTagComplete` (additive -- the per-tag
+  `OnManagerComplete` delegate `BindOnTagComplete` binds to is untouched); when the entry's
+  last tag completes it clears `ActivePayload` and advances via `TryExecuteNextContainer`.
 - Consumers: `UnrealTurnBasedMechanics` (`UTurnBasedParticipantManagerComponent`, tag-
-  scoped `BindOnTagComplete`), project board managers, `UConnectIt_PieceRegistry` (via
-  `OnAnyTagComplete` — see
-  [[ConnectIt/code/UConnectIt_BoardRegistrySubsystem|ConnectIt_BoardRegistrySubsystem]]),
+  scoped `BindOnTagComplete`); ConnectIt's board state component (one entry per board
+  event, payload = the event -- read back through `UConnectIt_BoardEventLibrary`) and
+  GameMode (`ConnectIt.Event.BoardChangeComplete` marker, `BindOnTagComplete`: one board
+  change at a time -- [[ConnectIt/code/systems/place-piece-request|place-piece-request]]);
+  `UConnectIt_PieceRegistry` (via `OnAnyTagComplete` — see
+  [[ConnectIt/code/UConnectIt_BoardRegistrySubsystem|ConnectIt_BoardRegistrySubsystem]]);
   any visual system.
 
 ## Gotchas
@@ -69,7 +81,11 @@ subsystem. Managers are created lazily per tag and live for the world's lifetime
 - `RegisterAsyncTask` silently fails (logs) if the sequence is mid-run or the task isn't
   ready — register during setup, not reactively.
 - If no tasks are registered for a queued tag, its sequence completes effectively
-  immediately — callers must not assume a frame of delay.
+  immediately — callers must not assume a frame of delay. A tag that completes inside
+  `TriggerTag` removes itself from `ActiveTagContainer`; the trigger loop iterates a copy for
+  that reason.
+- The payload is only valid while its entry is active: read it in the tag's callbacks, not
+  later (a handler that waits must copy what it needs).
 - Managers never free until world teardown.
 
 ## Cross-impact
@@ -82,14 +98,17 @@ contract), `UDWidget_GameEventTaskSubsystem`, and every consumer that calls
 
 ## Changes
 
+- 2026-10-22 — **Payloads** (`QueueTagContainerWithPayload`, `GetActivePayload`,
+  `FGameEventQueueEntry`): each queued entry carries its own data, so ConnectIt's board events
+  play one entry each with the event as payload. Trigger loop iterates a copy of the active
+  tags (a tag finishing at once no longer mutates the set being iterated). The 2026-09-18
+  `OnAnyTagComplete` change below has since been committed.
 - 2026-09-18 — **`OnAnyTagComplete` added** (`FOnAnyTagComplete`, `BlueprintAssignable`) —
   a generic "any tag just completed" signal, broadcast from inside the existing
   `HandleOnManagerComplete`, so a listener that reacts the same way to any event
   finishing doesn't need a separate `UFUNCTION` + `BindOnTagComplete` call per tag. First
   (and so far only) consumer: `UConnectIt_PieceRegistry`, see
   [[ConnectIt/_decisions/2026-09-18-generic-game-event-any-tag-complete-delegate|ConnectIt/_decisions/2026-09-18-generic-game-event-any-tag-complete-delegate]].
-  Reflects a local, uncommitted change at write time — `commit:` above still anchors to
-  the last real commit; re-anchor once this lands in a commit.
 - 2026-09-10 — re-ingested to the `_code` schema; provenance re-anchored.
 
 ## See also
