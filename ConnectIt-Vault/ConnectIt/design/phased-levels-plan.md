@@ -230,11 +230,32 @@ stages.
   - Spawn (or take from the actor pool) the tile class -- the cell's `TileClass`, else the level config's
     `DefaultTileClass` -- at the grid position (`UGridDefinition`), and remove the departed ones.
   - Tile actors aren't replicated, so each machine spawns its own, which is correct.
-  - **Pieces are replicated actors:** a piece removed with its tile, or arriving on an added one, goes through the
-    existing piece add / remove path (the server's), not a local spawn.
+  - ~~**Pieces are replicated actors:** ... the server's path~~ -- **corrected while building:** piece visuals come from
+    a per-machine pool through the piece registry (`SpawnPieceAt` / `DespawnPieceAt`), so pieces follow tiles on each
+    machine the same way.
   - C++ where it's registry bookkeeping, Blueprint for how it looks.
 - **Camera**: listens for `LayoutChanged` and lerps to its camera transform (Blueprint).
 - **Owner, editor:** tile appear / disappear visuals; camera listener.
+- *As built (2026-10-22; 51/51 tests -- nothing new is unit-testable without a world):*
+  - **Plugin (`UGridTileRegistryBase`):**
+    - **Bug fixed:** `HandleActorSpawned` added a runtime-spawned tile to `Tiles` but never to `TileMap`, so
+      `GetTileAtPosition` and every position query missed it. It now maps the tile by position, and resolves the hover
+      subsystem rather than relying on the cached one.
+    - **New `UnregisterTile(Tile)`:** out of `Tiles`, `TileMap` and hover; the actor is left alone.
+  - **`UConnectIt_TileRegistry`**, the bookkeeping your event handlers call on every machine:
+    - **`Spawn Layout Tiles(Cells)`** spawns each cell's Tile Class, else the level config's Default Tile Class, at its
+      grid position. Each tile registers itself through the spawn listener. They come back in cell order, so you can
+      apply each cell's Visual Variant or an appear animation.
+      - A cell with no class to spawn logs a warning (the runtime check promised in Stage 2) and returns null.
+      - A position that already has a tile actor gets that actor back, not a duplicate.
+    - **`Unregister Tiles At(Positions)`** stops tracking those tiles and returns their actors in order. You animate
+      them out, then Destroy Actor.
+  - **Not done here (Blueprint, owner):**
+    - the handlers that call these on Tiles Added / Tiles Removed;
+    - the piece calls for each removed position with a piece (`Despawn Piece At`) and each added cell with a starting
+      piece (`Spawn Piece At`, then initialise the piece's faction, as the Board Seeded handler does);
+    - the camera listener on Layout Changed.
+  - **Pooling:** tile actors are spawned and destroyed, not pooled. A pool is easy to add if layouts swap often.
 
 ## Stage 6: the grid layout tool
 

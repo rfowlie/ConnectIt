@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "GameplayTagContainer.h"
 #include "Tile/GridTileRegistryBase.h"
+#include "Board/ConnectIt_BoardLayoutCell.h"
 #include "ConnectIt_TileRegistry.generated.h"
 
 class UConnectIt_BoardStateComponent;
@@ -31,4 +32,26 @@ public:
 
     UFUNCTION(BlueprintImplementableEvent, Category = "ConnectIt|Board")
     void HandleGameEventComplete(FGameplayTag EventTag);
+
+    // --- A phased level's tiles coming and going (see UConnectIt_BoardLayout) ---
+    // The bookkeeping half of following the board: call these from the
+    // handlers of the Tiles Added / Tiles Removed board events, on every
+    // machine (tile actors are local, not replicated). How tiles appear and
+    // disappear is the Blueprint's. Pieces on those tiles go through the piece
+    // registry, as usual: Despawn Piece At for each removed position with a
+    // piece; Spawn Piece At for each added cell with a starting piece.
+
+    // Spawns a tile actor for each cell -- the cell's Tile Class, else the
+    // board's Default Tile Class (level config) -- at its grid position. Each
+    // registers itself (queries, hover). Returns them in cell order (null for
+    // a cell with no class to spawn: logged), e.g. to apply each cell's
+    // Visual Variant or play an appear animation.
+    UFUNCTION(BlueprintCallable, Category = "ConnectIt|Board")
+    TArray<AGridTileBase*> SpawnLayoutTiles(const TArray<FConnectItBoardLayoutCell>& Cells);
+
+    // Stops tracking the tiles at Positions (queries, hover) and returns their
+    // actors, in order (null where there was none). The actors are left in
+    // the world: animate them out, then Destroy Actor.
+    UFUNCTION(BlueprintCallable, Category = "ConnectIt|Board")
+    TArray<AGridTileBase*> UnregisterTilesAt(const TArray<FGridPosition>& Positions);
 };

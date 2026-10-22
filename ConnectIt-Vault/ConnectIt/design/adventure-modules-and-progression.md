@@ -89,6 +89,9 @@ Claude's notes (to discuss):
   place -- the tile lock above, not built) or an **inactive** tile (out of play, a hole; exists today). Teach locked
   here; holes later with layouts that change shape. A 3x3 with the whole ring locked is really a 1x1; mixing a few
   locked, a few occupied and two or three free tiles makes the player read the board.
+- **Owner's idea for phase 3 (2026-10-22): chained tiles** -- a tile that can't take a piece until a piece sits on its
+  partner tile; if that piece leaves, the tile chains again and destroys any piece on it. See
+  [chained-tiles](chained-tiles.md).
 - A closing phase that **scores** (4x1, three pieces, fill the gap) gives the level a payoff and leads into level 2.
 - Tile powers: too advanced here (not designed for teaching yet, not built); give them their own
   concept-introduction level once the placement / scoring / opponent basics are done.

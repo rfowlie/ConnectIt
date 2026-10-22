@@ -109,6 +109,16 @@ public:
     UFUNCTION(BlueprintNativeEvent, Category = "Grid|Registry")
     void ShutdownRegistry();
 
+    // --- Tiles coming and going at runtime ---
+    // A tile spawned after InitialiseRegistry registers itself (the
+    // actor-spawned listener). A tile leaving is the caller's to report:
+    // UnregisterTile takes it out of every query and hover relay; the actor
+    // itself is left alone (the caller may animate it out, then destroy it).
+
+    // Stops tracking Tile. False if it wasn't tracked.
+    UFUNCTION(BlueprintCallable, Category = "Grid|Registry")
+    bool UnregisterTile(AGridTileBase* Tile);
+
 protected:
 
     // TODO: deprecate this
