@@ -1,3 +1,15 @@
+---
+type: plan
+status: complete
+approved: true
+approved-on: 2026-10-21
+completed-on: 2026-10-21
+playtested: false
+design:
+question: "[tile-powers-in-the-board-pipeline](../_questions/tile-powers-in-the-board-pipeline.md)"
+decision: "[2026-10-21-one-board-change-at-a-time](../_decisions/2026-10-21-one-board-change-at-a-time.md)"
+---
+
 # Plan: one board change at a time
 
 Discussion: round 12 of [tile-powers-in-the-board-pipeline](../_questions/tile-powers-in-the-board-pipeline.md). Closes the

@@ -72,5 +72,25 @@ starting conditions to the Level director remains to confirm before approval.
 **2026-10-21: plan approved (owner)**, including starting conditions moving to the Level director. Stays open until
 built; closes with the decision notes in the plan's Stage 7.
 
+**2026-10-21, round 9: plan reviewed against the code (Claude), after one board change at a time.**
+
+- **Decided (owner):**
+  - **A layout change is one Change Layout operation:** remove then add in one board change, one win check. Two
+    separate changes would each be win-checked, and a shrunken in-between board could meet a lose condition (No Legal
+    Move).
+  - **Changing a side's conditions is a board change:** a `GoalsChanged` operation resets goal progress through
+    `SetBoardState` and the normal win check follows. Goals already met win at once.
+  - **Begin Phase is a queued board change:** the phase is written onto the board (replicated, so UI can read it) with a
+    `PhaseChanged` event; directors hear On Phase Changed from the committed change. The Level director is server-only,
+    so the plan's `GetCurrentPhase` couldn't have reached clients.
+- **Fixed in the plan:**
+  - the level config needs a `DefaultTileClass`;
+  - `BeginPhase` is on the Level director only;
+  - the tile registry already registers spawned tiles, so only removal is new;
+  - pieces are replicated, so they go through the server's piece path;
+  - the test directors' goals move too;
+  - the layout tool's split (C++ editor helpers, the owner's widget);
+  - the checkpoint order: phase, then conditions, then layout.
+
 ## Resolution
 

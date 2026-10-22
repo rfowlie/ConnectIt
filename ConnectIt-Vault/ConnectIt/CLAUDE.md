@@ -82,7 +82,8 @@ The full suite dependency graph and layering is the **Map** section of
   ramifications, feature sketches, open design questions. **No schema yet** — started
   2026-09-17, deliberately unstructured while it's still just "start writing notes down";
   a shape (or a real `_design` schema) can get imposed once there's enough here to need
-  one. Not `_`-prefixed for exactly that reason.
+  one. Not `_`-prefixed for exactly that reason. One convention so far (2026-10-21): **plans** (`# Plan:` notes) carry
+  status properties -- see [`design/__README.md`](design/__README.md).
 
 ## Start here
 

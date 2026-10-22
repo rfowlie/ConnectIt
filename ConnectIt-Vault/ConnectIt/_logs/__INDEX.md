@@ -6,6 +6,11 @@ Vault-wide passes go in `_core/_logs/`.
 
 Newest first:
 
+- [2026-10-21-1442](2026-10-21-1442.md) — session — phased-levels plan reviewed: one Change Layout operation; condition
+  changes and phases as board changes; `DefaultTileClass`; Stage 5 / tool scope tightened.
+- [2026-10-21-1436](2026-10-21-1436.md) — session — plan status properties: frontmatter on the seven `# Plan:` notes;
+  convention in `design/__README.md`.
+
 - [2026-10-21-1429](2026-10-21-1429.md) — session — one board change at a time, Stage 3 (vault): decision; request and
   snapshot system notes rewritten (they were stale); AI turn, recipe and design notes say what Immediately means now.
 - [2026-10-21-1425](2026-10-21-1425.md) — session — one board change at a time, Stage 2: GameState mirrors "board busy"

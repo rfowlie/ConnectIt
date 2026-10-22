@@ -1,3 +1,15 @@
+---
+type: plan
+status: complete
+approved: true
+approved-on: 2026-10-21
+completed-on: 2026-10-21
+playtested: false
+design:
+question:
+decision:
+---
+
 # Plan: each map names its board and default preset in World Settings
 
 Written 2026-10-21 from the owner's notes; approved and **built** the same day (47/47 tests); PIE pending. Log:

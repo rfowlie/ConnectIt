@@ -1,3 +1,15 @@
+---
+type: plan
+status: not-started
+approved: false
+approved-on:
+completed-on:
+playtested: false
+design: "[tile-power-triggers](tile-power-triggers.md)"
+question: "[tile-powers-in-the-board-pipeline](../_questions/tile-powers-in-the-board-pipeline.md)"
+decision:
+---
+
 # Plan: tile powers (chain reactions in the after-move step)
 
 Design: [tile-power-triggers](tile-power-triggers.md). Discussion and every decision, round by round:

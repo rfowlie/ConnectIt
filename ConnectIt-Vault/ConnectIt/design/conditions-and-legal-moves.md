@@ -1,3 +1,15 @@
+---
+type: plan
+status: complete
+approved: true
+approved-on: 2026-10-20
+completed-on: 2026-10-20
+playtested: false
+design: "[three-directors](three-directors.md)"
+question:
+decision: "[2026-10-20-three-directors-and-match-conditions](../_decisions/2026-10-20-three-directors-and-match-conditions.md)"
+---
+
 # Plan: MinMax default budget, condition rename + context, Not Enough Pieces, legal moves (part 1 of 2)
 
 > **Status: built** 2026-10-20 (stages 0-5; 42/42 tests); not yet played in PIE. Part 2 (three directors, lose

@@ -70,6 +70,9 @@ visually and save them as a layout asset.
 - **A layout change is built from two board operations**: **Remove Tiles** and **Add Tiles**. **Set Layout** compares
   the current board with the new layout and carries out a Remove Tiles, then an Add Tiles. The two operations are
   useful on their own too -- e.g. a player action that adds or removes tiles within a range.
+  **Revised (plan review, 2026-10-21):** Set Layout carries them out as **one Change Layout operation** -- one board
+  change, one win check -- so no in-between board is ever checked against the goals or shown. Phases beginning and
+  conditions changing are board changes too. See [phased-levels-plan](phased-levels-plan.md).
 - **The board state is the source of truth for which tiles exist**; tile actors follow it. When the visuals receive a
   board with a different set of tiles, they reconcile: spawn (or take from a pool) the tiles that appeared, remove the
   ones that went, update values on the rest. The tile registry (position → actor) is updated by that same reconcile.

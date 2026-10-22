@@ -1,3 +1,15 @@
+---
+type: plan
+status: complete
+approved: true
+approved-on: 2026-10-20
+completed-on: 2026-10-21
+playtested: false
+design: "[three-directors](three-directors.md)"
+question: "[level-trigger-board-changes](../_questions/level-trigger-board-changes.md)"
+decision: "[2026-10-21-director-hub-and-level-changes](../_decisions/2026-10-21-director-hub-and-level-changes.md)"
+---
+
 # Plan: three directors, lose conditions, level triggers and level changes (part 2)
 
 Design: [three-directors](three-directors.md). Part 1 (built): [conditions-and-legal-moves](conditions-and-legal-moves.md).

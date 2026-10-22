@@ -1,3 +1,15 @@
+---
+type: plan
+status: complete
+approved: true
+approved-on: 2026-10-16
+completed-on: 2026-10-19
+playtested: false
+design:
+question:
+decision: "[2026-10-16-ai-director-pipeline](../_decisions/2026-10-16-ai-director-pipeline.md)"
+---
+
 # Plan: AI director pipeline + win conditions as data assets
 
 > **Status: built** 2026-10-16..19 in stages 0-7, each built and tested (40/40 at the end); not yet played in PIE. Log:
