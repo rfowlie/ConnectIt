@@ -31,6 +31,13 @@ Owner, 2026-10-06: undecided.
   Needs the queue stored somewhere clients and the AI can read (with the chosen approach: alongside the replicated
   rule set on the GameState).
 
+2026-10-20 (three-directors discussion): the change itself would be made by the level's **Level director** (part 2 of the
+[three directors](../design/three-directors.md)), through a Blueprint-callable rule change on the GameMode (today only the
+C++ `ModifyRules` exists), applied at a safe moment (next turn start or after the current move, never mid-scoring). Clients
+see it through the replicated rule set and `On Match Rules Changed`; the AI picks it up at its next decision but its
+look-ahead still assumes the current rule persists -- so this question (telegraphed vs hidden) still decides whether the AI
+can plan through a change.
+
 ## Resolution
 
 <Filled when status moves to answered / parked.>

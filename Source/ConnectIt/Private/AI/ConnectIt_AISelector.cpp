@@ -133,7 +133,7 @@ TArray<FConnectItAICandidate> UConnectIt_AISelector_GreedyScorer::RankCandidates
         FConnectItBoardChangeEvent Events;
         const bool bPossible = UConnectIt_BoardStateLibrary::SimulateOperation(
             Context.Board, Context.Rules, Candidates[Index].Candidate.Payload, Context.OwnSlot,
-            ResultBoard, PointsScored, NumScoredEvents, Events);
+            Context.TurnNumber, ResultBoard, PointsScored, NumScoredEvents, Events);
 
         // The AI's own gain: a move that scores for the opponent gains nothing
         Scored.Add({ Index, bPossible ? OwnScore(ResultBoard) - ScoreBefore : TNumericLimits<float>::Lowest() });

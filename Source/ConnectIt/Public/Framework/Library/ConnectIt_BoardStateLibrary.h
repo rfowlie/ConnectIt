@@ -7,7 +7,21 @@
 #include "ConnectIt_Structs.h"
 #include "StructUtils/InstancedStruct.h"
 #include "Board/Rules/ConnectIt_RuleSet.h"
+#include "Board/Operations/ConnectIt_BoardOperation.h"
 #include "ConnectIt_BoardStateLibrary.generated.h"
+
+// Why a piece can't be placed on a tile (UConnectIt_BoardStateLibrary::
+// GetPlacementBlocker) -- e.g. for the message a refused click shows
+UENUM(BlueprintType)
+enum class EConnectItPlacementBlocker : uint8
+{
+    // It can be placed on
+    None,
+    NotATile,
+    Inactive,
+    Occupied,
+    Locked,
+};
 
 // Blueprint-callable queries over FConnectItBoardState/FConnectItTileData,
 // taken by const& rather than resolved from a component. USTRUCT member
@@ -53,6 +67,28 @@ public:
     UFUNCTION(BlueprintPure, Category = "ConnectIt|Board State",
         meta = (DisplayName = "Is Tile Valid For Placement (Board State)"))
     static bool IsTileValidForPlacement(const FConnectItBoardState& State, FGridPosition Position);
+
+    // Why a piece can't be placed on Position (None: it can) -- the same
+    // checks as Is Tile Valid For Placement, named, e.g. for the message a
+    // refused click shows
+    UFUNCTION(BlueprintPure, Category = "ConnectIt|Board State",
+        meta = (DisplayName = "Get Placement Blocker (Board State)"))
+    static EConnectItPlacementBlocker GetPlacementBlocker(const FConnectItBoardState& State, FGridPosition Position);
+
+    // --- Chained tiles ---
+
+    // The Chained tiles whose partner is the tile at Position -- e.g. to give
+    // a partner its look when the board is seeded, tiles are added, or Chain
+    // Partner Changed plays. Empty if none.
+    UFUNCTION(BlueprintPure, Category = "ConnectIt|Board State",
+        meta = (DisplayName = "Get Chained Tiles For (Board State)"))
+    static TArray<FGridPosition> GetChainedTilesFor(const FConnectItBoardState& State, FGridPosition Position);
+
+    // The Chained tile at Position's partner, if it has one still on the
+    // board (false: no partner -- e.g. for its "no partner" icon)
+    UFUNCTION(BlueprintPure, Category = "ConnectIt|Board State",
+        meta = (DisplayName = "Get Chain Partner (Board State)"))
+    static bool GetChainPartner(const FConnectItBoardState& State, FGridPosition Position, FGridPosition& OutPartner);
 
     // -1 when the position is empty or isn't on this board
     UFUNCTION(BlueprintPure, Category = "ConnectIt|Board State")
@@ -101,6 +137,15 @@ public:
         meta = (DisplayName = "Get Placeable Positions (Board State)"))
     static TArray<FGridPosition> GetPlaceablePositions(const FConnectItBoardState& State);
 
+    // Whether Faction has any legal move of one kind (Move: its request type,
+    // e.g. Swap Pieces) on the board -- e.g. to grey out an action that has no
+    // possible use, so the player sees they must pass. Board only (not the
+    // loadout or uses left). Unknown: that kind of move can't tell yet --
+    // treat it as possible.
+    UFUNCTION(BlueprintPure, Category = "ConnectIt|Board State",
+        meta = (DisplayName = "Has Any Legal Move (Board State)"))
+    static EConnectItMoveLegality HasAnyLegalMove(const FConnectItBoardState& State, FGameplayTag Move, int32 Faction);
+
     // "What would happen if Faction made this move?" -- without making it.
     // Operation is a board operation struct (e.g. Place Piece with a
     // Position, wrapped with Make Instanced Struct); Rules is the match's rule
@@ -120,6 +165,10 @@ public:
     //
     // The operation's own Faction field is ignored: Faction is used instead,
     // as the server does with the requester's.
+    //
+    // TurnNumber: the turn to simulate at (the GameState's Active Turn
+    // Number) -- tile power cooldowns count against it. -1 = Board's own,
+    // which is the turn of the board's last change, not necessarily now.
     UFUNCTION(BlueprintCallable, Category = "ConnectIt|Board State",
         meta = (ExpandBoolAsExecs = "ReturnValue"))
     static bool SimulateOperation(
@@ -127,6 +176,7 @@ public:
         const FConnectItRuleSet& Rules,
         const FInstancedStruct& Operation,
         int32 Faction,
+        int32 TurnNumber,
         FConnectItBoardState& ResultBoard,
         float& PointsScored,
         int32& NumScoredEvents,

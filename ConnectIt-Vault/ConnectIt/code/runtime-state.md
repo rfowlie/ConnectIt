@@ -7,8 +7,8 @@ source:
   - Source/ConnectIt/Public/Board/ConnectIt_BoardStateComponent.h
   - Source/ConnectIt/Public/Framework/GameState/ConnectIt_GameState.h
   - Source/ConnectIt/Public/ConnectIt_Structs.h
-reconciled: 2026-09-21
-commit: aa8373e
+reconciled: 2026-10-22
+commit: 1e0d5cf
 ---
 
 # Runtime state access — which accessor to call
@@ -24,15 +24,18 @@ convenience wrappers over reaching into a manager directly.
 |---|---|---|---|
 | Full current board (tiles, scores, game-over) | `GetCurrentState()` → `const FConnectItBoardState&` | `UConnectIt_BoardStateComponent` | Pure |
 | Board state before the last change | `GetPreviousState()` | same | Pure |
-| What just changed | `GetChangeEvent()` → `const FConnectItBoardChangeEvent&` | same | Pure |
+| What just changed (latest change's event list) | `GetChangeEvent()` → `const FConnectItBoardChangeEvent&` | same | Pure |
+| The board event playing right now (in a tag listener) | `UConnectIt_BoardEventLibrary::GetActive...Event` (typed) / `GetActiveBoardEventAs<T>` (C++) | the event queue's payload | Callable |
 | Both states + change event | `GetBoardSnapshot()` → `const FConnectItBoardStateSnapshot*` | same | — |
-| Per-tile queries | `FConnectItBoardState::IsTileOccupied / IsTileActive / IsTileValidForPlacement / GetScore` | inline on the struct | — |
+| Per-tile queries | `FConnectItBoardState::IsTileOccupied / IsTileActive / GetScore` (placeable: `FConnectItBoardOperation_PlacePiece::IsTilePlaceableAt`) | inline on the struct | — |
+| A phased level's phase | `AConnectIt_GameState::GetCurrentPhase()` / `FConnectItBoardState::CurrentPhase` | replicated with the board | Pure |
 | High-level board queries (all/empty/by-faction tiles, random empty, board full, faction won) | `UConnectIt_GameUtilityLibrary::Get*GridTiles* / IsTileEmpty / GetTileAtPosition / GetRandomEmptyGridTile / IsGameBoardFull / HasFactionWon` | `ConnectIt_GameUtilityLibrary` (static, `WorldContextObject`) | Pure |
 | Board-state component lookup | `UConnectIt_GameUtilityLibrary::GetBoardStateComponent` | resolves via `GetGameState<AConnectIt_GameState>()->GetBoardStateComponent()` | Pure |
 | Grid ↔ world position, rows/columns, dimensions | `UGridTileRegistryBase::GridPositionToWorld / WorldToGridPosition / GetRow / GetColumn / GetRowCount / GetColumnCount` | `GameUtilityLibrary::GetTileRegistry()` → [[UConnectIt_BoardRegistrySubsystem\|UConnectIt_BoardRegistrySubsystem]] | Pure — **can return null** if the level has no `TileRegistry` template or `OnWorldBeginPlay` hasn't fired |
 | Piece actor at a grid position | `UGridPieceRegistryBase::GetPiece(Position)` | `GameUtilityLibrary::GetPieceRegistry()` → same subsystem | Pure — same null caveat; `InitialiseRegistry()` still a stub |
-| Config (loadouts, piece class, pool size) | `UConnectIt_GameUtilityLibrary::GetLevelConfig()` → `UConnectIt_LevelConfigDataAsset` props | resolved symmetrically server + client from the level→asset map | Pure / ReadOnly |
-| Scoring / win-condition strategy in use | `AConnectIt_GameMode::BoardRules` → `UConnectIt_BoardRules` (**server-only**) | `Board/Rules/` | `GetActiveWinConditionName()` / `GetActiveScoringRuleName()` — server-side debug only |
+| The board's fixed setup (piece class, pool size) | `UConnectIt_GameUtilityLibrary::GetPieceActorClass / GetPiecePoolInitialSize` | the map's level config (`AConnectIt_WorldSettings::FindLevelConfig`) | Pure |
+| The match's rules (scoring rule, each side's goals, AI faction) | `UConnectIt_GameUtilityLibrary::GetMatchRules` / `AConnectIt_GameState::GetMatchRules()` (+ `OnMatchRulesChanged`) | replicated mirror of the GameMode's `GetRules()` | Pure |
+| The local player's loadout | `UConnectIt_GameUtilityLibrary::GetLocalPlayerLoadout` | the player's PlayerState | Pure |
 | Win score target (progress bar) | `FConnectItBoardState::TargetScore` / `AConnectIt_GameState::GetTargetScore()`, `GetFactionScoreProgress(int32)` | replicated | Pure |
 
 ## Turn / participant / match state
@@ -56,22 +59,25 @@ convenience wrappers over reaching into a manager directly.
 | What | Accessor | Owner | BP |
 |---|---|---|---|
 | What's active (top of stack) | `GetTopAction()`, `GetRootAction()`, `IsRootOnTop()`, `GetStackDepth()` | `UTurnBasedActionsComponent` | Pure |
-| All configured / required actions | `GetAllRuntimeActions()`, `GetRequiredActions()`, `FindActionByTag()` | same | Pure |
+| All configured actions | `GetAllRuntimeActions()`, `FindActionByTag()` | same | Pure |
 | Is a board-change request in flight | `IsAwaitingRequestConfirmation()` | same | Pure |
 | Per-action active state | `IsActive()` | on the `UTurnBasedAction` instance | Pure |
-| Per-action completions / cooldown / config | `CompletionsThisTurn`, `TurnsUntilAvailable`, `bIsRequired`, `bIsCancellable`, `ActionTag` | same | ReadOnly |
+| Per-action uses / cooldown / availability | `CanActivate()`, `GetPermanentRuntimeState` / `GetNumberedRuntimeState`, `GetUsesRemaining` (read from the PlayerState -- the action holds none); `bIsCancellable`, `GetActionTag()` | on the `UTurnBasedAction` instance | Pure |
 
 ## Sequencing ("game is busy" / animation gating)
 
 | What | Accessor | Owner | BP |
 |---|---|---|---|
+| Is the board busy (a change playing out / level changes waiting) | `AConnectIt_GameState::IsBoardChangeResolving()` (+ `OnBoardChangeResolvingChanged`); server: `AConnectIt_GameMode::IsBoardSettled()` | replicated mirror | Pure |
 | Tags currently firing right now | `GetTagsInQueue()` → `TArray<FGameplayTag>` | `UGameEventTaskSubsystem` | Callable |
 | Fires when that set changes | `OnActiveManagerTagsChanged` (no params — re-call `GetTagsInQueue()`) | same | Assignable |
 
 ## Gotchas
 
-- **Registry accessors return null until a level config is authored** — see
+- **Registry accessors return null on a map whose World Settings name no board** — see
   [[UConnectIt_BoardRegistrySubsystem|UConnectIt_BoardRegistrySubsystem]].
+- **The rules are server-owned**: the GameMode's `GetRules()` is the live set; everything else reads the GameState
+  mirror (a client can lag a moment behind a mid-match change).
 - `AConnectIt_GameState`'s board-derived UI wrappers (`GetFactionScore`, `GetAllScores`,
   `IsTileOccupied`, `GetActiveParticipantName`, `IsLocalPlayerTurn`) all degrade to a
   safe default now; `IsLocalPlayerTurn()` was previously `false` on every remote client
@@ -80,6 +86,10 @@ convenience wrappers over reaching into a manager directly.
 
 ## Changes
 
+- 2026-10-22 — rows updated for a month of changes: the board event list and its per-event getters; the rule set
+  replaced `UConnectIt_BoardRules` (read through the replicated rules mirror); the level config is reached through the
+  map's World Settings (`GetLevelConfig` removed); action state lives on the PlayerState (`CompletionsThisTurn`,
+  `bIsRequired`, `GetRequiredActions` gone); new rows for the phase and the board-busy flag.
 - 2026-09-18 — `ConnectIt_Structs.h`/`ConnectIt_BoardStateComponent.h` gained Board Shift
   fields — see [[ConnectIt/code/ConnectItStructs|ConnectItStructs]]'s own Changes entry
   for the specifics; nothing in this page's own accessor descriptions changed.

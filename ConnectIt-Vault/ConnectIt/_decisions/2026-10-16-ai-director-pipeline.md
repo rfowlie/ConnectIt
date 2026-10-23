@@ -1,7 +1,7 @@
 ---
 Date: 2026-10-16
-status: Active
-superseded by:
+status: Partly superseded
+superseded by: "[2026-10-20-three-directors-and-match-conditions](2026-10-20-three-directors-and-match-conditions.md) (the AI director becomes one of three directors named by class in the preset; conditions authored in directors; MinMax budget is a default)"
 tags:
   - ai
   - architecture

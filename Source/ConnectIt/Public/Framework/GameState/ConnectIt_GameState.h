@@ -19,6 +19,8 @@ enum class EMatchEndReason : uint8
     ScoreThresholdReached   UMETA(DisplayName = "Score Threshold Reached"),
     OpponentForfeited       UMETA(DisplayName = "Opponent Forfeited"),
     OpponentDisconnected    UMETA(DisplayName = "Opponent Disconnected"),
+    // The other side met one of its lose conditions
+    OpponentLost            UMETA(DisplayName = "Opponent Lost"),
     Unknown                 UMETA(DisplayName = "Unknown")
 };
 
@@ -53,6 +55,7 @@ struct CONNECTIT_API FConnectItMatchResult
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnMatchResultUpdated, const FConnectItMatchResult&, Result);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnMatchRulesChanged);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnBoardChangeResolvingChanged, bool, bResolving);
 
 // Everything a debug widget needs to know about this game state's current
 // values in one call -- used to seed initial state once, right after
@@ -116,6 +119,23 @@ public:
     // Server only -- called by the GameMode
     void SetMatchRules(const FConnectItRuleSet& InRules);
 
+    // --- One board change at a time (read-only mirror) ---
+    // The server's GameMode allows one board change at a time: from a move
+    // (or a level change) until its visuals have played out, and while level
+    // changes wait to play, new requests are refused. UI reads this to block
+    // input meanwhile. Replicated, so a client can lag a little: the server
+    // still refuses anything that arrives early.
+
+    UFUNCTION(BlueprintPure, Category = "ConnectIt|Board")
+    bool IsBoardChangeResolving() const { return bBoardChangeResolving; }
+
+    // Fires when it flips -- on the server and on clients
+    UPROPERTY(BlueprintAssignable, Category = "ConnectIt|Board")
+    FOnBoardChangeResolvingChanged OnBoardChangeResolvingChanged;
+
+    // Server only -- called by the GameMode
+    void SetBoardChangeResolving(bool bResolving);
+
     // --- Board State ---
     // Owned here, not on the board actor -- board state genuinely needs to
     // be a single source of truth, and GameState (replicated, one instance
@@ -150,6 +170,12 @@ public:
     // UI can read previous and current state for animations
     UFUNCTION(BlueprintPure, Category = "ConnectIt|Board")
     FConnectItBoardStateSnapshot GetBoardSnapshot() const;
+
+    // The phase a phased level is in (a ConnectIt.Phase.* tag); empty until
+    // the Level director begins one. Read from the committed board, so it
+    // jumps ahead of a Phase Changed event still playing.
+    UFUNCTION(BlueprintPure, Category = "ConnectIt|Board")
+    FGameplayTag GetCurrentPhase() const;
 
     // Score needed to win, published by whichever win condition is active.
     // 0 means the active win condition isn't score-based. See
@@ -193,6 +219,12 @@ private:
 
     UFUNCTION()
     void OnRep_MatchRules();
+
+    UPROPERTY(ReplicatedUsing = OnRep_BoardChangeResolving)
+    bool bBoardChangeResolving = false;
+
+    UFUNCTION()
+    void OnRep_BoardChangeResolving();
 
     UFUNCTION()
     void OnRep_MatchResult();

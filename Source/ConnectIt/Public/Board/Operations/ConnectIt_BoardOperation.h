@@ -5,21 +5,28 @@
 #include "CoreMinimal.h"
 #include "GameplayTagContainer.h"
 #include "ConnectIt_Structs.h"
+#include "Board/ConnectIt_BoardChanges.h"
 #include "ConnectIt_BoardOperation.generated.h"
 
-
-// The positions where a piece arrived or changed owner, reported by
-// FConnectItBoardOperation::Apply for the after-move step
-// (FConnectItRuleSet::ResolveBoardChange scores exactly these). Inline
-// storage: no heap allocation for ordinary moves in the AI's search.
-using FConnectItTouchedPositions = TArray<FGridPosition, TInlineAllocator<8>>;
+// Whether a faction has any legal move of one kind on a board
+// (FConnectItBoardOperation::HasAnyLegalInstance)
+UENUM(BlueprintType)
+enum class EConnectItMoveLegality : uint8
+{
+    // This kind of move can't tell (yet): treat it as possibly legal
+    Unknown         UMETA(DisplayName = "Unknown"),
+    // At least one is possible
+    Legal           UMETA(DisplayName = "Legal"),
+    // None is possible
+    NoLegalMove     UMETA(DisplayName = "No Legal Move"),
+};
 
 // One specific change to the board, carrying everything it needs: who is
 // making it (Faction) and, in each kind of operation, what it acts on (place
 // a piece on THIS tile, swap THESE two...). It knows whether it may be made
 // (CanApply) and how it changes the board (Apply). It does not score, check
 // for a win, or know whose turn is next: after Apply, the caller runs
-// FConnectItRuleSet::ResolveBoardChange on the positions it reports.
+// FConnectItRuleSet::ResolveBoardChange on the changes it reports.
 //
 // An operation IS the request: a player's action (UConnectIt_PlacePieceAction...)
 // builds one and sends it as FTurnActionRequest::Payload; the server's
@@ -57,14 +64,15 @@ struct CONNECTIT_API FConnectItBoardOperation
     }
 
     // Changes Board -- nothing else. Only call when CanApply.
-    // OutTouched: appends every position a piece arrived on or changed owner
-    // at (the positions that might now score).
+    // OutChanges: what it really did -- pieces that entered, left, moved or
+    // changed owner, tiles that changed (FConnectItBoardChanges). The
+    // after-move step scores from it, and tile powers react to it.
     // OutEvents: if not null, the operation appends the event describing
     // what it did (an FConnectItBoardOperationEvent, e.g. Piece Placed +
     // where + who) for visuals to react to. The AI's search passes null.
     virtual void Apply(
         FConnectItBoardState& Board,
-        FConnectItTouchedPositions& OutTouched,
+        FConnectItBoardChanges& OutChanges,
         FConnectItBoardChangeEvent* OutEvents) const
     {
     }
@@ -73,12 +81,44 @@ struct CONNECTIT_API FConnectItBoardOperation
     // that piece completes something that scores. True for most (placing the
     // fourth piece of a line clears the other three and leaves it standing);
     // an operation returns false to have its arriving pieces cleared along
-    // with the rest. Passed on to FConnectItRuleSet::ResolveBoardChange by
-    // whoever applies the operation.
+    // with the rest. Each operation stamps it on the arrivals it reports
+    // (FConnectItPieceArrival::bSurvivesScoring), so one scoring pass can mix
+    // arrivals from different operations.
     virtual bool ArrivingPiecesSurviveScoring() const { return true; }
 
     // Short text for logs, e.g. "(3,2)"
     virtual FString Describe() const { return FString(); }
+
+    // --- Locked tiles (FConnectItTileData::bIsLocked) ---
+    // Checked by FConnectItRuleSet::CanCarryOut, not CanApply: whether an
+    // operation may touch a locked tile is the same rule for every operation,
+    // kept in one place.
+
+    // Whether this kind of operation may act on locked tiles. Default no;
+    // Shift (the lock moves with its tile), Force Place, Remove Tiles, Change
+    // Layout and Set Tile Locked say yes.
+    virtual bool CanOperateOnLockedTiles() const { return false; }
+
+    // The existing tiles this operation acts on (Place: its tile; Swap: both),
+    // for the lock check. None by default (an operation that acts on no
+    // existing tile, or may act on locked ones).
+    virtual void GetTargetPositions(TArray<FGridPosition>& OutPositions) const {}
+
+    // Whether ForFaction could make ANY operation of this kind on Board -- e.g.
+    // Place Piece: is any tile placeable? Asked of a default instance (this
+    // operation's own fields are ignored). Board only: says nothing about the
+    // faction's loadout or uses left. Default: Unknown (this kind of move
+    // can't tell yet).
+    virtual EConnectItMoveLegality HasAnyLegalInstance(const FConnectItBoardState& Board, int32 ForFaction) const
+    {
+        return EConnectItMoveLegality::Unknown;
+    }
+
+    // HasAnyLegalInstance for the kind of operation whose request type is
+    // RequestType. Unknown for a tag that isn't a board operation. Safe on any
+    // thread once GetAllRequestTypes has run on the game thread (the GameMode
+    // does it at match setup).
+    static EConnectItMoveLegality GetLegality(FGameplayTag RequestType, const FConnectItBoardState& Board, int32 ForFaction);
 
     // The request type of every kind of board operation there is (every
     // C++ struct deriving from this one), found once by reflection. Lets

@@ -3,6 +3,7 @@ schema: systems
 spans:
   - Source/ConnectIt/Public/Framework/Controller/ConnectIt_AIController.h
   - Source/ConnectIt/Private/Framework/Controller/ConnectIt_AIController.cpp
+  - Source/ConnectIt/Public/AI/ConnectIt_Director.h
   - Source/ConnectIt/Public/AI/ConnectIt_AIDirector.h
   - Source/ConnectIt/Public/AI/ConnectIt_AICoordinator.h
   - Source/ConnectIt/Public/AI/ConnectIt_AIStrategy.h
@@ -14,8 +15,8 @@ spans:
   - Source/ConnectIt/Public/Board/ConnectIt_BoardRequestMediator.h
   - Plugins/UnrealTurnBasedMechanics/Source/UnrealTurnBasedMechanics/Public/Framework/Controller/TurnBasedAIController.h
   - Plugins/UnrealGameIntelligence/Source/UnrealGameIntelligence/Public/Search/MinMax/GI_MinMaxAlphaBeta.h
-reconciled: 2026-10-19
-commit: fd369a4
+reconciled: 2026-10-22
+commit: 1e0d5cf
 ---
 
 # AI turn: who the opponent is, and how it takes a move
@@ -25,9 +26,10 @@ The step-by-step for designers is the recipe [[set-up-a-custom-ai-opponent]]; th
 ## What happens
 
 Five parts, each answering one question. **The GameMode** spawns an `AConnectIt_AIController` (its `AIControllerClass`) when an
-Adventure match starts and registers it as the second participant. **The match preset** names an **AI director**, which says
-*who* the opponent is: its **loadout** (what it may do, like a player's), its **strategies** (what proposes moves, in
-priority order) and its **selector** (how one is picked), and changes them as the match goes on. The **controller** never
+Adventure match starts and registers it as the second participant. **The match preset** names an **AI director class** (a
+Blueprint whose Class Defaults say *who* the opponent is: its **loadout**, its **strategies** in priority order, its
+**selector**, its goals), and the AI's director changes them as the match goes on. It is one of three directors (Level,
+Player, AI); the GameMode sends all of them the same events. The **controller** never
 changes per level: it owns timing and submitting. Each decision it copies the board, the rules and both loadouts into a
 context and hands it to the **coordinator**, which runs every strategy at once, collects their answers within the think time,
 and has the selector order the moves. The controller then submits them **through the same Mediator gate a human uses**, best
@@ -47,14 +49,16 @@ sequenceDiagram
     participant PS as AI PlayerState / participant
 
     Note over GM: match start (Adventure)
-    GM->>GM: EnsureMatchSetupResolved (preset -> Rules + ResolveWinGroups, AIDirector)
+    GM->>GM: EnsureMatchSetupResolved (preset -> Rules, director classes; directors' goals -> ResolveConditionGroups)
     GM->>AC: SpawnActor(AIControllerClass) + RegisterAIParticipant
-    AC->>DI: DuplicateObject(preset's AIDirector) (or a default one)
+    AC->>DI: NewObject(preset's AI director class) (or the default one)
     AC->>PS: InitialiseActionState(Director.StartingLoadout)
-    AC->>DI: OnMatchStarted
+    GM->>DI: OnMatchStarted (all directors: Level, Players, AI)
 
-    Note over AC: its turn starts (once per turn number)
-    AC->>DI: OnAITurnStarted
+    Note over GM: its turn starts (turn-start phase, server)
+    GM->>GM: turn-start level changes join the waiting line, play one at a time
+    GM->>DI: OnTurnStarted(AI faction, IsMine = true)
+    AC->>GM: IsBoardSettled? (no: wait for OnBoardChangeSettled)
     AC->>AC: BeginDecision: Director.ApplyPendingChanges; copy Board, Rules, loadouts, AvailableRequestTypes...
     AC->>CO: Begin(Context, Director.Strategies, Director.Selector, think time)
     CO->>ST: StartDecision (all at once; each told budget x share)
@@ -65,6 +69,7 @@ sequenceDiagram
     CO->>SE: Select(answers) -> Endorse -> RankCandidates -> keep MaxCandidates
     CO->>AC: HandleCoordinatorConcluded(candidates)
     AC->>AC: still current? wait out Director.MinThinkSeconds
+    AC->>GM: board changed or unsettled since it began? (yes: decide again once settled)
     loop candidates, best first, until one is accepted
         AC->>MED: GameMode.ProcessBoardRequest(as the loadout action producing it, own slot)
         MED-->>AC: accepted / rejected
@@ -73,29 +78,37 @@ sequenceDiagram
     alt turn-end requirements met
         AC->>PS: ServerSubmitTurnEnd
     else needs more moves (max 16 per turn)
-        AC->>AC: BeginDecision again (DecisionIndexThisTurn + 1)
+        AC->>AC: once the move has played out (settled): BeginDecision again (DecisionIndexThisTurn + 1)
     end
-    AC->>DI: OnAITurnEnded
-    Note over AC: the opponent's turn starts
-    AC->>DI: OnOpponentTurnStarted (a loadout set here applies at once: tells)
+    GM->>DI: OnTurnEnded(AI faction, IsMine = true)
+    Note over GM: the opponent's turn starts
+    GM->>DI: OnTurnStarted(player faction, IsMine = false) (a loadout set here applies at once: tells)
 ```
 
 ## Steps
 
 1. **Setup (match start).** [[AConnectIt_GameMode]] resolves the live setup (`EnsureMatchSetupResolved`: the menu's preset, else
-   the level config's `DefaultMatchPreset`): copies the preset's rules and **resolves its goal assets into plain win groups**
-   (`FConnectItRuleSet::ResolveWinGroups`), keeps the preset's director template, applies the menu's tweaks (target score).
+   the map's World Settings' Default Match Preset): copies the preset's rules, reads its three director classes, **copies the
+   Level director's Player / AI Win and Lose Conditions into plain groups** (`FConnectItRuleSet::ResolveConditionGroups`,
+   from the class's defaults; the level can replace a side's mid-match), applies the menu's tweaks (target score).
    Then, for `MatchType == Adventure`, `SpawnAndRegisterAI`, and tells the rule set which slot is the AI's (`AIFaction`).
-2. **Seeding.** The controller's `BeginPlay` duplicates the director (strategies and selector with it, so decision state is per
-   match), creates its coordinator, seeds its PlayerState from the director's `StartingLoadout`, and calls `OnMatchStarted`.
-   No director on the preset = the default one (MinMax, First Available) **with no loadout**: every move is rejected.
+2. **Seeding.** The controller's `BeginPlay` makes its director from the preset's class (strategies and selector instanced
+   with it, so decision state is per match), creates its coordinator and seeds its PlayerState from the director's
+   `StartingLoadout`. No class on the preset = the default director (MinMax, First Available) **with no loadout**: every move
+   is rejected. Once the board is initialised the GameMode sends every director `OnMatchStarted`.
 3. **Turn start.** The participant component notifies `TurnStart`/`TurnActive`; the controller starts one decision per turn
-   number. Pause, game over, turn end, timeout or skip cancel it (a pause resumes it if it is still this AI's turn).
+   number -- **once the board has settled** (`BeginDecisionWhenSettled`: `AConnectIt_GameMode::IsBoardSettled`, else it
+   waits for `OnBoardChangeSettled`), so the level's turn-start changes have played out first
+   ([one board change at a time](../../_decisions/2026-10-21-one-board-change-at-a-time.md)). Pause, game over, turn end,
+   timeout or skip cancel it, waiting included (a pause resumes it if it is still this AI's turn).
 4. **Context.** `BeginDecision` first applies the director's pending strategy / selector changes, then copies, on the game
    thread: `Board`, `OwnSlot`, `Rules` (plain thread-safe data), `OwnLoadout`/`OpponentLoadout` (assets: game thread only),
-   `TurnNumber`, `DecisionIndexThisTurn`, `AvailableRequestTypes` (produced by its loadout and usable now).
+   `TurnNumber`, `DecisionIndexThisTurn`, `AvailableRequestTypes` (produced by its loadout, usable now, and with at least one
+   legal instance on the board -- `FConnectItBoardOperation::GetLegality`; a kind of move that can't tell stays in).
+   **Nothing available = the AI passes**: it logs `no legal move -- passing` and ends its turn without asking a strategy.
 5. **Decide.** The coordinator starts every strategy (`StartDecision` -> `BeginDecision`, C++ or Blueprint), each with
-   `TimeBudgetSeconds = think time x StrategyBudgetShare`. A strategy answers with `FinishDecision` (a ranked, capped candidate
+   `TimeBudgetSeconds = think time x StrategyBudgetShare` (MinMax uses that; its own `DefaultTimeBudgetSeconds` only when a
+   decision gives none). A strategy answers with `FinishDecision` (a ranked, capped candidate
    list), and may `PublishBestSoFar` while it works; **MinMax publishes each completed search depth** (a thread-safe progress
    holder the game thread reads). The coordinator polls; it concludes when all have finished, or at the think time with each
    strategy's best so far (nothing yet = it keeps waiting, with one warning naming the slow ones).
@@ -103,17 +116,22 @@ sequenceDiagram
    proposed it), orders them (`RankCandidates`: First Available, Top N with mistake chance, Greedy Scorer, Weighted by
    Confidence, or a Blueprint one) and keeps `MaxCandidates`.
 7. **Think time.** The controller holds the answer until the director's `MinThinkSeconds` have passed since the decision began.
-8. **Submit.** `SubmitDecision` re-checks the decision is current, then tries the candidates in order (`SubmitCandidate`): the
+8. **Submit.** `SubmitDecision` re-checks the decision is current. If the board changed while it thought
+   (`GetNumBoardChanges` differs from the decision's start, e.g. a director's Immediately change from `OnTurnStarted`) or
+   isn't settled, it decides again once settled. Otherwise it tries the candidates in order (`SubmitCandidate`): the
    loadout action whose class `ProducesRequestType` the operation's request type, sent through `GameMode->ProcessBoardRequest` as
    its own slot. The first accepted one wins; if every candidate is rejected it logs an error and ends the turn.
 9. **The gate.** [[UConnectIt_BoardRequestMediator]] holds the AI to the same rules as a human: the action must be in its loadout,
    produce that request type, be usable now (uses, per-turn cap, cooldown), and the operation must `CanApply` to the board. The
    requester's faction is supplied by the server, never by the payload.
-10. **End the turn, or go again.** `PlayerState->CanEndTurn()` true -> `ServerSubmitTurnEnd`. Otherwise the controller decides
-    again from the new board, up to 16 times per turn.
-11. **The director** hears `OnAITurnStarted` / `OnAITurnEnded`, `OnOpponentTurnStarted`, and `OnWinCheckpointReached` (from the
-    server-side committed board change, with the goal asset). It changes the loadout (deferred to the end of the AI's own turn)
-    and the strategies / selector (from the next decision).
+10. **End the turn, or go again.** `PlayerState->CanEndTurn()` true -> `ServerSubmitTurnEnd` (the turn-end gate queues
+    behind the move's visuals). Otherwise the controller decides again from the new board **once the move, and anything
+    the level does in response, has played out**, up to 16 times per turn.
+11. **The director** hears, from the GameMode and in order Level -> Players -> AI: `OnTurnStarted` / `OnTurnEnded` (from the
+    participant manager's turn phases; for the AI's own turn, before the controller starts deciding), and
+    `OnWinCheckpointReached` / `OnLoseConditionMet` / `OnPhaseChanged` / `OnMatchWon` (from the server-side committed board
+    change; a phased level's phase change is the place to give the AI a new loadout -- [[script-a-phased-level]]). It changes
+    the loadout (during the AI's own turn: deferred to its end) and the strategies / selector (from the next decision).
 
 ## Gotchas
 
@@ -125,6 +143,9 @@ sequenceDiagram
 - **Gameplay reacts to state, not to visual event tags.** The director's events come from committed state (board changes, turn
   notifications). Board event tags play through the visual queue, paced by animations; keying gameplay on them makes it depend
   on animation timing.
+- **One board change at a time.** A request before the board settles is refused, so the AI never submits while a change
+  is playing out ([[place-piece-request]]). Every move it makes waits for the previous one's visuals (the server's own
+  playback).
 - **Strategy and selector state is per controller** (inside its duplicate of the director), reset each match.
 - **Threads.** `Rules` and `Board` in the context are plain data and safe to hand to a background task; `OwnLoadout`,
   `OpponentLoadout` and the strategy / selector UObjects are not. Blueprint strategies and all selectors run on the game thread.
@@ -152,5 +173,8 @@ sequenceDiagram
 - Design: [ai-director-pipeline](../../design/ai-director-pipeline.md), [ai-selector-ideas](../../design/ai-selector-ideas.md),
   [blueprint-ai-strategy-surface](../../design/blueprint-ai-strategy-surface.md),
   [stage-and-match-preset](../../design/stage-and-match-preset.md)
-- Decisions: [AI director pipeline](../../_decisions/2026-10-16-ai-director-pipeline.md),
+- Decisions: [one board change at a time](../../_decisions/2026-10-21-one-board-change-at-a-time.md),
+  [director hub and level changes](../../_decisions/2026-10-21-director-hub-and-level-changes.md),
+  [three directors](../../_decisions/2026-10-20-three-directors-and-match-conditions.md),
+  [AI director pipeline](../../_decisions/2026-10-16-ai-director-pipeline.md),
   [AI controller runs its own turn](../../_decisions/2026-10-02-ai-controller-runs-its-own-turn.md)

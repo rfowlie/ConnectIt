@@ -1,7 +1,7 @@
 ---
 Date: 2026-09-20
-status: Active
-superseded by:
+status: Superseded
+superseded by: "[2026-10-22-tile-powers-in-the-after-move-chain](2026-10-22-tile-powers-in-the-after-move-chain.md) (powers and their gates live in the rules, which replicate; Crumble itself is set aside as a board power, 2026-10-22)"
 tags:
   - board
   - crumble

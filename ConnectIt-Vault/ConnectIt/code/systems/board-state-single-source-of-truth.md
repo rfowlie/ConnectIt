@@ -4,83 +4,99 @@ spans:
   - Source/ConnectIt/Public/Board/ConnectIt_BoardStateComponent.h
   - Source/ConnectIt/Private/Board/ConnectIt_BoardStateComponent.cpp
   - Source/ConnectIt/Public/ConnectIt_Structs.h
+  - Source/ConnectIt/Public/Board/Events/ConnectIt_BoardEvents.h
   - Source/ConnectIt/Public/Framework/GameState/ConnectIt_GameState.h
-reconciled: 2026-09-18
-commit: 9187568
+  - Source/ConnectIt/Public/Framework/GameMode/ConnectIt_GameMode.h
+reconciled: 2026-10-22
+commit: 1e0d5cf
 ---
 
 # Board state — single source of truth
 
 ## What happens
 
-The entire board is one replicated property:
-`FConnectItBoardStateSnapshot BoardSnapshot` on
-[[UConnectIt_BoardStateComponent|UConnectIt_BoardStateComponent]] (which lives
-on the replicated [[AConnectIt_GameState|AConnectIt_GameState]]). The snapshot
-carries **previous state + current state + a `FConnectItBoardChangeEvent`** describing the
-delta — so a listener always has both "what it is now" and "what just changed," delivered
-atomically. The server mutates only through `SetBoardState`; clients receive
-`OnRep_BoardSnapshot`. Both paths then call `BroadcastChange()` (the zero-param
-`OnBoardStateChanged`) and `EnqueueBoardEventTags()` — identical code on both machines —
-so visual sequencing is derived from the same data everywhere, not fired ad hoc from
-server-only handlers.
+The entire board is one replicated property: `FConnectItBoardStateSnapshot BoardSnapshot` on
+[[UConnectIt_BoardStateComponent]], which lives on the replicated [[AConnectIt_GameState]]. A snapshot is one board
+change:
+
+- **Previous state:** the board before the change.
+- **Current state:** the board after it, including everything that followed from it (scoring, the win stamp).
+- **The change event:** an ordered list of board-event structs saying what happened, in order (`ConnectIt_BoardEvents.h`).
+
+The server writes only through `SetBoardState`; clients receive `OnRep_BoardSnapshot`. Both paths then call
+`BroadcastChange()` (the zero-param `OnBoardStateChanged`) and `EnqueueBoardEventTags()`, which queues **one entry per
+event, with the event itself as payload**, on the game event queue. The visuals play them one at a time, the same way on
+every machine.
+
+**One board change at a time.** The snapshot is a property, not a queue. Unreal sends whatever it holds at the
+GameState's next network update, so two changes made between updates would reach a client as one: the first change's
+events would never arrive. The server therefore makes no new change until the last has played out:
+
+- After queuing the events, `SetBoardState` fires `OnBoardChangeCommitted` (the GameMode locks) and queues the
+  `ConnectIt.Event.BoardChangeComplete` marker.
+- When the marker completes, the lock lifts.
+- Requests are refused, and level changes wait, until then ([[place-piece-request]]).
 
 ## Diagram
 
 ```mermaid
 flowchart TD
     subgraph Server
-        H[BoardRequestMediator handler] -->|working FConnectItBoardState + rules| SBS[SetBoardState NewState, ChangeEvent]
-        SBS --> CAP[capture current → PreviousState; apply NewState; store ChangeEvent]
+        H[Mediator DispatchRequest] -->|NewState + ChangeEvent| SBS[SetBoardState]
+        SBS --> CAP[current -> PreviousState; NewState; ChangeEvent]
         CAP --> REP[(BoardSnapshot replicates)]
-        CAP --> BC1[BroadcastChange → OnBoardStateChanged]
+        CAP --> BC1[BroadcastChange -> OnBoardStateChanged]
         BC1 --> EQ1[EnqueueBoardEventTags]
+        EQ1 --> LOCK[OnBoardChangeCommitted -> GameMode locks]
+        LOCK --> MK[queue BoardChangeComplete marker]
     end
     subgraph "Every client"
         REP --> OR[OnRep_BoardSnapshot]
-        OR --> BC2[BroadcastChange → OnBoardStateChanged]
+        OR --> BC2[BroadcastChange -> OnBoardStateChanged]
         BC2 --> EQ2[EnqueueBoardEventTags]
     end
-    EQ1 --> TAGS[UGameEventTaskSubsystem.QueueTagContainer<br/>order: shift/piece-placed → line-scored → player-win]
+    EQ1 --> TAGS[UGameEventTaskSubsystem: one entry per event, payload = the event]
     EQ2 --> TAGS
-    BC1 --> L1[listeners read GetCurrentState / GetChangeEvent]
-    BC2 --> L1
-    TAGS --> VIS[gated visual reactions per tag]
+    MK --> TAGS
+    TAGS --> VIS[visuals per event tag, one at a time]
+    TAGS -->|marker completes, server| REL[lock lifts -> waiting level changes -> settled]
 ```
 
 ## Steps
 
-1. Server handler builds a working `FConnectItBoardState`, runs
-   [[UConnectIt_BoardRules|rules]], assembles `FConnectItBoardChangeEvent`.
-2. `SetBoardState(NewState, ChangeEvent)` — current→`PreviousState`, apply `NewState`,
-   store `ChangeEvent` inside the one snapshot.
-3. Snapshot replicates. `OnRep_BoardSnapshot` on clients.
-4. Both machines: `BroadcastChange()` (zero-param) → listeners call `GetCurrentState()` /
-   `GetChangeEvent()` for payload.
-5. Both machines: `EnqueueBoardEventTags()` reads `ChangeEvent` and fires one
-   `QueueTagContainer` per event flag set, in fixed order.
+1. The Mediator builds the new board on a copy (the operation, then the rule set's scoring and win stamp), with the
+   ordered `FConnectItBoardChangeEvent`.
+2. `SetBoardState(NewState, ChangeEvent)`: current -> `PreviousState`, `NewState` applied, `ChangeEvent` stored in the
+   one snapshot.
+3. The server broadcasts at once; clients get the snapshot and broadcast from `OnRep_BoardSnapshot`.
+4. Both machines: `EnqueueBoardEventTags()` queues each event (its tag, the event as payload). A listener reads the
+   event that is playing through `UConnectIt_BoardEventLibrary`, even if a newer snapshot has arrived.
+5. Server only: `OnBoardChangeCommitted`, then the completion marker. The GameMode lifts the lock when it completes
+   (or after `BoardChangeTimeoutSeconds`), and mirrors "busy" on the GameState (`IsBoardChangeResolving`) for UI.
 
 ## Gotchas
 
-- **Never write `CurrentState` directly** — only `SetBoardState`.
-- The `OnBoardStateChanged` delegate carries **no parameters** by design — data comes from
-  `GetChangeEvent()` (so debug widgets and gameplay bind the same signal).
-- `EnqueueBoardEventTags` runs client-side too — anything it triggers must be safe to run
-  without server authority and idempotent.
-- `bGameWon` (event) is edge-triggered; `bGameOver` (state) latches.
-- `TMap` can't replicate → `FConnectItBoardState` uses parallel `TilePositions` /
-  `TileDataArray`; the change event uses flat arrays for the same reason.
-- Ported from a deprecated `UConnectIt_BoardSequencerComponent` that derived the tag list
-  separately — if you see that name, it's the old path.
+- **Never write `CurrentState` directly** -- only `SetBoardState`.
+- **The set of tiles can change mid-match** (a phased level's Change Layout: Tiles Removed / Tiles Added;
+  `FConnectItBoardState::RemoveTileData`). Indices into `TilePositions` / `TileDataArray` are only good for one board --
+  look tiles up by position. The board also carries the level's `CurrentPhase`.
+- `OnBoardStateChanged` carries **no parameters** by design: data comes from `GetCurrentState()` / `GetChangeEvent()`.
+  That list is the latest change's, not necessarily the one playing.
+- `EnqueueBoardEventTags` runs on clients too: anything it triggers must be safe without authority.
+- **Gameplay reacts to state, visuals to event tags.** The directors hear `OnBoardStateChanged` when the change is
+  committed, before its visuals.
+- The marker is server-only and is not a board event (no struct, never in a change list).
+- `GameWon` (event) is edge-triggered; `bGameOver` (state) latches.
+- `TMap` can't replicate, so `FConnectItBoardState` uses parallel `TilePositions` / `TileDataArray`.
 
 ## Cross-impact
 
-Every UI reader (`AConnectIt_GameState` wrappers, `UConnectIt_BoardStateLibrary`, the
-`UDWidget_ConnectIt_*`), the MinMax AI (builds hypothetical `FConnectItBoardState`s), and
-`EnqueueBoardEventTags` all depend on this shape. A new change kind = new
-`FConnectItBoardChangeEvent` fields + an `EnqueueBoardEventTags` branch + a tag.
+Every UI reader (`AConnectIt_GameState` wrappers, `UConnectIt_BoardStateLibrary`, the debug widgets), the MinMax AI
+(hypothetical `FConnectItBoardState`s) and the event queue depend on this shape. A new kind of change is a new board
+event struct with its tag ([[add-a-board-request-type]]).
 
 ## See also
 
-- In-repo: [[ConnectIt/CLAUDE|ConnectIt overview]].
-- [[place-piece-request|systems/place-piece-request]]
+- [[place-piece-request]]
+- Decisions: [one board change at a time](../../_decisions/2026-10-21-one-board-change-at-a-time.md),
+  [board events are structs carried by the queue](../../_decisions/2026-10-07-board-events-are-structs-carried-by-the-queue.md)

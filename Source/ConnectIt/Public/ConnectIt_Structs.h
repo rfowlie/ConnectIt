@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "GridMechanicsBaseEnums.h"
 #include "GridMechanicsBaseStructs.h"
+#include "GameplayTagContainer.h"
 #include "StructUtils/InstancedStruct.h"
 #include "ConnectIt_Structs.generated.h"
 
@@ -29,8 +30,8 @@ struct FConnectItTileData
     UPROPERTY(BlueprintReadOnly)
     bool bIsActive = true;
 
-    // mark tiles that are active but not placeable by players
-    // (non player piece occupying)
+    // Whether the tile holds a piece (FactionPiece != -1; kept in step by
+    // SetFactionPiece)
     UPROPERTY(BlueprintReadOnly)
     bool bIsOccupied = true;
 
@@ -41,6 +42,44 @@ struct FConnectItTileData
     // FConnectItBoardOperation_Shift.
     UPROPERTY(BlueprintReadOnly)
     bool bCanShift = true;
+
+    // A locked tile is on the board and in play, but a player can't place on
+    // it, and only operations that say so (CanOperateOnLockedTiles) act on
+    // it. It can hold a piece, and that piece counts in lines. Different from
+    // an inactive tile, which is out of play.
+    UPROPERTY(BlueprintReadOnly)
+    bool bIsLocked = false;
+
+    // This tile's id on its board: given by the board when the tile joins it
+    // (FConnectItBoardState::AddTile -- building the board, Add Tiles), never
+    // reused, never authored. It travels with the tile's data (a shift moves
+    // it along), so a power that refers to another tile stores this rather
+    // than a position. INDEX_NONE until the tile is on a board.
+    UPROPERTY(BlueprintReadOnly)
+    int32 TileId = INDEX_NONE;
+
+    // --- The tile's own power ---
+
+    // Which power (ConnectIt.TilePower.*), from the placed tile or layout
+    // cell when the tile joins the board, then never changed: it travels with
+    // the tile. Only the tag -- the definition is in the rules
+    // (FConnectItRuleSet::TilePowers), so the board stays plain data and
+    // copies cheaply. Empty = none.
+    UPROPERTY(BlueprintReadOnly)
+    FGameplayTag TilePowerTag;
+
+    // The first turn (FConnectItBoardState::TurnNumber) its power can fire
+    // again after a cooldown
+    UPROPERTY(BlueprintReadOnly)
+    int32 PowerReadyTurn = 0;
+
+    // A Chained tile's partner: the partner tile's TileId, or INDEX_NONE for
+    // none. A per-tile link, set when the tile joins the board (from its
+    // settings' partner position) or by Set Chain Partner; it travels with
+    // the tile. An id no tile has any more (the partner was removed) reads as
+    // none. Meaningless on a tile that isn't Chained.
+    UPROPERTY(BlueprintReadOnly)
+    int32 ChainPartnerId = INDEX_NONE;
 
     void SetFactionPiece(const int32 InFactionPiece)
     {
@@ -77,14 +116,40 @@ struct FConnectItBoardState
     UPROPERTY(BlueprintReadOnly)
     TArray<float> ScoreBoard;
 
+    // The turn this board is at (the GameState's turn number), stamped by
+    // whoever resolves a change on it: the Mediator for a real change, the
+    // caller of Simulate Operation, the AI for its search root (+1 per ply).
+    // Tile power cooldowns count against it.
     UPROPERTY(BlueprintReadOnly)
-    int32 LastModifiedTurn = 0;
+    int32 TurnNumber = 0;
+
+    // The seed of the board's random stream: tile powers that choose at
+    // random roll from it and advance it, so every copy of the board (server,
+    // the AI's search) rolls the same
+    UPROPERTY(BlueprintReadOnly)
+    int32 RandomSeed = 0;
+
+    // The id the next tile to join this board gets (FConnectItTileData::TileId)
+    UPROPERTY(BlueprintReadOnly)
+    int32 NextTileId = 0;
+
+    // The first turn each level-wide power (FConnectItRuleSet::LevelWidePowers,
+    // same order) can fire again: a level-wide power cools down across the
+    // whole board, not per tile. Empty until one fires.
+    UPROPERTY(BlueprintReadOnly)
+    TArray<int32> LevelWideReadyTurns;
 
     UPROPERTY(BlueprintReadOnly)
     bool bGameOver = false;
 
     UPROPERTY(BlueprintReadOnly)
     int32 WinningFactionSlot = -1;
+
+    // The faction that lost by meeting a lose condition (the winner is then the
+    // other side), or -1 -- set by FConnectItRuleSet::StampWinState. -1 when
+    // the game was won by completing goals.
+    UPROPERTY(BlueprintReadOnly)
+    int32 LosingFactionSlot = -1;
 
     // Score needed to win, published by the match's win condition (see
     // FConnectItRuleSet::StampWinState) so UI can render "57 / 100" without
@@ -96,7 +161,7 @@ struct FConnectItBoardState
     float TargetScore = 0.f;
 
     // How close each faction slot is to winning, 0 to 1, under whatever the
-    // match's win condition is (FConnectItWinCondition::GetProgress).
+    // match's win condition is (FConnectItMatchCondition::GetProgress).
     // Stamped alongside TargetScore after every move; empty until the first.
     UPROPERTY(BlueprintReadOnly)
     TArray<float> WinProgress;
@@ -116,6 +181,13 @@ struct FConnectItBoardState
     // to type the number in. Empty on a board built without it.
     UPROPERTY(BlueprintReadOnly)
     TArray<int32> StartingPieces;
+
+    // The phase a phased level is in (a ConnectIt.Phase.* tag), set by the
+    // Level director's Begin Phase; empty until one begins. On the board so
+    // clients and UI can read it, and so it changes in order with everything
+    // else.
+    UPROPERTY(BlueprintReadOnly)
+    FGameplayTag CurrentPhase;
 
     // --- Accessors ---
 
@@ -154,6 +226,48 @@ struct FConnectItBoardState
         }
     }
 
+    // The index (into TilePositions / TileDataArray) of the tile with this
+    // id, or INDEX_NONE
+    int32 FindTileIndexById(int32 TileId) const
+    {
+        if (TileId == INDEX_NONE) return INDEX_NONE;
+        return TileDataArray.IndexOfByPredicate([TileId](const FConnectItTileData& Tile) { return Tile.TileId == TileId; });
+    }
+
+    // Links the tile at Position to the tile at PartnerPosition as its chain
+    // partner (bHasPartner false: unlinks). False, and the tile unlinked, if
+    // PartnerPosition isn't a tile with an id.
+    bool LinkChainPartner(const FGridPosition& Position, bool bHasPartner, const FGridPosition& PartnerPosition)
+    {
+        FConnectItTileData* Tile = GetTileDataMutable(Position);
+        if (!Tile) return false;
+
+        const FConnectItTileData* Partner = bHasPartner ? GetTileData(PartnerPosition) : nullptr;
+        Tile->ChainPartnerId = Partner ? Partner->TileId : INDEX_NONE;
+        return !bHasPartner || (Partner && Partner->TileId != INDEX_NONE);
+    }
+
+    // A new tile joins the board at Position: Data, given the board's next
+    // tile id. Returns the id.
+    int32 AddTile(const FGridPosition& Position, FConnectItTileData Data)
+    {
+        Data.TileId = NextTileId++;
+        SetTileData(Position, Data);
+        return Data.TileId;
+    }
+
+    // Take a tile off the board, with whatever is on it (the other tiles keep
+    // their order). False if there was no tile there.
+    bool RemoveTileData(const FGridPosition& Position)
+    {
+        const int32 Index = TilePositions.IndexOfByKey(Position);
+        if (!TileDataArray.IsValidIndex(Index)) return false;
+
+        TilePositions.RemoveAt(Index);
+        TileDataArray.RemoveAt(Index);
+        return true;
+    }
+
     // --- Helper queries ---
 
     bool IsTileOccupied(const FGridPosition& Position) const
@@ -188,6 +302,43 @@ struct FConnectItBoardState
     const FConnectItTileData& GetTileDataAt(int32 Index) const
     {
         return TileDataArray[Index];
+    }
+
+    // Whether Other has the same tiles (by position, in any order) holding
+    // the same data (piece, multiplier, flags, lock, id, power tag), and the same scores. The match-level fields (turn, win
+    // state, progress) aren't compared. Checks that a board stepped along by
+    // its events (FConnectItBoardEvent::ApplyTo) arrived where the change did.
+    bool HasSameTilesAndScores(const FConnectItBoardState& Other) const
+    {
+        if (TilePositions.Num() != Other.TilePositions.Num()) return false;
+        if (ScoreBoard.Num() != Other.ScoreBoard.Num()) return false;
+
+        for (int32 Index = 0; Index < ScoreBoard.Num(); Index++)
+        {
+            if (!FMath::IsNearlyEqual(ScoreBoard[Index], Other.ScoreBoard[Index])) return false;
+        }
+
+        for (int32 Index = 0; Index < TilePositions.Num(); Index++)
+        {
+            const FConnectItTileData* Theirs = Other.GetTileData(TilePositions[Index]);
+            if (!Theirs) return false;
+
+            const FConnectItTileData& Ours = TileDataArray[Index];
+            if (Ours.FactionPiece != Theirs->FactionPiece
+                || !FMath::IsNearlyEqual(Ours.Multiplier, Theirs->Multiplier)
+                || Ours.bIsActive != Theirs->bIsActive
+                || Ours.bIsOccupied != Theirs->bIsOccupied
+                || Ours.bCanShift != Theirs->bCanShift
+                || Ours.bIsLocked != Theirs->bIsLocked
+                || Ours.TileId != Theirs->TileId
+                || Ours.TilePowerTag != Theirs->TilePowerTag
+                || Ours.PowerReadyTurn != Theirs->PowerReadyTurn
+                || Ours.ChainPartnerId != Theirs->ChainPartnerId)
+            {
+                return false;
+            }
+        }
+        return true;
     }
 };
 

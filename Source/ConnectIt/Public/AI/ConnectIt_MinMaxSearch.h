@@ -29,11 +29,13 @@ struct CONNECTIT_API FConnectItMinMaxSearchSettings
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "MinMax", meta = (ClampMin = 1, ClampMax = 10))
     int32 MaxDepth = 4;
 
-    // Search time; when it runs out the search stops deepening and ranks
-    // moves from the deepest look-ahead it completed. 0 = no limit (always
-    // reaches MaxDepth).
+    // Search time when the decision gives none (e.g. the Blueprint node
+    // called with a context that has no budget). Under an AI director the
+    // director's think time is used instead. When it runs out the search
+    // stops deepening and ranks moves from the deepest look-ahead it
+    // completed. 0 = no limit (always reaches MaxDepth).
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "MinMax", meta = (ClampMin = 0.0, Units = "s"))
-    float TimeBudgetSeconds = 1.5f;
+    float DefaultTimeBudgetSeconds = 1.5f;
 
     // What the search values in an unfinished position
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "MinMax")

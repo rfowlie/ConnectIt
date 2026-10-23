@@ -3,7 +3,6 @@
 #include "Framework/Subsystem/ConnectIt_MatchSetupSubsystem.h"
 #include "Framework/Data/ConnectIt_MatchPreset.h"
 #include "Framework/Data/ConnectIt_LevelCatalog.h"
-#include "Framework/Data/ConnectIt_LevelConfigSettings.h"
 #include "Engine/GameInstance.h"
 #include "Engine/World.h"
 #include "Kismet/GameplayStatics.h"
@@ -41,12 +40,6 @@ void UConnectIt_MatchSetupSubsystem::ClearMatchSettings()
 {
     Settings = FConnectItMatchSettings();
     bHasSettings = false;
-}
-
-UConnectIt_LevelCatalog* UConnectIt_MatchSetupSubsystem::GetLevelCatalog() const
-{
-    const UConnectIt_LevelConfigSettings* ProjectSettings = GetDefault<UConnectIt_LevelConfigSettings>();
-    return IsValid(ProjectSettings) ? ProjectSettings->LevelCatalog.LoadSynchronous() : nullptr;
 }
 
 bool UConnectIt_MatchSetupSubsystem::GetSettingsForCurrentLevel(

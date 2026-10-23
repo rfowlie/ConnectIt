@@ -64,9 +64,21 @@ Tune in this order after a playtest: AI strength, AI starting pieces, board size
 - **B's replenishment reaction** (place N pieces on score, avoiding lines). It fits the planned after-move "reactions" step
   of the rule set; the placed pieces would be reported as piece-placed events for the visuals.
 - Who moves first. (The AI's slot is now read when it registers, so which slot the human gets no longer matters to the win
-  conditions.)
+  conditions.) **2026-10-20: swap-only levels need the AI to move first, or AI pieces placed at the start** -- a swap trades
+  an own piece with another, so with no AI piece on the board the player has no legal move.
 - Whether an unwinnable position (player below 4 pieces, target unmet) needs a defined outcome; today the AI scoring or the
-  turn timer ends it. Related to the [full-board question](../_questions/full-board-outcome.md).
+  turn timer ends it. Related to the [full-board question](../_questions/full-board-outcome.md). **2026-10-20: it becomes a
+  player lose condition** once the [three directors](three-directors.md) land: *Not Enough Pieces To Score* (fewer pieces than
+  the scoring rule's line length) and/or *No Legal Move: Swap Pieces* -- both built (2026-10-20). Players learn to count.
+
+## Exhaustion levels: piece-count rules (2026-10-20)
+
+- **"Divisible by the line length" isn't enough.** The Lines rule clears every piece of a scoring line: a 5-in-a-row clears 5,
+  and two lines crossing at the completing piece clear 4 + 4 - 1 = 7. A starting count that is a multiple of 4 can still miss
+  zero unless the layout makes long or crossing lines impossible -- or the level accepts it (and the stuck state is a loss).
+- **The AI can strand the player.** If the AI clears all of its own pieces (its own scoring), the player has no swap target
+  left: *No Legal Move: Swap Pieces* holds. A level rule, or something the AI's strategy must avoid.
+- **A side with no legal move passes**: the AI ends its turn at once; the UI can grey out actions with *Has Any Legal Move*.
 - The UI's single "target score" is the current group's (the first faction's that has a score-based one); per-faction win
   progress is the number to show when the two differ.
 - The AI's search scores positions by score, so an AI whose own goal was a Piece Count would not steer toward it.

@@ -22,8 +22,8 @@ struct FConnectItLevelCatalogEntry
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Level", meta = (MultiLine = true))
     FText Description;
 
-    // The map to open. Its stage (and default match preset) comes from the
-    // level config registered for it in ConnectIt_LevelConfigSettings.
+    // The map to open. Its board (level config) and default match preset come
+    // from its World Settings (AConnectIt_WorldSettings).
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Level")
     TSoftObjectPtr<UWorld> Level;
 
@@ -33,8 +33,8 @@ struct FConnectItLevelCatalogEntry
 
 // What the main menu offers for a match: the playable levels and the ways to
 // play them (match presets -- a preset names its AI director, so "Classic
-// Easy" and "Classic Hard" are two presets). Set on ConnectIt_LevelConfigSettings::LevelCatalog
-// and read through UConnectIt_MatchSetupSubsystem::GetLevelCatalog.
+// Easy" and "Classic Hard" are two presets). Referenced directly by the main menu
+// (its widget holds the catalog asset).
 UCLASS(BlueprintType)
 class CONNECTIT_API UConnectIt_LevelCatalog : public UDataAsset
 {

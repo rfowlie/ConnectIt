@@ -20,30 +20,56 @@ namespace
     }
 }
 
+namespace
+{
+    // Every kind of board operation: its request type and a default instance
+    // to ask type-level questions of (HasAnyLegalInstance)
+    struct FOperationCatalog
+    {
+        TArray<FGameplayTag> RequestTypes;
+        TMap<FGameplayTag, FInstancedStruct> Defaults;
+    };
+
+    const FOperationCatalog& GetOperationCatalog()
+    {
+        // Built on first use (game thread, after modules have loaded -- the
+        // GameMode asks at match setup, before any background search).
+        // Blueprint structs can't derive from a C++ struct, so the set never
+        // changes at runtime; afterwards it is only read, from any thread.
+        static const FOperationCatalog Catalog = []()
+        {
+            FOperationCatalog Found;
+            const UScriptStruct* Base = FConnectItBoardOperation::StaticStruct();
+            for (TObjectIterator<UScriptStruct> It; It; ++It)
+            {
+                if (*It == Base || !It->IsChildOf(Base)) continue;
+
+                FInstancedStruct Instance;
+                Instance.InitializeAs(*It);
+                const FGameplayTag RequestType = Instance.Get<FConnectItBoardOperation>().GetRequestType();
+                if (RequestType.IsValid() && !Found.Defaults.Contains(RequestType))
+                {
+                    Found.RequestTypes.Add(RequestType);
+                    Found.Defaults.Add(RequestType, MoveTemp(Instance));
+                }
+            }
+            return Found;
+        }();
+        return Catalog;
+    }
+}
+
 const TArray<FGameplayTag>& FConnectItBoardOperation::GetAllRequestTypes()
 {
-    // Built on first use (game thread, after modules have loaded). Blueprint
-    // structs can't derive from a C++ struct, so the set never changes at
-    // runtime.
-    static const TArray<FGameplayTag> RequestTypes = []()
-    {
-        TArray<FGameplayTag> Found;
-        const UScriptStruct* Base = FConnectItBoardOperation::StaticStruct();
-        for (TObjectIterator<UScriptStruct> It; It; ++It)
-        {
-            if (*It == Base || !It->IsChildOf(Base)) continue;
+    return GetOperationCatalog().RequestTypes;
+}
 
-            FInstancedStruct Instance;
-            Instance.InitializeAs(*It);
-            const FGameplayTag RequestType = Instance.Get<FConnectItBoardOperation>().GetRequestType();
-            if (RequestType.IsValid())
-            {
-                Found.AddUnique(RequestType);
-            }
-        }
-        return Found;
-    }();
-    return RequestTypes;
+EConnectItMoveLegality FConnectItBoardOperation::GetLegality(
+    FGameplayTag RequestType, const FConnectItBoardState& Board, int32 ForFaction)
+{
+    const FInstancedStruct* Default = GetOperationCatalog().Defaults.Find(RequestType);
+    const FConnectItBoardOperation* Operation = Default ? Default->GetPtr<FConnectItBoardOperation>() : nullptr;
+    return Operation ? Operation->HasAnyLegalInstance(Board, ForFaction) : EConnectItMoveLegality::Unknown;
 }
 
 // ---------------------------------------------------------------------------
@@ -66,15 +92,25 @@ bool FConnectItBoardOperation_PlacePiece::CanApply(const FConnectItBoardState& B
     return true;
 }
 
+EConnectItMoveLegality FConnectItBoardOperation_PlacePiece::HasAnyLegalInstance(
+    const FConnectItBoardState& Board, int32 ForFaction) const
+{
+    for (int32 TileIndex = 0; TileIndex < Board.NumTiles(); TileIndex++)
+    {
+        if (IsTilePlaceable(Board, TileIndex)) return EConnectItMoveLegality::Legal;
+    }
+    return EConnectItMoveLegality::NoLegalMove;
+}
+
 void FConnectItBoardOperation_PlacePiece::Apply(
     FConnectItBoardState& Board,
-    FConnectItTouchedPositions& OutTouched,
+    FConnectItBoardChanges& OutChanges,
     FConnectItBoardChangeEvent* OutEvents) const
 {
     if (FConnectItTileData* Tile = Board.GetTileDataMutable(Position))
     {
         Tile->SetFactionPiece(Faction);
-        OutTouched.Add(Position);
+        OutChanges.AddEntered(Position, Faction, ArrivingPiecesSurviveScoring());
     }
 
     if (OutEvents)
@@ -125,9 +161,27 @@ bool FConnectItBoardOperation_SwapPieces::CanApply(const FConnectItBoardState& B
     return true;
 }
 
+EConnectItMoveLegality FConnectItBoardOperation_SwapPieces::HasAnyLegalInstance(
+    const FConnectItBoardState& Board, int32 ForFaction) const
+{
+    // CanApply's rule: both tiles occupied, exactly one of them the
+    // faction's -- so a piece of its own and any other occupied tile
+    bool bHasOwn = false;
+    bool bHasOther = false;
+    for (const FConnectItTileData& Tile : Board.TileDataArray)
+    {
+        // A locked tile's piece can't be swapped
+        if (!Tile.bIsOccupied || Tile.bIsLocked) continue;
+        if (Tile.FactionPiece == ForFaction) bHasOwn = true;
+        else bHasOther = true;
+        if (bHasOwn && bHasOther) return EConnectItMoveLegality::Legal;
+    }
+    return EConnectItMoveLegality::NoLegalMove;
+}
+
 void FConnectItBoardOperation_SwapPieces::Apply(
     FConnectItBoardState& Board,
-    FConnectItTouchedPositions& OutTouched,
+    FConnectItBoardChanges& OutChanges,
     FConnectItBoardChangeEvent* OutEvents) const
 {
     FConnectItTileData* DataA = Board.GetTileDataMutable(PositionA);
@@ -139,9 +193,12 @@ void FConnectItBoardOperation_SwapPieces::Apply(
         DataA->SetFactionPiece(PieceB);
         DataB->SetFactionPiece(PieceA);
 
-        // A first, then B -- the order the after-move step scores them in
-        OutTouched.Add(PositionA);
-        OutTouched.Add(PositionB);
+        // Each tile's piece left and the other's arrived. A first, then B --
+        // the order the after-move step scores them in.
+        OutChanges.AddExited(PositionA, PieceA);
+        OutChanges.AddExited(PositionB, PieceB);
+        OutChanges.AddEntered(PositionA, PieceB, ArrivingPiecesSurviveScoring());
+        OutChanges.AddEntered(PositionB, PieceA, ArrivingPiecesSurviveScoring());
     }
 
     if (OutEvents)
@@ -220,7 +277,7 @@ bool FConnectItBoardOperation_Shift::CanApply(const FConnectItBoardState& Board,
 
 void FConnectItBoardOperation_Shift::Apply(
     FConnectItBoardState& Board,
-    FConnectItTouchedPositions& OutTouched,
+    FConnectItBoardChanges& OutChanges,
     FConnectItBoardChangeEvent* OutEvents) const
 {
     // A tile with bCanShift false is skipped -- it keeps its own data
@@ -264,13 +321,15 @@ void FConnectItBoardOperation_Shift::Apply(
         ShiftEndPositions.Add(ShiftablePositions[Index]);
     }
 
-    // Any position in the line that now holds a piece might complete a line
+    // Any position in the line that now holds a piece might complete a line.
+    // Moved, not entered: each piece travelled with its tile (and the tile's
+    // power, if it has one), so no piece arrived on a tile.
     for (const FGridPosition& Position : Positions)
     {
         const FConnectItTileData* Data = Board.GetTileData(Position);
         if (Data && Data->bIsOccupied)
         {
-            OutTouched.Add(Position);
+            OutChanges.AddMoved(Position, Data->FactionPiece, ArrivingPiecesSurviveScoring());
         }
     }
 
@@ -317,13 +376,13 @@ bool FConnectItBoardOperation_ForcePlacePiece::CanApply(const FConnectItBoardSta
 
 void FConnectItBoardOperation_ForcePlacePiece::Apply(
     FConnectItBoardState& Board,
-    FConnectItTouchedPositions& OutTouched,
+    FConnectItBoardChanges& OutChanges,
     FConnectItBoardChangeEvent* OutEvents) const
 {
     if (FConnectItTileData* Tile = Board.GetTileDataMutable(Position))
     {
         Tile->SetFactionPiece(Faction);
-        OutTouched.Add(Position);
+        OutChanges.AddEntered(Position, Faction, ArrivingPiecesSurviveScoring());
     }
 
     if (OutEvents)
@@ -371,7 +430,7 @@ bool FConnectItBoardOperation_CapturePiece::CanApply(const FConnectItBoardState&
 
 void FConnectItBoardOperation_CapturePiece::Apply(
     FConnectItBoardState& Board,
-    FConnectItTouchedPositions& OutTouched,
+    FConnectItBoardChanges& OutChanges,
     FConnectItBoardChangeEvent* OutEvents) const
 {
     int32 PreviousFaction = INDEX_NONE;
@@ -379,7 +438,7 @@ void FConnectItBoardOperation_CapturePiece::Apply(
     {
         PreviousFaction = Tile->FactionPiece;
         Tile->SetFactionPiece(Faction);
-        OutTouched.Add(Position);
+        OutChanges.AddPieceChanged(Position, Faction, PreviousFaction, ArrivingPiecesSurviveScoring());
     }
 
     if (OutEvents)
@@ -429,15 +488,16 @@ bool FConnectItBoardOperation_RemovePiece::CanApply(const FConnectItBoardState& 
 
 void FConnectItBoardOperation_RemovePiece::Apply(
     FConnectItBoardState& Board,
-    FConnectItTouchedPositions& OutTouched,
+    FConnectItBoardChanges& OutChanges,
     FConnectItBoardChangeEvent* OutEvents) const
 {
-    // No piece arrives anywhere, so nothing is reported in OutTouched
+    // A piece leaves; nothing arrives, so nothing scores
     int32 RemovedFaction = INDEX_NONE;
     if (FConnectItTileData* Tile = Board.GetTileDataMutable(Position))
     {
         RemovedFaction = Tile->FactionPiece;
         Tile->SetFactionPiece(-1);
+        OutChanges.AddExited(Position, RemovedFaction);
     }
 
     if (OutEvents)
@@ -485,18 +545,22 @@ bool FConnectItBoardOperation_DestroyTileMultiplier::CanApply(const FConnectItBo
 
 void FConnectItBoardOperation_DestroyTileMultiplier::Apply(
     FConnectItBoardState& Board,
-    FConnectItTouchedPositions& OutTouched,
+    FConnectItBoardChanges& OutChanges,
     FConnectItBoardChangeEvent* OutEvents) const
 {
+    float PreviousMultiplier = 1.0f;
     if (FConnectItTileData* Tile = Board.GetTileDataMutable(Position))
     {
+        PreviousMultiplier = Tile->Multiplier;
         Tile->Multiplier = 1.0f;
+        OutChanges.AddTileChanged(Position, EConnectItTileChange::Multiplier, Faction);
     }
 
     if (OutEvents)
     {
         FConnectItBoardEvent_TileMultiplierDestroyed Event;
-        Event.Position = Position;
+        Event.Position           = Position;
+        Event.PreviousMultiplier = PreviousMultiplier;
         OutEvents->Add(Event);
     }
 }
@@ -528,7 +592,7 @@ bool FConnectItBoardOperation_ToggleTileActive::CanApply(const FConnectItBoardSt
 
 void FConnectItBoardOperation_ToggleTileActive::Apply(
     FConnectItBoardState& Board,
-    FConnectItTouchedPositions& OutTouched,
+    FConnectItBoardChanges& OutChanges,
     FConnectItBoardChangeEvent* OutEvents) const
 {
     bool bNowActive = false;
@@ -536,6 +600,7 @@ void FConnectItBoardOperation_ToggleTileActive::Apply(
     {
         Tile->bIsActive = !Tile->bIsActive;
         bNowActive = Tile->bIsActive;
+        OutChanges.AddTileChanged(Position, EConnectItTileChange::Active, Faction);
     }
 
     if (OutEvents)
@@ -550,4 +615,474 @@ void FConnectItBoardOperation_ToggleTileActive::Apply(
 FString FConnectItBoardOperation_ToggleTileActive::Describe() const
 {
     return PositionText(Position);
+}
+
+// ---------------------------------------------------------------------------
+// Change Goals
+// ---------------------------------------------------------------------------
+
+FGameplayTag FConnectItBoardOperation_ChangeGoals::GetRequestType() const
+{
+    return ConnectIt_Game_ChangeGoals;
+}
+
+bool FConnectItBoardOperation_ChangeGoals::CanApply(const FConnectItBoardState& Board, FString* OutWhyNot) const
+{
+    if (Factions.IsEmpty())
+    {
+        SetWhyNot(OutWhyNot, TEXT("no factions to change the goals of"));
+        return false;
+    }
+    for (const int32 GoalFaction : Factions)
+    {
+        if (!Board.ScoreBoard.IsValidIndex(GoalFaction))
+        {
+            SetWhyNot(OutWhyNot, FString::Printf(
+                TEXT("faction %d is not on this board (%d factions)"), GoalFaction, Board.ScoreBoard.Num()));
+            return false;
+        }
+    }
+    return true;
+}
+
+void FConnectItBoardOperation_ChangeGoals::Apply(
+    FConnectItBoardState& Board,
+    FConnectItBoardChanges& OutChanges,
+    FConnectItBoardChangeEvent* OutEvents) const
+{
+    // New win goals start from the first; lose conditions keep no progress
+    if (bWinGoals)
+    {
+        Board.GroupsCompleted.SetNumZeroed(Board.ScoreBoard.Num());
+        for (const int32 GoalFaction : Factions)
+        {
+            if (Board.GroupsCompleted.IsValidIndex(GoalFaction))
+            {
+                Board.GroupsCompleted[GoalFaction] = 0;
+            }
+        }
+    }
+
+    if (OutEvents)
+    {
+        FConnectItBoardEvent_GoalsChanged Event;
+        Event.Factions   = Factions;
+        Event.bWinGoals  = bWinGoals;
+        Event.GroupNames = GroupNames;
+        OutEvents->Add(Event);
+    }
+}
+
+FString FConnectItBoardOperation_ChangeGoals::Describe() const
+{
+    FString FactionText;
+    for (const int32 GoalFaction : Factions)
+    {
+        FactionText += FString::Printf(TEXT("%s%d"), FactionText.IsEmpty() ? TEXT("") : TEXT(","), GoalFaction);
+    }
+    FString Names;
+    for (const FName& Name : GroupNames)
+    {
+        Names += (Names.IsEmpty() ? TEXT("") : TEXT(", ")) + Name.ToString();
+    }
+    return FString::Printf(TEXT("%s for faction(s) %s: %s"),
+        bWinGoals ? TEXT("win goals") : TEXT("lose conditions"), *FactionText,
+        Names.IsEmpty() ? TEXT("none") : *Names);
+}
+
+// ---------------------------------------------------------------------------
+// Begin Phase
+// ---------------------------------------------------------------------------
+
+FGameplayTag FConnectItBoardOperation_BeginPhase::GetRequestType() const
+{
+    return ConnectIt_Game_BeginPhase;
+}
+
+bool FConnectItBoardOperation_BeginPhase::CanApply(const FConnectItBoardState& Board, FString* OutWhyNot) const
+{
+    if (!Phase.IsValid())
+    {
+        SetWhyNot(OutWhyNot, TEXT("no phase given"));
+        return false;
+    }
+    return true;
+}
+
+void FConnectItBoardOperation_BeginPhase::Apply(
+    FConnectItBoardState& Board,
+    FConnectItBoardChanges& OutChanges,
+    FConnectItBoardChangeEvent* OutEvents) const
+{
+    const FGameplayTag Previous = Board.CurrentPhase;
+    Board.CurrentPhase = Phase;
+
+    if (OutEvents)
+    {
+        FConnectItBoardEvent_PhaseChanged Event;
+        Event.PreviousPhase = Previous;
+        Event.Phase         = Phase;
+        OutEvents->Add(Event);
+    }
+}
+
+FString FConnectItBoardOperation_BeginPhase::Describe() const
+{
+    return Phase.ToString();
+}
+
+// ---------------------------------------------------------------------------
+// Remove Tiles / Add Tiles / Change Layout
+// ---------------------------------------------------------------------------
+
+namespace
+{
+    // Whether every position is given only once; OutRepeat gets the first one that isn't
+    bool AllDifferent(TConstArrayView<FGridPosition> Positions, FGridPosition& OutRepeat)
+    {
+        TSet<FGridPosition> Seen;
+        for (const FGridPosition& Position : Positions)
+        {
+            bool bSeen = false;
+            Seen.Add(Position, &bSeen);
+            if (bSeen)
+            {
+                OutRepeat = Position;
+                return false;
+            }
+        }
+        return true;
+    }
+
+    TArray<FGridPosition> CellPositions(TConstArrayView<FConnectItBoardLayoutCell> Cells)
+    {
+        TArray<FGridPosition> Positions;
+        Positions.Reserve(Cells.Num());
+        for (const FConnectItBoardLayoutCell& Cell : Cells)
+        {
+            Positions.Add(Cell.Position);
+        }
+        return Positions;
+    }
+
+    // Removal checks: every position is a tile, given once
+    bool CanRemoveTiles(const FConnectItBoardState& Board, TConstArrayView<FGridPosition> Positions, FString* OutWhyNot)
+    {
+        FGridPosition Repeat;
+        if (!AllDifferent(Positions, Repeat))
+        {
+            SetWhyNot(OutWhyNot, FString::Printf(TEXT("position %s is removed twice"), *PositionText(Repeat)));
+            return false;
+        }
+        for (const FGridPosition& Position : Positions)
+        {
+            if (!Board.GetTileData(Position))
+            {
+                SetWhyNot(OutWhyNot, FString::Printf(TEXT("position %s is not a tile"), *PositionText(Position)));
+                return false;
+            }
+        }
+        return true;
+    }
+
+    // Addition checks: every cell's position is free (or about to be freed by
+    // Removing), given once
+    bool CanAddTiles(const FConnectItBoardState& Board, TConstArrayView<FConnectItBoardLayoutCell> Cells,
+        TConstArrayView<FGridPosition> Removing, FString* OutWhyNot)
+    {
+        FGridPosition Repeat;
+        if (!AllDifferent(CellPositions(Cells), Repeat))
+        {
+            SetWhyNot(OutWhyNot, FString::Printf(TEXT("position %s is added twice"), *PositionText(Repeat)));
+            return false;
+        }
+        for (const FConnectItBoardLayoutCell& Cell : Cells)
+        {
+            if (Board.GetTileData(Cell.Position) && !Removing.Contains(Cell.Position))
+            {
+                SetWhyNot(OutWhyNot, FString::Printf(TEXT("position %s is already a tile"), *PositionText(Cell.Position)));
+                return false;
+            }
+        }
+        return true;
+    }
+
+    // Takes the tiles off, recording any piece that went with each
+    void RemoveTilesFrom(FConnectItBoardState& Board, TConstArrayView<FGridPosition> Positions,
+        FConnectItBoardEvent_TilesRemoved& OutEvent)
+    {
+        for (const FGridPosition& Position : Positions)
+        {
+            const FConnectItTileData* Tile = Board.GetTileData(Position);
+            const int32 PieceFaction = Tile ? Tile->FactionPiece : INDEX_NONE;
+            if (Board.RemoveTileData(Position))
+            {
+                OutEvent.Positions.Add(Position);
+                OutEvent.PieceFactions.Add(PieceFaction);
+            }
+        }
+    }
+
+    // Puts the tiles on, each with a new tile id and its cell's power tag (if any).
+    // A starting piece is scored (reported as moved: a tile
+    // appearing sets off no Piece Enter) and counts as one of its faction's
+    // starting pieces, like a designer-placed piece at the start of the match
+    // (piece-count goals measure from those).
+    void AddTilesTo(FConnectItBoardState& Board, TConstArrayView<FConnectItBoardLayoutCell> Cells,
+        FConnectItBoardChanges& OutChanges, FConnectItBoardEvent_TilesAdded& OutEvent)
+    {
+        const int32 NumFactions = Board.ScoreBoard.Num();
+        for (const FConnectItBoardLayoutCell& Cell : Cells)
+        {
+            if (Board.GetTileData(Cell.Position)) continue;
+
+            const int32 TileId = Board.AddTile(Cell.Position, Cell.TileData.ToTileData(NumFactions));
+            if (Cell.TileData.HasStartingPiece(NumFactions))
+            {
+                OutChanges.AddMoved(Cell.Position, Cell.TileData.StartingFactionPiece, true);
+                if (Board.StartingPieces.IsValidIndex(Cell.TileData.StartingFactionPiece))
+                {
+                    Board.StartingPieces[Cell.TileData.StartingFactionPiece]++;
+                }
+            }
+            OutEvent.Cells.Add(Cell);
+            OutEvent.TileIds.Add(TileId);
+        }
+
+        // Partners once every cell is a tile (a partner can be one added alongside)
+        for (const FConnectItBoardLayoutCell& Cell : OutEvent.Cells)
+        {
+            if (Cell.TileData.bHasChainPartner)
+            {
+                Board.LinkChainPartner(Cell.Position, true, Cell.TileData.ChainPartner);
+            }
+        }
+    }
+
+    FString PositionsText(TConstArrayView<FGridPosition> Positions)
+    {
+        FString Text;
+        for (const FGridPosition& Position : Positions)
+        {
+            Text += (Text.IsEmpty() ? TEXT("") : TEXT(" ")) + PositionText(Position);
+        }
+        return Text.IsEmpty() ? TEXT("none") : Text;
+    }
+}
+
+FGameplayTag FConnectItBoardOperation_RemoveTiles::GetRequestType() const
+{
+    return ConnectIt_Game_RemoveTiles;
+}
+
+bool FConnectItBoardOperation_RemoveTiles::CanApply(const FConnectItBoardState& Board, FString* OutWhyNot) const
+{
+    if (Positions.IsEmpty())
+    {
+        SetWhyNot(OutWhyNot, TEXT("no tiles to remove"));
+        return false;
+    }
+    return CanRemoveTiles(Board, Positions, OutWhyNot);
+}
+
+void FConnectItBoardOperation_RemoveTiles::Apply(
+    FConnectItBoardState& Board,
+    FConnectItBoardChanges& OutChanges,
+    FConnectItBoardChangeEvent* OutEvents) const
+{
+    FConnectItBoardEvent_TilesRemoved Event;
+    RemoveTilesFrom(Board, Positions, Event);
+    if (OutEvents)
+    {
+        OutEvents->Add(Event);
+    }
+}
+
+FString FConnectItBoardOperation_RemoveTiles::Describe() const
+{
+    return PositionsText(Positions);
+}
+
+FGameplayTag FConnectItBoardOperation_AddTiles::GetRequestType() const
+{
+    return ConnectIt_Game_AddTiles;
+}
+
+bool FConnectItBoardOperation_AddTiles::CanApply(const FConnectItBoardState& Board, FString* OutWhyNot) const
+{
+    if (Cells.IsEmpty())
+    {
+        SetWhyNot(OutWhyNot, TEXT("no tiles to add"));
+        return false;
+    }
+    return CanAddTiles(Board, Cells, {}, OutWhyNot);
+}
+
+void FConnectItBoardOperation_AddTiles::Apply(
+    FConnectItBoardState& Board,
+    FConnectItBoardChanges& OutChanges,
+    FConnectItBoardChangeEvent* OutEvents) const
+{
+    FConnectItBoardEvent_TilesAdded Event;
+    AddTilesTo(Board, Cells, OutChanges, Event);
+    if (OutEvents)
+    {
+        OutEvents->Add(Event);
+    }
+}
+
+FString FConnectItBoardOperation_AddTiles::Describe() const
+{
+    return PositionsText(CellPositions(Cells));
+}
+
+void FConnectItBoardOperation_ChangeLayout::SetDiff(const FConnectItBoardLayoutDiff& Diff)
+{
+    RemovePositions = Diff.Removed;
+    AddCells = Diff.Added;
+}
+
+FGameplayTag FConnectItBoardOperation_ChangeLayout::GetRequestType() const
+{
+    return ConnectIt_Game_ChangeLayout;
+}
+
+bool FConnectItBoardOperation_ChangeLayout::CanApply(const FConnectItBoardState& Board, FString* OutWhyNot) const
+{
+    // An empty change is allowed: the layout may only move the camera
+    return CanRemoveTiles(Board, RemovePositions, OutWhyNot)
+        && CanAddTiles(Board, AddCells, RemovePositions, OutWhyNot);
+}
+
+void FConnectItBoardOperation_ChangeLayout::Apply(
+    FConnectItBoardState& Board,
+    FConnectItBoardChanges& OutChanges,
+    FConnectItBoardChangeEvent* OutEvents) const
+{
+    FConnectItBoardEvent_TilesRemoved Removed;
+    RemoveTilesFrom(Board, RemovePositions, Removed);
+
+    FConnectItBoardEvent_TilesAdded Added;
+    AddTilesTo(Board, AddCells, OutChanges, Added);
+
+    if (OutEvents)
+    {
+        if (!Removed.Positions.IsEmpty()) OutEvents->Add(Removed);
+        if (!Added.Cells.IsEmpty()) OutEvents->Add(Added);
+
+        FConnectItBoardEvent_LayoutChanged Changed;
+        Changed.LayoutName      = LayoutName;
+        Changed.bHasCamera      = bHasCamera;
+        Changed.CameraTransform = CameraTransform;
+        OutEvents->Add(Changed);
+    }
+}
+
+FString FConnectItBoardOperation_ChangeLayout::Describe() const
+{
+    return FString::Printf(TEXT("'%s': -%d tile(s), +%d tile(s)"),
+        *LayoutName.ToString(), RemovePositions.Num(), AddCells.Num());
+}
+
+// ---------------------------------------------------------------------------
+// Set Tile Locked
+// ---------------------------------------------------------------------------
+
+FGameplayTag FConnectItBoardOperation_SetTileLocked::GetRequestType() const
+{
+    return ConnectIt_Game_SetTileLocked;
+}
+
+bool FConnectItBoardOperation_SetTileLocked::CanApply(const FConnectItBoardState& Board, FString* OutWhyNot) const
+{
+    const FConnectItTileData* Tile = Board.GetTileData(Position);
+    if (!Tile)
+    {
+        SetWhyNot(OutWhyNot, FString::Printf(TEXT("position %s not registered"), *PositionText(Position)));
+        return false;
+    }
+    if (Tile->bIsLocked == bLocked)
+    {
+        SetWhyNot(OutWhyNot, FString::Printf(TEXT("tile %s is already %s"), *PositionText(Position),
+            bLocked ? TEXT("locked") : TEXT("unlocked")));
+        return false;
+    }
+    return true;
+}
+
+void FConnectItBoardOperation_SetTileLocked::Apply(
+    FConnectItBoardState& Board,
+    FConnectItBoardChanges& OutChanges,
+    FConnectItBoardChangeEvent* OutEvents) const
+{
+    if (FConnectItTileData* Tile = Board.GetTileDataMutable(Position))
+    {
+        Tile->bIsLocked = bLocked;
+        OutChanges.AddTileChanged(Position, EConnectItTileChange::Lock, Faction);
+    }
+
+    if (OutEvents)
+    {
+        FConnectItBoardEvent_TileLockChanged Event;
+        Event.Position = Position;
+        Event.bLocked  = bLocked;
+        OutEvents->Add(Event);
+    }
+}
+
+FString FConnectItBoardOperation_SetTileLocked::Describe() const
+{
+    return FString::Printf(TEXT("%s %s"), *PositionText(Position), bLocked ? TEXT("locked") : TEXT("unlocked"));
+}
+
+// ---------------------------------------------------------------------------
+// Set Chain Partner
+// ---------------------------------------------------------------------------
+
+FGameplayTag FConnectItBoardOperation_SetChainPartner::GetRequestType() const
+{
+    return ConnectIt_Game_SetChainPartner;
+}
+
+bool FConnectItBoardOperation_SetChainPartner::CanApply(const FConnectItBoardState& Board, FString* OutWhyNot) const
+{
+    const FConnectItTileData* Tile = Board.GetTileData(Position);
+    if (!Tile || Tile->TilePowerTag != ConnectIt_TilePower_Chained)
+    {
+        SetWhyNot(OutWhyNot, FString::Printf(TEXT("%s is not a Chained tile"), *PositionText(Position)));
+        return false;
+    }
+    if (bHasPartner && (PartnerPosition == Position || !Board.GetTileData(PartnerPosition)))
+    {
+        SetWhyNot(OutWhyNot, FString::Printf(TEXT("partner %s is not another tile"), *PositionText(PartnerPosition)));
+        return false;
+    }
+    return true;
+}
+
+void FConnectItBoardOperation_SetChainPartner::Apply(
+    FConnectItBoardState& Board,
+    FConnectItBoardChanges& OutChanges,
+    FConnectItBoardChangeEvent* OutEvents) const
+{
+    Board.LinkChainPartner(Position, bHasPartner, PartnerPosition);
+    const FConnectItTileData* Tile = Board.GetTileData(Position);
+    OutChanges.AddTileChanged(Position, EConnectItTileChange::Power, Faction);
+
+    if (OutEvents)
+    {
+        FConnectItBoardEvent_ChainPartnerChanged Event;
+        Event.Position        = Position;
+        Event.bHasPartner     = bHasPartner;
+        Event.PartnerPosition = PartnerPosition;
+        Event.PartnerId       = Tile ? Tile->ChainPartnerId : INDEX_NONE;
+        OutEvents->Add(Event);
+    }
+}
+
+FString FConnectItBoardOperation_SetChainPartner::Describe() const
+{
+    return bHasPartner
+        ? FString::Printf(TEXT("%s -> %s"), *PositionText(Position), *PositionText(PartnerPosition))
+        : FString::Printf(TEXT("%s -> no partner"), *PositionText(Position));
 }

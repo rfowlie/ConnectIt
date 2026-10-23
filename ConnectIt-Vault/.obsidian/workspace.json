@@ -51,12 +51,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "ConnectIt/code/systems/ai-turn.md",
+                "file": "ConnectIt/design/tile-powers-plan.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "ai-turn"
+              "title": "tile-powers-plan"
             }
           }
         ]
@@ -117,7 +117,8 @@
               "title": "Bookmarks"
             }
           }
-        ]
+        ],
+        "currentTab": 1
       }
     ],
     "direction": "horizontal",
@@ -226,42 +227,42 @@
   },
   "active": "7e9d793cb5121f8b",
   "lastOpenFiles": [
-    "ConnectIt/_decisions/2026-10-16-ai-director-pipeline.md",
-    "ConnectIt/design/match-menu-options.md",
-    "ConnectIt/design/ai-selector-ideas.md",
-    "ConnectIt/code/recipes/add-a-win-condition.md",
-    "ConnectIt/_logs/2026-10-16-1700.md",
-    "ConnectIt/design/ai-director-pipeline.md",
-    "ConnectIt/code/systems/ai-turn.md",
-    "ConnectIt/code/recipes/set-up-a-custom-ai-opponent.md.tmp.11808.a39c3dc11615",
-    "ConnectIt/_logs/2026-10-14-1605.md",
-    "ConnectIt/_decisions/2026-10-14-composable-ai.md",
-    "ConnectIt/code/recipes/direct-the-ai-during-a-match.md",
-    "ConnectIt/code/recipes/combine-ai-strategies.md",
-    "ConnectIt/design/composable-ai.md",
+    "ConnectIt/_logs/2026-10-22-2250.md",
+    "ConnectIt/_decisions/2026-10-22-tile-powers-in-the-after-move-chain.md",
+    "ConnectIt/_decisions/2026-10-22-tile-catalog-and-builder-tiles.md",
+    "ConnectIt/_logs/2026-10-22-1745.md",
+    "ConnectIt/_logs/2026-10-22-1730.md",
+    "ConnectIt/_logs/2026-10-22-1530.md",
+    "ConnectIt/_logs/2026-10-22-1500.md",
+    "ConnectIt/code/systems/tile-power-chain.md",
+    "ConnectIt/code/recipes/add-a-tile-power.md",
+    "ConnectIt/_decisions/2026-10-23-tile-catalog-and-builder-tiles.md",
+    "ConnectIt/_decisions/2026-10-23-tile-powers-in-the-after-move-chain.md",
+    "ConnectIt/_questions/tile-powers-in-the-board-pipeline.md.tmp.33392.4e6a2c82500f",
+    "ConnectIt/_logs/2026-10-23-0045.md",
+    "ConnectIt/_logs/2026-10-23-0030.md",
+    "ConnectIt/_logs/2026-10-22-2245.md",
+    "ConnectIt/_logs/2026-10-22-2200.md",
+    "ConnectIt/_logs/2026-10-22-1435.md",
+    "ConnectIt/design/tile-powers-plan.md.tmp.32036.653886de9551",
+    "ConnectIt/design/tile-power-setup.md",
+    "ConnectIt/design/tile-power-setup.md.tmp.23744.981cbff5cdd4",
+    "ConnectIt/design/tile-powers-plan.md",
     "BRAIN DUMP.md",
-    "ConnectIt/_decisions/2026-09-20-legacy-action-system-removed-stage-3.md",
-    "ConnectIt/_tasks/active.md",
-    "ConnectIt/code/systems/__INDEX.md",
-    "ConnectIt/_logs/2026-10-14-1500.md",
-    "ConnectIt/_logs/2026-10-14-1500.md.tmp.20552.fff456794751",
-    "ConnectIt/code/systems/__INDEX.md.tmp.20552.9dd57f9979ed",
-    "ConnectIt/code/recipes/set-up-a-custom-ai-opponent.md",
-    "ConnectIt/code/recipes/set-up-a-custom-ai-opponent.md.tmp.20552.a4b48728e5a1",
-    "ConnectIt/_logs/2026-10-14-1355.md",
-    "ConnectIt/_decisions/2026-10-14-stage-and-match-preset.md",
-    "ConnectIt/design/stage-and-match-preset.md",
-    "ConnectIt/_logs/2026-10-13-1826.md",
-    "ConnectIt/_logs/2026-10-13-1000.md",
-    "ConnectIt/_decisions/2026-10-13-win-condition-groups-as-ordered-stages.md",
-    "ConnectIt/design/win-condition-stages.md",
-    "ConnectIt/design/win-condition-stages.md.tmp.5796.6be027267ff8",
-    "ConnectIt/_logs/2026-10-08-2100.md",
-    "Portfolio/_discussions/__README.md.tmp.41572.7da243c4e254",
-    "Portfolio/_discussions",
-    "ConnectIt/design/sedf4wvaO",
-    "ConnectIt/design/sedPjFYde",
-    "CLAUDE.md.tmp.28224.6145a9452390",
+    "_core/_logs/2026-10-22-1032.md",
+    "ConnectIt/design/tile-lock-and-chained-tiles-plan.md",
+    "ConnectIt/_logs/2026-10-22-1018.md",
+    "ConnectIt/_decisions/2026-10-22-conditions-on-the-level-director.md",
+    "ConnectIt/_decisions/2026-10-22-phases-as-events-layouts-as-data.md",
+    "ConnectIt/code/recipes/script-a-phased-level.md",
+    "ConnectIt/code/recipes/add-a-win-condition.md.tmp.34052.e14f2c7b1e47",
+    "ConnectIt/design/tile-lock.md",
+    "ConnectIt/_logs/__INDEX.md.tmp.34052.2de11e748db5",
+    "ConnectIt/design/tile-powers-plan.md.tmp.15804.23692694f3f3",
+    "ConnectIt/_logs/__INDEX.tmp",
+    "ConnectIt/design/tile-powers-plan.md.tmp.16300.eb76b4dda452",
+    "ConnectIt/design/tile-powers-plan.md.tmp.16300.f65fa76d481a",
+    "ConnectIt/design/tile-powers-plan.md.tmp.16300.ee6ed479430a",
     "Untitled.canvas"
   ]
 }

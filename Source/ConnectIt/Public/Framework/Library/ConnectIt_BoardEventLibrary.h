@@ -67,15 +67,60 @@ public:
         meta = (WorldContext = "WorldContextObject", ExpandBoolAsExecs = "ReturnValue"))
     static bool GetActiveTileActiveToggledEvent(const UObject* WorldContextObject, FConnectItBoardEvent_TileActiveToggled& OutEvent);
 
+    // For listeners of ConnectIt.Event.GoalsChanged
+    UFUNCTION(BlueprintCallable, Category = "ConnectIt|Board Events",
+        meta = (WorldContext = "WorldContextObject", ExpandBoolAsExecs = "ReturnValue"))
+    static bool GetActiveGoalsChangedEvent(const UObject* WorldContextObject, FConnectItBoardEvent_GoalsChanged& OutEvent);
+
+    // For listeners of ConnectIt.Event.TilesRemoved
+    UFUNCTION(BlueprintCallable, Category = "ConnectIt|Board Events",
+        meta = (WorldContext = "WorldContextObject", ExpandBoolAsExecs = "ReturnValue"))
+    static bool GetActiveTilesRemovedEvent(const UObject* WorldContextObject, FConnectItBoardEvent_TilesRemoved& OutEvent);
+
+    // For listeners of ConnectIt.Event.TilesAdded
+    UFUNCTION(BlueprintCallable, Category = "ConnectIt|Board Events",
+        meta = (WorldContext = "WorldContextObject", ExpandBoolAsExecs = "ReturnValue"))
+    static bool GetActiveTilesAddedEvent(const UObject* WorldContextObject, FConnectItBoardEvent_TilesAdded& OutEvent);
+
+    // For listeners of ConnectIt.Event.PhaseChanged
+    UFUNCTION(BlueprintCallable, Category = "ConnectIt|Board Events",
+        meta = (WorldContext = "WorldContextObject", ExpandBoolAsExecs = "ReturnValue"))
+    static bool GetActivePhaseChangedEvent(const UObject* WorldContextObject, FConnectItBoardEvent_PhaseChanged& OutEvent);
+
+    // For listeners of ConnectIt.Event.LayoutChanged
+    UFUNCTION(BlueprintCallable, Category = "ConnectIt|Board Events",
+        meta = (WorldContext = "WorldContextObject", ExpandBoolAsExecs = "ReturnValue"))
+    static bool GetActiveLayoutChangedEvent(const UObject* WorldContextObject, FConnectItBoardEvent_LayoutChanged& OutEvent);
+
     // For listeners of ConnectIt.Event.Scored
     UFUNCTION(BlueprintCallable, Category = "ConnectIt|Board Events",
         meta = (WorldContext = "WorldContextObject", ExpandBoolAsExecs = "ReturnValue"))
     static bool GetActiveScoredEvent(const UObject* WorldContextObject, FConnectItBoardEvent_Scored& OutEvent);
 
+    // For listeners of ConnectIt.Event.TileLockChanged
+    UFUNCTION(BlueprintCallable, Category = "ConnectIt|Board Events",
+        meta = (WorldContext = "WorldContextObject", ExpandBoolAsExecs = "ReturnValue"))
+    static bool GetActiveTileLockChangedEvent(const UObject* WorldContextObject, FConnectItBoardEvent_TileLockChanged& OutEvent);
+
+    // For listeners of ConnectIt.Event.ChainPartnerChanged
+    UFUNCTION(BlueprintCallable, Category = "ConnectIt|Board Events",
+        meta = (WorldContext = "WorldContextObject", ExpandBoolAsExecs = "ReturnValue"))
+    static bool GetActiveChainPartnerChangedEvent(const UObject* WorldContextObject, FConnectItBoardEvent_ChainPartnerChanged& OutEvent);
+
+    // For listeners of ConnectIt.Event.PowerTriggered
+    UFUNCTION(BlueprintCallable, Category = "ConnectIt|Board Events",
+        meta = (WorldContext = "WorldContextObject", ExpandBoolAsExecs = "ReturnValue"))
+    static bool GetActivePowerTriggeredEvent(const UObject* WorldContextObject, FConnectItBoardEvent_PowerTriggered& OutEvent);
+
     // For listeners of ConnectIt.Event.WinCheckpointReached
     UFUNCTION(BlueprintCallable, Category = "ConnectIt|Board Events",
         meta = (WorldContext = "WorldContextObject", ExpandBoolAsExecs = "ReturnValue"))
     static bool GetActiveWinCheckpointReachedEvent(const UObject* WorldContextObject, FConnectItBoardEvent_WinCheckpointReached& OutEvent);
+
+    // For listeners of ConnectIt.Event.LoseConditionMet
+    UFUNCTION(BlueprintCallable, Category = "ConnectIt|Board Events",
+        meta = (WorldContext = "WorldContextObject", ExpandBoolAsExecs = "ReturnValue"))
+    static bool GetActiveLoseConditionMetEvent(const UObject* WorldContextObject, FConnectItBoardEvent_LoseConditionMet& OutEvent);
 
     // For listeners of ConnectIt.Event.PlayerWin
     UFUNCTION(BlueprintCallable, Category = "ConnectIt|Board Events",

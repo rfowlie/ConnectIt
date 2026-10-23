@@ -10,9 +10,10 @@ Per-flow narrative pages, each with a Mermaid diagram. Governed by [[_core/_sche
 
 | Flow | What it does | Status |
 |---|---|---|
-| [[place-piece-request\|place-piece-request]] | Player picks a tile → server validates → board state commits → gated visual sequence → outcome back to client | current |
+| [[place-piece-request\|place-piece-request]] | Board-change request: client busy check → server turn / settled / loadout gates → commit → gated visual sequence → outcome back to client; one board change at a time (lock until its visuals finish) | current |
 | [[board-state-single-source-of-truth\|board-state-single-source-of-truth]] | One replicated snapshot (prev + current + change event) drives every visual system on server and client | current |
-| [[ai-turn\|ai-turn]] | How the AI opponent is assembled (profile = loadout + strategy) and takes a turn: controller → strategy → Mediator gate → end turn | current |
+| [[tile-power-chain\|tile-power-chain]] | What follows a board change: settle (Sync, then Enter / Exit / Changed / Tile Changed powers until quiet) → score (find all lines, then apply) → Scoring powers → back to settle, until a pass finds no lines; firing one power (gate, cooldown, once per action, effects as operations) | current |
+| [[ai-turn\|ai-turn]] | How the AI opponent is assembled (AI director: loadout, strategies, selector) and takes a turn: waits for a settled board → coordinator → selector → Mediator gate → end turn | current |
 | [[game-state-machine\|game-state-machine]] | **Retired legacy** — the old non-networked per-turn phase machine; documented for contrast, not live | legacy |
 
 Candidate flows not yet written (`stub`): match start / board initialisation, game-over lockout, the (in-progress) game-event queue.

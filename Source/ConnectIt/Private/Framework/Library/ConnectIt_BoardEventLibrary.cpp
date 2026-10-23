@@ -47,16 +47,70 @@ bool UConnectIt_BoardEventLibrary::GetActiveTileActiveToggledEvent(
     return TryGetActiveBoardEvent(WorldContextObject, OutEvent, TEXT("GetActiveTileActiveToggledEvent"));
 }
 
+bool UConnectIt_BoardEventLibrary::GetActiveGoalsChangedEvent(
+    const UObject* WorldContextObject, FConnectItBoardEvent_GoalsChanged& OutEvent)
+{
+    return TryGetActiveBoardEvent(WorldContextObject, OutEvent, TEXT("GetActiveGoalsChangedEvent"));
+}
+
+bool UConnectIt_BoardEventLibrary::GetActiveTilesRemovedEvent(
+    const UObject* WorldContextObject, FConnectItBoardEvent_TilesRemoved& OutEvent)
+{
+    return TryGetActiveBoardEvent(WorldContextObject, OutEvent, TEXT("GetActiveTilesRemovedEvent"));
+}
+
+bool UConnectIt_BoardEventLibrary::GetActiveTilesAddedEvent(
+    const UObject* WorldContextObject, FConnectItBoardEvent_TilesAdded& OutEvent)
+{
+    return TryGetActiveBoardEvent(WorldContextObject, OutEvent, TEXT("GetActiveTilesAddedEvent"));
+}
+
+bool UConnectIt_BoardEventLibrary::GetActivePhaseChangedEvent(
+    const UObject* WorldContextObject, FConnectItBoardEvent_PhaseChanged& OutEvent)
+{
+    return TryGetActiveBoardEvent(WorldContextObject, OutEvent, TEXT("GetActivePhaseChangedEvent"));
+}
+
+bool UConnectIt_BoardEventLibrary::GetActiveLayoutChangedEvent(
+    const UObject* WorldContextObject, FConnectItBoardEvent_LayoutChanged& OutEvent)
+{
+    return TryGetActiveBoardEvent(WorldContextObject, OutEvent, TEXT("GetActiveLayoutChangedEvent"));
+}
+
 bool UConnectIt_BoardEventLibrary::GetActiveScoredEvent(
     const UObject* WorldContextObject, FConnectItBoardEvent_Scored& OutEvent)
 {
     return TryGetActiveBoardEvent(WorldContextObject, OutEvent, TEXT("GetActiveScoredEvent"));
 }
 
+bool UConnectIt_BoardEventLibrary::GetActiveTileLockChangedEvent(
+    const UObject* WorldContextObject, FConnectItBoardEvent_TileLockChanged& OutEvent)
+{
+    return TryGetActiveBoardEvent(WorldContextObject, OutEvent, TEXT("GetActiveTileLockChangedEvent"));
+}
+
+bool UConnectIt_BoardEventLibrary::GetActiveChainPartnerChangedEvent(
+    const UObject* WorldContextObject, FConnectItBoardEvent_ChainPartnerChanged& OutEvent)
+{
+    return TryGetActiveBoardEvent(WorldContextObject, OutEvent, TEXT("GetActiveChainPartnerChangedEvent"));
+}
+
+bool UConnectIt_BoardEventLibrary::GetActivePowerTriggeredEvent(
+    const UObject* WorldContextObject, FConnectItBoardEvent_PowerTriggered& OutEvent)
+{
+    return TryGetActiveBoardEvent(WorldContextObject, OutEvent, TEXT("GetActivePowerTriggeredEvent"));
+}
+
 bool UConnectIt_BoardEventLibrary::GetActiveWinCheckpointReachedEvent(
     const UObject* WorldContextObject, FConnectItBoardEvent_WinCheckpointReached& OutEvent)
 {
     return TryGetActiveBoardEvent(WorldContextObject, OutEvent, TEXT("GetActiveWinCheckpointReachedEvent"));
+}
+
+bool UConnectIt_BoardEventLibrary::GetActiveLoseConditionMetEvent(
+    const UObject* WorldContextObject, FConnectItBoardEvent_LoseConditionMet& OutEvent)
+{
+    return TryGetActiveBoardEvent(WorldContextObject, OutEvent, TEXT("GetActiveLoseConditionMetEvent"));
 }
 
 bool UConnectIt_BoardEventLibrary::GetActiveGameWonEvent(

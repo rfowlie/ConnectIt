@@ -5,12 +5,13 @@
 #include "CoreMinimal.h"
 #include "StructUtils/InstancedStruct.h"
 #include "Board/Rules/ConnectIt_ScoringRule.h"
-#include "Board/Rules/ConnectIt_WinCondition.h"
-#include "Board/Rules/ConnectIt_WinConditionGroup.h"
+#include "Board/Rules/ConnectIt_MatchCondition.h"
+#include "Board/Rules/ConnectIt_MatchConditionGroup.h"
+#include "Board/Powers/ConnectIt_TilePower.h"
 #include "ConnectIt_RuleSet.generated.h"
 
 struct FConnectItBoardOperation;
-class UConnectIt_WinConditionAsset;
+class UConnectIt_MatchConditionAsset;
 
 
 // The rules of one match: how pieces score and how the match is won.
@@ -28,13 +29,15 @@ class UConnectIt_WinConditionAsset;
 // it). (Which moves a player can make is not a rule: it is their loadout's
 // actions, each sending a FConnectItBoardOperation.)
 //
-// How a match is won: each side lists its goals (win condition assets) in the
-// order they are to be completed. Completing a goal that is not the last is a
-// checkpoint; completing the last is the win. A side that wants a single goal
-// lists a single one. When the match starts, ResolveWinGroups copies the
-// assets' conditions into PlayerWinGroups / AIWinGroups, which is what
-// everything plays with. How far each faction has got lives on the board
-// (FConnectItBoardState::GroupsCompleted), not here.
+// How a match is won: the Level director lists each side's goals (condition
+// assets) in the order they are to be completed
+// (UConnectIt_LevelDirector::PlayerWinConditions / AIWinConditions).
+// Completing a goal that is not the last is a checkpoint; completing the last
+// is the win. When the match starts, ResolveConditionGroups copies the assets'
+// conditions into PlayerWinGroups / AIWinGroups, which is what everything
+// plays with (server, clients, the AI's search); the level can replace a
+// side's mid-match (SetConditionGroups). How far each faction has got lives
+// on the board (FConnectItBoardState::GroupsCompleted), not here.
 USTRUCT(BlueprintType)
 struct CONNECTIT_API FConnectItRuleSet
 {
@@ -42,23 +45,24 @@ struct CONNECTIT_API FConnectItRuleSet
 
     FConnectItRuleSet();
 
-    // The player's goals, in order. Also the goals of every faction in a match
-    // with no AI (Online).
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Rules")
-    TArray<TObjectPtr<UConnectIt_WinConditionAsset>> PlayerWinConditions;
-
-    // The AI's goals, in order. Set them whenever the match has an AI: an empty
-    // list means the AI cannot win (it does not borrow the player's).
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Rules")
-    TArray<TObjectPtr<UConnectIt_WinConditionAsset>> AIWinConditions;
-
-    // What the match plays with: the goals above as plain groups, copied by
-    // ResolveWinGroups when the match starts (empty before). Not authored.
+    // What the match plays with: the Level director's goals as plain groups,
+    // copied by ResolveConditionGroups when the match starts (empty before). The
+    // player's apply to every faction in a match with no AI (Online). Not
+    // authored.
     UPROPERTY(Transient, BlueprintReadOnly, Category = "Rules")
-    TArray<FConnectItWinConditionGroup> PlayerWinGroups;
+    TArray<FConnectItMatchConditionGroup> PlayerWinGroups;
 
     UPROPERTY(Transient, BlueprintReadOnly, Category = "Rules")
-    TArray<FConnectItWinConditionGroup> AIWinGroups;
+    TArray<FConnectItMatchConditionGroup> AIWinGroups;
+
+    // The Level director's lose conditions as plain groups (any one met = that side
+    // loses), copied by ResolveConditionGroups. Only apply in a match with an
+    // AI (see GetLoseGroupsFor).
+    UPROPERTY(Transient, BlueprintReadOnly, Category = "Rules")
+    TArray<FConnectItMatchConditionGroup> PlayerLoseGroups;
+
+    UPROPERTY(Transient, BlueprintReadOnly, Category = "Rules")
+    TArray<FConnectItMatchConditionGroup> AILoseGroups;
 
     // The faction slot the AI plays, set by the GameMode once it has
     // registered the AI (the slot isn't known until then). INDEX_NONE = no AI,
@@ -69,18 +73,69 @@ struct CONNECTIT_API FConnectItRuleSet
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Rules", meta = (ExcludeBaseStruct))
     TInstancedStruct<FConnectItScoringRule> ScoringRule;
 
-    // Copies the goal assets' conditions into PlayerWinGroups / AIWinGroups,
-    // in order (empty entries skipped, with a warning). Game thread, once per
-    // match, before the rules are used -- the GameMode does it.
-    void ResolveWinGroups();
+    // Every tile power the match can fire, one per name: the level's tile
+    // catalog's, copied by SetTilePowers when the match starts. A tile names
+    // its power by tag (FConnectItTileData::TilePowerTag) and firing looks it
+    // up here (FindTilePower). An array, not a map: the rules replicate. Not
+    // authored.
+    UPROPERTY(Transient, BlueprintReadOnly, Category = "Rules")
+    TArray<FConnectItTilePower> TilePowers;
+
+    // The powers that apply to every tile, on top of a tile's own, in firing
+    // order: the Level director's Level Wide Powers, each one TilePowers
+    // defines. Not authored.
+    UPROPERTY(Transient, BlueprintReadOnly, Category = "Rules")
+    TArray<FGameplayTag> LevelWidePowers;
+
+    // Copies the Level director's condition assets into the win and lose
+    // groups, in order (empty entries skipped, with a warning). Game thread,
+    // once per match, before the rules are used -- the GameMode does it.
+    void ResolveConditionGroups(
+        const TArray<TObjectPtr<UConnectIt_MatchConditionAsset>>& PlayerWinConditions,
+        const TArray<TObjectPtr<UConnectIt_MatchConditionAsset>>& AIWinConditions,
+        const TArray<TObjectPtr<UConnectIt_MatchConditionAsset>>& PlayerLoseConditions = {},
+        const TArray<TObjectPtr<UConnectIt_MatchConditionAsset>>& AILoseConditions = {});
+
+    // Copies Powers into TilePowers and LevelWide into LevelWidePowers. A
+    // power with no name or a second one with the same name, and a
+    // level-wide tag Powers doesn't define or that is listed twice, are
+    // skipped with a warning.
+    void SetTilePowers(const TArray<FConnectItTilePower>& Powers, const TArray<FGameplayTag>& LevelWide);
+
+    // The power named Name, or null
+    const FConnectItTilePower* FindTilePower(const FGameplayTag& Name) const;
+
+    // Replaces one side's win goals (bWinGoals) or lose conditions with
+    // Conditions, resolved the same way. Game thread. The progress the board
+    // keeps for them is the caller's to restart (the GameMode commits a
+    // Change Goals operation).
+    void SetConditionGroups(bool bForAI, bool bWinGoals,
+        const TArray<TObjectPtr<UConnectIt_MatchConditionAsset>>& Conditions);
+
+    // One side's win goals (bWinGoals) or lose conditions, in order
+    const TArray<FConnectItMatchConditionGroup>& GetConditionGroups(bool bForAI, bool bWinGoals) const;
 
     // --- The rules themselves (null if a slot was cleared / left empty) ---
 
     const FConnectItScoringRule* GetScoringRule() const { return ScoringRule.GetPtr(); }
 
+    // Replaces the scoring rule with NewRule (a scoring rule struct, e.g. Lines
+    // with its settings). False, and nothing changed, if it isn't one.
+    bool SetScoringRuleFrom(const FInstancedStruct& NewRule);
+    static bool IsScoringRule(const FInstancedStruct& Rule);
+
     // The goals Faction has to complete: the AI's if Faction is the AI's slot,
     // else the player's. No fallback between them.
-    const TArray<FConnectItWinConditionGroup>& GetWinGroupsFor(int32 Faction) const;
+    const TArray<FConnectItMatchConditionGroup>& GetWinGroupsFor(int32 Faction) const;
+
+    // The ways Faction loses: the AI's if Faction is the AI's slot, else the
+    // player's -- and none at all in a match with no AI (lose conditions in
+    // versus play are undecided, so they're ignored there).
+    const TArray<FConnectItMatchConditionGroup>& GetLoseGroupsFor(int32 Faction) const;
+
+    // The lowest faction that meets any of its lose conditions on Board, or
+    // INDEX_NONE; OutGroup (if given) gets the condition met
+    int32 GetLosingFaction(const FConnectItBoardState& Board, const FConnectItMatchConditionGroup** OutGroup = nullptr) const;
 
     // The scoring rule if it is a T (e.g. FConnectItScoringRule_Lines), else
     // null -- for code that only makes sense under one kind of scoring.
@@ -91,26 +146,41 @@ struct CONNECTIT_API FConnectItRuleSet
 
     // The step AFTER an operation has changed the board
     // (FConnectItBoardOperation::Apply), kept separate from the change
-    // itself: every touched position that now holds a faction's piece is
-    // scored for that faction, in order. bArrivingPiecesSurvive is the
-    // operation's own answer (FConnectItBoardOperation::
-    // ArrivingPiecesSurviveScoring): whether a touched piece that scores
-    // stays on its tile. Other
-    // follow-on effects of a board change (reactions) will run here too.
+    // itself, starting from what the operation reported (Changes). A loop:
+    //   1. settle -- the Sync tile powers, then the Piece Enter / Piece Exit /
+    //      Piece Changed / Tile Changed ones what changed sets off, until
+    //      nothing more fires (FConnectItPowerChain);
+    //   2. score -- one scoring pass over every piece that arrived since the
+    //      last pass (FConnectItScoringRule::ScorePass: all found first, then
+    //      all applied);
+    //   3. scoring reactions: the Scoring tile powers on the tiles the
+    //      lines ran through (FConnectItPowerChain);
+    //   then back to 1 with what scoring and its reactions changed. The chain
+    //   ends at the first pass that scores nothing (a bug guard stops it
+    //   after 64 passes).
     // Returns the points scored; OutEvents, if given, gets one Scored event
-    // appended per thing that scored (the AI's search passes none). Does not check for
+    // appended per thing that scored, and each power's Power Triggered and
+    // its effect's events (the AI's search passes none). Does not check for
     // a win -- see GetWinningFaction / StampWinState.
     float ResolveBoardChange(
         FConnectItBoardState& Board,
-        TConstArrayView<FGridPosition> TouchedPositions,
-        bool bArrivingPiecesSurvive,
+        const FConnectItBoardChanges& Changes,
         FConnectItBoardChangeEvent* OutEvents = nullptr) const;
 
+    // Whether Operation may be carried out on Board: its own CanApply, and
+    // no locked tile among its targets unless it may act on locked tiles
+    // (FConnectItBoardOperation::CanOperateOnLockedTiles). Everything that
+    // carries out an operation asks this first: the Mediator (players and the
+    // Level director), Simulate Operation, tile powers' effects. OutWhyNot,
+    // if given, gets the reason (e.g. "tile (3,2) is locked").
+    bool CanCarryOut(const FConnectItBoardOperation& Operation, const FConnectItBoardState& Board,
+        FString* OutWhyNot = nullptr) const;
+
     // An operation carried out on Board under these rules: the operation
-    // changes the board (FConnectItBoardOperation::Apply), then
-    // ResolveBoardChange scores what it touched. Returns the points scored;
+    // changes the board (FConnectItBoardOperation::Apply, its faction stamped
+    // on the change record), then ResolveBoardChange resolves what it did. Returns the points scored;
     // OutEvents, if given, gets the operation's event followed by any Scored
-    // events. Only call when Operation.CanApply(Board). Does not check for a
+    // events. Only call when CanCarryOut(Operation, Board). Does not check for a
     // win (StampWinState). The server's Mediator and the Blueprint
     // "Simulate Operation" both go through here, so a simulated move is by
     // construction what the real one would do.
@@ -121,10 +191,11 @@ struct CONNECTIT_API FConnectItRuleSet
 
     // --- Convenience: each is a no-op / "no" when its rule is unset ---
 
+    // One scoring pass for the piece on Position alone (it stays if it scores
+    // and bArrivingPieceSurvives)
     float ApplyScoring(
         FConnectItBoardState& Board,
         FGridPosition Position,
-        int32 Faction,
         bool bArrivingPieceSurvives,
         FConnectItBoardChangeEvent* OutEvents = nullptr) const;
 
@@ -142,8 +213,11 @@ struct CONNECTIT_API FConnectItRuleSet
     // faction with no groups.
     bool HasFactionWon(const FConnectItBoardState& Board, int32 Faction) const;
 
-    // The faction slot that has won, or INDEX_NONE. If several have, the
-    // lowest slot wins.
+    // The faction slot that has won, or INDEX_NONE: a faction that has
+    // completed all its goals (if several, the lowest slot) -- or, if none
+    // has, the other side of a faction that has lost (two factions). Wins are
+    // checked first, so a move that completes a win and meets a lose
+    // condition is a win. The AI's search asks this too, so it sees losses.
     int32 GetWinningFaction(const FConnectItBoardState& Board) const;
 
     // How close Faction is to winning, 0 to 1: groups completed, plus how far
@@ -169,6 +243,7 @@ struct CONNECTIT_API FConnectItRuleSet
     // The one place a win is written into board state, called by the Mediator
     // after a move's scoring: advances the win groups (appending checkpoint
     // events to OutEvents, if given), refreshes TargetScore and WinProgress, and
-    // sets bGameOver / WinningFactionSlot once someone has won.
+    // sets bGameOver / WinningFactionSlot once someone has won. A win by a
+    // loss also sets LosingFactionSlot and appends a LoseConditionMet event.
     void StampWinState(FConnectItBoardState& Board, FConnectItBoardChangeEvent* OutEvents = nullptr) const;
 };

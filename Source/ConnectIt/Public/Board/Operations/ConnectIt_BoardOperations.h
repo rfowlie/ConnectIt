@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "GridMechanicsBaseStructs.h"
 #include "Board/Operations/ConnectIt_BoardOperation.h"
+#include "Board/ConnectIt_BoardLayoutCell.h"
 #include "ConnectIt_BoardOperations.generated.h"
 
 // Every kind of change that can be made to the board. See
@@ -24,15 +25,15 @@ struct CONNECTIT_API FConnectItBoardOperation_PlacePiece : public FConnectItBoar
 
     // THE definition of "a piece may be placed on this tile" -- every
     // condition goes here, in one place. CanApply, the AI's move generation
-    // and the client's hover highlight all use it. Today: the tile is active
-    // and unoccupied.
+    // and the client's hover highlight all use it. Today: the tile is active,
+    // unoccupied and not locked.
     // Inline: the AI's search asks this for every tile of every position.
     static bool IsTilePlaceable(const FConnectItBoardState& Board, int32 TileIndex)
     {
         if (!Board.TileDataArray.IsValidIndex(TileIndex)) return false;
 
         const FConnectItTileData& Tile = Board.TileDataArray[TileIndex];
-        return Tile.bIsActive && !Tile.bIsOccupied;
+        return Tile.bIsActive && !Tile.bIsOccupied && !Tile.bIsLocked;
     }
 
     // The same check for callers that have a grid position
@@ -65,9 +66,11 @@ struct CONNECTIT_API FConnectItBoardOperation_PlacePiece : public FConnectItBoar
     virtual bool CanApply(const FConnectItBoardState& Board, FString* OutWhyNot = nullptr) const override;
     virtual void Apply(
         FConnectItBoardState& Board,
-        FConnectItTouchedPositions& OutTouched,
+        FConnectItBoardChanges& OutChanges,
         FConnectItBoardChangeEvent* OutEvents) const override;
     virtual FString Describe() const override;
+    virtual void GetTargetPositions(TArray<FGridPosition>& OutPositions) const override { OutPositions.Add(Position); }
+    virtual EConnectItMoveLegality HasAnyLegalInstance(const FConnectItBoardState& Board, int32 ForFaction) const override;
 };
 
 // Trade places between one of the faction's own pieces and one of another
@@ -92,9 +95,11 @@ struct CONNECTIT_API FConnectItBoardOperation_SwapPieces : public FConnectItBoar
     virtual bool CanApply(const FConnectItBoardState& Board, FString* OutWhyNot = nullptr) const override;
     virtual void Apply(
         FConnectItBoardState& Board,
-        FConnectItTouchedPositions& OutTouched,
+        FConnectItBoardChanges& OutChanges,
         FConnectItBoardChangeEvent* OutEvents) const override;
     virtual FString Describe() const override;
+    virtual void GetTargetPositions(TArray<FGridPosition>& OutPositions) const override { OutPositions.Add(PositionA); OutPositions.Add(PositionB); }
+    virtual EConnectItMoveLegality HasAnyLegalInstance(const FConnectItBoardState& Board, int32 ForFaction) const override;
 };
 
 // Shift a line of tiles Steps places. Positions is the full line, in line order
@@ -129,9 +134,10 @@ struct CONNECTIT_API FConnectItBoardOperation_Shift : public FConnectItBoardOper
     virtual bool CanApply(const FConnectItBoardState& Board, FString* OutWhyNot = nullptr) const override;
     virtual void Apply(
         FConnectItBoardState& Board,
-        FConnectItTouchedPositions& OutTouched,
+        FConnectItBoardChanges& OutChanges,
         FConnectItBoardChangeEvent* OutEvents) const override;
     virtual FString Describe() const override;
+    virtual bool CanOperateOnLockedTiles() const override { return true; }
 };
 
 // Put one of the faction's pieces on a tile regardless of the placement
@@ -150,9 +156,10 @@ struct CONNECTIT_API FConnectItBoardOperation_ForcePlacePiece : public FConnectI
     virtual bool CanApply(const FConnectItBoardState& Board, FString* OutWhyNot = nullptr) const override;
     virtual void Apply(
         FConnectItBoardState& Board,
-        FConnectItTouchedPositions& OutTouched,
+        FConnectItBoardChanges& OutChanges,
         FConnectItBoardChangeEvent* OutEvents) const override;
     virtual FString Describe() const override;
+    virtual bool CanOperateOnLockedTiles() const override { return true; }
 };
 
 // Take over another faction's piece: the tile must be occupied by a piece
@@ -169,9 +176,10 @@ struct CONNECTIT_API FConnectItBoardOperation_CapturePiece : public FConnectItBo
     virtual bool CanApply(const FConnectItBoardState& Board, FString* OutWhyNot = nullptr) const override;
     virtual void Apply(
         FConnectItBoardState& Board,
-        FConnectItTouchedPositions& OutTouched,
+        FConnectItBoardChanges& OutChanges,
         FConnectItBoardChangeEvent* OutEvents) const override;
     virtual FString Describe() const override;
+    virtual void GetTargetPositions(TArray<FGridPosition>& OutPositions) const override { OutPositions.Add(Position); }
 };
 
 // Take a piece off an occupied tile. DelayTurns is declared for a delayed /
@@ -193,9 +201,10 @@ struct CONNECTIT_API FConnectItBoardOperation_RemovePiece : public FConnectItBoa
     virtual bool CanApply(const FConnectItBoardState& Board, FString* OutWhyNot = nullptr) const override;
     virtual void Apply(
         FConnectItBoardState& Board,
-        FConnectItTouchedPositions& OutTouched,
+        FConnectItBoardChanges& OutChanges,
         FConnectItBoardChangeEvent* OutEvents) const override;
     virtual FString Describe() const override;
+    virtual void GetTargetPositions(TArray<FGridPosition>& OutPositions) const override { OutPositions.Add(Position); }
 };
 
 // Reset a tile's scoring multiplier to 1; the tile must have one above 1.
@@ -212,9 +221,151 @@ struct CONNECTIT_API FConnectItBoardOperation_DestroyTileMultiplier : public FCo
     virtual bool CanApply(const FConnectItBoardState& Board, FString* OutWhyNot = nullptr) const override;
     virtual void Apply(
         FConnectItBoardState& Board,
-        FConnectItTouchedPositions& OutTouched,
+        FConnectItBoardChanges& OutChanges,
         FConnectItBoardChangeEvent* OutEvents) const override;
     virtual FString Describe() const override;
+    virtual void GetTargetPositions(TArray<FGridPosition>& OutPositions) const override { OutPositions.Add(Position); }
+};
+
+// The board's record of a side's goals being replaced mid-match. Level only:
+// no action produces it. The GameMode replaces the goals in the match's rules
+// first (AConnectIt_GameMode::SetConditions), then carries this out: for new
+// win goals it restarts those factions' goal progress (GroupsCompleted) at 0
+// -- score carries over -- and it says what changed (Goals Changed). The win
+// check that follows every board change then measures the new goals, so a
+// goal already met completes at once.
+USTRUCT(BlueprintType, meta = (DisplayName = "Change Goals"))
+struct CONNECTIT_API FConnectItBoardOperation_ChangeGoals : public FConnectItBoardOperation
+{
+    GENERATED_BODY()
+
+    // The side's factions (the AI's, or every human one)
+    UPROPERTY(BlueprintReadWrite, Category = "Operation")
+    TArray<int32> Factions;
+
+    // Win goals (progress restarts) or lose conditions (nothing on the board
+    // to restart)
+    UPROPERTY(BlueprintReadWrite, Category = "Operation")
+    bool bWinGoals = true;
+
+    // The new goals' names, in order -- for the event
+    UPROPERTY(BlueprintReadWrite, Category = "Operation")
+    TArray<FName> GroupNames;
+
+    virtual FGameplayTag GetRequestType() const override;
+    virtual bool CanApply(const FConnectItBoardState& Board, FString* OutWhyNot = nullptr) const override;
+    virtual void Apply(
+        FConnectItBoardState& Board,
+        FConnectItBoardChanges& OutChanges,
+        FConnectItBoardChangeEvent* OutEvents) const override;
+    virtual FString Describe() const override;
+};
+
+// A phased level moves to a new phase: the board records it (CurrentPhase)
+// and says so (Phase Changed). Level only. Refused for an empty tag.
+USTRUCT(BlueprintType, meta = (DisplayName = "Begin Phase"))
+struct CONNECTIT_API FConnectItBoardOperation_BeginPhase : public FConnectItBoardOperation
+{
+    GENERATED_BODY()
+
+    UPROPERTY(BlueprintReadWrite, Category = "Operation", meta = (Categories = "ConnectIt.Phase"))
+    FGameplayTag Phase;
+
+    virtual FGameplayTag GetRequestType() const override;
+    virtual bool CanApply(const FConnectItBoardState& Board, FString* OutWhyNot = nullptr) const override;
+    virtual void Apply(
+        FConnectItBoardState& Board,
+        FConnectItBoardChanges& OutChanges,
+        FConnectItBoardChangeEvent* OutEvents) const override;
+    virtual FString Describe() const override;
+};
+
+// --- The board's tiles themselves ---
+// The set of tiles can change during a match (a phased level changing
+// layout). Level only for now: no action produces these. Their cells name a
+// tile class for the visuals -- a class reference, the one UObject reference
+// an operation carries; the AI's search never builds these.
+
+// Take tiles off the board, with whatever is on them. A tile disappearing sets
+// off nothing (its piece goes with it, no Piece Exit). Refused if a position
+// isn't a tile (or is given twice).
+USTRUCT(BlueprintType, meta = (DisplayName = "Remove Tiles"))
+struct CONNECTIT_API FConnectItBoardOperation_RemoveTiles : public FConnectItBoardOperation
+{
+    GENERATED_BODY()
+
+    UPROPERTY(BlueprintReadWrite, Category = "Operation")
+    TArray<FGridPosition> Positions;
+
+    virtual FGameplayTag GetRequestType() const override;
+    virtual bool CanApply(const FConnectItBoardState& Board, FString* OutWhyNot = nullptr) const override;
+    virtual void Apply(
+        FConnectItBoardState& Board,
+        FConnectItBoardChanges& OutChanges,
+        FConnectItBoardChangeEvent* OutEvents) const override;
+    virtual FString Describe() const override;
+    virtual bool CanOperateOnLockedTiles() const override { return true; }
+};
+
+// Put tiles on the board with their starting values. A tile appearing sets off
+// nothing (no Piece Enter), but its starting piece is scored: it can complete
+// a line, like a placed piece (and stays, as a placed piece does). Refused if
+// a position is already a tile (or is given twice).
+USTRUCT(BlueprintType, meta = (DisplayName = "Add Tiles"))
+struct CONNECTIT_API FConnectItBoardOperation_AddTiles : public FConnectItBoardOperation
+{
+    GENERATED_BODY()
+
+    UPROPERTY(BlueprintReadWrite, Category = "Operation")
+    TArray<FConnectItBoardLayoutCell> Cells;
+
+    virtual FGameplayTag GetRequestType() const override;
+    virtual bool CanApply(const FConnectItBoardState& Board, FString* OutWhyNot = nullptr) const override;
+    virtual void Apply(
+        FConnectItBoardState& Board,
+        FConnectItBoardChanges& OutChanges,
+        FConnectItBoardChangeEvent* OutEvents) const override;
+    virtual FString Describe() const override;
+};
+
+// Change the board's tiles to a layout in ONE board change: remove, then add
+// (the same steps as the two operations above), then Layout Changed. One
+// change means one win check, on the final board -- no in-between board is
+// ever checked against the goals or shown. Shared positions are untouched
+// (pieces and multipliers stay). Usually built from a layout's diff
+// (UConnectIt_BoardLayout::DiffFrom).
+USTRUCT(BlueprintType, meta = (DisplayName = "Change Layout"))
+struct CONNECTIT_API FConnectItBoardOperation_ChangeLayout : public FConnectItBoardOperation
+{
+    GENERATED_BODY()
+
+    UPROPERTY(BlueprintReadWrite, Category = "Operation")
+    TArray<FGridPosition> RemovePositions;
+
+    UPROPERTY(BlueprintReadWrite, Category = "Operation")
+    TArray<FConnectItBoardLayoutCell> AddCells;
+
+    // For the Layout Changed event: the layout's name, and its camera if it has one
+    UPROPERTY(BlueprintReadWrite, Category = "Operation")
+    FName LayoutName;
+
+    UPROPERTY(BlueprintReadWrite, Category = "Operation")
+    bool bHasCamera = false;
+
+    UPROPERTY(BlueprintReadWrite, Category = "Operation")
+    FTransform CameraTransform;
+
+    // Removals and additions from a diff
+    void SetDiff(const FConnectItBoardLayoutDiff& Diff);
+
+    virtual FGameplayTag GetRequestType() const override;
+    virtual bool CanApply(const FConnectItBoardState& Board, FString* OutWhyNot = nullptr) const override;
+    virtual void Apply(
+        FConnectItBoardState& Board,
+        FConnectItBoardChanges& OutChanges,
+        FConnectItBoardChangeEvent* OutEvents) const override;
+    virtual FString Describe() const override;
+    virtual bool CanOperateOnLockedTiles() const override { return true; }
 };
 
 // Flip a tile between active and inactive. Nothing sends this yet.
@@ -230,7 +381,64 @@ struct CONNECTIT_API FConnectItBoardOperation_ToggleTileActive : public FConnect
     virtual bool CanApply(const FConnectItBoardState& Board, FString* OutWhyNot = nullptr) const override;
     virtual void Apply(
         FConnectItBoardState& Board,
-        FConnectItTouchedPositions& OutTouched,
+        FConnectItBoardChanges& OutChanges,
         FConnectItBoardChangeEvent* OutEvents) const override;
     virtual FString Describe() const override;
+    virtual void GetTargetPositions(TArray<FGridPosition>& OutPositions) const override { OutPositions.Add(Position); }
+};
+
+// Lock or unlock a tile (FConnectItTileData::bIsLocked). Works on locked tiles,
+// of course; refused when the tile is already that way. Scores nothing. For the
+// Level director (a guided tutorial step) and tile powers (the Chained tile).
+USTRUCT(BlueprintType, meta = (DisplayName = "Set Tile Locked"))
+struct CONNECTIT_API FConnectItBoardOperation_SetTileLocked : public FConnectItBoardOperation
+{
+    GENERATED_BODY()
+
+    UPROPERTY(BlueprintReadWrite, Category = "Operation")
+    FGridPosition Position;
+
+    UPROPERTY(BlueprintReadWrite, Category = "Operation")
+    bool bLocked = true;
+
+    virtual FGameplayTag GetRequestType() const override;
+    virtual bool CanApply(const FConnectItBoardState& Board, FString* OutWhyNot = nullptr) const override;
+    virtual void Apply(
+        FConnectItBoardState& Board,
+        FConnectItBoardChanges& OutChanges,
+        FConnectItBoardChangeEvent* OutEvents) const override;
+    virtual FString Describe() const override;
+    virtual bool CanOperateOnLockedTiles() const override { return true; }
+};
+
+// Set or clear a Chained tile's partner (FConnectItTileData::ChainPartnerId).
+// Refused if the tile isn't Chained (ConnectIt.TilePower.Chained) or the
+// partner isn't another tile. Works on locked tiles (it's the chain's own
+// setup). Scores nothing; the chain follows the new partner in the same
+// change's settle. For the Level director, e.g. after Change Layout brings
+// the partners in.
+USTRUCT(BlueprintType, meta = (DisplayName = "Set Chain Partner"))
+struct CONNECTIT_API FConnectItBoardOperation_SetChainPartner : public FConnectItBoardOperation
+{
+    GENERATED_BODY()
+
+    // The Chained tile
+    UPROPERTY(BlueprintReadWrite, Category = "Operation")
+    FGridPosition Position;
+
+    // False: unlink it (no partner)
+    UPROPERTY(BlueprintReadWrite, Category = "Operation")
+    bool bHasPartner = true;
+
+    UPROPERTY(BlueprintReadWrite, Category = "Operation")
+    FGridPosition PartnerPosition;
+
+    virtual FGameplayTag GetRequestType() const override;
+    virtual bool CanApply(const FConnectItBoardState& Board, FString* OutWhyNot = nullptr) const override;
+    virtual void Apply(
+        FConnectItBoardState& Board,
+        FConnectItBoardChanges& OutChanges,
+        FConnectItBoardChangeEvent* OutEvents) const override;
+    virtual FString Describe() const override;
+    virtual bool CanOperateOnLockedTiles() const override { return true; }
 };

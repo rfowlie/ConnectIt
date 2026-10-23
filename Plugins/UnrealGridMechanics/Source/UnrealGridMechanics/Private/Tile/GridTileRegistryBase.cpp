@@ -117,10 +117,40 @@ void UGridTileRegistryBase::HandleActorSpawned(AActor* SpawnedActor)
     if (Tiles.Contains(Tile)) return;
 
     Tiles.Add(Tile);
-    if (IsValid(HoverSubsystem))
+
+    // Mapped by position too, as DiscoverExisting does -- every position
+    // query reads TileMap
+    if (IsValid(GridDefinition))
     {
-        HoverSubsystem->RegisterTile(Tile);
+        TileMap.Add(GridDefinition->WorldToGridPosition(Tile->GetActorLocation()), Tile);
     }
+
+    if (UGridHoverSubsystem* Hover = ResolveHoverSubsystem())
+    {
+        Hover->RegisterTile(Tile);
+    }
+}
+
+bool UGridTileRegistryBase::UnregisterTile(AGridTileBase* Tile)
+{
+    if (!Tile || !Tiles.Contains(Tile)) return false;
+
+    Tiles.Remove(Tile);
+
+    // Every position it was mapped at (normally one)
+    for (auto It = TileMap.CreateIterator(); It; ++It)
+    {
+        if (It.Value() == Tile)
+        {
+            It.RemoveCurrent();
+        }
+    }
+
+    if (UGridHoverSubsystem* Hover = ResolveHoverSubsystem())
+    {
+        Hover->UnregisterTile(Tile);
+    }
+    return true;
 }
 
 // --- Tile Queries ---

@@ -3,6 +3,7 @@
 #include "Framework/Library/ConnectIt_BoardStateLibrary.h"
 #include "Board/Operations/ConnectIt_BoardOperations.h"
 #include "Board/Events/ConnectIt_BoardEvents.h"
+#include "ConnectIt_GameplayTags.h"
 
 
 bool UConnectIt_BoardStateLibrary::GetTileData(
@@ -34,6 +35,44 @@ bool UConnectIt_BoardStateLibrary::IsTileValidForPlacement(
     const FConnectItBoardState& State, FGridPosition Position)
 {
     return FConnectItBoardOperation_PlacePiece::IsTilePlaceableAt(State, Position);
+}
+
+TArray<FGridPosition> UConnectIt_BoardStateLibrary::GetChainedTilesFor(const FConnectItBoardState& State, FGridPosition Position)
+{
+    TArray<FGridPosition> Chained;
+    const FConnectItTileData* Partner = State.GetTileData(Position);
+    if (!Partner || Partner->TileId == INDEX_NONE) return Chained;
+
+    for (int32 Index = 0; Index < State.NumTiles(); Index++)
+    {
+        const FConnectItTileData& Tile = State.GetTileDataAt(Index);
+        if (Tile.ChainPartnerId == Partner->TileId && Tile.TilePowerTag == ConnectIt_TilePower_Chained)
+        {
+            Chained.Add(State.GetPositionAt(Index));
+        }
+    }
+    return Chained;
+}
+
+bool UConnectIt_BoardStateLibrary::GetChainPartner(const FConnectItBoardState& State, FGridPosition Position, FGridPosition& OutPartner)
+{
+    const FConnectItTileData* Tile = State.GetTileData(Position);
+    const int32 PartnerIndex = Tile ? State.FindTileIndexById(Tile->ChainPartnerId) : INDEX_NONE;
+    if (PartnerIndex == INDEX_NONE) return false;
+
+    OutPartner = State.GetPositionAt(PartnerIndex);
+    return true;
+}
+
+EConnectItPlacementBlocker UConnectIt_BoardStateLibrary::GetPlacementBlocker(
+    const FConnectItBoardState& State, FGridPosition Position)
+{
+    const FConnectItTileData* Tile = State.GetTileData(Position);
+    if (!Tile) return EConnectItPlacementBlocker::NotATile;
+    if (!Tile->bIsActive) return EConnectItPlacementBlocker::Inactive;
+    if (Tile->bIsOccupied) return EConnectItPlacementBlocker::Occupied;
+    if (Tile->bIsLocked) return EConnectItPlacementBlocker::Locked;
+    return EConnectItPlacementBlocker::None;
 }
 
 int32 UConnectIt_BoardStateLibrary::GetTileFaction(
@@ -139,11 +178,18 @@ TArray<FGridPosition> UConnectIt_BoardStateLibrary::GetPlaceablePositions(const 
     return Result;
 }
 
+EConnectItMoveLegality UConnectIt_BoardStateLibrary::HasAnyLegalMove(
+    const FConnectItBoardState& State, FGameplayTag Move, int32 Faction)
+{
+    return FConnectItBoardOperation::GetLegality(Move, State, Faction);
+}
+
 bool UConnectIt_BoardStateLibrary::SimulateOperation(
     const FConnectItBoardState& Board,
     const FConnectItRuleSet& Rules,
     const FInstancedStruct& Operation,
     int32 Faction,
+    int32 TurnNumber,
     FConnectItBoardState& ResultBoard,
     float& PointsScored,
     int32& NumScoredEvents,
@@ -161,8 +207,12 @@ bool UConnectIt_BoardStateLibrary::SimulateOperation(
     if (!BoardOperation) return false;
 
     BoardOperation->Faction = Faction;
-    if (!BoardOperation->CanApply(Board)) return false;
+    if (!Rules.CanCarryOut(*BoardOperation, Board)) return false;
 
+    if (TurnNumber >= 0)
+    {
+        ResultBoard.TurnNumber = TurnNumber;
+    }
     PointsScored = Rules.CarryOutOperation(*BoardOperation, ResultBoard, &Events);
     Rules.StampWinState(ResultBoard, &Events);
 

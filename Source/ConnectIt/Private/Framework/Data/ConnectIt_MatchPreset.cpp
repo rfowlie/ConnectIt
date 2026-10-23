@@ -3,7 +3,9 @@
 #include "Framework/Data/ConnectIt_MatchPreset.h"
 #include "Action/ActionLoadoutDataAsset.h"
 #include "AI/ConnectIt_AIDirector.h"
-#include "Board/Rules/ConnectIt_WinConditionAsset.h"
+#include "AI/ConnectIt_PlayerDirector.h"
+#include "AI/ConnectIt_LevelDirector.h"
+#include "Board/Rules/ConnectIt_MatchConditionAsset.h"
 #include "Misc/DataValidation.h"
 
 
@@ -13,69 +15,57 @@ EDataValidationResult UConnectIt_MatchPreset::IsDataValid(
 {
     EDataValidationResult Result = Super::IsDataValid(Context);
 
-    if (!IsValid(PlayerLoadout))
+    // Each director class's defaults are its setup: validate those
+    if (!PlayerDirectorClass)
     {
-        Context.AddWarning(FText::FromString(TEXT(
-            "ConnectIt_MatchPreset: No PlayerLoadout set.")));
+        Context.AddError(FText::FromString(TEXT(
+            "ConnectIt_MatchPreset: No Player Director Class -- players would have no actions.")));
+        Result = EDataValidationResult::Invalid;
+    }
+    else if (GetDefault<UConnectIt_PlayerDirector>(PlayerDirectorClass)->IsDataValid(Context) == EDataValidationResult::Invalid)
+    {
         Result = EDataValidationResult::Invalid;
     }
 
     // Not an error: versus presets have no AI
-    if (!IsValid(AIDirector))
+    if (!AIDirectorClass)
     {
         Context.AddWarning(FText::FromString(TEXT(
-            "ConnectIt_MatchPreset: No AI Director set -- played against the AI, this "
+            "ConnectIt_MatchPreset: No AI Director Class -- played against the AI, this "
             "preset gets the default director, which has no loadout.")));
     }
-    else if (AIDirector->IsDataValid(Context) == EDataValidationResult::Invalid)
+    else if (GetDefault<UConnectIt_AIDirector>(AIDirectorClass)->IsDataValid(Context) == EDataValidationResult::Invalid)
     {
         Result = EDataValidationResult::Invalid;
     }
 
-    // No defaults and no borrowing between roles: each preset sets its own.
-    if (Rules.PlayerWinConditions.IsEmpty())
+    // The Level director holds both sides' goals: without one nobody can win
+    if (!LevelDirectorClass)
     {
-        Context.AddWarning(FText::FromString(TEXT(
-            "ConnectIt_MatchPreset: No Rules > Player Win Conditions set -- "
-            "the player can never win.")));
+        Context.AddError(FText::FromString(TEXT(
+            "ConnectIt_MatchPreset: No Level Director Class -- the match has no goals (the Level director holds "
+            "both sides' win and lose conditions). Use a generic one for a standard way of playing.")));
+        Result = EDataValidationResult::Invalid;
+    }
+    else if (GetDefault<UConnectIt_LevelDirector>(LevelDirectorClass)->IsDataValid(Context) == EDataValidationResult::Invalid)
+    {
         Result = EDataValidationResult::Invalid;
     }
 
-    // Not invalid: versus presets have no AI -- but if one plays, an empty
-    // list means it cannot win.
-    if (Rules.AIWinConditions.IsEmpty())
+    // What the directors' conditions say about this preset's rules (e.g. a
+    // condition needing the scoring rule's minimum)
+    if (PlayerDirectorClass)
     {
-        Context.AddWarning(FText::FromString(TEXT(
-            "ConnectIt_MatchPreset: No Rules > AI Win Conditions set -- an AI "
-            "opponent playing this preset can never win. Set them if it can be "
-            "played against an AI.")));
+        GetDefault<UConnectIt_PlayerDirector>(PlayerDirectorClass)->AddConditionRuleWarnings(Rules, Context);
     }
-
-    // A goal that is unset or has no conditions is never satisfied, so it
-    // blocks every goal after it
-    const auto CheckGoals = [&Context, &Result](const TCHAR* Side,
-        const TArray<TObjectPtr<UConnectIt_WinConditionAsset>>& Goals)
+    if (AIDirectorClass)
     {
-        for (int32 Index = 0; Index < Goals.Num(); Index++)
-        {
-            if (!IsValid(Goals[Index]))
-            {
-                Context.AddWarning(FText::FromString(FString::Printf(TEXT(
-                    "ConnectIt_MatchPreset: %s win condition %d is empty -- it is skipped."),
-                    Side, Index)));
-            }
-            else if (Goals[Index]->Conditions.IsEmpty())
-            {
-                Context.AddWarning(FText::FromString(FString::Printf(TEXT(
-                    "ConnectIt_MatchPreset: %s win condition %d ('%s') has no conditions -- "
-                    "it can never be completed, so that side can never win."),
-                    Side, Index, *Goals[Index]->GetName())));
-                Result = EDataValidationResult::Invalid;
-            }
-        }
-    };
-    CheckGoals(TEXT("Player"), Rules.PlayerWinConditions);
-    CheckGoals(TEXT("AI"), Rules.AIWinConditions);
+        GetDefault<UConnectIt_AIDirector>(AIDirectorClass)->AddConditionRuleWarnings(Rules, Context);
+    }
+    if (LevelDirectorClass)
+    {
+        GetDefault<UConnectIt_LevelDirector>(LevelDirectorClass)->AddConditionRuleWarnings(Rules, Context);
+    }
 
     return Result;
 }

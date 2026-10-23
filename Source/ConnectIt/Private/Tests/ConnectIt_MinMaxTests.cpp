@@ -5,20 +5,31 @@
 #include "AI/ConnectIt_AIStrategy_MinMax.h"
 #include "AI/ConnectIt_AIDirector.h"
 #include "Framework/Data/ConnectIt_MatchPreset.h"
+#include "Framework/Data/ConnectIt_BoardLayout.h"
 #include "AI/ConnectIt_AICoordinator.h"
+#include "Framework/GameMode/ConnectIt_LevelChange.h"
 #include "AI/ConnectIt_MinMaxSearch.h"
 #include "AI/ConnectIt_AISelector.h"
 #include "ConnectIt_MinMaxTestTerms.h"
 #include "Board/Rules/ConnectIt_RuleSet.h"
-#include "Board/Rules/ConnectIt_WinConditionAsset.h"
+#include "Board/Rules/ConnectIt_MatchConditionAsset.h"
 #include "Framework/Library/ConnectIt_BoardStateLibrary.h"
 #include "Board/Rules/ConnectIt_LineScoringRule.h"
-#include "Board/Rules/ConnectIt_ScoreThresholdWinCondition.h"
-#include "Board/Rules/ConnectIt_PieceCountWinCondition.h"
+#include "Board/Rules/ConnectIt_ScoreThresholdCondition.h"
+#include "Board/Rules/ConnectIt_PieceCountCondition.h"
+#include "Board/Rules/ConnectIt_NotEnoughPiecesToScoreCondition.h"
+#include "Board/Rules/ConnectIt_NoLegalMoveCondition.h"
 #include "Board/Operations/ConnectIt_BoardOperations.h"
 #include "Board/Events/ConnectIt_BoardEvents.h"
 #include "ConnectIt_GameplayTags.h"
 #include "Misc/DataValidation.h"
+#include "Misc/ScopeExit.h"
+#include "Board/ConnectIt_BoardStateComponent.h"
+#include "Board/ConnectIt_BuilderTile.h"
+#include "Board/Powers/ConnectIt_TileCatalog.h"
+#include "Board/Powers/ConnectIt_TilePowerEffects.h"
+#include "AI/ConnectIt_LevelDirector.h"
+#include "NativeGameplayTags.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
 
@@ -28,6 +39,53 @@ namespace ConnectItMinMaxTests
 
     constexpr EAutomationTestFlags TestFlags =
         EAutomationTestFlags::EditorContext | EAutomationTestFlags::ProductFilter;
+
+    // Test-only tile power names (ConnectIt.Board.TilePowerData)
+    UE_DEFINE_GAMEPLAY_TAG_STATIC(TestTilePowerTag, "ConnectIt.TilePower.Test");
+    UE_DEFINE_GAMEPLAY_TAG_STATIC(TestOtherTilePowerTag, "ConnectIt.TilePower.TestOther");
+    UE_DEFINE_GAMEPLAY_TAG_STATIC(TestUndefinedTilePowerTag, "ConnectIt.TilePower.TestUndefined");
+    UE_DEFINE_GAMEPLAY_TAG_STATIC(TestPower1, "ConnectIt.TilePower.Test.1");
+    UE_DEFINE_GAMEPLAY_TAG_STATIC(TestPower2, "ConnectIt.TilePower.Test.2");
+    UE_DEFINE_GAMEPLAY_TAG_STATIC(TestPower3, "ConnectIt.TilePower.Test.3");
+    UE_DEFINE_GAMEPLAY_TAG_STATIC(TestPower4, "ConnectIt.TilePower.Test.4");
+    UE_DEFINE_GAMEPLAY_TAG_STATIC(TestPower5, "ConnectIt.TilePower.Test.5");
+
+    // A test power: Name, Trigger and Effect (a test effect struct)
+    template<typename TEffect>
+    FConnectItTilePower MakeTestPower(FGameplayTag Name, EConnectItPowerTrigger Trigger, const TEffect& Effect,
+        int32 CooldownTurns = 0, float MinMultiplier = 0.f)
+    {
+        FConnectItTilePower Power;
+        Power.Name = Name;
+        Power.Trigger = Trigger;
+        Power.CooldownTurns = CooldownTurns;
+        Power.MinMultiplier = MinMultiplier;
+        Power.Effect = TInstancedStruct<FConnectItTilePowerEffect>::Make<TEffect>(Effect);
+        return Power;
+    }
+
+    FConnectItTilePowerEffect_TestPlace PlaceAt(std::initializer_list<FIntPoint> Offsets)
+    {
+        FConnectItTilePowerEffect_TestPlace Effect;
+        Effect.Offsets = Offsets;
+        return Effect;
+    }
+
+    void SetPower(FConnectItBoardState& Board, int32 X, int32 Y, FGameplayTag Name)
+    {
+        Board.GetTileDataMutable(FGridPosition(X, Y))->TilePowerTag = Name;
+    }
+
+    // Every Power Triggered event of a change, in order
+    TArray<const FConnectItBoardEvent_PowerTriggered*> PowersTriggered(const FConnectItBoardChangeEvent& Change)
+    {
+        TArray<const FConnectItBoardEvent_PowerTriggered*> Found;
+        for (const FInstancedStruct& Entry : Change.Events)
+        {
+            if (const auto* Triggered = Entry.GetPtr<FConnectItBoardEvent_PowerTriggered>()) Found.Add(Triggered);
+        }
+        return Found;
+    }
 
     // Empty Size x Size board, two factions, all tiles active, multiplier 1 --
     // the same initial tile data UConnectIt_BoardStateComponent::InitialiseBoardState
@@ -46,6 +104,13 @@ namespace ConnectItMinMaxTests
             }
         }
         return Board;
+    }
+
+    // Whether a change-record list has an entry at Position
+    template<typename TItem, typename TAllocator>
+    bool HasPosition(const TArray<TItem, TAllocator>& Items, const FGridPosition& Position)
+    {
+        return Items.ContainsByPredicate([&Position](const TItem& Item) { return Item.Position == Position; });
     }
 
     void Place(FConnectItBoardState& Board, int32 X, int32 Y, int32 Faction)
@@ -72,30 +137,30 @@ namespace ConnectItMinMaxTests
     }
 
     template<typename TCondition>
-    void AddCondition(FConnectItWinConditionGroup& Group, const TCondition& Condition)
+    void AddCondition(FConnectItMatchConditionGroup& Group, const TCondition& Condition)
     {
-        Group.Conditions.Add(TInstancedStruct<FConnectItWinCondition>::Make<TCondition>(Condition));
+        Group.Conditions.Add(TInstancedStruct<FConnectItMatchCondition>::Make<TCondition>(Condition));
     }
 
-    FConnectItWinCondition_ScoreThreshold ScoreAtLeast(float Threshold)
+    FConnectItMatchCondition_ScoreThreshold ScoreAtLeast(float Threshold)
     {
-        FConnectItWinCondition_ScoreThreshold Condition;
+        FConnectItMatchCondition_ScoreThreshold Condition;
         Condition.WinScoreThreshold = Threshold;
         return Condition;
     }
 
-    FConnectItWinCondition_PieceCount PiecesIs(EConnectItPieceCountComparison Comparison, int32 Count)
+    FConnectItMatchCondition_PieceCount PiecesIs(EConnectItPieceCountComparison Comparison, int32 Count)
     {
-        FConnectItWinCondition_PieceCount Condition;
+        FConnectItMatchCondition_PieceCount Condition;
         Condition.Comparison = Comparison;
         Condition.Count = Count;
         return Condition;
     }
 
     // A new, empty win group at the end of Groups (valid until Groups changes)
-    FConnectItWinConditionGroup& AddGroup(TArray<FConnectItWinConditionGroup>& Groups, FName Name = NAME_None)
+    FConnectItMatchConditionGroup& AddGroup(TArray<FConnectItMatchConditionGroup>& Groups, FName Name = NAME_None)
     {
-        FConnectItWinConditionGroup& Group = Groups.AddDefaulted_GetRef();
+        FConnectItMatchConditionGroup& Group = Groups.AddDefaulted_GetRef();
         Group.Name = Name;
         return Group;
     }
@@ -382,7 +447,7 @@ bool FConnectItMinMaxWinConditionTest::RunTest(const FString& Parameters)
     // changes -- and scores it as a win, not via the evaluation terms.
     const FConnectItBoardState Board = MakeBoard(5);
     FConnectItRuleSet CornerRules;
-    AddCondition(AddGroup(CornerRules.PlayerWinGroups), FConnectItWinCondition_TestCorner());
+    AddCondition(AddGroup(CornerRules.PlayerWinGroups), FConnectItMatchCondition_TestCorner());
 
     const FConnectItMinMaxRules Rules(Board, CornerRules,
         DefaultEvaluationWeights(), DefaultOrderingWeights(), PlaceOnly(), PlaceOnly());
@@ -397,7 +462,7 @@ bool FConnectItMinMaxWinConditionTest::RunTest(const FString& Parameters)
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FConnectItPieceCountWinTest,
-    "ConnectIt.Board.WinConditions.PieceCount", TestFlags)
+    "ConnectIt.Board.Conditions.PieceCount", TestFlags)
 
 bool FConnectItPieceCountWinTest::RunTest(const FString& Parameters)
 {
@@ -407,50 +472,223 @@ bool FConnectItPieceCountWinTest::RunTest(const FString& Parameters)
     Place(Board, 4, 4, 1);
     Board.ScoreBoard = { 0.f, 0.f };
     Board.StartingPieces = { 2, 1 };
+    const FConnectItRuleSet NoRules;
+    const FConnectItConditionContext Ctx{ Board, NoRules };
 
     // Faction 0 holds 2 pieces, faction 1 holds 1
-    TestFalse(TEXT("Equal 0: pieces left"), PiecesIs(EConnectItPieceCountComparison::Equal, 0).HasFactionWon(Board, 0));
-    TestTrue(TEXT("Equal 2 is met by faction 0"), PiecesIs(EConnectItPieceCountComparison::Equal, 2).HasFactionWon(Board, 0));
-    TestFalse(TEXT("...and not by faction 1"), PiecesIs(EConnectItPieceCountComparison::Equal, 2).HasFactionWon(Board, 1));
-    TestTrue(TEXT("Less Than 3: 2 < 3"), PiecesIs(EConnectItPieceCountComparison::LessThan, 3).HasFactionWon(Board, 0));
-    TestFalse(TEXT("Less Than 2: 2 < 2 is false"), PiecesIs(EConnectItPieceCountComparison::LessThan, 2).HasFactionWon(Board, 0));
-    TestTrue(TEXT("Greater Than 1: 2 > 1"), PiecesIs(EConnectItPieceCountComparison::GreaterThan, 1).HasFactionWon(Board, 0));
-    TestFalse(TEXT("Greater Than 2: 2 > 2 is false"), PiecesIs(EConnectItPieceCountComparison::GreaterThan, 2).HasFactionWon(Board, 0));
-    TestFalse(TEXT("an unknown faction can't win"), PiecesIs(EConnectItPieceCountComparison::Equal, 0).HasFactionWon(Board, 5));
-    TestEqual(TEXT("the winner is named (lowest slot)"),
-        PiecesIs(EConnectItPieceCountComparison::Equal, 2).GetWinningFaction(Board), 0);
-    TestEqual(TEXT("nobody has won"),
-        PiecesIs(EConnectItPieceCountComparison::Equal, 0).GetWinningFaction(Board), static_cast<int32>(INDEX_NONE));
+    TestFalse(TEXT("Equal 0: pieces left"), PiecesIs(EConnectItPieceCountComparison::Equal, 0).IsMetFor(Ctx, 0));
+    TestTrue(TEXT("Equal 2 is met by faction 0"), PiecesIs(EConnectItPieceCountComparison::Equal, 2).IsMetFor(Ctx, 0));
+    TestFalse(TEXT("...and not by faction 1"), PiecesIs(EConnectItPieceCountComparison::Equal, 2).IsMetFor(Ctx, 1));
+    TestTrue(TEXT("Less Than 3: 2 < 3"), PiecesIs(EConnectItPieceCountComparison::LessThan, 3).IsMetFor(Ctx, 0));
+    TestFalse(TEXT("Less Than 2: 2 < 2 is false"), PiecesIs(EConnectItPieceCountComparison::LessThan, 2).IsMetFor(Ctx, 0));
+    TestTrue(TEXT("Greater Than 1: 2 > 1"), PiecesIs(EConnectItPieceCountComparison::GreaterThan, 1).IsMetFor(Ctx, 0));
+    TestFalse(TEXT("Greater Than 2: 2 > 2 is false"), PiecesIs(EConnectItPieceCountComparison::GreaterThan, 2).IsMetFor(Ctx, 0));
+    TestFalse(TEXT("an unknown faction can't win"), PiecesIs(EConnectItPieceCountComparison::Equal, 0).IsMetFor(Ctx, 5));
 
     // Progress is measured from the starting count the board remembers
-    const FConnectItWinCondition_PieceCount ClearAll = PiecesIs(EConnectItPieceCountComparison::Equal, 0);
-    TestEqual(TEXT("no progress yet (2 of 2 left)"), ClearAll.GetProgress(Board, 0), 0.f);
+    const FConnectItMatchCondition_PieceCount ClearAll = PiecesIs(EConnectItPieceCountComparison::Equal, 0);
+    TestEqual(TEXT("no progress yet (2 of 2 left)"), ClearAll.GetProgress(Ctx, 0), 0.f);
     Board.GetTileDataMutable(FGridPosition(0, 0))->SetFactionPiece(-1);
-    TestEqual(TEXT("half way (1 of 2 left)"), ClearAll.GetProgress(Board, 0), 0.5f);
+    TestEqual(TEXT("half way (1 of 2 left)"), ClearAll.GetProgress(Ctx, 0), 0.5f);
     Board.GetTileDataMutable(FGridPosition(1, 0))->SetFactionPiece(-1);
-    TestTrue(TEXT("none left: met with no score at all"), ClearAll.HasFactionWon(Board, 0));
-    TestEqual(TEXT("full progress on the win"), ClearAll.GetProgress(Board, 0), 1.f);
+    TestTrue(TEXT("none left: met with no score at all"), ClearAll.IsMetFor(Ctx, 0));
+    TestEqual(TEXT("full progress on the win"), ClearAll.GetProgress(Ctx, 0), 1.f);
 
     // Less Than 1 is the same goal as Equal 0, and Greater Than counts up
     TestEqual(TEXT("Less Than 1 aims at 0"),
-        PiecesIs(EConnectItPieceCountComparison::LessThan, 1).GetProgress(Board, 1), 0.f);
+        PiecesIs(EConnectItPieceCountComparison::LessThan, 1).GetProgress(Ctx, 1), 0.f);
     FConnectItBoardState Growing = MakeBoard(5);
     Place(Growing, 0, 0, 0);
     Place(Growing, 1, 0, 0);
     Growing.ScoreBoard = { 0.f, 0.f };
     Growing.StartingPieces = { 1, 0 };
+    const FConnectItConditionContext GrowingCtx{ Growing, NoRules };
     TestEqual(TEXT("Greater Than 2 aims at 3: from 1 to 2 is half way"),
-        PiecesIs(EConnectItPieceCountComparison::GreaterThan, 2).GetProgress(Growing, 0), 0.5f);
+        PiecesIs(EConnectItPieceCountComparison::GreaterThan, 2).GetProgress(GrowingCtx, 0), 0.5f);
 
     // No starting count on the board: progress is 0 until met
     Growing.StartingPieces.Empty();
     TestEqual(TEXT("no baseline: 0"),
-        PiecesIs(EConnectItPieceCountComparison::GreaterThan, 2).GetProgress(Growing, 0), 0.f);
+        PiecesIs(EConnectItPieceCountComparison::GreaterThan, 2).GetProgress(GrowingCtx, 0), 0.f);
+    return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FConnectItNotEnoughPiecesTest,
+    "ConnectIt.Board.Conditions.NotEnoughPiecesToScore", TestFlags)
+
+bool FConnectItNotEnoughPiecesTest::RunTest(const FString& Parameters)
+{
+    // Lines(4): a faction needs 4 pieces to ever score
+    FConnectItRuleSet Rules;
+    FConnectItBoardState Board = MakeBoard(5);
+    Board.ScoreBoard = { 0.f, 0.f };
+    Place(Board, 0, 0, 0);
+    Place(Board, 1, 0, 0);
+    Place(Board, 2, 0, 0);
+    const FConnectItConditionContext Ctx{ Board, Rules };
+    const FConnectItMatchCondition_NotEnoughPiecesToScore Stuck;
+
+    TestEqual(TEXT("Lines says how many a score needs"), Rules.GetScoringRule()->GetMinPiecesToScore(), 4);
+    TestTrue(TEXT("3 pieces can't make a line of 4"), Stuck.IsMetFor(Ctx, 0));
+    Place(Board, 3, 0, 0);
+    TestFalse(TEXT("4 pieces can"), Stuck.IsMetFor(Ctx, 0));
+    TestTrue(TEXT("no pieces at all counts too"), Stuck.IsMetFor(Ctx, 1));
+    TestFalse(TEXT("an unknown faction never"), Stuck.IsMetFor(Ctx, 5));
+
+    // The minimum comes from the rule: Lines(5) needs 5
+    FConnectItRuleSet LongLines;
+    LongLines.ScoringRule.GetMutable<FConnectItScoringRule_Lines>().ConnectLength = 5;
+    TestTrue(TEXT("4 pieces can't make a line of 5"), Stuck.IsMetFor(FConnectItConditionContext{ Board, LongLines }, 0));
+
+    // A scoring rule that doesn't say: never met, and validation says so
+    FConnectItRuleSet NoMinimum;
+    NoMinimum.ScoringRule = TInstancedStruct<FConnectItScoringRule>::Make<FConnectItScoringRule>();
+    TestFalse(TEXT("no minimum: never met"), Stuck.IsMetFor(FConnectItConditionContext{ Board, NoMinimum }, 1));
+    TArray<FText> Warnings;
+    Stuck.GetValidationWarnings(&NoMinimum, Warnings);
+    TestEqual(TEXT("...and validation warns"), Warnings.Num(), 1);
+    Warnings.Reset();
+    Stuck.GetValidationWarnings(&Rules, Warnings);
+    TestEqual(TEXT("no warning under Lines"), Warnings.Num(), 0);
+    return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FConnectItNoLegalMoveTest,
+    "ConnectIt.Board.Conditions.NoLegalMove", TestFlags)
+
+bool FConnectItNoLegalMoveTest::RunTest(const FString& Parameters)
+{
+    const FConnectItRuleSet Rules;
+    FConnectItMatchCondition_NoLegalMove NoPlace;
+    NoPlace.Move = ConnectIt_Game_PlacePiece;
+    FConnectItMatchCondition_NoLegalMove NoSwap;
+    NoSwap.Move = ConnectIt_Game_SwapPieces;
+
+    // Place: a full board has none, one free tile is enough
+    FConnectItBoardState Full = MakeBoard(2);
+    Full.ScoreBoard = { 0.f, 0.f };
+    Place(Full, 0, 0, 0);
+    Place(Full, 0, 1, 0);
+    Place(Full, 1, 0, 1);
+    const FConnectItConditionContext OneFree{ Full, Rules };
+    TestFalse(TEXT("one free tile: a legal place"), NoPlace.IsMetFor(OneFree, 0));
+    TestTrue(TEXT("the helper agrees"),
+        UConnectIt_BoardStateLibrary::HasAnyLegalMove(Full, ConnectIt_Game_PlacePiece, 0) == EConnectItMoveLegality::Legal);
+    Place(Full, 1, 1, 1);
+    const FConnectItConditionContext NoneFree{ Full, Rules };
+    TestTrue(TEXT("a full board: no legal place"), NoPlace.IsMetFor(NoneFree, 0));
+    TestTrue(TEXT("the helper agrees"),
+        UConnectIt_BoardStateLibrary::HasAnyLegalMove(Full, ConnectIt_Game_PlacePiece, 0) == EConnectItMoveLegality::NoLegalMove);
+
+    // Swap: needs a piece of its own and another piece to trade with
+    FConnectItBoardState Board = MakeBoard(5);
+    Board.ScoreBoard = { 0.f, 0.f };
+    Place(Board, 0, 0, 0);
+    Place(Board, 1, 0, 0);
+    const FConnectItConditionContext Ctx{ Board, Rules };
+    TestTrue(TEXT("no opposing piece: no legal swap"), NoSwap.IsMetFor(Ctx, 0));
+    TestTrue(TEXT("no own piece: no legal swap"), NoSwap.IsMetFor(Ctx, 1));
+    Place(Board, 4, 4, 1);
+    TestFalse(TEXT("one of each: a legal swap"), NoSwap.IsMetFor(Ctx, 0));
+    TestFalse(TEXT("...for both"), NoSwap.IsMetFor(Ctx, 1));
+    TestFalse(TEXT("an unknown faction never"), NoSwap.IsMetFor(Ctx, 5));
+
+    // A kind of move that can't tell yet: Unknown, never met, and validation says so
+    FConnectItMatchCondition_NoLegalMove NoShift;
+    NoShift.Move = ConnectIt_Game_Shift;
+    TestTrue(TEXT("shift can't tell yet"),
+        FConnectItBoardOperation::GetLegality(ConnectIt_Game_Shift, Board, 0) == EConnectItMoveLegality::Unknown);
+    TestFalse(TEXT("so No Legal Move: Shift never holds"), NoShift.IsMetFor(Ctx, 0));
+    TArray<FText> Warnings;
+    NoShift.GetValidationWarnings(nullptr, Warnings);
+    TestEqual(TEXT("...and validation warns"), Warnings.Num(), 1);
+    Warnings.Reset();
+    NoSwap.GetValidationWarnings(nullptr, Warnings);
+    TestEqual(TEXT("no warning for swap"), Warnings.Num(), 0);
+    FConnectItMatchCondition_NoLegalMove Unset;
+    Unset.GetValidationWarnings(nullptr, Warnings);
+    TestEqual(TEXT("no Move set: warned"), Warnings.Num(), 1);
+    TestTrue(TEXT("a tag that isn't a move: Unknown"),
+        FConnectItBoardOperation::GetLegality(FGameplayTag(), Board, 0) == EConnectItMoveLegality::Unknown);
+    return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FConnectItLoseConditionsTest,
+    "ConnectIt.Board.Conditions.Lose", TestFlags)
+
+bool FConnectItLoseConditionsTest::RunTest(const FString& Parameters)
+{
+    // The player wins by clearing the board having scored; loses when stuck
+    // with fewer pieces than a line needs. The AI wins at 12 points.
+    UConnectIt_MatchConditionAsset* Clear = NewObject<UConnectIt_MatchConditionAsset>(GetTransientPackage(), TEXT("WC_Test_LoseClear"));
+    Clear->Conditions.Add(TInstancedStruct<FConnectItMatchCondition>::Make<FConnectItMatchCondition_PieceCount>(PiecesIs(EConnectItPieceCountComparison::Equal, 0)));
+    UConnectIt_MatchConditionAsset* Stuck = NewObject<UConnectIt_MatchConditionAsset>(GetTransientPackage(), TEXT("WC_Test_LoseStuck"));
+    Stuck->Conditions.Add(TInstancedStruct<FConnectItMatchCondition>::Make<FConnectItMatchCondition_NotEnoughPiecesToScore>());
+    UConnectIt_MatchConditionAsset* AIScore = NewObject<UConnectIt_MatchConditionAsset>(GetTransientPackage(), TEXT("WC_Test_LoseAIScore"));
+    AIScore->Conditions.Add(TInstancedStruct<FConnectItMatchCondition>::Make<FConnectItMatchCondition_ScoreThreshold>(ScoreAtLeast(12.f)));
+
+    FConnectItRuleSet Rules;
+    Rules.ResolveConditionGroups({ Clear }, { AIScore }, { Stuck }, {});
+    Rules.AIFaction = 1;
+
+    // Player (0) has 2 pieces left: stuck, so it loses and the AI wins
+    FConnectItBoardState Board = MakeBoard(5);
+    Board.ScoreBoard = { 0.f, 0.f };
+    Board.StartingPieces = { 4, 1 };
+    Place(Board, 0, 0, 0);
+    Place(Board, 1, 0, 0);
+    Place(Board, 4, 4, 1);
+
+    TestEqual(TEXT("the player is the loser"), Rules.GetLosingFaction(Board), 0);
+    TestEqual(TEXT("so the AI is the winner"), Rules.GetWinningFaction(Board), 1);
+
+    FConnectItBoardChangeEvent Change;
+    Rules.StampWinState(Board, &Change);
+    TestTrue(TEXT("game over"), Board.bGameOver);
+    TestEqual(TEXT("won by the AI"), Board.WinningFactionSlot, 1);
+    TestEqual(TEXT("lost by the player"), Board.LosingFactionSlot, 0);
+    if (const auto* Lost = OnlyEvent<FConnectItBoardEvent_LoseConditionMet>(Change))
+    {
+        TestEqual(TEXT("the event names the loser"), Lost->Faction, 0);
+        TestTrue(TEXT("and the condition met"), Lost->Asset == Stuck);
+    }
+    else
+    {
+        AddError(TEXT("expected exactly one LoseConditionMet event"));
+    }
+
+    // 0 pieces: the "clear the board" goal is complete -- a win, even though
+    // having no pieces also means "not enough to score"
+    FConnectItBoardState Cleared = MakeBoard(5);
+    Cleared.ScoreBoard = { 4.f, 0.f };
+    Cleared.StartingPieces = { 4, 1 };
+    Place(Cleared, 4, 4, 1);
+    FConnectItBoardChangeEvent ClearedChange;
+    Rules.StampWinState(Cleared, &ClearedChange);
+    TestEqual(TEXT("win beats loss: the player wins"), Cleared.WinningFactionSlot, 0);
+    TestEqual(TEXT("...no loser"), Cleared.LosingFactionSlot, -1);
+    TestTrue(TEXT("...no Lose event"), !ClearedChange.Events.ContainsByPredicate(
+        [](const FInstancedStruct& Entry) { return Entry.GetPtr<FConnectItBoardEvent_LoseConditionMet>() != nullptr; }));
+
+    // No AI in the match: lose conditions are ignored
+    FConnectItRuleSet Online = Rules;
+    Online.AIFaction = INDEX_NONE;
+    TestEqual(TEXT("online: nobody loses"), Online.GetLosingFaction(Board), static_cast<int32>(INDEX_NONE));
+
+    // The AI's search sees a loss as the end of the game
+    FConnectItBoardState Fresh = MakeBoard(5);
+    Fresh.ScoreBoard = { 0.f, 0.f };
+    Fresh.StartingPieces = { 4, 1 };
+    Place(Fresh, 0, 0, 0);
+    Place(Fresh, 1, 0, 0);
+    Place(Fresh, 4, 4, 1);
+    const FConnectItMinMaxRules Search(Fresh, Rules, DefaultEvaluationWeights(), DefaultOrderingWeights(), PlaceOnly(), PlaceOnly());
+    TestTrue(TEXT("a lost position is terminal"), Search.IsTerminalState(Search.MakeRoot(Fresh, 1)));
     return true;
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FConnectItRuleSetWinConditionsTest,
-    "ConnectIt.Board.WinConditions.RuleSet", TestFlags)
+    "ConnectIt.Board.Conditions.RuleSet", TestFlags)
 
 bool FConnectItRuleSetWinConditionsTest::RunTest(const FString& Parameters)
 {
@@ -458,7 +696,7 @@ bool FConnectItRuleSetWinConditionsTest::RunTest(const FString& Parameters)
     // AFTER scoring 4 (one group); the AI (faction 1) by reaching 8 points.
     FConnectItRuleSet Rules;
     {
-        FConnectItWinConditionGroup& Goal = AddGroup(Rules.PlayerWinGroups);
+        FConnectItMatchConditionGroup& Goal = AddGroup(Rules.PlayerWinGroups);
         AddCondition(Goal, PiecesIs(EConnectItPieceCountComparison::Equal, 0));
         AddCondition(Goal, ScoreAtLeast(4.f));
     }
@@ -538,7 +776,7 @@ bool FConnectItRuleSetWinConditionsTest::RunTest(const FString& Parameters)
 
     // A group with a cleared slot can't be satisfied, rather than skipping it
     FConnectItRuleSet HalfSet = RulesWonAt(1.f);
-    HalfSet.PlayerWinGroups[0].Conditions.Add(TInstancedStruct<FConnectItWinCondition>());
+    HalfSet.PlayerWinGroups[0].Conditions.Add(TInstancedStruct<FConnectItMatchCondition>());
     Other.ScoreBoard = { 50.f, 0.f };
     TestFalse(TEXT("an empty slot in the group blocks the win"), HasWon(HalfSet, Other, 0));
 
@@ -561,7 +799,7 @@ bool FConnectItRuleSetWinConditionsTest::RunTest(const FString& Parameters)
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FConnectItWinStagesTest,
-    "ConnectIt.Board.WinConditions.Stages", TestFlags)
+    "ConnectIt.Board.Conditions.Stages", TestFlags)
 
 bool FConnectItWinStagesTest::RunTest(const FString& Parameters)
 {
@@ -692,7 +930,7 @@ bool FConnectItMinMaxSameRulesTest::RunTest(const FString& Parameters)
 
     FConnectItBoardState GameBoard = Board;
     Place(GameBoard, 3, 3, 0);
-    const float Points = RuleSet.ApplyScoring(GameBoard, FGridPosition(3, 3), 0, true);
+    const float Points = RuleSet.ApplyScoring(GameBoard, FGridPosition(3, 3), true);
 
     const FConnectItMinMaxRules Rules(Board, RuleSet, DefaultEvaluationWeights(), DefaultOrderingWeights(), PlaceOnly(), PlaceOnly());
     const auto Root = Rules.MakeRoot(Board, 0);
@@ -744,12 +982,15 @@ bool FConnectItPlaceOperationTest::RunTest(const FString& Parameters)
     TestTrue(TEXT("free position is placeable"), FPlace::IsTilePlaceableAt(Board, FGridPosition(0, 0)));
     TestFalse(TEXT("occupied position is not"), FPlace::IsTilePlaceableAt(Board, FGridPosition(1, 1)));
 
-    FConnectItTouchedPositions Touched;
+    FConnectItBoardChanges Touched;
     FConnectItBoardChangeEvent Event;
     Free.Apply(Board, Touched, &Event);
     TestEqual(TEXT("the piece is placed"), TileAt(Board, 0, 0).FactionPiece, 0);
-    TestTrue(TEXT("exactly the placed position is reported"),
-        Touched.Num() == 1 && Touched[0] == FGridPosition(0, 0));
+    TestTrue(TEXT("exactly the placed position is reported, as a piece entering"),
+        Touched.Entered.Num() == 1 && Touched.Entered[0].Position == FGridPosition(0, 0)
+        && Touched.Entered[0].Faction == 0 && Touched.Entered[0].bSurvivesScoring);
+    TestTrue(TEXT("...and nothing else"), Touched.Exited.IsEmpty() && Touched.Moved.IsEmpty()
+        && Touched.PieceChanged.IsEmpty() && Touched.TileChanged.IsEmpty());
     TestEqual(TEXT("applying an operation does not score"), Board.GetScore(0), 0.f);
     const auto* Placed = OnlyEvent<FConnectItBoardEvent_PiecePlaced>(Event);
     TestTrue(TEXT("one Piece Placed event says where and by whom"),
@@ -794,12 +1035,17 @@ bool FConnectItSwapOperationTest::RunTest(const FString& Parameters)
     TestFalse(TEXT("an empty tile is not"), Swap(0, Stray, FGridPosition(5, 5)).CanApply(Board));
     TestFalse(TEXT("a position off the board is not"), Swap(0, Stray, FGridPosition(9, 9)).CanApply(Board));
 
-    FConnectItTouchedPositions Touched;
+    FConnectItBoardChanges Touched;
     FConnectItBoardChangeEvent Event;
     Trade.Apply(Board, Touched, &Event);
     TestEqual(TEXT("faction 1's piece is now on (0,0)"), TileAt(Board, 0, 0).FactionPiece, 1);
     TestEqual(TEXT("faction 0's piece is now on (3,3)"), TileAt(Board, 3, 3).FactionPiece, 0);
-    TestTrue(TEXT("both positions are reported"), Touched.Num() == 2);
+    TestTrue(TEXT("each tile's piece left and the other arrived"),
+        Touched.Exited.Num() == 2 && Touched.Entered.Num() == 2
+        && Touched.Entered[0].Position == Stray && Touched.Entered[0].Faction == 1
+        && Touched.Exited[0].Position == Stray && Touched.Exited[0].Faction == 0);
+    TestTrue(TEXT("...arriving pieces that don't survive scoring"),
+        !Touched.Entered[0].bSurvivesScoring && !Touched.Entered[1].bSurvivesScoring);
     TestEqual(TEXT("applying an operation does not score"), Board.GetScore(0), 0.f);
     const auto* Swapped = OnlyEvent<FConnectItBoardEvent_PiecesSwapped>(Event);
     TestTrue(TEXT("one Pieces Swapped event says which two"),
@@ -810,7 +1056,7 @@ bool FConnectItSwapOperationTest::RunTest(const FString& Parameters)
     TestFalse(TEXT("a swap's arriving pieces don't survive scoring"), Trade.ArrivingPiecesSurviveScoring());
     TestTrue(TEXT("a placement's do"), FConnectItBoardOperation_PlacePiece().ArrivingPiecesSurviveScoring());
 
-    const float Points = Rules.ResolveBoardChange(Board, Touched, Trade.ArrivingPiecesSurviveScoring(), &Event);
+    const float Points = Rules.ResolveBoardChange(Board, Touched, &Event);
     TestEqual(TEXT("the completed line scores for faction 0"), Board.GetScore(0), 4.f);
     TestEqual(TEXT("the swapped-in piece is cleared with the line"), TileAt(Board, 3, 3).FactionPiece, -1);
     TestEqual(TEXT("the piece swapped the other way is untouched"), TileAt(Board, 0, 0).FactionPiece, 1);
@@ -826,6 +1072,149 @@ bool FConnectItSwapOperationTest::RunTest(const FString& Parameters)
             TestEqual(TEXT("...over 4 tiles"), Scored->Positions.Num(), 4);
             TestEqual(TEXT("...all 4 pieces cleared"), Scored->ClearedPositions.Num(), 4);
         }
+    }
+    return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FConnectItScoringPassTest,
+    "ConnectIt.Board.ScoringPass", TestFlags)
+
+bool FConnectItScoringPassTest::RunTest(const FString& Parameters)
+{
+    // One pass finds every line from every arrival on the same board, then
+    // applies them all -- so two arrivals can't break each other's lines
+    const FConnectItRuleSet Rules;   // Lines of 4
+
+    {
+        // Two arrivals, (0,3) and (3,6), each completing a line; the lines
+        // share (3,3), which neither arrival is on. One at a time, the first
+        // line would clear (3,3) and break the second.
+        FConnectItBoardState Board = MakeBoard(7);
+        Place(Board, 0, 3, 0); Place(Board, 1, 3, 0); Place(Board, 2, 3, 0); Place(Board, 3, 3, 0);
+        Place(Board, 3, 4, 0); Place(Board, 3, 5, 0); Place(Board, 3, 6, 0);
+
+        FConnectItBoardChanges Shifted;   // as a shift reports them: moved
+        Shifted.AddMoved(FGridPosition(0, 3), 0, true);
+        Shifted.AddMoved(FGridPosition(3, 6), 0, true);
+        FConnectItBoardChangeEvent Events;
+        const float Points = Rules.ResolveBoardChange(Board, Shifted, &Events);
+
+        TestEqual(TEXT("shared tile: both lines score"), Events.Events.Num(), 2);
+        // The first line raises (3,3) to 2 before the second sums it: 4 + 5
+        TestEqual(TEXT("shared tile: 4 + 5 points"), Points, 9.f);
+        TestEqual(TEXT("shared tile: the score"), Board.GetScore(0), 9.f);
+        TestTrue(TEXT("shared tile: each arrival keeps its piece"),
+            TileAt(Board, 0, 3).FactionPiece == 0 && TileAt(Board, 3, 6).FactionPiece == 0);
+        TestEqual(TEXT("shared tile: the shared piece is cleared"), TileAt(Board, 3, 3).FactionPiece, -1);
+        TestEqual(TEXT("shared tile: its multiplier rose once per line"), TileAt(Board, 3, 3).Multiplier, 3.f);
+    }
+
+    {
+        // Two arrivals on the same line: it counts once, and keeps only the
+        // first arrival that survives
+        FConnectItBoardState Board = MakeBoard(7);
+        Place(Board, 0, 0, 0); Place(Board, 1, 0, 0); Place(Board, 2, 0, 0); Place(Board, 3, 0, 0);
+
+        FConnectItBoardChanges Shifted;
+        Shifted.AddMoved(FGridPosition(1, 0), 0, true);
+        Shifted.AddMoved(FGridPosition(2, 0), 0, true);
+        FConnectItBoardChangeEvent Events;
+        const float Points = Rules.ResolveBoardChange(Board, Shifted, &Events);
+
+        TestEqual(TEXT("same line: scored once"), Events.Events.Num(), 1);
+        TestEqual(TEXT("same line: 4 points"), Points, 4.f);
+        TestTrue(TEXT("same line: only the first arrival stays"),
+            TileAt(Board, 1, 0).FactionPiece == 0 && TileAt(Board, 2, 0).FactionPiece == -1);
+    }
+
+    {
+        // Each arrival keeps its own survival: a swapped-in piece (doesn't
+        // survive) and a placed one (does), in one pass
+        FConnectItBoardState Board = MakeBoard(7);
+        Place(Board, 0, 0, 0); Place(Board, 1, 0, 0); Place(Board, 2, 0, 0); Place(Board, 3, 0, 0);
+        Place(Board, 0, 5, 1); Place(Board, 1, 5, 1); Place(Board, 2, 5, 1); Place(Board, 3, 5, 1);
+
+        FConnectItBoardChanges Mixed;
+        Mixed.AddEntered(FGridPosition(3, 0), 0, false);
+        Mixed.AddEntered(FGridPosition(3, 5), 1, true);
+        Rules.ResolveBoardChange(Board, Mixed);
+
+        TestEqual(TEXT("mixed: the swapped-in piece is cleared"), TileAt(Board, 3, 0).FactionPiece, -1);
+        TestEqual(TEXT("mixed: the placed piece stays"), TileAt(Board, 3, 5).FactionPiece, 1);
+        TestTrue(TEXT("mixed: both factions score"), Board.GetScore(0) == 4.f && Board.GetScore(1) == 4.f);
+    }
+
+    {
+        // What a scoring pass reports: where its lines ran, and the
+        // multipliers it raised
+        FConnectItBoardState Board = MakeBoard(7);
+        Place(Board, 0, 0, 0); Place(Board, 1, 0, 0); Place(Board, 2, 0, 0); Place(Board, 3, 0, 0);
+        const FConnectItScoringRule* Rule = Rules.GetScoringRule();
+        const FConnectItPieceArrival Arrival{ FGridPosition(3, 0), 0, true };
+        FConnectItBoardChanges Scored;
+        Rule->ScorePass(Board, MakeArrayView(&Arrival, 1), Scored, nullptr);
+        TestEqual(TEXT("record: the line's four tiles"), Scored.ScoredThrough.Num(), 4);
+        TestTrue(TEXT("record: each multiplier change, for the scoring faction"),
+            Scored.TileChanged.Num() == 4 && Scored.TileChanged[0].What == EConnectItTileChange::Multiplier
+            && Scored.TileChanged[0].Faction == 0);
+        TestFalse(TEXT("record: cleared pieces are not exits"), Scored.HasScoringArrivals() || !Scored.Exited.IsEmpty());
+    }
+    return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FConnectItChangeRecordTest,
+    "ConnectIt.Board.ChangeRecord", TestFlags)
+
+bool FConnectItChangeRecordTest::RunTest(const FString& Parameters)
+{
+    // What each remaining operation reports (Place, Force Place, Swap, Shift,
+    // Capture, Remove and Remove Tiles are checked in their own tests)
+    FConnectItBoardState Board = MakeBoard(3);
+    Board.GetTileDataMutable(FGridPosition(1, 1))->Multiplier = 3.f;
+
+    {
+        FConnectItBoardChanges Changes;
+        MakeAt<FConnectItBoardOperation_DestroyTileMultiplier>(1, 1, 1).Apply(Board, Changes, nullptr);
+        TestTrue(TEXT("destroy multiplier: the tile changed, by the operation's faction"),
+            Changes.TileChanged.Num() == 1 && Changes.TileChanged[0].What == EConnectItTileChange::Multiplier
+            && Changes.TileChanged[0].Faction == 1 && !Changes.HasScoringArrivals());
+    }
+    {
+        FConnectItBoardChanges Changes;
+        MakeAt<FConnectItBoardOperation_ToggleTileActive>(INDEX_NONE, 2, 2).Apply(Board, Changes, nullptr);
+        TestTrue(TEXT("toggle: the tile changed (active)"),
+            Changes.TileChanged.Num() == 1 && Changes.TileChanged[0].What == EConnectItTileChange::Active);
+    }
+    {
+        FConnectItBoardOperation_AddTiles Add;
+        FConnectItBoardLayoutCell WithPiece;
+        WithPiece.Position = FGridPosition(5, 5);
+        WithPiece.TileData.StartingFactionPiece = 0;
+        FConnectItBoardLayoutCell Empty;
+        Empty.Position = FGridPosition(5, 6);
+        Add.Cells = { WithPiece, Empty };
+        FConnectItBoardChanges Changes;
+        Add.Apply(Board, Changes, nullptr);
+        TestTrue(TEXT("add tiles: the starting piece is scored (moved) and sets off no enter"),
+            Changes.Moved.Num() == 1 && Changes.Moved[0].Position == FGridPosition(5, 5) && Changes.Entered.IsEmpty());
+    }
+    {
+        FConnectItBoardOperation_ChangeGoals Goals;
+        Goals.Factions = { 0 };
+        FConnectItBoardChanges Changes;
+        Goals.Apply(Board, Changes, nullptr);
+        FConnectItBoardOperation_BeginPhase Phase;
+        Phase.Phase = FGameplayTag::RequestGameplayTag(TEXT("ConnectIt.Phase.1"), false);
+        Phase.Apply(Board, Changes, nullptr);
+        TestTrue(TEXT("change goals, begin phase: nothing"), Changes.IsEmpty());
+    }
+    {
+        // Carrying out stamps the operation's faction on the record
+        const FConnectItRuleSet Rules;
+        FConnectItBoardState Fresh = MakeBoard(3);
+        FConnectItBoardChangeEvent Events;
+        Rules.CarryOutOperation(MakeAt<FConnectItBoardOperation_PlacePiece>(1, 0, 0), Fresh, &Events);
+        TestEqual(TEXT("carry out: the placement happened"), TileAt(Fresh, 0, 0).FactionPiece, 1);
     }
     return true;
 }
@@ -849,11 +1238,11 @@ bool FConnectItScoredEventPerLineTest::RunTest(const FString& Parameters)
     const FConnectItBoardOperation_PlacePiece Completing = MakeAt<FConnectItBoardOperation_PlacePiece>(0, 3, 3);
 
     FConnectItBoardState Board = MakeCross();
-    FConnectItTouchedPositions Touched;
+    FConnectItBoardChanges Touched;
     Completing.Apply(Board, Touched, nullptr);
 
     FConnectItBoardChangeEvent Change;
-    const float Points = Rules.ResolveBoardChange(Board, Touched, true, &Change);
+    const float Points = Rules.ResolveBoardChange(Board, Touched, &Change);
 
     if (!TestEqual(TEXT("each completed line is its own Scored event"), Change.Events.Num(), 2)) return false;
 
@@ -876,18 +1265,19 @@ bool FConnectItScoredEventPerLineTest::RunTest(const FString& Parameters)
 
     // The search asks for no details and gets the same result
     FConnectItBoardState Quiet = MakeCross();
-    FConnectItTouchedPositions QuietTouched;
+    FConnectItBoardChanges QuietTouched;
     Completing.Apply(Quiet, QuietTouched, nullptr);
     TestEqual(TEXT("same points without asking for events"),
-        Rules.ResolveBoardChange(Quiet, QuietTouched, true), Points);
+        Rules.ResolveBoardChange(Quiet, QuietTouched), Points);
 
     // The same cross, completed by a piece that does NOT survive scoring
     // (what a swap's arriving piece does)
     FConnectItBoardState Cleared = MakeCross();
-    FConnectItTouchedPositions ClearedTouched;
+    FConnectItBoardChanges ClearedTouched;
     Completing.Apply(Cleared, ClearedTouched, nullptr);
+    ClearedTouched.Entered[0].bSurvivesScoring = false;
     FConnectItBoardChangeEvent ClearedChange;
-    const float ClearedPoints = Rules.ResolveBoardChange(Cleared, ClearedTouched, false, &ClearedChange);
+    const float ClearedPoints = Rules.ResolveBoardChange(Cleared, ClearedTouched, &ClearedChange);
 
     TestEqual(TEXT("both lines still score the same points"), ClearedPoints, Points);
     TestEqual(TEXT("the completing tile ends up empty"), TileAt(Cleared, 3, 3).FactionPiece, -1);
@@ -941,12 +1331,12 @@ bool FConnectItForcePlaceOperationTest::RunTest(const FString& Parameters)
     TestTrue(TEXT("an inactive tile is allowed"), MakeAt<FForce>(0, 2, 2).CanApply(Board));
     TestFalse(TEXT("a position off the board is not"), MakeAt<FForce>(0, 9, 9).CanApply(Board));
 
-    FConnectItTouchedPositions Touched;
+    FConnectItBoardChanges Touched;
     FConnectItBoardChangeEvent Event;
     MakeAt<FForce>(0, 1, 1).Apply(Board, Touched, &Event);
     TestEqual(TEXT("the piece there is replaced"), TileAt(Board, 1, 1).FactionPiece, 0);
     TestTrue(TEXT("the position is reported for scoring"),
-        Touched.Num() == 1 && Touched[0] == FGridPosition(1, 1));
+        Touched.Entered.Num() == 1 && Touched.Entered[0].Position == FGridPosition(1, 1));
     const auto* Placed = OnlyEvent<FConnectItBoardEvent_PiecePlaced>(Event);
     TestTrue(TEXT("visuals see it as a placement"),
         Placed && Placed->Position == FGridPosition(1, 1) && Placed->Faction == 0);
@@ -968,12 +1358,13 @@ bool FConnectItCaptureOperationTest::RunTest(const FString& Parameters)
     TestFalse(TEXT("an own piece cannot"), MakeAt<FCapture>(0, 2, 2).CanApply(Board));
     TestFalse(TEXT("an empty tile cannot"), MakeAt<FCapture>(0, 3, 3).CanApply(Board));
 
-    FConnectItTouchedPositions Touched;
+    FConnectItBoardChanges Touched;
     FConnectItBoardChangeEvent Event;
     MakeAt<FCapture>(0, 1, 1).Apply(Board, Touched, &Event);
     TestEqual(TEXT("the piece changes owner"), TileAt(Board, 1, 1).FactionPiece, 0);
     TestTrue(TEXT("the position is reported for scoring"),
-        Touched.Num() == 1 && Touched[0] == FGridPosition(1, 1));
+        Touched.PieceChanged.Num() == 1 && Touched.PieceChanged[0].Position == FGridPosition(1, 1)
+        && Touched.Entered.IsEmpty() && Touched.Exited.IsEmpty());
     const auto* Captured = OnlyEvent<FConnectItBoardEvent_PieceCaptured>(Event);
     TestTrue(TEXT("one Piece Captured event names both factions"),
         Captured && Captured->Position == FGridPosition(1, 1)
@@ -1012,7 +1403,7 @@ bool FConnectItShiftOperationTest::RunTest(const FString& Parameters)
     OffBoard.Positions.Add(FGridPosition(9, 9));
     TestFalse(TEXT("a position off the board is not"), OffBoard.CanApply(Board));
 
-    FConnectItTouchedPositions Touched;
+    FConnectItBoardChanges Touched;
     FConnectItBoardChangeEvent Event;
     Shift.Apply(Board, Touched, &Event);
 
@@ -1026,7 +1417,8 @@ bool FConnectItShiftOperationTest::RunTest(const FString& Parameters)
         TileAt(Board, 2, 0).FactionPiece == -1 && !TileAt(Board, 2, 0).bCanShift);
 
     TestTrue(TEXT("positions that now hold a piece are reported for scoring"),
-        Touched.Num() == 2 && Touched.Contains(FGridPosition(1, 0)) && Touched.Contains(FGridPosition(3, 0)));
+        Touched.Moved.Num() == 2 && HasPosition(Touched.Moved, FGridPosition(1, 0)) && HasPosition(Touched.Moved, FGridPosition(3, 0))
+        && Touched.Entered.IsEmpty() && Touched.Exited.IsEmpty());
     const auto* Shifted = OnlyEvent<FConnectItBoardEvent_BoardShifted>(Event);
     if (!TestNotNull(TEXT("one Board Shifted event"), Shifted)) return false;
     TestTrue(TEXT("it describes the shift"),
@@ -1080,7 +1472,7 @@ bool FConnectItShiftStepsTest::RunTest(const FString& Parameters)
     Shift.Steps = 2;
     TestTrue(TEXT("two steps is valid"), Shift.CanApply(Board));
 
-    FConnectItTouchedPositions Touched;
+    FConnectItBoardChanges Touched;
     FConnectItBoardChangeEvent Event;
     Shift.Apply(Board, Touched, &Event);
 
@@ -1091,7 +1483,7 @@ bool FConnectItShiftStepsTest::RunTest(const FString& Parameters)
     TestEqual(TEXT("X=0 holds what X=3 held (empty, multiplier 1)"), TileAt(Board, 0, 0).Multiplier, 1.f);
 
     TestTrue(TEXT("both pieces are reported for scoring"),
-        Touched.Num() == 2 && Touched.Contains(FGridPosition(2, 0)) && Touched.Contains(FGridPosition(3, 0)));
+        Touched.Moved.Num() == 2 && HasPosition(Touched.Moved, FGridPosition(2, 0)) && HasPosition(Touched.Moved, FGridPosition(3, 0)));
 
     const auto* Shifted = OnlyEvent<FConnectItBoardEvent_BoardShifted>(Event);
     if (!TestNotNull(TEXT("one Board Shifted event"), Shifted)) return false;
@@ -1126,7 +1518,7 @@ bool FConnectItShiftStepsTest::RunTest(const FString& Parameters)
     PinnedShift.Steps = 2;
     TestTrue(TEXT("a shift with a fixed tile in the line is valid"), PinnedShift.CanApply(Pinned));
 
-    FConnectItTouchedPositions PinnedTouched;
+    FConnectItBoardChanges PinnedTouched;
     PinnedShift.Apply(Pinned, PinnedTouched, nullptr);
     TestEqual(TEXT("X=0's piece moved two shiftable places, over the fixed tile, to X=3"),
         TileAt(Pinned, 3, 0).FactionPiece, 0);
@@ -1158,12 +1550,14 @@ bool FConnectItRemoveOperationTest::RunTest(const FString& Parameters)
     Delayed.DelayTurns = 2;
     TestFalse(TEXT("a delayed removal is refused (not supported yet)"), Delayed.CanApply(Board));
 
-    FConnectItTouchedPositions Touched;
+    FConnectItBoardChanges Touched;
     FConnectItBoardChangeEvent Event;
     Remove.Apply(Board, Touched, &Event);
     TestTrue(TEXT("the piece is gone"),
         TileAt(Board, 1, 1).FactionPiece == -1 && !TileAt(Board, 1, 1).bIsOccupied);
-    TestEqual(TEXT("nothing is reported for scoring"), Touched.Num(), 0);
+    TestFalse(TEXT("nothing is reported for scoring"), Touched.HasScoringArrivals());
+    TestTrue(TEXT("the piece leaving is reported, with its owner"),
+        Touched.Exited.Num() == 1 && Touched.Exited[0].Position == FGridPosition(1, 1) && Touched.Exited[0].Faction == 1);
     const auto* Removed = OnlyEvent<FConnectItBoardEvent_PieceRemoved>(Event);
     TestTrue(TEXT("one Piece Removed event says whose piece it was"),
         Removed && Removed->Position == FGridPosition(1, 1) && Removed->RemovedFaction == 1);
@@ -1183,11 +1577,11 @@ bool FConnectItDestroyMultiplierOperationTest::RunTest(const FString& Parameters
     TestFalse(TEXT("a tile at x1 is not"), MakeAt<FDestroy>(0, 2, 2).CanApply(Board));
     TestFalse(TEXT("a position off the board is not"), MakeAt<FDestroy>(0, 9, 9).CanApply(Board));
 
-    FConnectItTouchedPositions Touched;
+    FConnectItBoardChanges Touched;
     FConnectItBoardChangeEvent Event;
     MakeAt<FDestroy>(0, 1, 1).Apply(Board, Touched, &Event);
     TestEqual(TEXT("the multiplier is back to 1"), TileAt(Board, 1, 1).Multiplier, 1.f);
-    TestEqual(TEXT("nothing is reported for scoring"), Touched.Num(), 0);
+    TestFalse(TEXT("nothing is reported for scoring"), Touched.HasScoringArrivals());
     const auto* Destroyed = OnlyEvent<FConnectItBoardEvent_TileMultiplierDestroyed>(Event);
     TestTrue(TEXT("one Tile Multiplier Destroyed event says where"),
         Destroyed && Destroyed->Position == FGridPosition(1, 1));
@@ -1206,11 +1600,11 @@ bool FConnectItToggleActiveOperationTest::RunTest(const FString& Parameters)
     TestTrue(TEXT("any tile on the board is valid"), Toggle.CanApply(Board));
     TestFalse(TEXT("a position off the board is not"), MakeAt<FToggle>(0, 9, 9).CanApply(Board));
 
-    FConnectItTouchedPositions Touched;
+    FConnectItBoardChanges Touched;
     FConnectItBoardChangeEvent Event;
     Toggle.Apply(Board, Touched, &Event);
     TestFalse(TEXT("an active tile becomes inactive"), TileAt(Board, 1, 1).bIsActive);
-    TestEqual(TEXT("nothing is reported for scoring"), Touched.Num(), 0);
+    TestFalse(TEXT("nothing is reported for scoring"), Touched.HasScoringArrivals());
     const auto* Toggled = OnlyEvent<FConnectItBoardEvent_TileActiveToggled>(Event);
     TestTrue(TEXT("one Tile Active Toggled event says where and the new state"),
         Toggled && Toggled->Position == FGridPosition(1, 1) && !Toggled->bNowActive);
@@ -1238,9 +1632,9 @@ bool FConnectItBoardEventOrderTest::RunTest(const FString& Parameters)
     const FConnectItRuleSet Rules;
     FConnectItBoardChangeEvent Change;
 
-    FConnectItTouchedPositions Touched;
+    FConnectItBoardChanges Touched;
     MakeAt<FConnectItBoardOperation_PlacePiece>(0, 3, 3).Apply(Board, Touched, &Change);
-    Rules.ResolveBoardChange(Board, Touched, true, &Change);
+    Rules.ResolveBoardChange(Board, Touched, &Change);
 
     if (!TestEqual(TEXT("two events"), Change.Events.Num(), 2)) return false;
 
@@ -1285,7 +1679,7 @@ bool FConnectItLineDirectionsTest::RunTest(const FString& Parameters)
             Place(Board, X + Step * DX, Y + Step * DY, 0);
         }
         // Scored as if the last piece of the line had just arrived
-        return Rules.ApplyScoring(Board, FGridPosition(X + 3 * DX, Y + 3 * DY), 0, true);
+        return Rules.ApplyScoring(Board, FGridPosition(X + 3 * DX, Y + 3 * DY), true);
     };
 
     // The rule's own axes: {0,1} is "horizontal" (a row), {1,0} "vertical"
@@ -1359,7 +1753,7 @@ bool FConnectItSimulateOperationTest::RunTest(const FString& Parameters)
         FConnectItBoardOperation_PlacePiece Operation;
         Operation.Position = FGridPosition(X, Y);
         FConnectItBoardChangeEvent Events;
-        return FLibrary::SimulateOperation(Board, Rules, FInstancedStruct::Make(Operation), Faction,
+        return FLibrary::SimulateOperation(Board, Rules, FInstancedStruct::Make(Operation), Faction, -1,
             OutBoard, OutPoints, OutNumScored, Events);
     };
 
@@ -1392,7 +1786,7 @@ bool FConnectItSimulateOperationTest::RunTest(const FString& Parameters)
 
     FConnectItBoardChangeEvent Events;
     TestFalse(TEXT("so does a struct that isn't a board operation"),
-        FLibrary::SimulateOperation(Board, Rules, FInstancedStruct::Make(FGridPosition(0, 0)), 0,
+        FLibrary::SimulateOperation(Board, Rules, FInstancedStruct::Make(FGridPosition(0, 0)), 0, -1,
             Result, Points, NumScored, Events));
     return true;
 }
@@ -1441,7 +1835,10 @@ bool FConnectItAICandidatesTest::RunTest(const FString& Parameters)
         AllTypes.Contains(FGameplayTag(ConnectIt_Game_PlacePiece))
         && AllTypes.Contains(FGameplayTag(ConnectIt_Game_SwapPieces))
         && AllTypes.Contains(FGameplayTag(ConnectIt_Game_Shift)));
-    TestEqual(TEXT("one per kind of operation"), AllTypes.Num(), 8);
+    // The eight player-facing ones and the level's Change Goals, Begin
+    // Phase, Remove Tiles, Add Tiles, Change Layout, Set Tile Locked and Set
+    // Chain Partner
+    TestEqual(TEXT("one per kind of operation"), AllTypes.Num(), 15);
     return true;
 }
 
@@ -1466,7 +1863,7 @@ bool FConnectItMinMaxSearchToolTest::RunTest(const FString& Parameters)
 
     FConnectItMinMaxSearchSettings Settings;
     Settings.MaxDepth = 1;
-    Settings.TimeBudgetSeconds = 0.f;
+    Settings.DefaultTimeBudgetSeconds = 0.f;
     Settings.OpponentRequestTypes = PlaceOnly();
 
     ConnectItMinMaxSearch::FPrepared Prepared;
@@ -1500,6 +1897,20 @@ bool FConnectItMinMaxSearchToolTest::RunTest(const FString& Parameters)
     FConnectItAIDecisionContext ThreeFactions = Context;
     ThreeFactions.Board.ScoreBoard = { 0.f, 0.f, 0.f };
     TestFalse(TEXT("only two factions"), ConnectItMinMaxSearch::Prepare(ThreeFactions, Settings, Prepared, &WhyNot));
+
+    // Time: the decision's budget when it has one, else the settings' default
+    FConnectItMinMaxSearchSettings Timed = Settings;
+    Timed.DefaultTimeBudgetSeconds = 1.5f;
+    if (ConnectItMinMaxSearch::Prepare(Context, Timed, Prepared, &WhyNot))
+    {
+        TestEqual(TEXT("no decision budget: the default"), Prepared.Params.TimeBudgetSeconds, 1.5);
+    }
+    FConnectItAIDecisionContext Budgeted = Context;
+    Budgeted.TimeBudgetSeconds = 3.f;
+    if (ConnectItMinMaxSearch::Prepare(Budgeted, Timed, Prepared, &WhyNot))
+    {
+        TestEqual(TEXT("a decision budget wins, even over a smaller default"), Prepared.Params.TimeBudgetSeconds, 3.0);
+    }
 
     TestTrue(TEXT("the MinMax strategy declares place moves"),
         GetDefault<UConnectIt_AIStrategy_MinMax>()->GetSupportedRequestTypes().HasTagExact(ConnectIt_Game_PlacePiece));
@@ -1560,7 +1971,7 @@ bool FConnectItMinMaxSearchProgressTest::RunTest(const FString& Parameters)
 
     FConnectItMinMaxSearchSettings Settings;
     Settings.MaxDepth = 3;
-    Settings.TimeBudgetSeconds = 0.f;
+    Settings.DefaultTimeBudgetSeconds = 0.f;
     Settings.OpponentRequestTypes = PlaceOnly();
 
     ConnectItMinMaxSearch::FPrepared Prepared;
@@ -1703,7 +2114,7 @@ bool FConnectItMinMaxStrategyPartialTest::RunTest(const FString& Parameters)
 
     UConnectIt_AIStrategy_MinMax* Strategy = NewObject<UConnectIt_AIStrategy_MinMax>();
     Strategy->Search.MaxDepth = 10;
-    Strategy->Search.TimeBudgetSeconds = 0.f;
+    Strategy->Search.DefaultTimeBudgetSeconds = 0.f;
     Strategy->Search.OpponentRequestTypes = PlaceOnly();
     Strategy->MaxCandidates = 3;
 
@@ -1900,27 +2311,26 @@ bool FConnectItAISelectorWeightedTest::RunTest(const FString& Parameters)
     return true;
 }
 
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(FConnectItWinConditionAssetsTest,
-    "ConnectIt.Board.WinConditions.Assets", TestFlags)
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FConnectItMatchConditionAssetsTest,
+    "ConnectIt.Board.Conditions.Assets", TestFlags)
 
-bool FConnectItWinConditionAssetsTest::RunTest(const FString& Parameters)
+bool FConnectItMatchConditionAssetsTest::RunTest(const FString& Parameters)
 {
     // Goals as assets: the rule set copies their conditions out at match
     // start, in order, and a checkpoint names the asset reached
-    UConnectIt_WinConditionAsset* ScoreGoal = NewObject<UConnectIt_WinConditionAsset>(
+    UConnectIt_MatchConditionAsset* ScoreGoal = NewObject<UConnectIt_MatchConditionAsset>(
         GetTransientPackage(), TEXT("WC_Test_Score4"));
-    ScoreGoal->Conditions.Add(TInstancedStruct<FConnectItWinCondition>::Make<FConnectItWinCondition_ScoreThreshold>(ScoreAtLeast(4.f)));
-    UConnectIt_WinConditionAsset* ClearGoal = NewObject<UConnectIt_WinConditionAsset>(
+    ScoreGoal->Conditions.Add(TInstancedStruct<FConnectItMatchCondition>::Make<FConnectItMatchCondition_ScoreThreshold>(ScoreAtLeast(4.f)));
+    UConnectIt_MatchConditionAsset* ClearGoal = NewObject<UConnectIt_MatchConditionAsset>(
         GetTransientPackage(), TEXT("WC_Test_Clear"));
-    ClearGoal->Conditions.Add(TInstancedStruct<FConnectItWinCondition>::Make<FConnectItWinCondition_PieceCount>(PiecesIs(EConnectItPieceCountComparison::Equal, 0)));
+    ClearGoal->Conditions.Add(TInstancedStruct<FConnectItMatchCondition>::Make<FConnectItMatchCondition_PieceCount>(PiecesIs(EConnectItPieceCountComparison::Equal, 0)));
 
     FConnectItRuleSet Rules;
-    Rules.PlayerWinConditions = { ScoreGoal, nullptr, ClearGoal };
-    Rules.AIWinConditions = { ScoreGoal };
     TestEqual(TEXT("nothing to play with before resolving"), Rules.PlayerWinGroups.Num(), 0);
 
+    // As the GameMode does with the Level director's Player / AI Win Conditions
     AddExpectedError(TEXT("Player win condition 1 is empty"), EAutomationExpectedErrorFlags::Contains, 1);
-    Rules.ResolveWinGroups();
+    Rules.ResolveConditionGroups({ ScoreGoal, nullptr, ClearGoal }, { ScoreGoal });
     if (!TestEqual(TEXT("one group per goal, the empty one skipped"), Rules.PlayerWinGroups.Num(), 2)) return false;
     TestTrue(TEXT("in order, with their source"),
         Rules.PlayerWinGroups[0].Source == ScoreGoal && Rules.PlayerWinGroups[1].Source == ClearGoal);
@@ -1953,8 +2363,7 @@ bool FConnectItWinConditionAssetsTest::RunTest(const FString& Parameters)
 
     // The search plays resolved goals exactly like the same groups built in code
     FConnectItRuleSet AssetRules;
-    AssetRules.PlayerWinConditions = { ScoreGoal };
-    AssetRules.ResolveWinGroups();
+    AssetRules.ResolveConditionGroups({ ScoreGoal }, {});
     const FConnectItRuleSet InlineRules = RulesWonAt(4.f);
 
     FConnectItBoardState SearchBoard = MakeBoard(7);
@@ -2140,12 +2549,15 @@ bool FConnectItAIDirectorTest::RunTest(const FString& Parameters)
     TestTrue(TEXT("with First Available"), Director->Selector && Director->Selector->IsA<UConnectIt_AISelector_FirstAvailable>());
 
     Director->OnMatchStarted();
-    Director->OnAITurnStarted(3);
-    Director->OnAITurnEnded(3);
-    Director->OnOpponentTurnStarted(4);
+    Director->OnTurnStarted(1, true, 3);
+    Director->OnTurnEnded(1, true, 3);
+    Director->OnTurnStarted(0, false, 4);
     Director->OnWinCheckpointReached(1, true, nullptr, 0, TEXT("Stage 1"));
+    Director->OnMatchWon(0, false);
     TestEqual(TEXT("events reach the director"), Director->Log,
-        FString(TEXT("match; start 3; end 3; opponent 4; checkpoint 1 AI None 0 Stage 1; ")));
+        FString(TEXT("match; start 1 mine 3; end 1 mine 3; start 0 theirs 4; checkpoint 1 mine None 0 Stage 1; won 0 theirs; ")));
+    TestEqual(TEXT("no controller: no faction"), Director->GetFaction(), static_cast<int32>(INDEX_NONE));
+    TestFalse(TEXT("...so nothing is its own"), Director->IsMine(INDEX_NONE));
 
     // Strategy and selector changes wait for the next decision, as copies
     UConnectIt_AIStrategy* const OriginalStrategy = Director->Strategies[0];
@@ -2188,10 +2600,1664 @@ bool FConnectItAIDirectorTest::RunTest(const FString& Parameters)
     Director->TrySetLoadout(nullptr);
     TestNull(TEXT("no controller, no loadout"), Director->TryGetLoadout());
 
-    // A match preset can carry one
+    // A match preset names the three director classes
     UConnectIt_MatchPreset* Preset = NewObject<UConnectIt_MatchPreset>();
-    Preset->AIDirector = NewObject<UConnectIt_TestAIDirector>(Preset);
-    TestNotNull(TEXT("a preset holds its director"), Preset->AIDirector.Get());
+    Preset->AIDirectorClass = UConnectIt_TestAIDirector::StaticClass();
+    Preset->PlayerDirectorClass = UConnectIt_PlayerDirector::StaticClass();
+    Preset->LevelDirectorClass = UConnectIt_LevelDirector::StaticClass();
+    TestTrue(TEXT("a preset names its director classes"),
+        Preset->AIDirectorClass == UConnectIt_TestAIDirector::StaticClass() && Preset->PlayerDirectorClass && Preset->LevelDirectorClass);
+#if WITH_EDITOR
+    {
+        // The base Player director has no starting loadout: the preset is invalid
+        FDataValidationContext Validation;
+        TestTrue(TEXT("a player director with no loadout makes the preset invalid"),
+            Preset->IsDataValid(Validation) == EDataValidationResult::Invalid);
+    }
+#endif
+    return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FConnectItDirectorConditionsTest,
+    "ConnectIt.AI.DirectorConditions", TestFlags)
+
+bool FConnectItDirectorConditionsTest::RunTest(const FString& Parameters)
+{
+    // Both sides' goals live on the Level director
+    UConnectIt_MatchConditionAsset* ScoreGoal = NewObject<UConnectIt_MatchConditionAsset>(
+        GetTransientPackage(), TEXT("WC_Test_DirectorScore"));
+    ScoreGoal->Conditions.Add(TInstancedStruct<FConnectItMatchCondition>::Make<FConnectItMatchCondition_ScoreThreshold>(ScoreAtLeast(4.f)));
+    UConnectIt_MatchConditionAsset* EmptyGoal = NewObject<UConnectIt_MatchConditionAsset>(
+        GetTransientPackage(), TEXT("WC_Test_DirectorEmpty"));
+
+    UConnectIt_LevelDirector* Level = NewObject<UConnectIt_LevelDirector>();
+    Level->PlayerWinConditions = { ScoreGoal, nullptr };
+    Level->AIWinConditions = { ScoreGoal };
+
+    // Resolving from the Level director's lists: what the match plays with
+    FConnectItRuleSet Rules;
+    AddExpectedError(TEXT("Player win condition 1 is empty"), EAutomationExpectedErrorFlags::Contains, 1);
+    Rules.ResolveConditionGroups(Level->PlayerWinConditions, Level->AIWinConditions);
+    TestEqual(TEXT("the player's goal, the empty entry skipped"), Rules.PlayerWinGroups.Num(), 1);
+    TestTrue(TEXT("the AI's goal"), Rules.AIWinGroups.Num() == 1 && Rules.AIWinGroups[0].Source == ScoreGoal);
+
+    // One side's goals replaced: only that list changes
+    Rules.SetConditionGroups(/*bForAI=*/true, /*bWinGoals=*/true, { ScoreGoal, ScoreGoal });
+    TestEqual(TEXT("the AI's goals replaced"), Rules.GetConditionGroups(true, true).Num(), 2);
+    TestEqual(TEXT("...the player's untouched"), Rules.PlayerWinGroups.Num(), 1);
+    Rules.SetConditionGroups(false, false, { ScoreGoal });
+    TestEqual(TEXT("the player's lose conditions"), Rules.PlayerLoseGroups.Num(), 1);
+
+#if WITH_EDITOR
+    {
+        // An empty entry is a warning; a goal with no conditions is invalid
+        FDataValidationContext Validation;
+        Level->IsDataValid(Validation);
+        TestEqual(TEXT("level: no errors"), static_cast<int32>(Validation.GetNumErrors()), 0);
+        TestTrue(TEXT("level: the empty entry is a warning"), Validation.GetNumWarnings() >= 1);
+
+        FDataValidationContext Broken;
+        Level->PlayerWinConditions = { EmptyGoal };
+        Level->IsDataValid(Broken);
+        TestEqual(TEXT("a goal with no conditions is an error"), static_cast<int32>(Broken.GetNumErrors()), 1);
+
+        FDataValidationContext NoGoals;
+        Level->PlayerWinConditions.Reset();
+        Level->AIWinConditions.Reset();
+        Level->IsDataValid(NoGoals);
+        TestEqual(TEXT("no player goals is an error"), static_cast<int32>(NoGoals.GetNumErrors()), 1);
+        TestTrue(TEXT("no AI goals is warned about"), NoGoals.GetNumWarnings() >= 1);
+    }
+#endif
+    return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FConnectItBoardLayoutTest,
+    "ConnectIt.Board.Layout", TestFlags)
+
+bool FConnectItBoardLayoutTest::RunTest(const FString& Parameters)
+{
+    // Layouts and what changes between them: tiles that go, tiles that come,
+    // shared positions untouched
+    const auto MakeLayout = [](std::initializer_list<FGridPosition> Positions)
+    {
+        UConnectIt_BoardLayout* Layout = NewObject<UConnectIt_BoardLayout>();
+        for (const FGridPosition& Position : Positions)
+        {
+            FConnectItBoardLayoutCell& Cell = Layout->Cells.AddDefaulted_GetRef();
+            Cell.Position = Position;
+        }
+        return Layout;
+    };
+    const auto Has = [](const TArray<FGridPosition>& Positions, int32 X, int32 Y)
+    {
+        return Positions.Contains(FGridPosition(X, Y));
+    };
+
+    const UConnectIt_BoardLayout* Row = MakeLayout({ {0, 0}, {1, 0}, {2, 0}, {3, 0} });
+    const UConnectIt_BoardLayout* Square = MakeLayout({ {0, 0}, {1, 0}, {0, 1}, {1, 1} });
+
+    // Identical: nothing changes
+    TestTrue(TEXT("identical: no change"), Row->DiffFrom(*Row).IsEmpty());
+
+    // Grow: a 4x1 row to a 4x4 square -- only the new tiles come
+    UConnectIt_BoardLayout* Big = NewObject<UConnectIt_BoardLayout>();
+    for (int32 X = 0; X < 4; X++)
+    {
+        for (int32 Y = 0; Y < 4; Y++)
+        {
+            Big->Cells.AddDefaulted_GetRef().Position = FGridPosition(X, Y);
+        }
+    }
+    const FConnectItBoardLayoutDiff Grow = Big->DiffFrom(*Row);
+    TestEqual(TEXT("grow: nothing goes"), Grow.Removed.Num(), 0);
+    TestEqual(TEXT("grow: 12 tiles come"), Grow.Added.Num(), 12);
+
+    // Shrink: back again -- only the extra tiles go
+    const FConnectItBoardLayoutDiff Shrink = Row->DiffFrom(*Big);
+    TestEqual(TEXT("shrink: 12 tiles go"), Shrink.Removed.Num(), 12);
+    TestEqual(TEXT("shrink: nothing comes"), Shrink.Added.Num(), 0);
+
+    // Move: a row to a square sharing two tiles
+    const FConnectItBoardLayoutDiff Move = Square->DiffFrom(*Row);
+    TestTrue(TEXT("move: the row's far end goes"),
+        Move.Removed.Num() == 2 && Has(Move.Removed, 2, 0) && Has(Move.Removed, 3, 0));
+    TestTrue(TEXT("move: the square's top comes, in layout order"),
+        Move.Added.Num() == 2 && Move.Added[0].Position == FGridPosition(0, 1) && Move.Added[1].Position == FGridPosition(1, 1));
+
+    // From a live board: the board's tiles are the "current" side
+    const FConnectItBoardState Board = MakeBoard(2);
+    const FConnectItBoardLayoutDiff FromBoard = Row->DiffFrom(Board);
+    TestTrue(TEXT("from a board: its top row goes, the row's far end comes"),
+        FromBoard.Removed.Num() == 2 && Has(FromBoard.Removed, 0, 1) && Has(FromBoard.Removed, 1, 1)
+        && FromBoard.Added.Num() == 2);
+
+    // A cell keeps its data on the way through
+    UConnectIt_BoardLayout* Charged = MakeLayout({ {5, 5} });
+    Charged->Cells[0].TileData.Multiplier = 3.f;
+    Charged->Cells[0].TileData.StartingFactionPiece = 1;
+    const FConnectItBoardLayoutDiff Carry = Charged->DiffFrom(Board);
+    TestTrue(TEXT("added cells carry their tile data"),
+        Carry.Added.Num() == 1 && Carry.Added[0].TileData.Multiplier == 3.f && Carry.Added[0].TileData.StartingFactionPiece == 1);
+    TestNotNull(TEXT("find a cell by position"), Charged->FindCell(FGridPosition(5, 5)));
+    TestNull(TEXT("...and not one that isn't there"), Charged->FindCell(FGridPosition(0, 0)));
+
+#if WITH_EDITOR
+    {
+        FDataValidationContext Fine;
+        TestTrue(TEXT("a plain layout is valid"), Square->IsDataValid(Fine) != EDataValidationResult::Invalid);
+
+        UConnectIt_BoardLayout* Twice = MakeLayout({ {0, 0}, {0, 0} });
+        FDataValidationContext Duplicate;
+        TestTrue(TEXT("a repeated position is invalid"), Twice->IsDataValid(Duplicate) == EDataValidationResult::Invalid);
+        TestTrue(TEXT("...and the diff keeps one"), Twice->DiffFrom(*Row).Added.IsEmpty() && Twice->DiffFrom(*Row).Removed.Num() == 3);
+
+        UConnectIt_BoardLayout* ThirdSide = MakeLayout({ {0, 0} });
+        ThirdSide->Cells[0].TileData.StartingFactionPiece = 2;
+        FDataValidationContext Faction;
+        ThirdSide->IsDataValid(Faction);
+        TestTrue(TEXT("a piece for a faction no match has is warned about"), Faction.GetNumWarnings() >= 1);
+    }
+#endif
+    return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FConnectItTileOperationsTest,
+    "ConnectIt.Board.TileOperations", TestFlags)
+
+bool FConnectItTileOperationsTest::RunTest(const FString& Parameters)
+{
+    const auto MakeCell = [](int32 X, int32 Y, int32 StartingFaction = -1, float Multiplier = 1.f)
+    {
+        FConnectItBoardLayoutCell Cell;
+        Cell.Position = FGridPosition(X, Y);
+        Cell.TileData.StartingFactionPiece = StartingFaction;
+        Cell.TileData.Multiplier = Multiplier;
+        return Cell;
+    };
+    const auto EventAt = [](const FConnectItBoardChangeEvent& Events, int32 Index) -> const FInstancedStruct*
+    {
+        return Events.Events.IsValidIndex(Index) ? &Events.Events[Index] : nullptr;
+    };
+
+    // --- Remove Tiles ---
+    {
+        FConnectItBoardState Board = MakeBoard(3);
+        Place(Board, 1, 1, 0);
+        FConnectItBoardOperation_RemoveTiles Remove;
+        Remove.Positions = { FGridPosition(1, 1), FGridPosition(2, 2) };
+        TestTrue(TEXT("remove: can apply"), Remove.CanApply(Board));
+
+        FConnectItBoardChanges Touched;
+        FConnectItBoardChangeEvent Events;
+        Remove.Apply(Board, Touched, &Events);
+        TestEqual(TEXT("remove: two tiles fewer"), Board.NumTiles(), 7);
+        TestNull(TEXT("remove: the tile is gone"), Board.GetTileData(FGridPosition(1, 1)));
+        TestTrue(TEXT("remove: tiles disappearing set off nothing"), Touched.IsEmpty());
+        const FConnectItBoardEvent_TilesRemoved* Removed =
+            EventAt(Events, 0) ? EventAt(Events, 0)->GetPtr<FConnectItBoardEvent_TilesRemoved>() : nullptr;
+        TestTrue(TEXT("remove: the event says which, and the piece that went"),
+            Removed && Removed->Positions.Num() == 2 && Removed->PieceFactions == TArray<int32>({ 0, -1 }));
+
+        FConnectItBoardOperation_RemoveTiles Bad;
+        TestFalse(TEXT("remove: nothing to remove is refused"), Bad.CanApply(Board));
+        Bad.Positions = { FGridPosition(1, 1) };
+        TestFalse(TEXT("remove: a position that isn't a tile is refused"), Bad.CanApply(Board));
+        Bad.Positions = { FGridPosition(0, 0), FGridPosition(0, 0) };
+        TestFalse(TEXT("remove: a repeated position is refused"), Bad.CanApply(Board));
+    }
+
+    // --- Add Tiles: an added starting piece is an arrival and can score ---
+    {
+        FConnectItRuleSet Rules;   // Lines of 4
+        FConnectItBoardState Board = MakeBoard(3);
+        Board.StartingPieces = { 0, 0 };
+        Place(Board, 0, 0, 0);
+        Place(Board, 1, 0, 0);
+        Place(Board, 2, 0, 0);
+
+        FConnectItBoardOperation_AddTiles Add;
+        Add.Faction = INDEX_NONE;
+        Add.Cells = { MakeCell(3, 0, 0, 2.f), MakeCell(3, 1) };
+        TestTrue(TEXT("add: can apply"), Add.CanApply(Board));
+
+        FConnectItBoardChangeEvent Events;
+        const float Points = Rules.CarryOutOperation(Add, Board, &Events);
+        TestEqual(TEXT("add: two tiles more"), Board.NumTiles(), 11);
+        TestTrue(TEXT("add: the starting piece completed a line of 4"), Points > 0.f);
+        TestTrue(TEXT("add: and stays, like a placed piece"), Board.IsTileOccupied(FGridPosition(3, 0)));
+        TestEqual(TEXT("add: it counts as a starting piece"), Board.StartingPieces[0], 1);
+        const FConnectItBoardEvent_TilesAdded* Added =
+            EventAt(Events, 0) ? EventAt(Events, 0)->GetPtr<FConnectItBoardEvent_TilesAdded>() : nullptr;
+        TestTrue(TEXT("add: Tiles Added first, carrying the cells"), Added && Added->Cells.Num() == 2);
+        TestTrue(TEXT("add: then Scored"),
+            EventAt(Events, 1) && EventAt(Events, 1)->GetPtr<FConnectItBoardEvent_Scored>() != nullptr);
+
+        FConnectItBoardOperation_AddTiles Bad;
+        TestFalse(TEXT("add: nothing to add is refused"), Bad.CanApply(Board));
+        Bad.Cells = { MakeCell(0, 0) };
+        TestFalse(TEXT("add: a position that is already a tile is refused"), Bad.CanApply(Board));
+        Bad.Cells = { MakeCell(9, 9), MakeCell(9, 9) };
+        TestFalse(TEXT("add: a repeated position is refused"), Bad.CanApply(Board));
+    }
+
+    // --- Change Layout: one change, one win check on the final board ---
+    {
+        // The player loses with no pieces left. The in-between board (old
+        // tiles gone, new ones not yet added) has none; the final board has one.
+        FConnectItRuleSet Rules;
+        Rules.AIFaction = 1;
+        AddCondition(AddGroup(Rules.PlayerWinGroups), ScoreAtLeast(100.f));
+        AddCondition(AddGroup(Rules.PlayerLoseGroups), PiecesIs(EConnectItPieceCountComparison::Equal, 0));
+
+        FConnectItBoardState Board = MakeBoard(2);
+        Place(Board, 0, 0, 0);
+        Board.GetTileDataMutable(FGridPosition(1, 1))->Multiplier = 3.f;
+        Place(Board, 1, 1, 1);
+
+        FConnectItBoardOperation_ChangeLayout Change;
+        Change.RemovePositions = { FGridPosition(0, 0), FGridPosition(0, 1) };
+        Change.AddCells = { MakeCell(5, 5, 0), MakeCell(0, 0) };
+        Change.LayoutName = TEXT("CIBL_Test");
+        Change.bHasCamera = true;
+        TestTrue(TEXT("layout: a position removed and added again is fine"), Change.CanApply(Board));
+
+        FConnectItBoardChangeEvent Events;
+        Rules.CarryOutOperation(Change, Board, &Events);
+        Rules.StampWinState(Board, &Events);
+        TestFalse(TEXT("layout: no loss from the in-between board"), Board.bGameOver);
+        TestTrue(TEXT("layout: shared tiles keep piece and multiplier"),
+            Board.IsTileOccupied(FGridPosition(1, 1)) && Board.GetTileData(FGridPosition(1, 1))->Multiplier == 3.f);
+        TestTrue(TEXT("layout: (0,0) is a fresh, empty tile"), Board.GetTileData(FGridPosition(0, 0)) && !Board.IsTileOccupied(FGridPosition(0, 0)));
+        TestEqual(TEXT("layout: tile count"), Board.NumTiles(), 4);
+
+        TestTrue(TEXT("layout: Tiles Removed, Tiles Added, Layout Changed, in that order"),
+            EventAt(Events, 0) && EventAt(Events, 0)->GetPtr<FConnectItBoardEvent_TilesRemoved>()
+            && EventAt(Events, 1) && EventAt(Events, 1)->GetPtr<FConnectItBoardEvent_TilesAdded>()
+            && EventAt(Events, 2) && EventAt(Events, 2)->GetPtr<FConnectItBoardEvent_LayoutChanged>());
+        const FConnectItBoardEvent_LayoutChanged* Changed =
+            EventAt(Events, 2) ? EventAt(Events, 2)->GetPtr<FConnectItBoardEvent_LayoutChanged>() : nullptr;
+        TestTrue(TEXT("layout: the event names the layout and its camera"),
+            Changed && Changed->LayoutName == FName(TEXT("CIBL_Test")) && Changed->bHasCamera);
+
+        // From a diff; an identical layout changes no tile but still says so
+        FConnectItBoardOperation_ChangeLayout Same;
+        Same.SetDiff(FConnectItBoardLayoutDiff::Between(Board.TilePositions, {}));
+        TestEqual(TEXT("layout: a diff to nothing removes every tile"), Same.RemovePositions.Num(), 4);
+        FConnectItBoardOperation_ChangeLayout Nothing;
+        TestTrue(TEXT("layout: an empty change is allowed (camera only)"), Nothing.CanApply(Board));
+
+        FConnectItBoardOperation_ChangeLayout Bad;
+        Bad.AddCells = { MakeCell(1, 1) };
+        TestFalse(TEXT("layout: adding over a tile that stays is refused"), Bad.CanApply(Board));
+    }
+    return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FConnectItPhasesAndLayoutsTest,
+    "ConnectIt.Board.PhasesAndLayouts", TestFlags)
+
+bool FConnectItPhasesAndLayoutsTest::RunTest(const FString& Parameters)
+{
+    // --- Begin Phase: the board records the phase and says so ---
+    const FGameplayTag Phase1 = FGameplayTag::RequestGameplayTag(TEXT("ConnectIt.Phase.1"), false);
+    const FGameplayTag Phase2 = FGameplayTag::RequestGameplayTag(TEXT("ConnectIt.Phase.2"), false);
+    if (!TestTrue(TEXT("the phase tags exist (DefaultGameplayTags.ini)"), Phase1.IsValid() && Phase2.IsValid()))
+    {
+        return false;
+    }
+
+    FConnectItRuleSet Rules;
+    FConnectItBoardState Board = MakeBoard(3);
+    TestFalse(TEXT("no phase before one begins"), Board.CurrentPhase.IsValid());
+
+    FConnectItBoardOperation_BeginPhase Begin;
+    Begin.Phase = Phase1;
+    TestTrue(TEXT("begin: can apply"), Begin.CanApply(Board));
+    FConnectItBoardChangeEvent First;
+    Rules.CarryOutOperation(Begin, Board, &First);
+    TestTrue(TEXT("begin: the board is in phase 1"), Board.CurrentPhase == Phase1);
+    const FConnectItBoardEvent_PhaseChanged* FirstEvent =
+        First.Events.Num() == 1 ? First.Events[0].GetPtr<FConnectItBoardEvent_PhaseChanged>() : nullptr;
+    TestTrue(TEXT("begin: Phase Changed, from no phase"), FirstEvent && FirstEvent->Phase == Phase1 && !FirstEvent->PreviousPhase.IsValid());
+
+    Begin.Phase = Phase2;
+    FConnectItBoardChangeEvent Second;
+    Rules.CarryOutOperation(Begin, Board, &Second);
+    const FConnectItBoardEvent_PhaseChanged* SecondEvent =
+        Second.Events.Num() == 1 ? Second.Events[0].GetPtr<FConnectItBoardEvent_PhaseChanged>() : nullptr;
+    TestTrue(TEXT("begin: the next phase names the one before"), SecondEvent && SecondEvent->PreviousPhase == Phase1 && SecondEvent->Phase == Phase2);
+
+    FConnectItBoardOperation_BeginPhase NoPhase;
+    TestFalse(TEXT("begin: no phase is refused"), NoPhase.CanApply(Board));
+
+    // --- Set Layout's change: worked out against the board it will change ---
+    UConnectIt_BoardLayout* Layout = NewObject<UConnectIt_BoardLayout>(GetTransientPackage(), TEXT("CIBL_TestRow"));
+    for (int32 X = 0; X < 4; X++)
+    {
+        Layout->Cells.AddDefaulted_GetRef().Position = FGridPosition(X, 0);
+    }
+    Layout->bHasCamera = true;
+    Layout->CameraTransform.SetLocation(FVector(1.f, 2.f, 3.f));
+
+    const FConnectItBoardOperation_ChangeLayout FromNow = Layout->MakeChangeFrom(Board);
+    TestEqual(TEXT("layout: the 3x3 board's rows 1-2 go"), FromNow.RemovePositions.Num(), 6);
+    TestEqual(TEXT("layout: (3,0) comes"), FromNow.AddCells.Num(), 1);
+    TestTrue(TEXT("layout: it carries the layout's name and camera"),
+        FromNow.LayoutName == FName(TEXT("CIBL_TestRow")) && FromNow.bHasCamera
+        && FromNow.CameraTransform.GetLocation().Equals(FVector(1.f, 2.f, 3.f)));
+
+    // The board changes before the layout is applied (another change queued
+    // ahead of it): the layout's change is worked out against the later board
+    FConnectItBoardOperation_RemoveTiles Earlier;
+    Earlier.Positions = { FGridPosition(0, 2), FGridPosition(1, 2), FGridPosition(2, 2) };
+    FConnectItBoardChanges Touched;
+    Earlier.Apply(Board, Touched, nullptr);
+    const FConnectItBoardOperation_ChangeLayout Later = Layout->MakeChangeFrom(Board);
+    TestEqual(TEXT("layout: against the later board, only row 1 goes"), Later.RemovePositions.Num(), 3);
+    TestTrue(TEXT("layout: and it applies"), Later.CanApply(Board));
+
+    Rules.CarryOutOperation(Later, Board, nullptr);
+    TestEqual(TEXT("layout: the board is the layout"), Board.NumTiles(), 4);
+    TestTrue(TEXT("layout: every cell is a tile"), Layout->DiffFrom(Board).IsEmpty());
+    return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FConnectItChangeGoalsTest,
+    "ConnectIt.Board.ChangeGoals", TestFlags)
+
+bool FConnectItChangeGoalsTest::RunTest(const FString& Parameters)
+{
+    // The board's side of a goals change: progress restarts, score stays,
+    // and the win check that follows measures the new goals
+    UConnectIt_MatchConditionAsset* Score4 = NewObject<UConnectIt_MatchConditionAsset>(GetTransientPackage(), TEXT("WC_Test_Goals4"));
+    Score4->Conditions.Add(TInstancedStruct<FConnectItMatchCondition>::Make<FConnectItMatchCondition_ScoreThreshold>(ScoreAtLeast(4.f)));
+    UConnectIt_MatchConditionAsset* Score20 = NewObject<UConnectIt_MatchConditionAsset>(GetTransientPackage(), TEXT("WC_Test_Goals20"));
+    Score20->Conditions.Add(TInstancedStruct<FConnectItMatchCondition>::Make<FConnectItMatchCondition_ScoreThreshold>(ScoreAtLeast(20.f)));
+
+    FConnectItRuleSet Rules;
+    Rules.AIFaction = 1;
+    Rules.ResolveConditionGroups({ Score20, Score20 }, { Score20 });
+
+    FConnectItBoardState Board = MakeBoard(5);
+    Board.ScoreBoard = { 6.f, 0.f };
+    Board.GroupsCompleted = { 1, 0 };
+
+    // New player goals: 20 points (not met), then 4 points
+    Rules.SetConditionGroups(false, true, { Score20, Score4 });
+    FConnectItBoardOperation_ChangeGoals Change;
+    Change.Factions = { 0 };
+    Change.bWinGoals = true;
+    Change.GroupNames = { Score20->GetFName(), Score4->GetFName() };
+    TestTrue(TEXT("can apply"), Change.CanApply(Board));
+
+    FConnectItBoardChangeEvent Events;
+    const float Points = Rules.CarryOutOperation(Change, Board, &Events);
+    Rules.StampWinState(Board, &Events);
+    TestEqual(TEXT("nothing scores"), Points, 0.f);
+    TestEqual(TEXT("score carries over"), Board.ScoreBoard[0], 6.f);
+    TestEqual(TEXT("progress restarted (the first new goal isn't met)"), Board.GroupsCompleted[0], 0);
+    TestFalse(TEXT("no win yet"), Board.bGameOver);
+    const FConnectItBoardEvent_GoalsChanged* Changed =
+        Events.Events.Num() > 0 ? Events.Events[0].GetPtr<FConnectItBoardEvent_GoalsChanged>() : nullptr;
+    TestTrue(TEXT("Goals Changed comes first, with the new goals"),
+        Changed && Changed->Factions == TArray<int32>{ 0 } && Changed->bWinGoals && Changed->GroupNames.Num() == 2);
+
+    // New goals already met: they complete at once (with the win)
+    Rules.SetConditionGroups(false, true, { Score4 });
+    Change.GroupNames = { Score4->GetFName() };
+    FConnectItBoardChangeEvent MetEvents;
+    Rules.CarryOutOperation(Change, Board, &MetEvents);
+    Rules.StampWinState(Board, &MetEvents);
+    TestTrue(TEXT("a goal already met wins at once"), Board.bGameOver && Board.WinningFactionSlot == 0);
+
+    // Lose conditions keep no progress on the board
+    FConnectItBoardState Other = MakeBoard(5);
+    Other.ScoreBoard = { 0.f, 0.f };
+    Other.GroupsCompleted = { 0, 1 };
+    FConnectItBoardOperation_ChangeGoals Lose;
+    Lose.Factions = { 1 };
+    Lose.bWinGoals = false;
+    FConnectItBoardChanges Touched;
+    Lose.Apply(Other, Touched, nullptr);
+    TestEqual(TEXT("lose conditions don't touch win progress"), Other.GroupsCompleted[1], 1);
+
+    // Refusals
+    FConnectItBoardOperation_ChangeGoals Nobody;
+    TestFalse(TEXT("no factions: refused"), Nobody.CanApply(Board));
+    Nobody.Factions = { 5 };
+    TestFalse(TEXT("a faction not on the board: refused"), Nobody.CanApply(Board));
+    return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FConnectItLevelTriggersTest,
+    "ConnectIt.AI.LevelTriggers", TestFlags)
+
+bool FConnectItLevelTriggersTest::RunTest(const FString& Parameters)
+{
+    UConnectIt_MatchConditionAsset* Score4 = NewObject<UConnectIt_MatchConditionAsset>(GetTransientPackage(), TEXT("WC_Test_Trigger4"));
+    Score4->Conditions.Add(TInstancedStruct<FConnectItMatchCondition>::Make<FConnectItMatchCondition_ScoreThreshold>(ScoreAtLeast(4.f)));
+    UConnectIt_MatchConditionAsset* Score8 = NewObject<UConnectIt_MatchConditionAsset>(GetTransientPackage(), TEXT("WC_Test_Trigger8"));
+    Score8->Conditions.Add(TInstancedStruct<FConnectItMatchCondition>::Make<FConnectItMatchCondition_ScoreThreshold>(ScoreAtLeast(8.f)));
+
+    FConnectItRuleSet Rules;
+    Rules.AIFaction = 1;
+
+    UConnectIt_TestLevelDirector* Level = NewObject<UConnectIt_TestLevelDirector>();
+    Level->Triggers.Add({ Score4, EConnectItTriggerSide::Player });
+    Level->Triggers.Add({ Score8, EConnectItTriggerSide::AI });
+
+    FConnectItBoardState Board = MakeBoard(5);
+    Board.ScoreBoard = { 0.f, 0.f };
+    Level->CheckTriggers(Board, Rules);
+    TestEqual(TEXT("nothing met, nothing fired"), Level->Log, FString());
+    TestTrue(TEXT("armed"), Level->IsTriggerArmed(Score4));
+
+    // The player reaches 4: its trigger fires once
+    Board.ScoreBoard = { 4.f, 0.f };
+    Level->CheckTriggers(Board, Rules);
+    Level->CheckTriggers(Board, Rules);
+    TestEqual(TEXT("fires once, for the player"), Level->Log, FString(TEXT("WC_Test_Trigger4 0; ")));
+    TestFalse(TEXT("then disarmed"), Level->IsTriggerArmed(Score4));
+
+    // The AI trigger ignores the player's score; fires on the AI's
+    Board.ScoreBoard = { 9.f, 0.f };
+    Level->CheckTriggers(Board, Rules);
+    TestEqual(TEXT("an AI trigger ignores the player"), Level->Log, FString(TEXT("WC_Test_Trigger4 0; ")));
+    Board.ScoreBoard = { 9.f, 8.f };
+    Level->CheckTriggers(Board, Rules);
+    TestEqual(TEXT("...and fires for the AI"), Level->Log, FString(TEXT("WC_Test_Trigger4 0; WC_Test_Trigger8 1; ")));
+
+    // Re-armed, it fires again the next time it holds
+    Level->RearmTrigger(Score4);
+    TestTrue(TEXT("re-armed"), Level->IsTriggerArmed(Score4));
+    Level->Log.Reset();
+    Level->CheckTriggers(Board, Rules);
+    TestEqual(TEXT("fires again after re-arming"), Level->Log, FString(TEXT("WC_Test_Trigger4 0; ")));
+
+    // Re-armed from inside its own reaction: fires again on the next check
+    Level->RearmOnFire = Score4;
+    Level->RearmTrigger(Score4);
+    Level->Log.Reset();
+    Level->CheckTriggers(Board, Rules);
+    Level->CheckTriggers(Board, Rules);
+    TestEqual(TEXT("a reaction can re-arm its own trigger"), Level->Log, FString(TEXT("WC_Test_Trigger4 0; WC_Test_Trigger4 0; ")));
+
+    // Nothing after the game is over
+    Level->Log.Reset();
+    Board.bGameOver = true;
+    Level->CheckTriggers(Board, Rules);
+    TestEqual(TEXT("not after the game is over"), Level->Log, FString());
+
+    // Either side: the lowest faction that meets it
+    UConnectIt_TestLevelDirector* Any = NewObject<UConnectIt_TestLevelDirector>();
+    Any->Triggers.Add({ Score4, EConnectItTriggerSide::Either });
+    FConnectItBoardState Both = MakeBoard(5);
+    Both.ScoreBoard = { 0.f, 5.f };
+    Any->CheckTriggers(Both, Rules);
+    TestEqual(TEXT("either side: the AI's score counts"), Any->Log, FString(TEXT("WC_Test_Trigger4 1; ")));
+    return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FConnectItLevelChangesTest,
+    "ConnectIt.AI.LevelChanges", TestFlags)
+
+bool FConnectItLevelChangesTest::RunTest(const FString& Parameters)
+{
+    // When a level change applies: now, once the board change resolving has
+    // played out, or at the next turn's start -- always in the order asked
+    FConnectItLevelChangeQueue Queue;
+    const auto MakeChange = [](int32 AsFaction)
+    {
+        FConnectItLevelChange Change;
+        Change.Operation = FInstancedStruct::Make(FConnectItBoardOperation_ToggleTileActive());
+        Change.AsFaction = AsFaction;
+        return Change;
+    };
+
+    TestTrue(TEXT("immediately with nothing resolving: apply now"),
+        Queue.Add(MakeChange(0), EConnectItChangeTiming::Immediately, false));
+    TestEqual(TEXT("...nothing waiting"), Queue.NumWaiting(), 0);
+
+    TestFalse(TEXT("immediately while resolving: wait"), Queue.Add(MakeChange(1), EConnectItChangeTiming::Immediately, true));
+    TestFalse(TEXT("next turn: wait for it"), Queue.Add(MakeChange(2), EConnectItChangeTiming::NextTurnStart, false));
+    TestFalse(TEXT("nothing resolving, but one waiting: behind it"),
+        Queue.Add(MakeChange(3), EConnectItChangeTiming::Immediately, false));
+    TestEqual(TEXT("two waiting"), Queue.NumWaiting(), 2);
+    TestEqual(TEXT("one for the next turn"), Queue.NumForNextTurn(), 1);
+
+    FConnectItLevelChange Taken;
+    TestTrue(TEXT("first waiting..."), Queue.TakeNext(Taken) && Taken.AsFaction == 1);
+
+    Queue.StartTurn();
+    TestEqual(TEXT("the turn's change joins the line"), Queue.NumWaiting(), 2);
+    TestEqual(TEXT("...none left for the next turn"), Queue.NumForNextTurn(), 0);
+    TestTrue(TEXT("...behind the one already waiting"), Queue.TakeNext(Taken) && Taken.AsFaction == 3);
+    TestTrue(TEXT("...then the turn's"), Queue.TakeNext(Taken) && Taken.AsFaction == 2);
+    TestFalse(TEXT("all taken"), Queue.TakeNext(Taken));
+
+    Queue.Add(MakeChange(4), EConnectItChangeTiming::Immediately, true);
+    Queue.Add(MakeChange(5), EConnectItChangeTiming::Immediately, true);
+    Queue.Add(MakeChange(6), EConnectItChangeTiming::NextTurnStart, true);
+    TestEqual(TEXT("discarding drops the waiting ones"), Queue.DiscardWaiting(), 2);
+    TestEqual(TEXT("...but not the next turn's"), Queue.NumForNextTurn(), 1);
+
+    // The scoring rule a level sets
+    FConnectItRuleSet Rules;
+    FConnectItScoringRule_Lines Five;
+    Five.ConnectLength = 5;
+    TestTrue(TEXT("a scoring rule is accepted"), Rules.SetScoringRuleFrom(FInstancedStruct::Make(Five)));
+    TestEqual(TEXT("...and used"), Rules.GetScoringRule()->GetMinPiecesToScore(), 5);
+    TestFalse(TEXT("a board operation is not a scoring rule"),
+        Rules.SetScoringRuleFrom(FInstancedStruct::Make(FConnectItBoardOperation_PlacePiece())));
+    TestEqual(TEXT("...and changes nothing"), Rules.GetScoringRule()->GetMinPiecesToScore(), 5);
+    return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FConnectItDirectorOrderTest,
+    "ConnectIt.AI.DirectorOrder", TestFlags)
+
+bool FConnectItDirectorOrderTest::RunTest(const FString& Parameters)
+{
+    // Events go to the Level director, then the Player directors (by slot;
+    // these have no player yet, so they keep their order), then the AI
+    UConnectIt_LevelDirector* Level = NewObject<UConnectIt_LevelDirector>();
+    UConnectIt_PlayerDirector* PlayerA = NewObject<UConnectIt_PlayerDirector>();
+    UConnectIt_PlayerDirector* PlayerB = NewObject<UConnectIt_PlayerDirector>();
+    UConnectIt_TestAIDirector* AI = NewObject<UConnectIt_TestAIDirector>();
+
+    const TArray<UConnectIt_Director*> Ordered = UConnectIt_Director::InDispatchOrder(Level, { PlayerA, PlayerB }, AI);
+    if (!TestEqual(TEXT("all four"), Ordered.Num(), 4)) return false;
+    TestTrue(TEXT("level first"), Ordered[0] == Level);
+    TestTrue(TEXT("then the players"), Ordered[1] == PlayerA && Ordered[2] == PlayerB);
+    TestTrue(TEXT("AI last"), Ordered[3] == AI);
+
+    const TArray<UConnectIt_Director*> NoLevel = UConnectIt_Director::InDispatchOrder(nullptr, { PlayerA }, nullptr);
+    TestTrue(TEXT("missing directors are skipped"), NoLevel.Num() == 1 && NoLevel[0] == PlayerA);
+
+    TestEqual(TEXT("the level director speaks for no side"), Level->GetFaction(), static_cast<int32>(INDEX_NONE));
+    TestEqual(TEXT("a player director with no player has no side yet"), PlayerA->GetFaction(), static_cast<int32>(INDEX_NONE));
+    return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FConnectItEventsReplayTest,
+    "ConnectIt.Board.Events.Replay", TestFlags)
+
+bool FConnectItEventsReplayTest::RunTest(const FString& Parameters)
+{
+    // The display board's promise: the board before a change, plus every one
+    // of its events applied in order, is the board after it (tiles and
+    // scores). Carries Operation out on a copy of Before and replays its
+    // events on another; returns the events.
+    const auto Replay = [this](const TCHAR* What, const FConnectItRuleSet& Rules,
+        const FConnectItBoardOperation& Operation, const FConnectItBoardState& Before,
+        FConnectItBoardState* OutAfter = nullptr, FConnectItBoardState* OutReplayed = nullptr)
+    {
+        FConnectItBoardChangeEvent Events;
+        FConnectItBoardState After = Before;
+        FString WhyNot;
+        const bool bCanApply = Operation.CanApply(After, &WhyNot);
+        if (!TestTrue(FString::Printf(TEXT("%s: can apply (%s)"), What, *WhyNot), bCanApply))
+        {
+            return Events;
+        }
+        Rules.CarryOutOperation(Operation, After, &Events);
+
+        FConnectItBoardState Replayed = Before;
+        FConnectItBoardEvent::ApplyAll(Events, Replayed);
+        TestTrue(FString::Printf(TEXT("%s: before + its events = after"), What), Replayed.HasSameTilesAndScores(After));
+        if (OutAfter) *OutAfter = After;
+        if (OutReplayed) *OutReplayed = Replayed;
+        return Events;
+    };
+    const auto MakeCell = [](int32 X, int32 Y, int32 StartingFaction = -1, float Multiplier = 1.f)
+    {
+        FConnectItBoardLayoutCell Cell;
+        Cell.Position = FGridPosition(X, Y);
+        Cell.TileData.StartingFactionPiece = StartingFaction;
+        Cell.TileData.Multiplier = Multiplier;
+        return Cell;
+    };
+
+    FConnectItRuleSet Rules;   // Lines of 4
+
+    // --- A placement scoring two crossing lines ---
+    {
+        FConnectItBoardState Board = MakeBoard(5);
+        Place(Board, 0, 1, 0);
+        Place(Board, 1, 1, 0);
+        Place(Board, 2, 1, 0);
+        Place(Board, 3, 2, 0);
+        Place(Board, 3, 3, 0);
+        Place(Board, 3, 4, 0);
+        Board.GetTileDataMutable(FGridPosition(1, 1))->Multiplier = 2.f;
+
+        const FConnectItBoardChangeEvent Events =
+            Replay(TEXT("place, two lines"), Rules, MakeAt<FConnectItBoardOperation_PlacePiece>(0, 3, 1), Board);
+        const auto* First = EventAt<FConnectItBoardEvent_Scored>(Events, 1);
+        const auto* Second = EventAt<FConnectItBoardEvent_Scored>(Events, 2);
+        if (TestTrue(TEXT("place: two Scored events"), First && Second))
+        {
+            TestEqual(TEXT("scored: one new multiplier per position"), First->NewMultipliers.Num(), First->Positions.Num());
+            const auto* RowLine = First->Positions.Contains(FGridPosition(1, 1)) ? First : Second;
+            const int32 Raised = RowLine->Positions.IndexOfByKey(FGridPosition(1, 1));
+            if (TestTrue(TEXT("scored: the x2 tile is in a line"), Raised != INDEX_NONE))
+            {
+                TestEqual(TEXT("scored: its new multiplier is 3"), RowLine->NewMultipliers[Raised], 3.f);
+            }
+
+            const int32 SharedFirst = First->Positions.IndexOfByKey(FGridPosition(3, 1));
+            const int32 SharedSecond = Second->Positions.IndexOfByKey(FGridPosition(3, 1));
+            if (TestTrue(TEXT("scored: the shared tile is in both lines"),
+                SharedFirst != INDEX_NONE && SharedSecond != INDEX_NONE))
+            {
+                TestEqual(TEXT("scored: the shared tile after the first line"), First->NewMultipliers[SharedFirst], 2.f);
+                TestEqual(TEXT("scored: and after the second"), Second->NewMultipliers[SharedSecond], 3.f);
+            }
+        }
+    }
+
+    // --- Swap completing a line ---
+    {
+        FConnectItBoardState Board = MakeBoard(5);
+        Place(Board, 0, 0, 0);
+        Place(Board, 1, 0, 0);
+        Place(Board, 2, 0, 0);
+        Place(Board, 3, 0, 1);
+        Place(Board, 3, 2, 0);
+        FConnectItBoardOperation_SwapPieces Swap;
+        Swap.Faction = 0;
+        Swap.PositionA = FGridPosition(3, 2);
+        Swap.PositionB = FGridPosition(3, 0);
+        const FConnectItBoardChangeEvent Events = Replay(TEXT("swap"), Rules, Swap, Board);
+        TestNotNull(TEXT("swap: it scored"), EventAt<FConnectItBoardEvent_Scored>(Events, 1));
+    }
+
+    // --- Shift: whole tiles move, past an unshiftable one ---
+    {
+        FConnectItBoardState Board = MakeBoard(5);
+        Place(Board, 0, 0, 0);
+        Place(Board, 1, 0, 1);
+        Board.GetTileDataMutable(FGridPosition(2, 0))->bCanShift = false;
+        Board.GetTileDataMutable(FGridPosition(4, 0))->Multiplier = 3.f;
+        Board.GetTileDataMutable(FGridPosition(3, 0))->bIsActive = false;
+
+        FConnectItBoardOperation_Shift Shift;
+        Shift.Faction = 0;
+        Shift.Direction = EGridDirection::Right;
+        for (int32 X = 0; X < 5; X++)
+        {
+            Shift.Positions.Add(FGridPosition(X, 0));
+        }
+        Replay(TEXT("shift"), Rules, Shift, Board);
+        Shift.Steps = 2;
+        Replay(TEXT("shift two steps"), Rules, Shift, Board);
+    }
+
+    // --- The single-tile operations ---
+    {
+        FConnectItBoardState Board = MakeBoard(5);
+        Place(Board, 1, 1, 1);
+        Place(Board, 2, 2, 0);
+        Board.GetTileDataMutable(FGridPosition(3, 3))->Multiplier = 3.f;
+
+        Replay(TEXT("force place"), Rules, MakeAt<FConnectItBoardOperation_ForcePlacePiece>(0, 1, 1), Board);
+        Replay(TEXT("capture"), Rules, MakeAt<FConnectItBoardOperation_CapturePiece>(0, 1, 1), Board);
+        Replay(TEXT("remove piece"), Rules, MakeAt<FConnectItBoardOperation_RemovePiece>(0, 1, 1), Board);
+        Replay(TEXT("toggle"), Rules, MakeAt<FConnectItBoardOperation_ToggleTileActive>(0, 1, 1), Board);
+
+        const FConnectItBoardChangeEvent Destroyed =
+            Replay(TEXT("destroy multiplier"), Rules, MakeAt<FConnectItBoardOperation_DestroyTileMultiplier>(0, 3, 3), Board);
+        const auto* Event = OnlyEvent<FConnectItBoardEvent_TileMultiplierDestroyed>(Destroyed);
+        TestTrue(TEXT("destroy: the event carries the multiplier it took"), Event && Event->PreviousMultiplier == 3.f);
+    }
+
+    // --- A capture completing a line ---
+    {
+        FConnectItBoardState Board = MakeBoard(5);
+        Place(Board, 0, 0, 0);
+        Place(Board, 1, 0, 0);
+        Place(Board, 2, 0, 0);
+        Place(Board, 3, 0, 1);
+        const FConnectItBoardChangeEvent Events =
+            Replay(TEXT("capture, scoring"), Rules, MakeAt<FConnectItBoardOperation_CapturePiece>(0, 3, 0), Board);
+        TestNotNull(TEXT("capture: it scored"), EventAt<FConnectItBoardEvent_Scored>(Events, 1));
+    }
+
+    // --- Tiles coming and going ---
+    {
+        FConnectItBoardState Board = MakeBoard(3);
+        Board.StartingPieces = { 0, 0 };
+        Place(Board, 0, 0, 0);
+        Place(Board, 1, 0, 0);
+        Place(Board, 2, 0, 0);
+
+        FConnectItBoardOperation_RemoveTiles Remove;
+        Remove.Positions = { FGridPosition(1, 1), FGridPosition(2, 2) };
+        Replay(TEXT("remove tiles"), Rules, Remove, Board);
+
+        FConnectItBoardOperation_AddTiles Add;
+        Add.Faction = INDEX_NONE;
+        Add.Cells = { MakeCell(3, 0, 0, 2.f), MakeCell(3, 1) };
+        FConnectItBoardState After;
+        FConnectItBoardState Replayed;
+        Replay(TEXT("add tiles, scoring"), Rules, Add, Board, &After, &Replayed);
+        TestTrue(TEXT("add tiles: the starting piece is counted on the replayed board too"),
+            Replayed.StartingPieces == After.StartingPieces);
+
+        UConnectIt_BoardLayout* Layout = NewObject<UConnectIt_BoardLayout>(GetTransientPackage(), TEXT("CIBL_TestReplay"));
+        for (int32 X = 0; X < 4; X++)
+        {
+            FConnectItBoardLayoutCell& Cell = Layout->Cells.AddDefaulted_GetRef();
+            Cell.Position = FGridPosition(X, 1);
+            Cell.TileData.Multiplier = 1.f + X;
+        }
+        Replay(TEXT("change layout"), Rules, Layout->MakeChangeFrom(Board), Board);
+    }
+
+    // --- Phases ---
+    {
+        const FGameplayTag Phase1 = FGameplayTag::RequestGameplayTag(TEXT("ConnectIt.Phase.1"), false);
+        FConnectItBoardOperation_BeginPhase Begin;
+        Begin.Phase = Phase1;
+        FConnectItBoardState After;
+        FConnectItBoardState Replayed;
+        Replay(TEXT("begin phase"), Rules, Begin, MakeBoard(3), &After, &Replayed);
+        TestTrue(TEXT("begin phase: the replayed board is in the phase"), Replayed.CurrentPhase == After.CurrentPhase);
+    }
+
+    // --- Goals: progress restarts, then a goal already met is a checkpoint ---
+    // (The win itself -- game over, winner -- is match-level: the Mediator's
+    // Game Won event carries it, and the display board copies it from Current
+    // once the queue drains.)
+    {
+        UConnectIt_MatchConditionAsset* Score4 = NewObject<UConnectIt_MatchConditionAsset>(GetTransientPackage(), TEXT("WC_Test_Replay4"));
+        Score4->Conditions.Add(TInstancedStruct<FConnectItMatchCondition>::Make<FConnectItMatchCondition_ScoreThreshold>(ScoreAtLeast(4.f)));
+        UConnectIt_MatchConditionAsset* Score20 = NewObject<UConnectIt_MatchConditionAsset>(GetTransientPackage(), TEXT("WC_Test_Replay20"));
+        Score20->Conditions.Add(TInstancedStruct<FConnectItMatchCondition>::Make<FConnectItMatchCondition_ScoreThreshold>(ScoreAtLeast(20.f)));
+
+        FConnectItRuleSet GoalRules;
+        GoalRules.AIFaction = 1;
+        GoalRules.ResolveConditionGroups({ Score20, Score20 }, { Score20 });
+        GoalRules.SetConditionGroups(false, true, { Score4, Score20 });
+
+        FConnectItBoardState Board = MakeBoard(5);
+        Board.ScoreBoard = { 6.f, 0.f };
+        Board.GroupsCompleted = { 1, 0 };
+
+        FConnectItBoardOperation_ChangeGoals Change;
+        Change.Factions = { 0 };
+        Change.bWinGoals = true;
+        Change.GroupNames = { Score4->GetFName(), Score20->GetFName() };
+
+        FConnectItBoardChangeEvent Events;
+        FConnectItBoardState After = Board;
+        GoalRules.CarryOutOperation(Change, After, &Events);
+        GoalRules.StampWinState(After, &Events);
+
+        FConnectItBoardState Replayed = Board;
+        FConnectItBoardEvent::ApplyAll(Events, Replayed);
+        TestTrue(TEXT("goals: before + its events = after"), Replayed.HasSameTilesAndScores(After));
+        TestTrue(TEXT("goals: the first new goal is met (a checkpoint, no win)"),
+            After.GroupsCompleted[0] == 1 && !After.bGameOver);
+        TestTrue(TEXT("goals: the replayed board has the same progress"), Replayed.GroupsCompleted == After.GroupsCompleted);
+    }
+
+    // --- The check itself notices a difference ---
+    {
+        const FConnectItBoardState Board = MakeBoard(3);
+        FConnectItBoardState Moved = Board;
+        Place(Moved, 1, 1, 0);
+        TestFalse(TEXT("a different piece is a different board"), Moved.HasSameTilesAndScores(Board));
+        FConnectItBoardState Scored = Board;
+        Scored.ScoreBoard[1] = 2.f;
+        TestFalse(TEXT("a different score is a different board"), Scored.HasSameTilesAndScores(Board));
+        FConnectItBoardState Reordered;
+        Reordered.ScoreBoard = Board.ScoreBoard;
+        for (int32 Index = Board.NumTiles() - 1; Index >= 0; Index--)
+        {
+            Reordered.SetTileData(Board.GetPositionAt(Index), Board.GetTileDataAt(Index));
+        }
+        TestTrue(TEXT("tile order doesn't matter"), Reordered.HasSameTilesAndScores(Board));
+    }
+    return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FConnectItTilePowerDataTest,
+    "ConnectIt.Board.TilePowerData", TestFlags)
+
+bool FConnectItTilePowerDataTest::RunTest(const FString& Parameters)
+{
+    // Stage 3 of tile powers: where powers are defined and how tiles carry
+    // them. Nothing fires yet.
+    const FGameplayTag PowerTag = TestTilePowerTag;
+    const FGameplayTag OtherTag = TestOtherTilePowerTag;
+    const FGameplayTag UndefinedTag = TestUndefinedTilePowerTag;
+    if (!TestTrue(TEXT("the test power tags exist"), PowerTag.IsValid() && OtherTag.IsValid() && UndefinedTag.IsValid()))
+    {
+        return false;
+    }
+    const auto StrengthOf = [](const FConnectItTilePower* Power) -> int32
+    {
+        const FConnectItTilePowerEffect_Test* Effect = Power ? Power->Effect.GetPtr<FConnectItTilePowerEffect_Test>() : nullptr;
+        return Effect ? Effect->Strength : INDEX_NONE;
+    };
+    const auto MakeEntry = [](int32 Strength)
+    {
+        FConnectItTileCatalogEntry Entry;
+        Entry.TileClass = AConnectIt_TileBase::StaticClass();
+        Entry.Power.CooldownTurns = 2;
+        FConnectItTilePowerEffect_Test Effect;
+        Effect.Strength = Strength;
+        Entry.Power.Effect = TInstancedStruct<FConnectItTilePowerEffect>::Make<FConnectItTilePowerEffect_Test>(Effect);
+        return Entry;
+    };
+
+    // A catalog defining two powers
+    UConnectIt_TileCatalog* Catalog = NewObject<UConnectIt_TileCatalog>();
+    Catalog->PlainTileClass = AConnectIt_BuilderTile::StaticClass();
+    Catalog->Tiles.Add(PowerTag, MakeEntry(5));
+    Catalog->Tiles.Add(OtherTag, MakeEntry(9));
+
+    // --- A fresh board and fresh rules have no powers ---
+    {
+        const FConnectItBoardState Board = MakeBoard(3);
+        bool bAnyPower = false;
+        for (int32 Index = 0; Index < Board.NumTiles(); Index++)
+        {
+            bAnyPower |= Board.GetTileDataAt(Index).TilePowerTag.IsValid();
+        }
+        TestFalse(TEXT("fresh board: no tile has a power"), bAnyPower);
+        TestTrue(TEXT("fresh rules: no powers"), FConnectItRuleSet().TilePowers.IsEmpty() && FConnectItRuleSet().LevelWidePowers.IsEmpty());
+    }
+
+    // --- The catalog: one entry per tag, a class for each, powers named by their tag ---
+    {
+        TestTrue(TEXT("catalog: a tag's class"), Catalog->GetTileClassFor(PowerTag) == AConnectIt_TileBase::StaticClass());
+        TestTrue(TEXT("catalog: no tag is the plain class"), Catalog->GetTileClassFor(FGameplayTag()) == AConnectIt_BuilderTile::StaticClass());
+        TestTrue(TEXT("catalog: an undefined tag has none"), Catalog->GetTileClassFor(UndefinedTag) == nullptr);
+
+        const TArray<FConnectItTilePower> Powers = Catalog->MakePowers();
+        const FConnectItTilePower* Named = Powers.FindByPredicate([&PowerTag](const FConnectItTilePower& Power) { return Power.Name == PowerTag; });
+        TestTrue(TEXT("catalog: each power named by its key, with its values"),
+            Powers.Num() == 2 && Named && StrengthOf(Named) == 5 && Named->CooldownTurns == 2);
+    }
+
+    // --- Rules: the catalog's powers and the level-wide tags ---
+    {
+        FConnectItRuleSet Rules;
+        Rules.SetTilePowers(Catalog->MakePowers(), { OtherTag, OtherTag, UndefinedTag });
+        TestEqual(TEXT("rules: every catalog power"), Rules.TilePowers.Num(), 2);
+        TestEqual(TEXT("rules: a tag finds its power and values"), StrengthOf(Rules.FindTilePower(PowerTag)), 5);
+        TestNull(TEXT("rules: an undefined tag finds none"), Rules.FindTilePower(UndefinedTag));
+        TestTrue(TEXT("rules: level-wide tags, a repeat and an undefined one skipped"),
+            Rules.LevelWidePowers == TArray<FGameplayTag>({ OtherTag }));
+    }
+
+    // --- Building the board: a builder tile's tag reaches its tile data ---
+    {
+        AConnectIt_BuilderTile* Builder = GetMutableDefault<AConnectIt_BuilderTile>();
+        const FConnectItTileInitialData Saved = Builder->TileData;
+        ON_SCOPE_EXIT { Builder->TileData = Saved; };
+
+        Builder->TileData.TilePowerTag = PowerTag;
+        Builder->TileData.Multiplier = 2.f;
+        const FConnectItTileData Tile = UConnectIt_BoardStateComponent::MakeTileData(Builder, 2, 1.f, Catalog);
+        TestTrue(TEXT("build: the builder tile's tag and settings"), Tile.TilePowerTag == PowerTag && Tile.Multiplier == 2.f);
+
+        Builder->TileData.TilePowerTag = UndefinedTag;
+        const FConnectItTileData Undefined = UConnectIt_BoardStateComponent::MakeTileData(Builder, 2, 1.f, Catalog);
+        TestFalse(TEXT("build: a tag the catalog doesn't define gives no power"), Undefined.TilePowerTag.IsValid());
+    }
+
+    // --- Tile ids: given by the board, never reused ---
+    {
+        FConnectItBoardState Board;
+        Board.ScoreBoard = { 0.f, 0.f };
+        const int32 First = Board.AddTile(FGridPosition(0, 0), FConnectItTileData());
+        const int32 Second = Board.AddTile(FGridPosition(1, 0), FConnectItTileData());
+        Board.RemoveTileData(FGridPosition(1, 0));
+        const int32 Third = Board.AddTile(FGridPosition(1, 0), FConnectItTileData());
+        TestTrue(TEXT("ids: each tile its own, a removed tile's id not reused"), First == 0 && Second == 1 && Third == 2);
+    }
+
+    // --- Add Tiles: a cell's tag and a new id; replayed the same ---
+    {
+        FConnectItRuleSet Rules;
+        FConnectItBoardState Board = MakeBoard(3);
+        Board.NextTileId = 9;
+
+        FConnectItBoardOperation_AddTiles Add;
+        Add.Faction = INDEX_NONE;
+        FConnectItBoardLayoutCell& Powered = Add.Cells.AddDefaulted_GetRef();
+        Powered.Position = FGridPosition(3, 0);
+        Powered.TileData.TilePowerTag = PowerTag;
+        Add.Cells.AddDefaulted_GetRef().Position = FGridPosition(3, 1);
+
+        FConnectItBoardState After = Board;
+        FConnectItBoardChangeEvent Events;
+        Rules.CarryOutOperation(Add, After, &Events);
+        const FConnectItTileData* Tile = After.GetTileData(FGridPosition(3, 0));
+        TestTrue(TEXT("add: the cell's power tag"), Tile && Tile->TilePowerTag == PowerTag);
+        TestTrue(TEXT("add: new ids from the board's counter"),
+            Tile && Tile->TileId == 9 && After.GetTileData(FGridPosition(3, 1))->TileId == 10 && After.NextTileId == 11);
+        TestFalse(TEXT("add: a cell with no tag gives none"), After.GetTileData(FGridPosition(3, 1))->TilePowerTag.IsValid());
+
+        const auto* Added = EventAt<FConnectItBoardEvent_TilesAdded>(Events, 0);
+        TestTrue(TEXT("add: the event carries the ids"), Added && Added->TileIds == TArray<int32>({ 9, 10 }));
+
+        FConnectItBoardState Replayed = Board;
+        FConnectItBoardEvent::ApplyAll(Events, Replayed);
+        TestTrue(TEXT("add: before + events = after, ids and tags included"), Replayed.HasSameTilesAndScores(After));
+        TestEqual(TEXT("add: the replayed board's counter moved on too"), Replayed.NextTileId, After.NextTileId);
+    }
+
+    // --- Shift: the tag, ready turn and id travel with the tile ---
+    {
+        FConnectItBoardState Board = MakeBoard(5);
+        FConnectItTileData* Start = Board.GetTileDataMutable(FGridPosition(0, 0));
+        Start->TilePowerTag = PowerTag;
+        Start->TileId = 42;
+        Start->PowerReadyTurn = 6;
+
+        FConnectItBoardOperation_Shift Shift;
+        Shift.Faction = 0;
+        Shift.Direction = EGridDirection::Right;
+        for (int32 X = 0; X < 5; X++)
+        {
+            Shift.Positions.Add(FGridPosition(X, 0));
+        }
+        FConnectItBoardChanges Changes;
+        Shift.Apply(Board, Changes, nullptr);
+        const FConnectItTileData* Moved = Board.GetTileData(FGridPosition(1, 0));
+        TestTrue(TEXT("shift: the power moved with its tile"),
+            Moved && Moved->TilePowerTag == PowerTag && Moved->TileId == 42 && Moved->PowerReadyTurn == 6);
+        TestFalse(TEXT("shift: and left nothing behind"), Board.GetTileData(FGridPosition(0, 0))->TilePowerTag.IsValid());
+    }
+
+    // --- Validation: a catalog entry with no class or effect; level-wide tags named once ---
+    {
+        UConnectIt_TileCatalog* Bad = NewObject<UConnectIt_TileCatalog>();
+        Bad->Tiles.Add(PowerTag, FConnectItTileCatalogEntry());
+        FConnectItTileCatalogEntry Misnamed = MakeEntry(1);
+        Misnamed.Power.Name = PowerTag;
+        Bad->Tiles.Add(OtherTag, Misnamed);
+        FDataValidationContext CatalogContext;
+        TestEqual(TEXT("catalog validation: fails"), Bad->IsDataValid(CatalogContext), EDataValidationResult::Invalid);
+        TestTrue(TEXT("catalog validation: no class, no effect, a power named other than its key"),
+            CatalogContext.GetNumErrors() == 3);
+
+        UConnectIt_LevelDirector* Director = NewObject<UConnectIt_LevelDirector>();
+        Director->LevelWidePowers = { PowerTag, PowerTag, FGameplayTag() };
+        FDataValidationContext Context;
+        Director->IsDataValid(Context);
+        const auto Reported = [&Context](const TCHAR* Text)
+        {
+            return Context.GetIssues().ContainsByPredicate([Text](const FDataValidationContext::FIssue& Issue)
+            {
+                return Issue.Message.ToString().Contains(Text);
+            });
+        };
+        TestTrue(TEXT("director validation: a level-wide tag listed twice"), Reported(TEXT("twice")));
+        TestTrue(TEXT("director validation: and an empty one"), Reported(TEXT("has no tag")));
+    }
+
+    // --- The turn: the AI's search counts one per ply ---
+    {
+        const FConnectItBoardState Board = MakeBoard(5);
+        const FConnectItMinMaxRules Rules(Board, FConnectItRuleSet(), DefaultEvaluationWeights(), DefaultOrderingWeights(), PlaceOnly(), PlaceOnly());
+        FConnectItBoardState AtTurn = Board;
+        AtTurn.TurnNumber = 7;
+        const auto Root = Rules.MakeRoot(AtTurn, 0);
+        const auto Child = Rules.ApplyMove(Root, PlaceMove(0, 0, 0));
+        const auto Grandchild = Rules.ApplyMove(Child, PlaceMove(1, 1, 1));
+        TestTrue(TEXT("turn: the root keeps the decision's turn, each ply adds one"),
+            Root.Board.TurnNumber == 7 && Child.Board.TurnNumber == 8 && Grandchild.Board.TurnNumber == 9);
+    }
+    return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FConnectItTilePowerChainTest,
+    "ConnectIt.Board.TilePowerChain", TestFlags)
+
+bool FConnectItTilePowerChainTest::RunTest(const FString& Parameters)
+{
+    // Stage 4 of tile powers: firing them in the after-move chain, with
+    // test-only powers (the first real powers are designed separately)
+    using EPower = EConnectItPowerTrigger;
+    if (!TestTrue(TEXT("the test power tags exist"), FGameplayTag(TestPower5).IsValid()))
+    {
+        return false;
+    }
+    const auto CarryOut = [](const FConnectItRuleSet& Rules, const FConnectItBoardOperation& Operation,
+        FConnectItBoardState& Board, FConnectItBoardChangeEvent& OutEvents)
+    {
+        return Rules.CarryOutOperation(Operation, Board, &OutEvents);
+    };
+    const auto ReplaysTo = [](const FConnectItBoardState& Before, const FConnectItBoardChangeEvent& Events,
+        const FConnectItBoardState& After)
+    {
+        FConnectItBoardState Replayed = Before;
+        FConnectItBoardEvent::ApplyAll(Events, Replayed);
+        return Replayed.HasSameTilesAndScores(After);
+    };
+    using FPlace = FConnectItBoardOperation_PlacePiece;
+
+    // --- The owner's chain: place -> a line scores through a "move a
+    //     neighbour" tile -> the moved piece completes a line -> that tile's
+    //     Scoring power fires ---
+    {
+        FConnectItTilePowerEffect_TestMove Move;
+        Move.From = FIntPoint(3, 5);   // (2,0) + (3,5) = (5,5)
+        Move.To = FIntPoint(1, 3);     // (2,0) + (1,3) = (3,3)
+        FConnectItRuleSet Rules;
+        Rules.SetTilePowers({
+            MakeTestPower(TestPower1, EPower::Scoring, Move),
+            MakeTestPower(TestPower2, EPower::Scoring, FConnectItTilePowerEffect_Test()) }, {});
+
+        FConnectItBoardState Board = MakeBoard(6);
+        for (int32 X = 0; X < 3; X++)
+        {
+            Place(Board, X, 0, 0);
+            Place(Board, X, 3, 0);
+        }
+        Place(Board, 5, 5, 0);
+        SetPower(Board, 2, 0, TestPower1);
+        SetPower(Board, 3, 3, TestPower2);
+
+        FConnectItBoardState After = Board;
+        FConnectItBoardChangeEvent Events;
+        const float Points = CarryOut(Rules, MakeAt<FPlace>(0, 3, 0), After, Events);
+
+        TestEqual(TEXT("chain: two lines scored"), Points, 8.f);
+        TestTrue(TEXT("chain: the neighbour moved"), !After.IsTileOccupied(FGridPosition(5, 5)) && After.IsTileOccupied(FGridPosition(3, 3)));
+        const bool bOrder = Events.Events.Num() == 7
+            && EventAt<FConnectItBoardEvent_PiecePlaced>(Events, 0)
+            && EventAt<FConnectItBoardEvent_Scored>(Events, 1)
+            && EventAt<FConnectItBoardEvent_PowerTriggered>(Events, 2)
+            && EventAt<FConnectItBoardEvent_PieceRemoved>(Events, 3)
+            && EventAt<FConnectItBoardEvent_PiecePlaced>(Events, 4)
+            && EventAt<FConnectItBoardEvent_Scored>(Events, 5)
+            && EventAt<FConnectItBoardEvent_PowerTriggered>(Events, 6);
+        if (TestTrue(TEXT("chain: placed, scored, mover fired, moved, scored, second power fired"), bOrder))
+        {
+            const auto* Mover = EventAt<FConnectItBoardEvent_PowerTriggered>(Events, 2);
+            const auto* Second = EventAt<FConnectItBoardEvent_PowerTriggered>(Events, 6);
+            TestTrue(TEXT("chain: the mover is the tile's power, for the scoring faction"),
+                Mover->PowerName == TestPower1 && Mover->Position == FGridPosition(2, 0) && Mover->Faction == 0 && !Mover->bNoEffect);
+            TestTrue(TEXT("chain: each event names its cause"),
+                EventAt<FConnectItBoardEvent_PiecePlaced>(Events, 0)->CauseIndex == INDEX_NONE
+                && EventAt<FConnectItBoardEvent_Scored>(Events, 1)->CauseIndex == INDEX_NONE
+                && Mover->CauseIndex == 1
+                && EventAt<FConnectItBoardEvent_PieceRemoved>(Events, 3)->CauseIndex == 2
+                && EventAt<FConnectItBoardEvent_PiecePlaced>(Events, 4)->CauseIndex == 2
+                && EventAt<FConnectItBoardEvent_Scored>(Events, 5)->CauseIndex == 4
+                && Second->CauseIndex == 5);
+            TestTrue(TEXT("chain: the second power had nothing to do"), Second->PowerName == TestPower2 && Second->bNoEffect);
+        }
+        TestTrue(TEXT("chain: before + events = after"), ReplaysTo(Board, Events, After));
+    }
+
+    // --- Settle until quiet; each power fires once per action ---
+    {
+        FConnectItRuleSet Rules;
+        Rules.SetTilePowers({
+            MakeTestPower(TestPower1, EPower::PieceEnter, PlaceAt({ FIntPoint(0, 2) })),
+            MakeTestPower(TestPower2, EPower::PieceEnter, PlaceAt({ FIntPoint(0, -4) })) }, {});
+
+        FConnectItBoardState Board = MakeBoard(6);
+        SetPower(Board, 0, 0, TestPower1);   // -> (0,2)
+        SetPower(Board, 0, 2, TestPower1);   // -> (0,4)
+        SetPower(Board, 0, 4, TestPower2);   // -> back to (0,0), which has fired already
+
+        FConnectItBoardState After = Board;
+        FConnectItBoardChangeEvent Events;
+        CarryOut(Rules, MakeAt<FPlace>(0, 0, 0), After, Events);
+        const auto Triggered = PowersTriggered(Events);
+        TestEqual(TEXT("settle: three powers, each once"), Triggered.Num(), 3);
+        TestTrue(TEXT("settle: in the order they were set off"), Triggered.Num() == 3
+            && Triggered[0]->Position == FGridPosition(0, 0) && Triggered[1]->Position == FGridPosition(0, 2)
+            && Triggered[2]->Position == FGridPosition(0, 4));
+        TestTrue(TEXT("settle: the last placement (back on the first tile) ends it"),
+            Events.Events.Num() == 7 && EventAt<FConnectItBoardEvent_PiecePlaced>(Events, 6)
+            && EventAt<FConnectItBoardEvent_PiecePlaced>(Events, 6)->Position == FGridPosition(0, 0));
+        TestTrue(TEXT("settle: before + events = after"), ReplaysTo(Board, Events, After));
+    }
+
+    // --- Triggers: a capture is Piece Changed only; level-wide powers on every tile ---
+    {
+        FConnectItRuleSet Rules;
+        const FConnectItTilePowerEffect_Test Nothing;
+        Rules.SetTilePowers({
+            MakeTestPower(TestPower1, EPower::PieceEnter, Nothing),
+            MakeTestPower(TestPower2, EPower::PieceExit, Nothing),
+            MakeTestPower(TestPower3, EPower::PieceChanged, Nothing) },
+            { TestPower1, TestPower2, TestPower3 });
+
+        FConnectItBoardState Board = MakeBoard(5);
+        Place(Board, 1, 1, 1);
+        const auto NamesAfter = [&](const FConnectItBoardOperation& Operation)
+        {
+            FConnectItBoardState After = Board;
+            FConnectItBoardChangeEvent Events;
+            Rules.CarryOutOperation(Operation, After, &Events);
+            TArray<FGameplayTag> Names;
+            for (const auto* Triggered : PowersTriggered(Events))
+            {
+                Names.Add(Triggered->PowerName);
+            }
+            return MakeTuple(Names, PowersTriggered(Events).Num() == 1 ? PowersTriggered(Events)[0]->Faction : INDEX_NONE);
+        };
+        const auto Captured = NamesAfter(MakeAt<FConnectItBoardOperation_CapturePiece>(0, 1, 1));
+        TestTrue(TEXT("capture: Piece Changed only, for the new owner"),
+            Captured.Key == TArray<FGameplayTag>({ TestPower3 }) && Captured.Value == 0);
+        const auto Placed = NamesAfter(MakeAt<FPlace>(0, 2, 2));
+        TestTrue(TEXT("place: Piece Enter only"), Placed.Key == TArray<FGameplayTag>({ TestPower1 }) && Placed.Value == 0);
+        const auto Removed = NamesAfter(MakeAt<FConnectItBoardOperation_RemovePiece>(0, 1, 1));
+        TestTrue(TEXT("remove: Piece Exit only, for the leaving piece's owner"),
+            Removed.Key == TArray<FGameplayTag>({ TestPower2 }) && Removed.Value == 1);
+    }
+
+    // --- Cooldowns count turns; a power with nothing to do still shows and cools down ---
+    for (int32 Cooldown = 0; Cooldown <= 2; Cooldown++)
+    {
+        FConnectItRuleSet Rules;
+        Rules.SetTilePowers({ MakeTestPower(TestPower1, EPower::PieceEnter, FConnectItTilePowerEffect_Test(), Cooldown) }, {});
+
+        FConnectItBoardState Board = MakeBoard(3);
+        SetPower(Board, 0, 0, TestPower1);
+        Board.TurnNumber = 5;
+
+        FConnectItBoardState Fired = Board;
+        FConnectItBoardChangeEvent Events;
+        CarryOut(Rules, MakeAt<FPlace>(0, 0, 0), Fired, Events);
+        const auto First = PowersTriggered(Events);
+        TestTrue(FString::Printf(TEXT("cooldown %d: fires, with no effect, ready again at turn %d"), Cooldown, 5 + Cooldown),
+            First.Num() == 1 && First[0]->bNoEffect && First[0]->ReadyTurn == 5 + Cooldown
+            && TileAt(Fired, 0, 0).PowerReadyTurn == 5 + Cooldown);
+
+        for (int32 Later = 0; Later <= 2; Later++)
+        {
+            FConnectItBoardState Again = Fired;
+            Place(Again, 0, 0, -1);
+            Again.TurnNumber = 5 + Later;
+            FConnectItBoardChangeEvent AgainEvents;
+            CarryOut(Rules, MakeAt<FPlace>(0, 0, 0), Again, AgainEvents);
+            TestEqual(FString::Printf(TEXT("cooldown %d: %d turn(s) later it %s"), Cooldown, Later,
+                Later >= Cooldown ? TEXT("fires") : TEXT("doesn't")),
+                PowersTriggered(AgainEvents).Num(), Later >= Cooldown ? 1 : 0);
+        }
+    }
+
+    // --- The gate: the tile's multiplier ---
+    {
+        FConnectItRuleSet Rules;
+        Rules.SetTilePowers({ MakeTestPower(TestPower1, EPower::PieceEnter, FConnectItTilePowerEffect_Test(), 0, 2.f) }, {});
+        FConnectItBoardState Board = MakeBoard(3);
+        SetPower(Board, 0, 0, TestPower1);
+
+        FConnectItBoardState Low = Board;
+        FConnectItBoardChangeEvent LowEvents;
+        CarryOut(Rules, MakeAt<FPlace>(0, 0, 0), Low, LowEvents);
+        TestEqual(TEXT("gate: x1 is below x2, nothing fires"), PowersTriggered(LowEvents).Num(), 0);
+
+        FConnectItBoardState High = Board;
+        High.GetTileDataMutable(FGridPosition(0, 0))->Multiplier = 2.f;
+        FConnectItBoardChangeEvent HighEvents;
+        CarryOut(Rules, MakeAt<FPlace>(0, 0, 0), High, HighEvents);
+        TestEqual(TEXT("gate: at x2 it fires"), PowersTriggered(HighEvents).Num(), 1);
+    }
+
+    // --- Random choices come from the board's seed ---
+    {
+        FConnectItRuleSet Rules;
+        Rules.SetTilePowers({ MakeTestPower(TestPower1, EPower::PieceEnter, FConnectItTilePowerEffect_TestRandomPlace()) }, {});
+        FConnectItBoardState Board = MakeBoard(5);
+        SetPower(Board, 0, 0, TestPower1);
+        Board.RandomSeed = 123;
+
+        const auto RandomlyPlaced = [&](const FConnectItBoardState& From, FConnectItBoardState& OutAfter)
+        {
+            OutAfter = From;
+            FConnectItBoardChangeEvent Events;
+            CarryOut(Rules, MakeAt<FPlace>(0, 0, 0), OutAfter, Events);
+            const auto* Placed = EventAt<FConnectItBoardEvent_PiecePlaced>(Events, 2);
+            return Placed ? Placed->Position : FGridPosition(-1, -1);
+        };
+        FConnectItBoardState First;
+        FConnectItBoardState Second;
+        const FGridPosition FirstPick = RandomlyPlaced(Board, First);
+        const FGridPosition SecondPick = RandomlyPlaced(Board, Second);
+        TestTrue(TEXT("random: it placed somewhere"), FirstPick != FGridPosition(-1, -1));
+        TestTrue(TEXT("random: the same seed, the same result"), FirstPick == SecondPick);
+        TestTrue(TEXT("random: the seed moved on"), First.RandomSeed != Board.RandomSeed && First.RandomSeed == Second.RandomSeed);
+    }
+
+    // --- Sync: every settle pass, only when state calls for it, not once per action ---
+    {
+        FConnectItTilePowerEffect_TestSyncClear Clear;
+        Clear.Watch = FIntPoint(1, 0);   // S (2,2) watches (3,2)
+        FConnectItRuleSet Rules;
+        Rules.SetTilePowers({
+            MakeTestPower(TestPower1, EPower::PieceEnter, PlaceAt({ FIntPoint(2, 2), FIntPoint(0, 4) })),   // A (0,0) -> S, C
+            MakeTestPower(TestPower2, EPower::PieceEnter, PlaceAt({ FIntPoint(2, -2) })),                   // C (0,4) -> S
+            MakeTestPower(TestPower5, EPower::Sync, Clear) }, {});
+
+        FConnectItBoardState Board = MakeBoard(6);
+        SetPower(Board, 0, 0, TestPower1);
+        SetPower(Board, 0, 4, TestPower2);
+        SetPower(Board, 2, 2, TestPower5);
+
+        const auto SyncsAfterPlacing = [&](FConnectItBoardState& InOutBoard, FConnectItBoardChangeEvent& OutEvents)
+        {
+            CarryOut(Rules, MakeAt<FPlace>(0, 0, 0), InOutBoard, OutEvents);
+            int32 Syncs = 0;
+            for (const auto* Triggered : PowersTriggered(OutEvents))
+            {
+                Syncs += Triggered->PowerName == TestPower5 ? 1 : 0;
+            }
+            return Syncs;
+        };
+
+        FConnectItBoardState Watched = Board;
+        FConnectItBoardChangeEvent WatchedEvents;
+        TestEqual(TEXT("sync: S was filled twice in one action and cleared twice"), SyncsAfterPlacing(Watched, WatchedEvents), 2);
+        TestFalse(TEXT("sync: S ends empty"), Watched.IsTileOccupied(FGridPosition(2, 2)));
+        TestTrue(TEXT("sync: before + events = after"), ReplaysTo(Board, WatchedEvents, Watched));
+
+        FConnectItBoardState Kept = Board;
+        Place(Kept, 3, 2, 1);
+        FConnectItBoardChangeEvent KeptEvents;
+        TestEqual(TEXT("sync: with the watched tile filled, nothing calls for it -- no event"), SyncsAfterPlacing(Kept, KeptEvents), 0);
+        TestTrue(TEXT("sync: and S keeps its piece"), Kept.IsTileOccupied(FGridPosition(2, 2)));
+    }
+
+    // --- No powers: the chain is just scoring, as before ---
+    {
+        FConnectItBoardState Board = MakeBoard(5);
+        FConnectItBoardChangeEvent Events;
+        FConnectItRuleSet().CarryOutOperation(MakeAt<FPlace>(0, 0, 0), Board, &Events);
+        TestEqual(TEXT("no powers: one event"), Events.Events.Num(), 1);
+    }
+    return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FConnectItTileLockTest,
+    "ConnectIt.Board.TileLock", TestFlags)
+
+bool FConnectItTileLockTest::RunTest(const FString& Parameters)
+{
+    // Tile lock plan, Stage 1: a locked tile is in play but can't be placed on,
+    // and only operations that say so act on it
+    FConnectItRuleSet Rules;
+    const auto Lock = [](FConnectItBoardState& Board, int32 X, int32 Y, bool bLocked = true)
+    {
+        Board.GetTileDataMutable(FGridPosition(X, Y))->bIsLocked = bLocked;
+    };
+    const auto RefusedAsLocked = [&Rules](const FConnectItBoardOperation& Operation, const FConnectItBoardState& Board)
+    {
+        FString WhyNot;
+        return !Rules.CanCarryOut(Operation, Board, &WhyNot) && WhyNot.Contains(TEXT("locked"));
+    };
+
+    // --- Placement ---
+    {
+        FConnectItBoardState Board = MakeBoard(3);
+        Lock(Board, 1, 1);
+        using FPlace = FConnectItBoardOperation_PlacePiece;
+        TestFalse(TEXT("place: a locked tile isn't placeable"), FPlace::IsTilePlaceableAt(Board, FGridPosition(1, 1)));
+        TestFalse(TEXT("place: refused"), Rules.CanCarryOut(MakeAt<FPlace>(0, 1, 1), Board));
+        TestTrue(TEXT("place: the AI never tries it"), [&Board]()
+        {
+            bool bOffered = false;
+            FPlace::ForEachMove(Board, 0, [&bOffered](const FPlace& Move) { bOffered |= Move.Position == FGridPosition(1, 1); });
+            return !bOffered;
+        }());
+        TestEqual(TEXT("blocker: Locked"), UConnectIt_BoardStateLibrary::GetPlacementBlocker(Board, FGridPosition(1, 1)),
+            EConnectItPlacementBlocker::Locked);
+        TestEqual(TEXT("blocker: None on a free tile"), UConnectIt_BoardStateLibrary::GetPlacementBlocker(Board, FGridPosition(0, 0)),
+            EConnectItPlacementBlocker::None);
+        TestEqual(TEXT("blocker: Not A Tile"), UConnectIt_BoardStateLibrary::GetPlacementBlocker(Board, FGridPosition(9, 9)),
+            EConnectItPlacementBlocker::NotATile);
+
+        Lock(Board, 1, 1, false);
+        TestTrue(TEXT("place: allowed once unlocked"), Rules.CanCarryOut(MakeAt<FPlace>(0, 1, 1), Board));
+    }
+
+    // --- Each operation on a locked target ---
+    {
+        FConnectItBoardState Board = MakeBoard(5);
+        Place(Board, 1, 1, 1);
+        Place(Board, 2, 2, 0);
+        Board.GetTileDataMutable(FGridPosition(1, 1))->Multiplier = 3.f;
+        Lock(Board, 1, 1);
+
+        TestTrue(TEXT("capture: refused (locked)"), RefusedAsLocked(MakeAt<FConnectItBoardOperation_CapturePiece>(0, 1, 1), Board));
+        TestTrue(TEXT("remove: refused (locked)"), RefusedAsLocked(MakeAt<FConnectItBoardOperation_RemovePiece>(0, 1, 1), Board));
+        TestTrue(TEXT("destroy multiplier: refused (locked)"),
+            RefusedAsLocked(MakeAt<FConnectItBoardOperation_DestroyTileMultiplier>(0, 1, 1), Board));
+        TestTrue(TEXT("toggle: refused (locked)"), RefusedAsLocked(MakeAt<FConnectItBoardOperation_ToggleTileActive>(0, 1, 1), Board));
+        FConnectItBoardOperation_SwapPieces Swap;
+        Swap.Faction = 0;
+        Swap.PositionA = FGridPosition(2, 2);
+        Swap.PositionB = FGridPosition(1, 1);
+        TestTrue(TEXT("swap: refused (one tile locked)"), RefusedAsLocked(Swap, Board));
+
+        TestTrue(TEXT("force place: allowed"), Rules.CanCarryOut(MakeAt<FConnectItBoardOperation_ForcePlacePiece>(0, 1, 1), Board));
+        FConnectItBoardOperation_RemoveTiles RemoveTiles;
+        RemoveTiles.Positions = { FGridPosition(1, 1) };
+        TestTrue(TEXT("remove tiles: allowed"), Rules.CanCarryOut(RemoveTiles, Board));
+        FConnectItBoardOperation_Shift Shift;
+        Shift.Faction = 0;
+        Shift.Direction = EGridDirection::Right;
+        for (int32 X = 0; X < 5; X++)
+        {
+            Shift.Positions.Add(FGridPosition(X, 1));
+        }
+        TestTrue(TEXT("shift: allowed"), Rules.CanCarryOut(Shift, Board));
+
+        // The lock moves with its tile
+        FConnectItBoardState Shifted = Board;
+        FConnectItBoardChanges Changes;
+        Shift.Apply(Shifted, Changes, nullptr);
+        TestTrue(TEXT("shift: the lock moved with the tile"),
+            TileAt(Shifted, 2, 1).bIsLocked && !TileAt(Shifted, 1, 1).bIsLocked && TileAt(Shifted, 2, 1).FactionPiece == 1);
+    }
+
+    // --- Set Tile Locked ---
+    {
+        FConnectItBoardState Board = MakeBoard(3);
+        using FSetLocked = FConnectItBoardOperation_SetTileLocked;
+        FSetLocked SetLocked = MakeAt<FSetLocked>(INDEX_NONE, 1, 1);
+        TestTrue(TEXT("set locked: can apply"), Rules.CanCarryOut(SetLocked, Board));
+
+        FConnectItBoardState After = Board;
+        FConnectItBoardChangeEvent Events;
+        const float Points = Rules.CarryOutOperation(SetLocked, After, &Events);
+        TestTrue(TEXT("set locked: the tile is locked, nothing scored"), TileAt(After, 1, 1).bIsLocked && Points == 0.f);
+        const auto* Changed = OnlyEvent<FConnectItBoardEvent_TileLockChanged>(Events);
+        TestTrue(TEXT("set locked: one Tile Lock Changed"), Changed && Changed->Position == FGridPosition(1, 1) && Changed->bLocked);
+        FConnectItBoardState Replayed = Board;
+        FConnectItBoardEvent::ApplyAll(Events, Replayed);
+        TestTrue(TEXT("set locked: before + events = after"), Replayed.HasSameTilesAndScores(After));
+
+        TestFalse(TEXT("set locked: already locked is refused"), Rules.CanCarryOut(SetLocked, After));
+        SetLocked.bLocked = false;
+        TestTrue(TEXT("set locked: unlocking a locked tile is allowed"), Rules.CanCarryOut(SetLocked, After));
+    }
+
+    // --- Legality: only locked empty tiles left = no legal placement; locked pieces can't be swapped ---
+    {
+        FConnectItBoardState Board = MakeBoard(2);
+        Place(Board, 0, 0, 0);
+        Place(Board, 1, 0, 1);
+        Lock(Board, 0, 1);
+        Lock(Board, 1, 1);
+        TestEqual(TEXT("legality: no placeable tile"),
+            FConnectItBoardOperation::GetLegality(ConnectIt_Game_PlacePiece, Board, 0), EConnectItMoveLegality::NoLegalMove);
+        TestEqual(TEXT("legality: a swap is still possible"),
+            FConnectItBoardOperation::GetLegality(ConnectIt_Game_SwapPieces, Board, 0), EConnectItMoveLegality::Legal);
+        Lock(Board, 1, 0);
+        TestEqual(TEXT("legality: the only enemy piece is locked -- no swap"),
+            FConnectItBoardOperation::GetLegality(ConnectIt_Game_SwapPieces, Board, 0), EConnectItMoveLegality::NoLegalMove);
+    }
+
+    // --- The AI: an empty locked tile blocks a line ---
+    {
+        FConnectItBoardState Open = MakeBoard(4);
+        Place(Open, 0, 0, 0);
+        Place(Open, 1, 0, 0);
+        Place(Open, 2, 0, 0);
+        FConnectItBoardState Blocked = Open;
+        Lock(Blocked, 3, 0);
+        const FConnectItMinMaxRules MinMax(Open, RulesWonAt(100.f), DefaultEvaluationWeights(), DefaultOrderingWeights(), PlaceOnly(), PlaceOnly());
+        TestTrue(TEXT("ai: three in a row is worth less when the fourth tile is locked"),
+            MinMax.EvaluateState(MinMax.MakeRoot(Blocked, 0)) < MinMax.EvaluateState(MinMax.MakeRoot(Open, 0)));
+    }
+
+    // --- Tile powers respect the lock ---
+    {
+        FConnectItTilePowerEffect_TestMove Move;
+        Move.From = FIntPoint(1, 1);   // (0,0) + (1,1) = the locked (1,1)
+        Move.To = FIntPoint(2, 0);
+        Rules.SetTilePowers({ MakeTestPower(TestPower1, EConnectItPowerTrigger::PieceEnter, Move) }, {});
+        FConnectItBoardState Board = MakeBoard(3);
+        Board.GetTileDataMutable(FGridPosition(0, 0))->TilePowerTag = TestPower1;
+        Place(Board, 1, 1, 1);
+        Lock(Board, 1, 1);
+
+        FConnectItBoardChangeEvent Events;
+        Rules.CarryOutOperation(MakeAt<FConnectItBoardOperation_PlacePiece>(0, 0, 0), Board, &Events);
+        const auto Triggered = PowersTriggered(Events);
+        TestTrue(TEXT("powers: the power fired but couldn't take the locked tile's piece"),
+            Triggered.Num() == 1 && Triggered[0]->bNoEffect == false && TileAt(Board, 1, 1).FactionPiece == 1);
+    }
+    return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FConnectItChainedTilesTest,
+    "ConnectIt.Board.ChainedTiles", TestFlags)
+
+bool FConnectItChainedTilesTest::RunTest(const FString& Parameters)
+{
+    // Tile lock plan, Stage 2: a Chained tile (a Sync power) is locked exactly
+    // while its partner has no piece; the partner is a per-tile link (tile id)
+    FConnectItRuleSet Rules;
+    Rules.SetTilePowers({ MakeTestPower(ConnectIt_TilePower_Chained, EConnectItPowerTrigger::Sync, FConnectItTilePowerEffect_Chained()) }, {});
+
+    // A 5x5 board with tile ids; Chained tiles at Chains, all naming the partner at (0,0)
+    const auto MakeChainBoard = [](std::initializer_list<FGridPosition> Chains)
+    {
+        FConnectItBoardState Board = MakeBoard(5);
+        for (int32 Index = 0; Index < Board.NumTiles(); Index++)
+        {
+            Board.TileDataArray[Index].TileId = Index;
+        }
+        Board.NextTileId = Board.NumTiles();
+        for (const FGridPosition& Chain : Chains)
+        {
+            Board.GetTileDataMutable(Chain)->TilePowerTag = ConnectIt_TilePower_Chained;
+            Board.LinkChainPartner(Chain, true, FGridPosition(0, 0));
+        }
+        return Board;
+    };
+    const auto Settle = [&Rules](FConnectItBoardState& Board)
+    {
+        FConnectItBoardChangeEvent Events;
+        Rules.ResolveBoardChange(Board, FConnectItBoardChanges(), &Events);
+        return Events;
+    };
+    const auto CarryOut = [&Rules](const FConnectItBoardOperation& Operation, FConnectItBoardState& Board)
+    {
+        FConnectItBoardChangeEvent Events;
+        if (Rules.CanCarryOut(Operation, Board)) Rules.CarryOutOperation(Operation, Board, &Events);
+        return Events;
+    };
+    const auto ReplaysTo = [](const FConnectItBoardState& Before, const FConnectItBoardChangeEvent& Events, const FConnectItBoardState& After)
+    {
+        FConnectItBoardState Replayed = Before;
+        FConnectItBoardEvent::ApplyAll(Events, Replayed);
+        return Replayed.HasSameTilesAndScores(After);
+    };
+    const FGridPosition C(4, 4);
+    using FPlace = FConnectItBoardOperation_PlacePiece;
+
+    // --- The seeded board settles: locked while the partner is empty ---
+    {
+        const FConnectItBoardState Built = MakeChainBoard({ C });
+        FConnectItBoardState Seeded = Built;
+        const FConnectItBoardChangeEvent Events = Settle(Seeded);
+        TestTrue(TEXT("seed: the chained tile starts locked"), TileAt(Seeded, 4, 4).bIsLocked);
+        TestTrue(TEXT("seed: Power Triggered, then Tile Lock Changed"), Events.Events.Num() == 2
+            && EventAt<FConnectItBoardEvent_PowerTriggered>(Events, 0) && EventAt<FConnectItBoardEvent_TileLockChanged>(Events, 1));
+        TestTrue(TEXT("seed: before + events = after"), ReplaysTo(Built, Events, Seeded));
+
+        FConnectItBoardState WithPiece = MakeChainBoard({ C });
+        Place(WithPiece, 0, 0, 0);
+        TestEqual(TEXT("seed: a partner with a piece -- unlocked, nothing to say"), Settle(WithPiece).Events.Num(), 0);
+        TestFalse(TEXT("seed: and it stays unlocked"), TileAt(WithPiece, 4, 4).bIsLocked);
+    }
+
+    // --- Place on the partner unlocks; emptying it destroys the piece, then locks ---
+    {
+        FConnectItBoardState Board = MakeChainBoard({ C });
+        Settle(Board);
+        TestFalse(TEXT("chain: can't place on the locked chained tile"), Rules.CanCarryOut(MakeAt<FPlace>(1, 4, 4), Board));
+
+        CarryOut(MakeAt<FPlace>(0, 0, 0), Board);
+        TestFalse(TEXT("chain: a piece on the partner unlocks it"), TileAt(Board, 4, 4).bIsLocked);
+        CarryOut(MakeAt<FPlace>(1, 4, 4), Board);
+        TestEqual(TEXT("chain: now it takes a piece"), TileAt(Board, 4, 4).FactionPiece, 1);
+
+        const FConnectItBoardState Before = Board;
+        const FConnectItBoardChangeEvent Events = CarryOut(MakeAt<FConnectItBoardOperation_RemovePiece>(1, 0, 0), Board);
+        TestTrue(TEXT("chain: the partner emptied -- the piece goes, then the lock"),
+            !Board.IsTileOccupied(C) && TileAt(Board, 4, 4).bIsLocked);
+        TestTrue(TEXT("chain: removed, power, removed, locked"), Events.Events.Num() == 4
+            && EventAt<FConnectItBoardEvent_PieceRemoved>(Events, 0) && EventAt<FConnectItBoardEvent_PowerTriggered>(Events, 1)
+            && EventAt<FConnectItBoardEvent_PieceRemoved>(Events, 2) && EventAt<FConnectItBoardEvent_TileLockChanged>(Events, 3));
+        TestTrue(TEXT("chain: before + events = after"), ReplaysTo(Before, Events, Board));
+    }
+
+    // --- Scoring clears the partner: the chain closes after scoring ---
+    {
+        FConnectItBoardState Board = MakeChainBoard({ C });
+        Place(Board, 0, 0, 0);
+        Place(Board, 1, 0, 0);
+        Place(Board, 2, 0, 0);
+        Place(Board, 4, 4, 1);
+        Settle(Board);
+        TestFalse(TEXT("scoring: unlocked to start"), TileAt(Board, 4, 4).bIsLocked);
+
+        CarryOut(MakeAt<FPlace>(0, 3, 0), Board);
+        TestTrue(TEXT("scoring: the partner was cleared by the line"), !Board.IsTileOccupied(FGridPosition(0, 0)));
+        TestTrue(TEXT("scoring: so the chained tile lost its piece and locked"),
+            !Board.IsTileOccupied(C) && TileAt(Board, 4, 4).bIsLocked);
+    }
+
+    // --- A capture on the partner changes nothing ---
+    {
+        FConnectItBoardState Board = MakeChainBoard({ C });
+        Place(Board, 0, 0, 1);
+        Settle(Board);
+        const FConnectItBoardChangeEvent Events = CarryOut(MakeAt<FConnectItBoardOperation_CapturePiece>(0, 0, 0), Board);
+        TestTrue(TEXT("capture: still unlocked, no power fired"),
+            !TileAt(Board, 4, 4).bIsLocked && PowersTriggered(Events).IsEmpty());
+    }
+
+    // --- No partner: stays locked ---
+    {
+        FConnectItBoardState Board = MakeChainBoard({ C });
+        Board.LinkChainPartner(C, false, FGridPosition());
+        Settle(Board);
+        CarryOut(MakeAt<FPlace>(0, 0, 0), Board);
+        TestTrue(TEXT("no partner: locked, whatever is placed"), TileAt(Board, 4, 4).bIsLocked);
+        FGridPosition Partner;
+        TestFalse(TEXT("no partner: Get Chain Partner says none"), UConnectIt_BoardStateLibrary::GetChainPartner(Board, C, Partner));
+    }
+
+    // --- Two chained tiles on one partner open and close together ---
+    {
+        FConnectItBoardState Board = MakeChainBoard({ C, FGridPosition(4, 2) });
+        Settle(Board);
+        const TArray<FGridPosition> Chained = UConnectIt_BoardStateLibrary::GetChainedTilesFor(Board, FGridPosition(0, 0));
+        TestTrue(TEXT("two: the partner knows both"), Chained.Num() == 2 && Chained.Contains(C) && Chained.Contains(FGridPosition(4, 2)));
+
+        CarryOut(MakeAt<FPlace>(0, 0, 0), Board);
+        TestTrue(TEXT("two: both open"), !TileAt(Board, 4, 4).bIsLocked && !TileAt(Board, 4, 2).bIsLocked);
+        CarryOut(MakeAt<FConnectItBoardOperation_RemovePiece>(1, 0, 0), Board);
+        TestTrue(TEXT("two: both close"), TileAt(Board, 4, 4).bIsLocked && TileAt(Board, 4, 2).bIsLocked);
+    }
+
+    // --- Set Chain Partner, mid-match ---
+    {
+        FConnectItBoardState Board = MakeChainBoard({ C });
+        Board.LinkChainPartner(C, false, FGridPosition());
+        Place(Board, 2, 2, 0);
+        Settle(Board);
+
+        FConnectItBoardOperation_SetChainPartner Link;
+        Link.Position = C;
+        Link.PartnerPosition = FGridPosition(2, 2);
+        TestTrue(TEXT("set partner: allowed on the locked chained tile"), Rules.CanCarryOut(Link, Board));
+        const FConnectItBoardState Before = Board;
+        const FConnectItBoardChangeEvent Events = CarryOut(Link, Board);
+        TestFalse(TEXT("set partner: linked to a tile with a piece -- open in the same change"), TileAt(Board, 4, 4).bIsLocked);
+        const auto* Changed = EventAt<FConnectItBoardEvent_ChainPartnerChanged>(Events, 0);
+        TestTrue(TEXT("set partner: Chain Partner Changed first"), Changed && Changed->bHasPartner && Changed->PartnerPosition == FGridPosition(2, 2));
+        TestTrue(TEXT("set partner: before + events = after"), ReplaysTo(Before, Events, Board));
+
+        Link.bHasPartner = false;
+        CarryOut(Link, Board);
+        TestTrue(TEXT("set partner: unlinked -- locked again"), TileAt(Board, 4, 4).bIsLocked);
+
+        FConnectItBoardOperation_SetChainPartner NotChained;
+        NotChained.Position = FGridPosition(1, 1);
+        NotChained.PartnerPosition = FGridPosition(2, 2);
+        TestFalse(TEXT("set partner: refused on a tile that isn't Chained"), Rules.CanCarryOut(NotChained, Board));
+    }
+
+    // --- A shift keeps the link; removing the partner's tile unlinks ---
+    {
+        FConnectItBoardState Board = MakeChainBoard({ C });
+        Place(Board, 0, 0, 0);
+        Settle(Board);
+        FConnectItBoardOperation_Shift Shift;
+        Shift.Faction = 0;
+        Shift.Direction = EGridDirection::Right;
+        for (int32 X = 0; X < 5; X++)
+        {
+            Shift.Positions.Add(FGridPosition(X, 0));
+        }
+        CarryOut(Shift, Board);
+        FGridPosition Partner;
+        TestTrue(TEXT("shift: the partner moved and is still the partner"),
+            UConnectIt_BoardStateLibrary::GetChainPartner(Board, C, Partner) && Partner == FGridPosition(1, 0));
+        TestFalse(TEXT("shift: still open"), TileAt(Board, 4, 4).bIsLocked);
+
+        FConnectItBoardOperation_RemoveTiles Remove;
+        Remove.Positions = { FGridPosition(1, 0) };
+        CarryOut(Remove, Board);
+        TestTrue(TEXT("remove tiles: the partner is gone -- unpartnered and locked"),
+            !UConnectIt_BoardStateLibrary::GetChainPartner(Board, C, Partner) && TileAt(Board, 4, 4).bIsLocked);
+    }
+
+    // --- Add Tiles links a cell's partner (one added alongside), replayed the same ---
+    {
+        FConnectItBoardState Board = MakeChainBoard({});
+        FConnectItBoardOperation_AddTiles Add;
+        Add.Faction = INDEX_NONE;
+        FConnectItBoardLayoutCell& Chain = Add.Cells.AddDefaulted_GetRef();
+        Chain.Position = FGridPosition(5, 0);
+        Chain.TileData.TilePowerTag = ConnectIt_TilePower_Chained;
+        Chain.TileData.bHasChainPartner = true;
+        Chain.TileData.ChainPartner = FGridPosition(5, 1);
+        FConnectItBoardLayoutCell& Partner = Add.Cells.AddDefaulted_GetRef();
+        Partner.Position = FGridPosition(5, 1);
+
+        const FConnectItBoardState Before = Board;
+        const FConnectItBoardChangeEvent Events = CarryOut(Add, Board);
+        TestEqual(TEXT("add tiles: the partner's id"), TileAt(Board, 5, 0).ChainPartnerId, TileAt(Board, 5, 1).TileId);
+        TestTrue(TEXT("add tiles: the empty partner locks it in the same change"), TileAt(Board, 5, 0).bIsLocked);
+        TestTrue(TEXT("add tiles: before + events = after"), ReplaysTo(Before, Events, Board));
+    }
+
+    // --- Simulate Operation and the AI see the same ---
+    {
+        FConnectItBoardState Board = MakeChainBoard({ C });
+        Settle(Board);
+        FConnectItBoardState Simulated;
+        float Points = 0.f;
+        int32 NumScored = 0;
+        FConnectItBoardChangeEvent Events;
+        UConnectIt_BoardStateLibrary::SimulateOperation(Board, Rules, FInstancedStruct::Make(MakeAt<FPlace>(0, 0, 0)), 0, -1,
+            Simulated, Points, NumScored, Events);
+        TestFalse(TEXT("simulate: the chain opens"), TileAt(Simulated, 4, 4).bIsLocked);
+
+        const FConnectItMinMaxRules MinMax(Board, Rules, DefaultEvaluationWeights(), DefaultOrderingWeights(), PlaceOnly(), PlaceOnly());
+        const auto Child = MinMax.ApplyMove(MinMax.MakeRoot(Board, 0), PlaceMove(0, 0, 0));
+        TestFalse(TEXT("ai: its search opens the chain too"), TileAt(Child.Board, 4, 4).bIsLocked);
+    }
     return true;
 }
 

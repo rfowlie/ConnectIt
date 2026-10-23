@@ -7,8 +7,8 @@ source:
   - Source/ConnectIt/Private/Framework/Subsystem/ConnectIt_BoardRegistrySubsystem.cpp
   - Source/ConnectIt/Public/Board/ConnectIt_TileRegistry.h
   - Source/ConnectIt/Public/Board/ConnectIt_PieceRegistry.h
-reconciled: 2026-09-21
-commit: 6abda4a
+reconciled: 2026-10-22
+commit: 1d514b1
 ---
 
 # UConnectIt_BoardRegistrySubsystem (+ UConnectIt_TileRegistry / UConnectIt_PieceRegistry)
@@ -32,14 +32,15 @@ data. Replaces the previous home of these registries: per-machine properties on
 ## Entry points
 
 - `OnWorldBeginPlay(UWorld&)` — **not `Initialize()`**: this hook is Epic's documented
-  guarantee of running after every existing actor's `BeginPlay`. Resolves the level's
-  `UConnectIt_LevelConfigDataAsset` (via `UConnectIt_GameUtilityLibrary::GetLevelConfig`)
-  and `DuplicateObject()`s its own per-world runtime copy of each `Instanced` template —
+  guarantee of running after every existing actor's `BeginPlay`. Resolves the map's board -- the
+  `UConnectIt_LevelConfigDataAsset` its World Settings name (`AConnectIt_WorldSettings::FindLevelConfig`) -- and
+  `DuplicateObject()`s its own per-world runtime copy of each `Instanced` template —
   **`GridDefinition` first**, then `TileRegistry`/`PieceRegistry`, each wired with a
   reference to the duplicated `GridDefinition` before its own `InitialiseRegistry()` runs
   (`DiscoverExisting` needs it already assigned). Also binds **both** `TileRegistry` and `PieceRegistry` to
   [[UnrealGameMechanics/code/UGameEventTaskSubsystem\|UGameEventTaskSubsystem]]`::OnAnyTagComplete`
-  here, once. Missing template → logged error per registry.
+  here, once. No board on the map → a warning ("fine for a menu map") and no registries; missing template → logged
+  error per registry.
 - `Deinitialize()` — unbinds both registries from `OnAnyTagComplete`, then calls
   `ShutdownRegistry()` on both.
 - `GetTileRegistry()` / `GetPieceRegistry()` / `GetGridDefinition()` (`BlueprintPure`) —
@@ -55,14 +56,19 @@ data. Replaces the previous home of these registries: per-machine properties on
   shift/swap/remove is therefore authored in Blueprint per the project's visuals-in-Blueprint
   convention; `PieceRegistry` keeps protected C++ `HandleBoardShifted`/`HandleBoardPiecesSwapped`/
   `HandleBoardPieceRemoved` stubs (marked TODO — undecided whether they're useful).
+- **A phased level's tiles** (`UConnectIt_TileRegistry`, BlueprintCallable, called from the Tiles Added / Tiles Removed
+  handlers on every machine): `SpawnLayoutTiles(Cells)` spawns each cell's tile class (else the level config's
+  `DefaultTileClass`) at its grid position -- each registers itself; tiles implementing the tile data interface get
+  `ApplyLayoutCell` -- and returns them in cell order; `UnregisterTilesAt(Positions)` stops tracking those tiles and
+  returns their actors to animate out and destroy.
 
 ## Collaborators
 
 - `UConnectIt_LevelConfigDataAsset` — carries the `Instanced` `TileRegistry` /
   `PieceRegistry` / **`GridDefinition`** **template** properties a designer picks per
   level (concrete-class polymorphism with inline sub-properties, matching the old
-  `ABoardManagerBase` pattern — unlike the `TScriptInterface` `ScoringRule` /
-  `WinConditionRule` on the same asset). `GridDefinition` (grid geometry — cell size,
+  `ABoardManagerBase` pattern). The level config is the board only -- reusable by any number of maps; how a match is
+  played is a match preset. `GridDefinition` (grid geometry — cell size,
   World↔Grid conversion) is a sibling template to the two registries, not a
   sub-property of either — see [[UnrealGridMechanics/code/UGridDefinition|UGridDefinition]].
 - [[AConnectIt_GameMode|AConnectIt_GameMode]]`::InitialiseBoard` pulls both registries
@@ -86,10 +92,11 @@ data. Replaces the previous home of these registries: per-machine properties on
   directly as a live registry would mis-resolve `GetWorld()` and share mutable state
   across simultaneous worlds (editor + PIE, multiple PIE clients) — a real risk for a
   project that multi-client-tests via an `L_NetworkTest`-style setup.
-- **Every registry query returns null until a level config is authored.** You must
-  register a `UConnectIt_LevelConfigDataAsset` per level with `TileRegistry` set, in
-  Project Settings → "ConnectIt Level Config". Without it the subsystem has nothing to
-  duplicate.
+- **Every registry query returns null on a map with no board.** A match map's World Settings must name a
+  `UConnectIt_LevelConfigDataAsset` with `TileRegistry` set (World Settings > ConnectIt > Level Config); without it the
+  subsystem has nothing to duplicate. (The project-settings registry is gone.)
+- **Tile actors aren't replicated**: a phased level's tile changes are reconciled on each machine from the board events
+  (`SpawnLayoutTiles` / `UnregisterTilesAt`), never spawned by the server for everyone.
 - No injection into the `UConnectIt_*Registry` subclasses — `GetBoardState()` pulls on
   demand, relying on the same correct-`GetWorld()` precondition
   `UConnectIt_BoardRequestMediator::GetBoardState` already relies on.
@@ -114,6 +121,9 @@ Adding a new registry field: the `Instanced` template property on
 
 ## Changes
 
+- 2026-10-22 — the board comes from the map's World Settings (`AConnectIt_WorldSettings::FindLevelConfig`; no board =
+  a warning, fine for a menu map); `UConnectIt_TileRegistry` gained `SpawnLayoutTiles` / `UnregisterTilesAt` (phased
+  levels). The 2026-09-18 change below has since been committed.
 - 2026-09-21 — `TileRegistry` now also bound to `OnAnyTagComplete`; both registries' `HandleGameEventComplete`
   are `BlueprintImplementableEvent`s (the C++ re-key dispatch was replaced by Blueprint handlers).
 - 2026-09-18 — **`GridDefinition` construction/wiring added** (duplicated before either
@@ -121,8 +131,6 @@ Adding a new registry field: the `Instanced` template property on
   `PieceMap` stays in sync with shift/swap/remove (previously stale after enough board
   mutations — a confirmed bug). See
   [[ConnectIt/_decisions/2026-09-18-piece-registry-mapping-fix-re-keys-not-rebuilds|decisions/2026-09-18-piece-registry-mapping-fix-re-keys-not-rebuilds]].
-  Reflects a local, uncommitted change at write time — `commit:` above still anchors to
-  the last real commit; re-anchor once this lands in a commit.
 - 2026-09-10 — page created; covers the 2026-09-09 registry-to-subsystem move
   (previously only in `ConnectIt/updates/`). Provenance anchored to `6477d5d` (*Create
   Connect It Registry*).
@@ -141,8 +149,8 @@ Adding a new registry field: the `Instanced` template property on
   level's `UConnectIt_LevelConfigDataAsset` (in-editor).
 - Confirm `CI_GridPieceRegistry.uasset` is the intended `PieceRegistry` template and
   assign it.
-- Author/register at least one `UConnectIt_LevelConfigDataAsset` per level with
-  `TileRegistry` set.
+- Name a `UConnectIt_LevelConfigDataAsset` with `TileRegistry` set in each match map's World Settings (and a
+  `DefaultTileClass` for maps that change layout).
 - PIE verification not yet run (single-client, multi-client, editor-world + PIE
   simultaneously, level-transition leak checks).
 

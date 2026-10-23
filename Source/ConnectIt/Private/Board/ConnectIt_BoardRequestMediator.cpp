@@ -121,6 +121,7 @@ bool UConnectIt_BoardRequestMediator::ProcessRequest(const FTurnActionRequest& R
         return false;
     }
 
+    // TODO: why is this shift specific logic here?
     // A shift's Steps is client-supplied too: it must be exactly what the
     // sending action grants, or any client could ask for any shift distance.
     // (Direction is not checked -- it is runtime-settable on the action.)
@@ -167,6 +168,21 @@ bool UConnectIt_BoardRequestMediator::ProcessRequest(const FTurnActionRequest& R
     return bSucceeded;
 }
 
+bool UConnectIt_BoardRequestMediator::ProcessLevelOperation(const FInstancedStruct& Operation, int32 AsFaction)
+{
+    const FConnectItBoardOperation* Requested = Operation.GetPtr<FConnectItBoardOperation>();
+    if (!Requested)
+    {
+        UE_LOG(LogTemp, Warning,
+            TEXT("ConnectIt_BoardRequestMediator: level operation rejected -- it is not a board operation"));
+        return false;
+    }
+
+    UE_LOG(LogTemp, Log, TEXT("ConnectIt_BoardRequestMediator: level operation '%s' %s as faction %d"),
+        *Requested->GetRequestType().ToString(), *Requested->Describe(), AsFaction);
+    return DispatchRequest(Operation, AsFaction);
+}
+
 bool UConnectIt_BoardRequestMediator::DispatchRequest(
     const FInstancedStruct& Payload, int32 RequestingFaction)
 {
@@ -206,7 +222,7 @@ bool UConnectIt_BoardRequestMediator::DispatchRequest(
 
     // May this be done to the board as it stands?
     FString WhyNot;
-    if (!Operation.CanApply(Current, &WhyNot))
+    if (!Rules->CanCarryOut(Operation, Current, &WhyNot))
     {
         UE_LOG(LogTemp, Warning,
             TEXT("ConnectIt_BoardRequestMediator: '%s' by faction %d rejected "
@@ -230,7 +246,12 @@ bool UConnectIt_BoardRequestMediator::DispatchRequest(
     // changes the board, appending the event saying what it did; the rule set
     // then scores where pieces arrived, appending Scored events) -- the same
     // call a Blueprint "Simulate Operation" makes...
+    // Resolved at the turn being played (tile power cooldowns count against it)
     FConnectItBoardState NewState = Current;
+    if (const ATurnBasedGameState* GameState = GetWorld() ? GetWorld()->GetGameState<ATurnBasedGameState>() : nullptr)
+    {
+        NewState.TurnNumber = GameState->GetActiveTurnNumber();
+    }
     const float PointsScored = Rules->CarryOutOperation(Operation, NewState, &ChangeEvent);
 
     // ...then how far each side has got through its win groups (appending a

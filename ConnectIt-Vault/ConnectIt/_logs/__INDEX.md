@@ -6,6 +6,80 @@ Vault-wide passes go in `_core/_logs/`.
 
 Newest first:
 
+- [2026-10-23-0015](2026-10-23-0015.md) — session — tile lock plan, Stage 2: chained tiles (Sync effect, partner link by
+  tile id, seed pass, Set Chain Partner, Blueprint queries, validation). 58/58 tests; Throughput unmeasured (CPU capped).
+- [2026-10-22-2350](2026-10-22-2350.md) — session — tile lock plan, Stage 1: the lock (`bIsLocked`, per-operation
+  rule, `CanCarryOut`, Set Tile Locked / Tile Lock Changed, Get Placement Blocker, AI). 57/57 tests.
+- [2026-10-22-2310](2026-10-22-2310.md) — session — the tile catalog moves to World Settings (project settings kept for
+  defaults); the tile lock plan revised for the catalog and builder tiles (awaiting approval). 56/56 tests.
+- [2026-10-22-2250](2026-10-22-2250.md) — session — tile powers, Stage 6 (vault): two decisions, question closed, recipe
+  "add a tile power", flow "tile power chain", level recipes and status lines updated; plan complete; misdated logs fixed.
+- [2026-10-22-1745](2026-10-22-1745.md) — session — tile powers, Stage 4: powers fire in the chain (settle, Sync,
+  scoring reactions, guard, cooldowns, causes, Power Triggered). 56/56 tests; Throughput unchanged.
+- [2026-10-22-1730](2026-10-22-1730.md) — session — tile powers, Stage 3 rework: tile catalog, builder tiles, catalog
+  preview (never saved), swap at match start. 55/55 tests; Throughput 392,028 nodes/s (back to normal).
+- [2026-10-22-1530](2026-10-22-1530.md) — session — tile powers: Stages 1-2 checked; Stage 3 first build (per-tile
+  power values cost ~17% search speed); redesign to a tile catalog + builder tiles; plan and setup note revised.
+- [2026-10-22-1500](2026-10-22-1500.md) — session — tile powers, Stage 2: self-applying events (`ApplyTo`), the display
+  board, `Shift Tiles` for tile actors. 54/54 tests; Throughput unchanged.
+- [2026-10-22-1435](2026-10-22-1435.md) — session — tile powers, Stage 1: change record (`FConnectItBoardChanges`),
+  one find-all-then-apply scoring pass, the after-move loop shape. 53/53 tests; Throughput unchanged.
+- [2026-10-22-1018](2026-10-22-1018.md) — session — phased levels, Stage 7 (vault): two decisions, recipe "script a phased
+  level", goals-on-the-Level-director recipe updates, question answered, plan complete.
+- [2026-10-22-1012](2026-10-22-1012.md) — session — phased levels, Stage 6: layout tool C++ (`Capture Layout From Level`,
+  `Load Layout Into Level`, `Set Layout Camera`) and the tile interface's `Apply Layout Cell`. 51/51 tests; widget pending.
+- [2026-10-22-1006](2026-10-22-1006.md) — session — phased levels, Stage 5: tile registry follows the board (plugin
+  `UnregisterTile` + spawn-mapping fix; `Spawn Layout Tiles` / `Unregister Tiles At`). 51/51 tests; Blueprint wiring pending.
+- [2026-10-22-0959](2026-10-22-0959.md) — session — phased levels, Stage 4: Begin Phase (board change, Phase Changed,
+  On Phase Changed), Set Layout (one Change Layout, made at apply), phase tags, Get Current Phase. 51/51 tests.
+- [2026-10-22-0956](2026-10-22-0956.md) — session — first adventure level as a phased level: owner's draft phases + notes in the adventure design note.
+
+- [2026-10-22-0955](2026-10-22-0955.md) — session — phased levels, Stage 3: Remove Tiles / Add Tiles / Change Layout
+  operations and events (one change, one win check). 50/50 tests.
+- [2026-10-22-0948](2026-10-22-0948.md) — session — side directors' unused goal lists removed; phased levels, Stage 2:
+  `UConnectIt_BoardLayout` asset, layout cell + diff structs, `DefaultTileClass`. 49/49 tests.
+- [2026-10-22-0920](2026-10-22-0920.md) — session — `ConnectIt_Game_Post` tag string fixed (`"ConnectIt.Game.Pre"` → `"ConnectIt.Game.Post"`); nothing
+  depended on the collision. 48/48 tests.
+- [2026-10-21-1727](2026-10-21-1727.md) — session — phased levels, Stage 1: goals on the Level director; Set Win / Lose
+  Conditions as a board change (Change Goals operation, Goals Changed event). 48/48 tests; migration and PIE pending.
+- [2026-10-21-1442](2026-10-21-1442.md) — session — phased-levels plan reviewed: one Change Layout operation; condition
+  changes and phases as board changes; `DefaultTileClass`; Stage 5 / tool scope tightened.
+- [2026-10-21-1436](2026-10-21-1436.md) — session — plan status properties: frontmatter on the seven `# Plan:` notes;
+  convention in `design/__README.md`.
+
+- [2026-10-21-1429](2026-10-21-1429.md) — session — one board change at a time, Stage 3 (vault): decision; request and
+  snapshot system notes rewritten (they were stale); AI turn, recipe and design notes say what Immediately means now.
+- [2026-10-21-1425](2026-10-21-1425.md) — session — one board change at a time, Stage 2: GameState mirrors "board busy"
+  (replicated + event); requests refused until settled; the player controller doesn't send while busy. 47/47 tests.
+- [2026-10-21-1421](2026-10-21-1421.md) — session — one board change at a time, Stage 1: server lock until the change's
+  visuals complete; level changes queue, requests refused, AI waits for a settled board. 47/47 tests; PIE pending.
+- [2026-10-21-1405](2026-10-21-1405.md) — session — plan: one board change at a time (server lock until the change's
+  visuals complete; level changes queue, requests refused, AI waits). Not approved yet.
+- [2026-10-21-1344](2026-10-21-1344.md) — session — tile-powers plan's last points confirmed (Exit / Change faction,
+  display board on complete, Vacuum added as the fourth first power); phase direction for collapsing snapshots noted.
+- [2026-10-21-1328](2026-10-21-1328.md) — session — tile-powers plan reviewed against the code: Shift is not Enter / Exit,
+  per-arrival survival, the search's turn number, display-board limits, `ScorePass`, `MinMultiplier` gate. Not approved yet.
+- [2026-10-21-0145](2026-10-21-0145.md) — session — each map names its board and default preset in World Settings
+  (`AConnectIt_WorldSettings`); level config = reusable board; `LevelConfigs` registry removed (47/47 tests); then the
+  ConnectIt project settings deleted (47/47 tests). PIE pending.
+
+- [2026-10-21-0016](2026-10-21-0016.md) — session — tile powers design discussion: owner decided powers run in the rules'
+  after-move step; opened `_questions/tile-powers-in-the-board-pipeline.md` for the rest.
+
+- [2026-10-20-2345](2026-10-20-2345.md) — session — filed the owner's Adventure modules / progression / reward notes as `design/adventure-modules-and-progression.md`.
+
+- [2026-10-20-2330](2026-10-20-2330.md) — session — three directors (part 2 of the 2026-10-20 plan, done): Stage 1,
+  director base + Level / Player / AI directors named by class on the preset, GameMode hub; Stage 2, win conditions
+  live on the directors; Stage 3, lose conditions;
+  Stage 4, level triggers; Stage 5, level board operations and scoring-rule changes;
+  Stage 6, vault (recipes incl. script-a-level, ai-turn, decision). 47/47 tests; PIE pending.
+
+- [2026-10-20-1500](2026-10-20-1500.md) — session — conditions and legal moves (part 1 of the 2026-10-20 plan, done):
+  Stage 1, MinMax `DefaultTimeBudgetSeconds` (the director's think time wins); Stage 2, "match condition"
+  rename with redirects; Stage 3, condition context + Not Enough Pieces To Score;
+  Stage 4, legal moves + No Legal Move + AI pass;
+  Stage 5, vault (three-directors design for part 2, swap rules, folders, questions, decision). 42/42 tests; PIE pending.
+
 - [2026-10-16-1700](2026-10-16-1700.md) — session — AI director pipeline, built in stages 0-7 (2026-10-16..19): plan moved into the vault; Stage 1, MinMax
   publishes each completed depth to a thread-safe progress holder; Stage 2, candidate confidence / score / tags / label and
   strategies' best-so-far answers; Stage 3, four selectors;

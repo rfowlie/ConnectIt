@@ -5,91 +5,73 @@ role: primary
 source:
   - Source/ConnectIt/Public/Board/ConnectIt_BoardRequestMediator.h
   - Source/ConnectIt/Private/Board/ConnectIt_BoardRequestMediator.cpp
-reconciled: 2026-09-21
-commit: 19d1772
+reconciled: 2026-10-22
+commit: 27b1807
 ---
 
 # UConnectIt_BoardRequestMediator
 
-Plain `UObject`, **server-only**, constructed and owned by
-[[AConnectIt_GameMode|AConnectIt_GameMode]]. Accepts a validated
-`FTurnActionRequest`, unwraps its `Payload` into the concrete `FConnectItRequest*` struct
-the `RequestType` expects, and routes to a per-type `HandleXRequest`. The successor to the
-retired `AConnectIt_BoardManager::ProcessRequest`.
+Plain `UObject`, **server-only**, constructed and owned by [[AConnectIt_GameMode|AConnectIt_GameMode]]. It carries out
+board changes and knows nothing about any particular kind: a request's payload **is** the change -- an
+`FConnectItBoardOperation` (place this piece here, swap these two...) -- and every request takes the same path.
 
 ## When you touch this
 
-- Adding a board-change request type (a `HandleXRequest`).
-- Working on the (in-progress) game-event queue that turns board changes into visuals.
+- The gate a player's (or the AI's) request passes: loadout, action, uses.
+- The common carry-out path: `CanApply`, the rule set's `CarryOutOperation`, the win stamp, the commit.
+- Level changes (the Level director's operations, outside any move).
 
 ## Entry points
 
-- `Initialise(UConnectIt_BoardRules*)` — once, from `AConnectIt_GameMode`.
-- `ProcessRequest(const FTurnActionRequest&) → bool` — **the mandatory per-action gate**, then
-  `DispatchRequest` (the `RequestType` switch). The gate: the requester's PlayerState (via
-  `GetPlayerStateForFaction`) must exist and `HasActionConfig()`; `Request.ActionTag` (client-supplied,
-  stamped by `UTurnBasedAction::RequestBoardChange`) must resolve via `FindActionClassByTag` to an action
-  in *that player's* loadout; that class's CDO must `ProducesRequestType(RequestType)`; and
-  `CanUseAction` must pass. Only after `DispatchRequest` succeeds does it `ConsumeActionUse` — a
-  rejected request never burns a use. There is no ungated path: an unseeded player can do nothing.
-  `AConnectIt_PlayerController` relays the result to the requesting client via
-  `ClientNotifyBoardChangeOutcome` so `UTurnBasedActionsComponent` can clear its
-  awaiting-confirmation state.
-- **Private handlers:** `HandlePlacePieceRequest` (validates via
-  `BoardRules->IsTilePlaceable` — a pluggable rule now, not the hardcoded
-  `Current.IsTileValidForPlacement` the TODO used to flag), `HandleForcePlacePieceRequest`
-  (skips that check entirely — only requires the position to be registered, so it can
-  overwrite an inactive/occupied tile), `HandleDestroyTileMultiplierRequest`,
-  `HandleRemovePieceRequest` (rejects `DelayTurns > 0` — no per-turn ticking yet),
-  `HandleSwapPiecesRequest(Request, FactionID)` (requires exactly one of the two
-  positions to belong to `FactionID` — a trade, not an arbitrary reposition — checks and
-  and **does re-run scoring** now,
-  once per swapped position against its new occupying faction, then one
-  `CheckWinCondition`), `HandleToggleTileActiveRequest`, `HandleCapturePieceRequest`
-  (re-runs scoring — exactly one ownership change), `HandleBoardShiftRequest(Request,
-  FactionID)` (added for Board Shift — unrestricted, no faction-ownership check on the
-  line; re-validates every position server-side against
-  the actual board state, rotates whole `FConnectItTileData` one step along the
-  *shiftable* subset — `bCanShift == false` tiles are skipped and keep their own data,
-  wrapping the far end to the near end — then re-runs scoring on every now-occupied
-  destination).
-- `FactionID` rides the `FTurnActionRequest` envelope, not each payload struct.
+- `Initialise(const FConnectItRuleSet* InRules)` — once, from `AConnectIt_GameMode` (its own rule set).
+- `ProcessRequest(const FTurnActionRequest&, RequestingFaction) → bool` — **the mandatory per-action gate**, then
+  `DispatchRequest`. The gate: the payload is a board operation; the requester's PlayerState exists and
+  `HasActionConfig()`; `Request.ActionTag` (client-supplied) resolves via `FindActionClassByTag` to an action in *that
+  player's* loadout; that class's CDO `ProducesRequestType(operation's type)`; a shift's `Steps` equals the action's
+  `ShiftSteps`; `CanUseAction` passes. Only after a successful dispatch does it `ConsumeActionUse` — a rejected request
+  never burns a use.
+- `ProcessLevelOperation(const FInstancedStruct& Operation, int32 AsFaction) → bool` — the Level director's path: no
+  loadout gate, no use; straight to `DispatchRequest`. The GameMode calls it when the board is free.
+- `IsDispatching()` — true for the synchronous carry-out (the GameMode's board-busy check includes it).
+- **`DispatchRequest`** (private): game over? → stamp the server-known faction on a copy of the operation → `CanApply`
+  on the current board → `FConnectItRuleSet::CarryOutOperation` on a copy (the operation's `Apply`, then
+  `ResolveBoardChange` scoring) → `StampWinState` (checkpoints, lose conditions, the win) → `Game Won` on the transition
+  → `SetBoardState(NewState, ChangeEvent)`.
 
 ## Collaborators
 
-- `GetBoardState()` → [[UConnectIt_BoardStateComponent|UConnectIt_BoardStateComponent]]
-  on the GameState. Handlers build a working `FConnectItBoardState`, run
-  [[UConnectIt_BoardRules|UConnectIt_BoardRules]] (`IsTilePlaceable` / `ApplyScoring` /
-  `CheckWinCondition`) on it, then commit via `SetBoardState(NewState, ChangeEvent)`.
-- `BoardRules` (injected via `Initialise`).
-- The use budget is no longer handler-local: SWAP's budget is a `NumberedActions` entry in the loadout,
-  checked and spent by the gate in `ProcessRequest` (the client-side action's own pre-check is cosmetic
-  only).
+- `RequestingFaction` comes from the server (the sending controller's PlayerState slot, or the AI's); a payload never
+  says who it is from.
+- The rule set (`FConnectItRuleSet`, the GameMode's) does all the game logic: operations and scoring are plain structs
+  the AI's search runs too, so a simulated move and a real one can't disagree.
+- Commits through [[UConnectIt_BoardStateComponent|UConnectIt_BoardStateComponent]]`::SetBoardState`, which plays the
+  event list and starts the GameMode's board-change lock.
+- `AConnectIt_PlayerController` relays the result to the requesting client (`ClientNotifyBoardChangeOutcome`).
+- Flow: [[place-piece-request]].
 
 ## Gotchas
 
-- **`ExecuteGameEvents()` has no body yet** and `CreateGameEventsFromBoardUpdate` isn't
-  wired — the tag-reactive interpreter that turned board-change tags into piece
-  spawn/despawn was removed project-wide and its replacement (`TurnBasedGameEventQueue`,
-  ported from `AConnectIt_BoardManager`) is unfinished. **Nothing is reactively driven
-  from board-state changes today** beyond `EnqueueBoardEventTags`' tag firing.
-- No `HasAuthority()` guard — there is no client path to reach this object at all.
-- **Order matters in `HandleSwapPiecesRequest`**: occupied-check → faction-ownership, both
-  *before* touching `NewState`. The use is spent by `ProcessRequest` only after the handler returns true.
-- `HandleSwapPiecesRequest`'s per-position scoring calls mean the rare case of *both*
-  swapped positions completing a line for their (different) factions in one swap can only
-  name one of them in `ChangeEvent.ScoringFactionSlot` (a single-value field) — `ScoreBoard`
-  itself is still correct for both, only the UI-facing event report is a simplification.
+- **No `HasAuthority()` guard** — there is no client path to this object.
+- The operation is copied before the faction is stamped: the client-sent one is never trusted or mutated.
+- Level-only operations (Change Goals, Begin Phase, Remove / Add Tiles, Change Layout) are in the operation catalog
+  like any other; only the loadout gate keeps players from sending them (no action produces them).
+- `CreateGameEventsFromBoardUpdate` / `ExecuteGameEvents` are leftovers of a removed interpreter pipeline (no body);
+  visuals come from the board state component's event queue, not from here.
 
 ## Cross-impact
 
-A new request type: this class (`ProcessRequest` dispatch + `HandleXRequest`),
-`ConnectIt_Structs.h` (`FConnectItRequest*` payload), `FConnectItBoardChangeEvent`
-(result fields), the gameplay tag, `UConnectIt_BoardStateComponent::EnqueueBoardEventTags`,
-and a `UTurnBasedAction` subclass that sends it.
+A new kind of change is a new operation struct (+ event) -- nothing in this class changes; a new action that sends it
+needs `ProducesRequestType` ([[add-a-board-request-type]]). A request field the client could abuse (like Shift's
+`Steps`) needs a check in `ProcessRequest` against the sending action.
 
 ## Changes
 
+- 2026-10-22 — page rewritten: operations are the requests (the per-type `HandleXRequest` handlers and `FConnectItRequest*`
+  payloads are gone -- one `DispatchRequest` path); `Initialise` takes the GameMode's `FConnectItRuleSet`
+  (`UConnectIt_BoardRules` retired); `RequestingFaction` supplied by the server; Shift's `Steps` checked against the
+  action; `ProcessLevelOperation` for the Level director; `IsDispatching`. See
+  [board operation is the request](../_decisions/2026-10-07-board-operation-is-the-request.md),
+  [payload is the request](../_decisions/2026-10-07-payload-is-the-request-server-supplies-faction.md).
 - 2026-09-21 — **Mandatory action gate added** in `ProcessRequest` (PlayerState action config, `ActionTag` in loadout,
   `ProducesRequestType`, `CanUseAction`, then `ConsumeActionUse`); dispatch moved to `DispatchRequest`; the
   swap handler's own `SwapUsesRemaining` check/consume removed. See
@@ -111,5 +93,5 @@ and a `UTurnBasedAction` subclass that sends it.
 ## See also
 
 - In-repo: [[ConnectIt/CLAUDE|ConnectIt overview]].
-- [[place-piece-request|systems/place-piece-request]] Â·
+- [[place-piece-request|systems/place-piece-request]] ·
   [[add-a-board-request-type|recipes/add-a-board-request-type]]

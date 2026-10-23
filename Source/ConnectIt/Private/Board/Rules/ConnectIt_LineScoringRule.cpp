@@ -5,43 +5,129 @@
 #include "Board/Events/ConnectIt_BoardEvents.h"
 
 
-float FConnectItScoringRule_Lines::ApplyScoring(
+namespace
+{
+    // One line a pass found: whose, where, and the piece it keeps (if any)
+    struct FFoundLine
+    {
+        TArray<FGridPosition> Positions;
+        int32 Faction = INDEX_NONE;
+        bool bHasKeeper = false;
+        FGridPosition Keeper;
+
+        // The event that brought the arrival that found it (its Scored event's cause)
+        int32 Cause = INDEX_NONE;
+    };
+
+    // The same line (same faction, same tiles in any order)
+    bool IsSameLine(const FFoundLine& Line, int32 Faction, const TArray<FGridPosition>& Positions)
+    {
+        if (Line.Faction != Faction || Line.Positions.Num() != Positions.Num()) return false;
+        for (const FGridPosition& Position : Positions)
+        {
+            if (!Line.Positions.Contains(Position)) return false;
+        }
+        return true;
+    }
+}
+
+float FConnectItScoringRule_Lines::ScorePass(
     FConnectItBoardState& MutableState,
-    FGridPosition Position,
-    int32 FactionSlot,
-    bool bArrivingPieceSurvives,
+    TConstArrayView<FConnectItPieceArrival> Arrivals,
+    FConnectItBoardChanges& OutChanges,
     FConnectItBoardChangeEvent* OutEvents) const
 {
-    TArray<TArray<FGridPosition>> ScoringLines =
-        FindScoringLines(MutableState, Position, FactionSlot);
-
-    if (ScoringLines.IsEmpty()) return 0.f;
-
-    float TotalPoints = 0.f;
-
-    for (const TArray<FGridPosition>& Line : ScoringLines)
+    // 1. Find: every line through every arrival, on the board as it is --
+    //    nothing is cleared until all are found
+    TArray<FFoundLine, TInlineAllocator<4>> Found;
+    for (const FConnectItPieceArrival& Arrival : Arrivals)
     {
-        TArray<FGridPosition> ClearedPositions;
-        const float LinePoints = ApplyScoringLine(
-            MutableState, Line, Position, bArrivingPieceSurvives,
-            OutEvents ? &ClearedPositions : nullptr);
-        TotalPoints += LinePoints;
+        // The piece there now (an earlier step may have changed it); an empty
+        // tile or a non-faction blocker can't score
+        const FConnectItTileData* Tile = MutableState.GetTileData(Arrival.Position);
+        if (!Tile || Tile->FactionPiece == INDEX_NONE) continue;
+        const int32 Faction = Tile->FactionPiece;
 
-        // One Scored event per completed line (lines always share Position)
-        if (OutEvents)
+        for (TArray<FGridPosition>& Line : FindScoringLines(MutableState, Arrival.Position, Faction))
         {
-            FConnectItBoardEvent_Scored Event;
-            Event.Faction   = FactionSlot;
-            Event.Points    = LinePoints;
-            Event.Positions = Line;
-            Event.ClearedPositions = MoveTemp(ClearedPositions);
-            OutEvents->Add(Event);
+            FFoundLine* Existing = Found.FindByPredicate([Faction, &Line](const FFoundLine& Candidate)
+            {
+                return IsSameLine(Candidate, Faction, Line);
+            });
+
+            // A line two arrivals share counts once; its kept piece is the
+            // first arrival on it that survives scoring
+            if (Existing)
+            {
+                if (!Existing->bHasKeeper && Arrival.bSurvivesScoring)
+                {
+                    Existing->bHasKeeper = true;
+                    Existing->Keeper = Arrival.Position;
+                }
+                continue;
+            }
+
+            FFoundLine& Added = Found.AddDefaulted_GetRef();
+            Added.Positions = MoveTemp(Line);
+            Added.Faction = Faction;
+            Added.bHasKeeper = Arrival.bSurvivesScoring;
+            Added.Keeper = Arrival.Position;
+            Added.Cause = Arrival.Cause;
         }
     }
 
-    if (MutableState.ScoreBoard.IsValidIndex(FactionSlot))
+    if (Found.IsEmpty()) return 0.f;
+
+    // A piece one line keeps is never cleared by another line through it
+    TArray<FGridPosition, TInlineAllocator<4>> Kept;
+    for (const FFoundLine& Line : Found)
     {
-        MutableState.ScoreBoard[FactionSlot] += TotalPoints;
+        if (Line.bHasKeeper) Kept.AddUnique(Line.Keeper);
+    }
+
+    // 2. Apply them all, in the order found
+    float TotalPoints = 0.f;
+    for (const FFoundLine& Line : Found)
+    {
+        TArray<FGridPosition> ClearedPositions;
+        const float LinePoints = ApplyScoringLine(
+            MutableState, Line.Positions, Kept, OutEvents ? &ClearedPositions : nullptr);
+        TotalPoints += LinePoints;
+
+        if (MutableState.ScoreBoard.IsValidIndex(Line.Faction))
+        {
+            MutableState.ScoreBoard[Line.Faction] += LinePoints;
+        }
+
+        // What scoring did, for what follows (each tile once), caused by this
+        // line's Scored event
+        const int32 ScoredEventIndex = OutEvents ? OutEvents->Events.Num() : INDEX_NONE;
+        for (const FGridPosition& Position : Line.Positions)
+        {
+            if (!OutChanges.WasScoredThrough(Position))
+            {
+                OutChanges.ScoredThrough.Add({ Position, Line.Faction, ScoredEventIndex });
+                OutChanges.AddTileChanged(Position, EConnectItTileChange::Multiplier, Line.Faction, ScoredEventIndex);
+            }
+        }
+
+        // One Scored event per completed line
+        if (OutEvents)
+        {
+            FConnectItBoardEvent_Scored Event;
+            Event.CauseIndex = Line.Cause;
+            Event.Faction   = Line.Faction;
+            Event.Points    = LinePoints;
+            Event.Positions = Line.Positions;
+            Event.ClearedPositions = MoveTemp(ClearedPositions);
+            Event.NewMultipliers.Reserve(Line.Positions.Num());
+            for (const FGridPosition& Position : Line.Positions)
+            {
+                const FConnectItTileData* Tile = MutableState.GetTileData(Position);
+                Event.NewMultipliers.Add(Tile ? Tile->Multiplier : 1.f);
+            }
+            OutEvents->Add(Event);
+        }
     }
 
     return TotalPoints;
@@ -96,8 +182,7 @@ TArray<TArray<FGridPosition>> FConnectItScoringRule_Lines::FindScoringLines(
 float FConnectItScoringRule_Lines::ApplyScoringLine(
     FConnectItBoardState& MutableState,
     const TArray<FGridPosition>& Line,
-    FGridPosition CompletingPosition,
-    bool bKeepCompletingPiece,
+    TConstArrayView<FGridPosition> KeptPositions,
     TArray<FGridPosition>* OutClearedPositions)
 {
     float PointsScored = 0.f;
@@ -111,11 +196,10 @@ float FConnectItScoringRule_Lines::ApplyScoringLine(
         PointsScored += TileData->Multiplier;
         TileData->Multiplier += 1.0f;
 
-        // ...and loses its piece, except the completing piece when it is kept
-        if (bKeepCompletingPiece && Position == CompletingPosition) continue;
+        // ...and loses its piece, except a kept piece
+        if (KeptPositions.Contains(Position)) continue;
 
-        // Already empty when an earlier line through the same completing
-        // piece cleared it
+        // Already empty when an earlier line of the pass cleared it
         if (TileData->FactionPiece != -1)
         {
             TileData->SetFactionPiece(-1);

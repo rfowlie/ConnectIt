@@ -9,8 +9,8 @@ source:
   - Plugins/UnrealGameIntelligence/Source/UnrealGameIntelligence/Public/MinMax/MinMaxUtility.h
   - Plugins/UnrealGameIntelligence/Source/UnrealGameIntelligence/Public/Search/GI_SearchAsync.h
   - Plugins/UnrealGameIntelligence/Source/UnrealGameIntelligence/Public/Search/MinMax/GI_MinMaxAlphaBeta.h
-reconciled: 2026-10-02
-commit: 1cb84bd
+reconciled: 2026-10-22
+commit: 05abbe9
 ---
 
 # MinMax toolkit
@@ -20,19 +20,23 @@ Header-only, C++20-concept-constrained templates for game-tree search. A progres
 (alpha-beta + move ordering). `MinMaxUtility.h` holds the node concepts and threaded
 tree-building helpers.
 
-> **Status (2026-10-02):** the game uses the newer **`Search/`** headers, not these.
+> **Status (2026-10-22):** the game uses the newer **`Search/`** headers, not these.
 > - `Search/MinMax/GI_MinMaxAlphaBeta.h` — `GameIntelligence::Search::MinMax::TAlphaBeta<TGame>`: negamax + alpha-beta
 >   over a **const rules instance** (`c_game`: `TGame::FState`, `TGame::FMove`, const members `GenerateMoves` /
 >   `ApplyMove` / `IsTerminalState` / `EvaluateTerminalState` (finished games, with Ply) / `EvaluateState`
 >   (unfinished positions, side to move) / `EvaluateMove`), children generated on demand, move ordering,
->   iterative deepening, time budget, cancel flag; root moves get exact (full-window) scores. `Run(Game, Root, FParams)`
->   → `TResult` (`TScoredMove` list best-first, depth, nodes, time).
+>   iterative deepening, time budget (depth 1 always completes; a deeper iteration cut off is discarded), cancel flag;
+>   root moves get exact (full-window) scores. `Run(Game, Root, FParams, OnDepthCompleted = nullptr)` → `TResult`
+>   (`RootScores` best-first, `DepthReached`, `NodesVisited`, `ElapsedSeconds`, `bCancelled`, `bOutOfTime`).
+>   **`FOnDepthCompleted`** is called on the searching thread after each completed depth with that depth's ranking --
+>   a best-so-far answer while deeper iterations run.
 > - `Search/GI_SearchAsync.h` — `GameIntelligence::Search`: `FCancelFlag` / `MakeCancelFlag`, searcher-agnostic
 >   `LaunchAsync(Work, OnGameThread)`.
-> - `MinMax::LaunchAlphaBetaAsync<TGame>(SharedRules, Root, Params, Cancel, OnComplete)` — in `GI_MinMaxAlphaBeta.h`
->   (merged in by the owner; that header now includes the async plumbing).
-> - Consumer: ConnectIt's `FConnectItMinMaxRules` (built per decision by `UConnectIt_AIStrategy_MinMax` from its
->   editor term lists) — see [the decision](../../ConnectIt/_decisions/2026-10-02-minmax-evaluation-as-editor-terms.md).
+> - `MinMax::LaunchAlphaBetaAsync<TGame>(SharedRules, Root, Params, Cancel, OnComplete, OnDepthCompleted = nullptr)` —
+>   in `GI_MinMaxAlphaBeta.h`; `OnComplete` runs on the game thread (cancelled or not), `OnDepthCompleted` on the task.
+> - Consumer: ConnectIt's `FConnectItMinMaxRules`, built per decision by `UConnectIt_AIStrategy_MinMax` from its named
+>   weights ([the decision](../../ConnectIt/_decisions/2026-10-07-minmax-judgement-is-named-weights.md)); it publishes
+>   each completed depth as the strategy's best-so-far through `OnDepthCompleted` (the AI director pipeline).
 > - Score windows (root window / PVS / aspiration) are an open task, not built.
 >
 > The `MinMax/` templates below are **kept for reference, unused** (owner's call). They build and store a whole tree
@@ -79,6 +83,9 @@ Isolated. Converging the game module onto these means providing a `TNode` that s
 
 ## Changes
 
+- 2026-10-22 — the `Search/` headers are committed (the page described them ahead of the commit). Since: `Run` /
+  `LaunchAlphaBetaAsync` take an optional **`OnDepthCompleted`** (best-so-far per depth, for the AI director pipeline's
+  coordinator); `TResult` gained `bOutOfTime`. Consumer note updated (named weights replaced the editor term lists).
 - 2026-10-04 — `c_game` split terminal from non-terminal scoring: new `EvaluateTerminalState(State, Ply)`;
   `EvaluateState(State)` lost `Ply` and is only called for unfinished positions.
 - 2026-10-04 — `c_game` names made consistent: `IsTerminal` → `IsTerminalState`, `Evaluate` → `EvaluateState`,

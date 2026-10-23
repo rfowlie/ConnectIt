@@ -73,6 +73,14 @@ public:
     // the move's events, and an event with nothing to wait for completes at once.
     bool IsDispatching() const { return bDispatching; }
 
+    // Carries out a board operation on the level's behalf, outside any
+    // player's move: the same checks and steps as a move (CanApply, the
+    // operation, scoring, the win check, commit with events) but no loadout
+    // gate and no action use. AsFaction: who it is made by (INDEX_NONE for an
+    // operation that belongs to nobody). Server only; the GameMode calls it
+    // when no move is being carried out.
+    bool ProcessLevelOperation(const FInstancedStruct& Operation, int32 AsFaction);
+
 protected:
 
     // --- Game Events ---

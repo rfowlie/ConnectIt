@@ -2,10 +2,10 @@
 schema: recipes
 task: Choose an AI's strategies and selector -- several strategies proposing moves at once (e.g. MinMax plus a quick Blueprint fallback) and a selector picking among them, including writing your own selector.
 touches:
-  - the AI director's Strategies and Selector (on the match preset, or a Blueprint director's defaults)
+  - the AI director Blueprint's Strategies and Selector (its Class Defaults)
   - the strategies (any UConnectIt_AIStrategy: MinMax, Blueprint strategies)
   - a Blueprint subclass of UConnectIt_AISelector (only for your own way of picking)
-reconciled: 2026-10-19
+reconciled: 2026-10-21
 commit: fd369a4
 ---
 
@@ -20,14 +20,14 @@ controller then submits them in that order, falling back to the next on a reject
 
 ## Prerequisites
 
-- An AI director on the match preset ([[set-up-a-custom-ai-opponent]]).
+- An AI director Blueprint named by the match preset ([[set-up-a-custom-ai-opponent]]).
 - The strategies you want, each working on its own.
 - Know that a strategy should only offer moves from `Context > Available Request Types`: a rejected candidate just falls
   through to the next.
 
 ## Steps
 
-1. Open the director (the match preset's **AI Director**, or your Blueprint director's Class Defaults).
+1. Open the AI director Blueprint's **Class Defaults** (the one the match preset's AI Director Class names).
 2. **Strategies**: add them, **highest priority first**, each configured inline (e.g. 1: MinMax (Classic), 2: your Blueprint
    "take any free tile" strategy). Give two of the same class different **Labels** so logs tell them apart.
 3. Think time: **Think Time Budget Seconds** (how long the strategies may think; 0 = wait for all of them), **Strategy Budget

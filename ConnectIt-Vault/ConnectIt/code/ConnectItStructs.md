@@ -4,8 +4,8 @@ kind: USTRUCT
 role: primary
 source:
   - Source/ConnectIt/Public/ConnectIt_Structs.h
-reconciled: 2026-09-21
-commit: aa8373e
+reconciled: 2026-10-22
+commit: 1e0d5cf
 ---
 
 # ConnectItStructs
@@ -14,72 +14,63 @@ The game's board data model, in `ConnectIt_Structs.h`.
 
 ## When you touch this
 
-- Any board state read/write; adding a board-change kind or a request type.
+- Any board state read/write; a new piece of state the board carries (it replicates and is copied by the AI's search).
 
 ## Entry points
 
 ### `FConnectItBoardState` — the authoritative board
 
-Parallel arrays (`TMap` can't replicate): `TilePositions` + `TileDataArray`. Also
-`FactionTurn`, `ScoreBoard` (index = faction slot), `LastModifiedTurn`, `bGameOver`,
-`WinningFactionSlot`, `TargetScore` (0 = win condition isn't score-based → UI hides the
-bar). Helpers: `GetTileData` / `GetTileDataMutable` / `SetTileData`, `IsTileOccupied`,
-`IsTileActive`, `IsTileValidForPlacement` (active && !occupied), `GetScore`, `NumTiles`,
-`GetPositionAt` / `GetTileDataAt`.
+Parallel arrays (`TMap` can't replicate): `TilePositions` + `TileDataArray`. Also `FactionTurn`, `ScoreBoard` (index =
+faction slot), `LastModifiedTurn` (unused, always 0), `bGameOver`, `WinningFactionSlot`, `LosingFactionSlot` (the side
+that met a lose condition, else -1), `TargetScore` (0 = the goal isn't score-based → UI hides the bar), `WinProgress`
+(0..1 per faction), `GroupsCompleted` (each faction's progress through its ordered goals), `StartingPieces` (per faction;
+piece-count goals measure from it; added tiles' starting pieces count), `CurrentPhase` (a phased level's
+`ConnectIt.Phase.*` tag, empty until one begins).
+Helpers: `GetTileData` / `GetTileDataMutable` / `SetTileData` (add or update), `RemoveTileData` (the other tiles keep
+their order), `IsTileOccupied`, `IsTileActive`, `GetScore`, `NumTiles`, `GetPositionAt` / `GetTileDataAt`.
 
 ### `FConnectItTileData`
 
-`FactionPiece` (-1 = empty), `Multiplier` (bumps when part of a scoring line), `bIsActive`
-(inactive tiles can't be selected — used by mutations like "The Rift"), `bIsOccupied`
-(active but not player-placeable), `bCanShift` (added for Board Shift — an unshiftable
-tile is skipped entirely during a shift rotation, keeping its own data untouched; the
-shiftable tiles around it rotate as if it weren't in the line). `SetFactionPiece` keeps
-`bIsOccupied` in sync.
+`FactionPiece` (-1 = empty), `Multiplier` (bumps when part of a scoring line), `bIsActive` (inactive tiles can't be
+selected), `bIsOccupied`, `bCanShift` (an unshiftable tile is skipped during a shift rotation). `SetFactionPiece` keeps
+`bIsOccupied` in sync. Built from designer values by `FConnectItTileInitialData::ToTileData`
+(`ConnectIt_TileDataProvider.h`), for placed tiles and layout cells alike.
 
-### `FConnectItBoardChangeEvent` — "what changed" on the last commit
+### `FConnectItBoardChangeEvent` — what happened in one board change
 
-Rides inside the snapshot so it replicates atomically. Per-kind flag + fields:
-`bBoardSeeded` (set only on the initial snapshot from `InitialiseBoardState`, so Blueprint can spawn visuals for designer-placed starting pieces), `bPiecePlaced` (+ `PlacedPosition`, `PlacingFactionSlot`), `bLineScored` (+
-`ScoringFactionSlot`, `PointsScored`, `ScoringLinePositions` — union across simultaneous
-lines), `bGameWon` (**edge-triggered**; + `WinningFactionSlot`), plus
-`bTileMultiplierDestroyed`, `bPieceRemoved`, `bPiecesSwapped`, `bTileActiveToggled`,
-`bPieceCaptured` and their position/faction fields, and (added for Board Shift)
-`bBoardShifted` + `ShiftDirection`, `ShiftAnchorPosition`, and the index-aligned parallel
-arrays `ShiftStartPositions`/`ShiftEndPositions` (a `TMap` here can't replicate, same
-reason `FConnectItBoardState` itself uses parallel arrays — only the tiles that actually
-moved appear, `bCanShift == false` tiles are left out of both). Each corresponds to a
-`UConnectIt_*Action` (named in the header comments).
+An ordered list, `Events` (`TArray<FInstancedStruct>`), each entry one board event struct
+(`ConnectIt_BoardEvents.h`: Piece Placed, Scored, Tiles Added, Phase Changed, Game Won...) in the order it happened.
+`Add(Event)`, `FindFirst<TEvent>()`. Built on the server as the change is carried out (the operation, the scoring rule,
+the win stamp each append theirs); played one event at a time on every machine, each queued with itself as payload.
 
 ### `FConnectItBoardStateSnapshot` — the ONE replicated property
 
 `PreviousState` + `CurrentState` + `ChangeEvent`, arriving together. Lives on
-[[UConnectIt_BoardStateComponent|UConnectIt_BoardStateComponent]].
+[[UConnectIt_BoardStateComponent|UConnectIt_BoardStateComponent]]. One snapshot = one board change; the server makes no
+new change until the last has played out (one board change at a time).
 
-### `FConnectItRequest*` payloads (wrapped in `FTurnActionRequest::Payload`)
-
-`FConnectItRequestPlacePiece` (`Positions`), `…ForcePlacePiece` (`Position`; same shape
-as place, kept separate to diverge later), `…DestroyTileMultiplier`, `…RemovePiece`
-(`Position`, `DelayTurns` — only 0 honoured), `…SwapPieces` (`PositionA`/`B`),
-`…ToggleTileActive`, `…CapturePiece`, `…BoardShift` (`Positions` — the full line to
-shift, client-computed via `UGridTileRegistryBase::GetTilesByDirection` in line order;
-`Direction`). **`FactionID` is on the `FTurnActionRequest` envelope**, never duplicated
-into a payload.
+Requests are no longer structs here: a board operation (`ConnectIt_BoardOperations.h`) **is** the request payload.
 
 ## Gotchas
 
-- Parallel-array access only — never index `TileDataArray` by grid position; use
-  `GetTileData(Position)` (linear `IndexOfByKey`).
-- `bGameWon` (event, edge) vs `bGameOver` (state, latched) — don't confuse them.
+- Look tiles up by position (`GetTileData(Position)`, linear `IndexOfByKey`) -- an index into `TileDataArray` is only
+  good for one board: tiles can be removed and added mid-match (phased levels).
+- Keep it plain data -- no UObject references: the AI's background search copies it per node.
+- `GameWon` (event, edge) vs `bGameOver` (state, latched) — don't confuse them.
 - `TargetScore == 0` means "not score-based," not "target is zero."
 
 ## Cross-impact
 
-`FConnectItBoardState` / `…Snapshot` shape ripples into replication,
-`UConnectIt_BoardStateLibrary`, every UI reader, the MinMax AI (which builds hypothetical
-`FConnectItBoardState`s), and the debug widgets.
+`FConnectItBoardState` / `…Snapshot` shape ripples into replication, `UConnectIt_BoardStateLibrary`, every UI reader,
+the MinMax AI (which copies boards per node -- watch Throughput when adding fields), and the debug widgets. A new kind
+of change is a new board event struct, not a field here ([[add-a-board-request-type]]).
 
 ## Changes
 
+- 2026-10-22 — the change event is now an **ordered list of event structs** (the per-kind flags and fields are gone);
+  request payload structs removed (operations are the requests); board state gained `LosingFactionSlot`,
+  `WinProgress`, `GroupsCompleted`, `StartingPieces`, `CurrentPhase` and `RemoveTileData`; `IsTileValidForPlacement`
+  moved to the Place Piece operation.
 - 2026-09-18 — **Board Shift fields added**: `FConnectItTileData::bCanShift`;
   `FConnectItBoardChangeEvent::bBoardShifted` + `ShiftDirection`/`ShiftAnchorPosition`/
   `ShiftStartPositions`/`ShiftEndPositions`; new `FConnectItRequestBoardShift` payload.

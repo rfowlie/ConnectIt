@@ -3,12 +3,15 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "Board/Rules/ConnectIt_WinCondition.h"
+#include "Board/Rules/ConnectIt_MatchCondition.h"
 #include "AI/ConnectIt_AIStrategy.h"
 #include "AI/ConnectIt_AIDirector.h"
+#include "AI/ConnectIt_PlayerDirector.h"
+#include "AI/ConnectIt_LevelDirector.h"
 #include "AI/ConnectIt_AISelector.h"
-#include "Board/Rules/ConnectIt_WinConditionAsset.h"
+#include "Board/Rules/ConnectIt_MatchConditionAsset.h"
 #include "Board/Operations/ConnectIt_BoardOperations.h"
+#include "Board/Powers/ConnectIt_TilePower.h"
 #include "ConnectIt_MinMaxTestTerms.generated.h"
 
 
@@ -16,14 +19,14 @@
 // not score-based -- whoever owns the (0,0) corner has won. Not meant for real
 // levels.
 USTRUCT(meta = (Hidden, DisplayName = "(Test) Corner Owner Wins"))
-struct FConnectItWinCondition_TestCorner : public FConnectItWinCondition
+struct FConnectItMatchCondition_TestCorner : public FConnectItMatchCondition
 {
     GENERATED_BODY()
 
-    virtual int32 GetWinningFaction(const FConnectItBoardState& Board) const override
+    virtual bool IsMetFor(const FConnectItConditionContext& Context, int32 Faction) const override
     {
-        const FConnectItTileData* Corner = Board.GetTileData(FGridPosition(0, 0));
-        return Corner && Corner->FactionPiece != -1 ? Corner->FactionPiece : INDEX_NONE;
+        const FConnectItTileData* Corner = Context.Board.GetTileData(FGridPosition(0, 0));
+        return Corner && Corner->FactionPiece != -1 && Corner->FactionPiece == Faction;
     }
 };
 
@@ -104,22 +107,155 @@ protected:
     {
         Log += TEXT("match; ");
     }
-    virtual void OnOpponentTurnStarted_Implementation(int32 TurnNumber) override
+    virtual void OnTurnStarted_Implementation(int32 Faction, bool bIsMine, int32 TurnNumber) override
     {
-        Log += FString::Printf(TEXT("opponent %d; "), TurnNumber);
+        Log += FString::Printf(TEXT("start %d %s %d; "), Faction, bIsMine ? TEXT("mine") : TEXT("theirs"), TurnNumber);
     }
-
-    virtual void OnAITurnStarted_Implementation(int32 TurnNumber) override
+    virtual void OnTurnEnded_Implementation(int32 Faction, bool bIsMine, int32 TurnNumber) override
     {
-        Log += FString::Printf(TEXT("start %d; "), TurnNumber);
+        Log += FString::Printf(TEXT("end %d %s %d; "), Faction, bIsMine ? TEXT("mine") : TEXT("theirs"), TurnNumber);
     }
-    virtual void OnAITurnEnded_Implementation(int32 TurnNumber) override
-    {
-        Log += FString::Printf(TEXT("end %d; "), TurnNumber);
-    }
-    virtual void OnWinCheckpointReached_Implementation(int32 Faction, bool bIsAI, UConnectIt_WinConditionAsset* Goal, int32 GroupIndex, FName GroupName) override
+    virtual void OnWinCheckpointReached_Implementation(int32 Faction, bool bIsMine, UConnectIt_MatchConditionAsset* Goal, int32 GroupIndex, FName GroupName) override
     {
         Log += FString::Printf(TEXT("checkpoint %d %s %s %d %s; "),
-            Faction, bIsAI ? TEXT("AI") : TEXT("player"), *GetNameSafe(Goal), GroupIndex, *GroupName.ToString());
+            Faction, bIsMine ? TEXT("mine") : TEXT("theirs"), *GetNameSafe(Goal), GroupIndex, *GroupName.ToString());
+    }
+    virtual void OnLoseConditionMet_Implementation(int32 Faction, bool bIsMine, UConnectIt_MatchConditionAsset* Condition) override
+    {
+        Log += FString::Printf(TEXT("lost %d %s %s; "), Faction, bIsMine ? TEXT("mine") : TEXT("theirs"), *GetNameSafe(Condition));
+    }
+    virtual void OnMatchWon_Implementation(int32 Faction, bool bIsMine) override
+    {
+        Log += FString::Printf(TEXT("won %d %s; "), Faction, bIsMine ? TEXT("mine") : TEXT("theirs"));
+    }
+};
+
+// Test-only level director (ConnectIt.AI.LevelTriggers): records the triggers
+// that fire, and re-arms one when asked
+UCLASS(Hidden, NotBlueprintable)
+class UConnectIt_TestLevelDirector : public UConnectIt_LevelDirector
+{
+    GENERATED_BODY()
+
+public:
+
+    FString Log;
+
+    // Re-arm this trigger from inside its own reaction
+    TObjectPtr<UConnectIt_MatchConditionAsset> RearmOnFire = nullptr;
+
+protected:
+
+    virtual void OnTriggerFired_Implementation(UConnectIt_MatchConditionAsset* Condition, int32 Faction) override
+    {
+        Log += FString::Printf(TEXT("%s %d; "), *GetNameSafe(Condition), Faction);
+        if (Condition == RearmOnFire)
+        {
+            RearmTrigger(Condition);
+        }
+    }
+};
+
+// Test-only tile power effect (ConnectIt.Board.TilePowerData): does nothing;
+// Strength is its one tunable value. Not meant for real levels.
+USTRUCT(meta = (Hidden, DisplayName = "(Test) Do Nothing"))
+struct FConnectItTilePowerEffect_Test : public FConnectItTilePowerEffect
+{
+    GENERATED_BODY()
+
+    UPROPERTY()
+    int32 Strength = 1;
+};
+
+// --- Test-only tile power effects (ConnectIt.Board.TilePowerChain). Not meant
+// for real levels: the first real powers are designed separately. ---
+
+// Force places a piece (for the power's faction) at each offset from the powered tile
+USTRUCT(meta = (Hidden, DisplayName = "(Test) Place At Offsets"))
+struct FConnectItTilePowerEffect_TestPlace : public FConnectItTilePowerEffect
+{
+    GENERATED_BODY()
+
+    UPROPERTY()
+    TArray<FIntPoint> Offsets;
+
+    virtual void MakeOperations(const FConnectItTilePowerContext& Context, TArray<FInstancedStruct>& OutOperations) const override
+    {
+        for (const FIntPoint& Offset : Offsets)
+        {
+            FConnectItBoardOperation_ForcePlacePiece Place;
+            Place.Position = FGridPosition(Context.Position.X + Offset.X, Context.Position.Y + Offset.Y);
+            OutOperations.Add(FInstancedStruct::Make(Place));
+        }
+    }
+};
+
+// "Moves" the piece at From to To (offsets from the powered tile): removes it
+// and places one for the power's faction -- there is no move operation yet
+USTRUCT(meta = (Hidden, DisplayName = "(Test) Move A Neighbour"))
+struct FConnectItTilePowerEffect_TestMove : public FConnectItTilePowerEffect
+{
+    GENERATED_BODY()
+
+    UPROPERTY()
+    FIntPoint From = FIntPoint::ZeroValue;
+
+    UPROPERTY()
+    FIntPoint To = FIntPoint::ZeroValue;
+
+    virtual void MakeOperations(const FConnectItTilePowerContext& Context, TArray<FInstancedStruct>& OutOperations) const override
+    {
+        const FGridPosition FromPosition(Context.Position.X + From.X, Context.Position.Y + From.Y);
+        if (!Context.Board.IsTileOccupied(FromPosition)) return;
+
+        FConnectItBoardOperation_RemovePiece Remove;
+        Remove.Position = FromPosition;
+        OutOperations.Add(FInstancedStruct::Make(Remove));
+
+        FConnectItBoardOperation_ForcePlacePiece Place;
+        Place.Position = FGridPosition(Context.Position.X + To.X, Context.Position.Y + To.Y);
+        OutOperations.Add(FInstancedStruct::Make(Place));
+    }
+};
+
+// Places a piece on an empty tile picked at random (the board's seeded stream)
+USTRUCT(meta = (Hidden, DisplayName = "(Test) Place At Random"))
+struct FConnectItTilePowerEffect_TestRandomPlace : public FConnectItTilePowerEffect
+{
+    GENERATED_BODY()
+
+    virtual void MakeOperations(const FConnectItTilePowerContext& Context, TArray<FInstancedStruct>& OutOperations) const override
+    {
+        TArray<FGridPosition> Empty;
+        for (int32 Index = 0; Index < Context.Board.NumTiles(); Index++)
+        {
+            if (!Context.Board.GetTileDataAt(Index).bIsOccupied) Empty.Add(Context.Board.GetPositionAt(Index));
+        }
+        if (Empty.IsEmpty()) return;
+
+        FConnectItBoardOperation_ForcePlacePiece Place;
+        Place.Position = Empty[Context.Random.RandRange(0, Empty.Num() - 1)];
+        OutOperations.Add(FInstancedStruct::Make(Place));
+    }
+};
+
+// A Sync power: the powered tile can't hold a piece while the tile at Watch
+// (an offset) has none -- it removes its own piece whenever that is so
+USTRUCT(meta = (Hidden, DisplayName = "(Test) Sync: Clear While Watched Tile Empty"))
+struct FConnectItTilePowerEffect_TestSyncClear : public FConnectItTilePowerEffect
+{
+    GENERATED_BODY()
+
+    UPROPERTY()
+    FIntPoint Watch = FIntPoint::ZeroValue;
+
+    virtual void MakeOperations(const FConnectItTilePowerContext& Context, TArray<FInstancedStruct>& OutOperations) const override
+    {
+        const FGridPosition Watched(Context.Position.X + Watch.X, Context.Position.Y + Watch.Y);
+        if (!Context.Board.IsTileOccupied(Context.Position) || Context.Board.IsTileOccupied(Watched)) return;
+
+        FConnectItBoardOperation_RemovePiece Remove;
+        Remove.Position = Context.Position;
+        OutOperations.Add(FInstancedStruct::Make(Remove));
     }
 };

@@ -170,18 +170,18 @@ FConnectItMinMaxRules::FState FConnectItMinMaxRules::ApplyMove(
 {
     FState Child = State;
 
-    // 1. The move: the operation changes the board, and only that
-    FConnectItTouchedPositions TouchedPositions;
-    bool bArrivingPiecesSurvive = true;
-    Visit([&Child, &TouchedPositions, &bArrivingPiecesSurvive](const auto& Operation)
+    // 1. The move: the operation changes the board, and only that, reporting
+    //    what it did
+    FConnectItBoardChanges Changes;
+    Visit([&Child, &Changes](const auto& Operation)
     {
-        Operation.Apply(Child.Board, TouchedPositions, nullptr);
-        bArrivingPiecesSurvive = Operation.ArrivingPiecesSurviveScoring();
+        Changes.Faction = Operation.Faction;
+        Operation.Apply(Child.Board, Changes, nullptr);
     }, Move);
 
     // 2. What follows from the change -- the same step the Mediator runs
     //    after a real move
-    Rules.ResolveBoardChange(Child.Board, TouchedPositions, bArrivingPiecesSurvive);
+    Rules.ResolveBoardChange(Child.Board, Changes);
 
     //    ...and each side's progress through its win groups: a win (all
     //    groups complete) is read from the board, so the search must keep it
@@ -189,8 +189,9 @@ FConnectItMinMaxRules::FState FConnectItMinMaxRules::ApplyMove(
     Rules.AdvanceWinGroups(Child.Board);
 
     // 3. The turn passes. The one thing still assumed here: every move ends
-    //    the turn.
+    //    the turn. Turns count both sides' (as tile power cooldowns do).
     Child.SideToMove = Opponent(State.SideToMove);
+    Child.Board.TurnNumber++;
     return Child;
 }
 
@@ -274,9 +275,10 @@ float FConnectItMinMaxRules::LinePotential(const FConnectItBoardState& Board, in
             {
                 Pieces++;
             }
-            else if (!Tile.bIsActive || Tile.bIsOccupied)
+            else if (!Tile.bIsActive || Tile.bIsOccupied || Tile.bIsLocked)
             {
-                // Inactive, the other faction's piece, or a non-faction blocker
+                // Inactive, the other faction's piece, a non-faction blocker,
+                // or an empty locked tile (nobody can place there)
                 bOpen = false;
                 break;
             }

@@ -24,6 +24,7 @@ void AConnectIt_GameState::GetLifetimeReplicatedProps(
     Super::GetLifetimeReplicatedProps(OutLifetimeProps);
     DOREPLIFETIME(AConnectIt_GameState, MatchResult);
     DOREPLIFETIME(AConnectIt_GameState, MatchRules);
+    DOREPLIFETIME(AConnectIt_GameState, bBoardChangeResolving);
 }
 
 // --- Server API ---
@@ -39,6 +40,19 @@ void AConnectIt_GameState::SetMatchRules(const FConnectItRuleSet& InRules)
 void AConnectIt_GameState::OnRep_MatchRules()
 {
     OnMatchRulesChanged.Broadcast();
+}
+
+void AConnectIt_GameState::SetBoardChangeResolving(bool bResolving)
+{
+    if (!HasAuthority() || bBoardChangeResolving == bResolving) return;
+
+    bBoardChangeResolving = bResolving;
+    OnBoardChangeResolvingChanged.Broadcast(bBoardChangeResolving);
+}
+
+void AConnectIt_GameState::OnRep_BoardChangeResolving()
+{
+    OnBoardChangeResolvingChanged.Broadcast(bBoardChangeResolving);
 }
 
 void AConnectIt_GameState::SetMatchResult(
@@ -135,6 +149,19 @@ FConnectItBoardStateSnapshot AConnectIt_GameState::GetBoardSnapshot() const
         return *BSC->GetBoardSnapshot();
     }
     return FConnectItBoardStateSnapshot();
+}
+
+FGameplayTag AConnectIt_GameState::GetCurrentPhase() const
+{
+    if (UConnectIt_BoardStateComponent* BSC = GetBoardStateComponent())
+    {
+        if (const FConnectItBoardState* Current = BSC->GetBoardSnapShotCurrent())
+        {
+            return Current->CurrentPhase;
+        }
+    }
+
+    return FGameplayTag();
 }
 
 float AConnectIt_GameState::GetTargetScore() const

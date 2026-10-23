@@ -5,15 +5,21 @@
 #include "CoreMinimal.h"
 #include "GameplayTagContainer.h"
 #include "TurnBasedMechanicsStructs.h"
+#include "TurnBasedMechanicsEnums.h"
 #include "Framework/GameMode/TurnBasedGameMode.h"
 #include "Board/Rules/ConnectIt_RuleSet.h"
+#include "Framework/GameMode/ConnectIt_LevelChange.h"
 #include "ConnectIt_GameMode.generated.h"
 
 class AConnectIt_AIController;
 class ATurnBasedPlayerState;
 class UActionLoadoutDataAsset;
 class UConnectIt_AIDirector;
-class UConnectIt_WinConditionAsset;
+class UConnectIt_LevelDirector;
+class UConnectIt_PlayerDirector;
+class UConnectIt_Director;
+class UConnectIt_MatchConditionAsset;
+class UConnectIt_BoardLayout;
 class UTurnBasedParticipantManagerComponent;
 class UConnectIt_BoardRequestMediator;
 
@@ -38,31 +44,6 @@ enum class EConnectItRole : uint8
     AI      UMETA(DisplayName = "AI")
 };
 
-// When a replaced loadout takes effect
-UENUM(BlueprintType)
-enum class EConnectItLoadoutTiming : uint8
-{
-    // When that side's next turn begins. The default: swapping a loadout
-    // re-seeds every action's use counts and cooldowns, so doing it between
-    // turns can't hand out extra actions in a turn already under way.
-    NextTurnStart   UMETA(DisplayName = "Next Turn Start"),
-
-    // Now. Not allowed while a move is being carried out (that move's action
-    // use is spent only after it finishes, against the loadout it came from),
-    // and board event listeners such as OnWinCheckpointReached can run inside
-    // that window: there this quietly becomes NextTurnStart.
-    Immediately     UMETA(DisplayName = "Immediately")
-};
-
-// A faction completed one of its goals, and it was not its last.
-// See AConnectIt_GameMode::OnWinCheckpointReached. (Parameters are named
-// PlayerRole, not Role: AActor already has a Role.)
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_FiveParams(FOnWinCheckpointReached,
-    EConnectItRole, PlayerRole, int32, Faction, UConnectIt_WinConditionAsset*, Goal, int32, GroupIndex, FName, GroupName);
-
-// A faction completed all of its win condition groups: the match is won. See
-// AConnectIt_GameMode::OnMatchWon.
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnMatchWon, EConnectItRole, PlayerRole, int32, Faction);
 
 UCLASS()
 class CONNECTIT_API AConnectIt_GameMode : public ATurnBasedGameMode
@@ -95,6 +76,14 @@ public:
         Category = "ConnectIt|Config")
     int32 NumFactions = 2;
 
+    // How long a board change may stay resolving before the lock gives up
+    // (an error is logged and new changes are allowed again). Only a visual
+    // task that never reports complete gets here -- it also holds up the
+    // event queue behind it, so the log says what is stuck.
+    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly,
+        Category = "ConnectIt|Config", meta = (ClampMin = 1, Units = "s"))
+    float BoardChangeTimeoutSeconds = 15.f;
+
     // --- Overrides ---
 
     virtual void PostLogin(APlayerController* NewPlayer) override;
@@ -108,8 +97,32 @@ public:
     // (and therefore BoardRequestMediator) doesn't exist on any client.
     // RequestingFaction is who is asking, as the SERVER knows it (the
     // sending controller's PlayerState slot) -- a request doesn't say.
+    // Refused until the board is settled (IsBoardSettled): a change is
+    // resolving, or level changes are waiting to play.
     UFUNCTION(BlueprintCallable, Category = "ConnectIt|Board")
     bool ProcessBoardRequest(const FTurnActionRequest& Request, int32 RequestingFaction);
+
+    // --- One board change at a time ---
+    // A board change (a move, or a level operation) resolves from the moment
+    // it is carried out until its visuals have played out (the server's own
+    // event queue: ConnectIt_Event_BoardChangeComplete). Meanwhile requests
+    // are refused and level changes wait, so every change reaches clients as
+    // its own snapshot with its own events.
+
+    // A board change is being carried out or its visuals are still playing
+    UFUNCTION(BlueprintPure, Category = "ConnectIt|Board")
+    bool IsBoardChangeResolving() const;
+
+    // Nothing resolving and no level change waiting: a decision made now is
+    // made from the board the next move will be applied to
+    bool IsBoardSettled() const;
+
+    // Board changes committed so far this match: compare two reads to tell
+    // whether the board changed in between
+    int32 GetNumBoardChanges() const { return NumBoardChanges; }
+
+    // Fires when the board becomes settled (IsBoardSettled) after a change
+    FSimpleMulticastDelegate OnBoardChangeSettled;
 
     // --- Live match setup ---
     // This GameMode is the authority for what the match is actually using.
@@ -124,12 +137,16 @@ public:
     // The match's rules, including per-match and mid-level changes
     const FConnectItRuleSet& GetRules() const { return Rules; }
 
-    // The loadout human players are seeded with
-    UActionLoadoutDataAsset* GetPlayerLoadout() const { return PlayerLoadout; }
+    // --- Directors (see UConnectIt_Director) ---
 
-    // The match preset's AI director template, if it has one (each AI
-    // controller duplicates it)
-    const UConnectIt_AIDirector* GetAIDirectorTemplate() const { return AIDirectorTemplate; }
+    // The match preset's AI director class (the AI controller makes its own
+    // instance); null = none set
+    TSubclassOf<UConnectIt_AIDirector> GetAIDirectorClass() const { return AIDirectorClass; }
+
+    // This match's directors (null if there is none)
+    UConnectIt_LevelDirector* GetLevelDirector() const { return LevelDirector; }
+    UConnectIt_PlayerDirector* GetPlayerDirector(int32 Faction) const;
+    UConnectIt_AIDirector* GetAIDirector() const;
 
     // The one way to change the match's rules after setup: Change edits this
     // GameMode's rule set, then the GameState mirror is refreshed (clients and
@@ -137,31 +154,38 @@ public:
     // change applies from the next move.
     void ModifyRules(const TFunctionRef<void(FConnectItRuleSet&)>& Change);
 
-    // --- Reacting to the match's goals (for a level Blueprint) ---
-    // The GameMode exists only on the server, so a level Blueprint reaches
-    // these through "Get Game Mode" (null on clients) -- gate on that.
-    // The goals themselves are the rule set's win condition assets, listed on
-    // the match preset (FConnectItRuleSet::PlayerWinConditions / AIWinConditions).
-
-    // A side completed one of its goals and it was not its last (Goal is the
-    // win condition asset; GroupIndex counts from 0 in that side's list;
-    // GroupName is the asset's name).
-    // Fires after the move's scoring visuals. The place to change that side's
-    // loadout for the next stage (SetLoadout). Server only; keep the listener
-    // light: it can run inside the move that completed the group.
-    UPROPERTY(BlueprintAssignable, Category = "ConnectIt|Match")
-    FOnWinCheckpointReached OnWinCheckpointReached;
-
-    // A side completed ALL its win groups: the match is won. (The match result
-    // is written to the GameState and the match ends right after.) Server only.
-    UPROPERTY(BlueprintAssignable, Category = "ConnectIt|Match")
-    FOnMatchWon OnMatchWon;
-
     // Replaces a side's loadout (Player: every human; AI: the AI). Re-seeds all
     // of that side's action uses and cooldowns from the new loadout.
     UFUNCTION(BlueprintCallable, Category = "ConnectIt|Match")
     void SetLoadout(EConnectItRole PlayerRole, UActionLoadoutDataAsset* Loadout,
-        EConnectItLoadoutTiming Timing = EConnectItLoadoutTiming::NextTurnStart);
+        EConnectItChangeTiming Timing = EConnectItChangeTiming::NextTurnStart);
+
+    // --- Level changes (what the Level director calls) ---
+
+    // Carries out a board operation outside any player's move (see
+    // UConnectIt_BoardRequestMediator::ProcessLevelOperation), at Timing
+    void ApplyLevelOperation(const FInstancedStruct& Operation, int32 AsFaction, EConnectItChangeTiming Timing);
+
+    // Replaces the match's scoring rule at Timing (clients see it through the
+    // replicated rules; the AI from its next decision). False if ScoringRule
+    // isn't a scoring rule struct.
+    bool SetScoringRule(const FInstancedStruct& ScoringRule, EConnectItChangeTiming Timing);
+
+    // Replaces a side's win goals (bWinGoals) or lose conditions at Timing.
+    // Applied as a board change: the rules are re-resolved (and replicate),
+    // then a Change Goals operation restarts that side's goal progress and
+    // says so, and the win check measures the new goals (one already met
+    // completes at once). Score carries over.
+    void SetConditions(EConnectItRole Side, bool bWinGoals,
+        const TArray<UConnectIt_MatchConditionAsset*>& Conditions, EConnectItChangeTiming Timing);
+
+    // Changes the board's tiles to Layout at Timing, as one board change
+    // (Change Layout, worked out against the board when it is applied)
+    void SetLayout(UConnectIt_BoardLayout* Layout, EConnectItChangeTiming Timing);
+
+    // The same for one player (what a Player director calls for its own player)
+    void SetLoadoutForPlayer(ATurnBasedPlayerState* PlayerState, UActionLoadoutDataAsset* Loadout,
+        EConnectItChangeTiming Timing = EConnectItChangeTiming::NextTurnStart);
 
 protected:
 
@@ -174,7 +198,7 @@ protected:
     void PublishMatchSetup();
 
     // Seeds a joining human's PlayerState action state (uses/caps/cooldowns)
-    // from GetPlayerLoadout(). Server-side, called from PostLogin; a no-op if
+    // from their Player director's StartingLoadout (making the director first). Server-side, called from PostLogin; a no-op if
     // the state is already seeded. This is the only place a human's action
     // state is seeded -- their controller then builds its actions from the
     // PlayerState's loadout.
@@ -196,11 +220,20 @@ protected:
     UFUNCTION()
     void HandleGameOver(FGameplayTag Tag);
 
-    // Bound to UGameEventTaskSubsystem's ConnectIt_Event_WinCheckpointReached
-    // tag completing (see InitialiseBoard). Reads the event being played and
-    // broadcasts OnWinCheckpointReached.
+    // Bound to ConnectIt_Event_BoardChangeComplete completing: one committed
+    // change has played out
     UFUNCTION()
-    void HandleWinCheckpoint(FGameplayTag Tag);
+    void HandleBoardChangeComplete(FGameplayTag Tag);
+
+    // Director events: the participant manager's turn phases (server side) ->
+    // OnTurnStarted / OnTurnEnded for every director
+    UFUNCTION()
+    void HandleTurnPhaseChanged(ETurnPhase NewPhase);
+
+    // Director events: every committed board change (server side, before its
+    // visuals) -> checkpoint / match won for every director
+    UFUNCTION()
+    void HandleBoardStateChangedForDirectors();
 
     // Bound to UTurnBasedParticipantManagerComponent::OnInvalidNumberOfPlayers
     // (see HandleMatchHasStarted) -- fires when too few active participants
@@ -226,8 +259,57 @@ private:
     // (see the level config's validation)
     void WarnAboutMissingWinConditions() const;
 
-    // Which side a faction slot is on: the AI's if it is the AI's slot
-    EConnectItRole RoleOfFaction(int32 Faction) const;
+    // Calls Event on every director, in dispatch order (Level, Players by
+    // slot, AI -- UConnectIt_Director::InDispatchOrder)
+    void ForEachDirector(TFunctionRef<void(UConnectIt_Director&)> Event) const;
+
+    // The Player director of PlayerState's player, made from the preset's
+    // class on first ask
+    UConnectIt_PlayerDirector* FindOrCreatePlayerDirector(ATurnBasedPlayerState* PlayerState);
+
+    // Level changes waiting for the board to settle / the next turn
+    FConnectItLevelChangeQueue LevelChanges;
+
+    // The board-change lock (see IsBoardChangeResolving). Set when a change
+    // is committed; cleared when every committed change's marker has
+    // completed, or by the timeout.
+    bool bBoardChangeResolving = false;
+
+    // Committed changes whose completion marker hasn't completed yet. Markers
+    // complete in order, so the lock lifts when this reaches 0 (or a timeout
+    // lifts it early, leaving this to catch up).
+    int32 NumChangesPlaying = 0;
+
+    int32 NumBoardChanges = 0;
+
+    // Level changes applied since the last player / AI move or turn start: a
+    // level whose triggers keep feeding each other is stopped
+    int32 LevelChangesInARow = 0;
+
+    FTimerHandle BoardChangeTimeoutHandle;
+
+    // OnBoardChangeCommitted (the board state component): lock
+    void HandleBoardChangeCommitted();
+
+    // The lock is lifted: waiting level changes are applied from the next
+    // tick (never inside the call that lifted it, which may be a change
+    // still being carried out)
+    void ReleaseBoardChangeLock();
+    void HandleBoardChangeTimeout();
+
+    // Mirrors "not settled" to the GameState for clients and UI
+    // (AConnectIt_GameState::IsBoardChangeResolving)
+    void PublishBoardChangeResolving() const;
+
+    // Applies waiting level changes in order until one changes the board
+    // (the next waits for that change to play out) or none are left; then,
+    // if the board is settled, says so (OnBoardChangeSettled)
+    void DrainLevelChanges();
+
+    void ApplyLevelChange(const FConnectItLevelChange& Change);
+    void ApplyGoalsChange(const FConnectItLevelChange& Change);
+    void ApplyLayoutChange(const FConnectItLevelChange& Change);
+    void QueueLevelChange(const FConnectItLevelChange& Change, EConnectItChangeTiming Timing);
 
     // Loadouts parked by SetLoadout (NextTurnStart), by faction slot
     UPROPERTY()
@@ -247,11 +329,25 @@ private:
     UPROPERTY()
     FConnectItRuleSet Rules;
 
+    // The match preset's director classes
     UPROPERTY()
-    TObjectPtr<UActionLoadoutDataAsset> PlayerLoadout = nullptr;
+    TSubclassOf<UConnectIt_LevelDirector> LevelDirectorClass;
 
     UPROPERTY()
-    TObjectPtr<UConnectIt_AIDirector> AIDirectorTemplate = nullptr;
+    TSubclassOf<UConnectIt_PlayerDirector> PlayerDirectorClass;
+
+    UPROPERTY()
+    TSubclassOf<UConnectIt_AIDirector> AIDirectorClass;
+
+    // The directors this GameMode owns (the AI's belongs to its controller)
+    UPROPERTY()
+    TObjectPtr<UConnectIt_LevelDirector> LevelDirector = nullptr;
+
+    UPROPERTY()
+    TArray<TObjectPtr<UConnectIt_PlayerDirector>> PlayerDirectors;
+
+    // The AI controller spawned for an Adventure match (for its director)
+    TWeakObjectPtr<AConnectIt_AIController> SpawnedAIController;
 
     bool bMatchSetupResolved = false;
 

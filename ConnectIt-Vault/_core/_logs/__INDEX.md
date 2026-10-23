@@ -8,6 +8,9 @@ in `<domain>/_logs/`, not here.
 
 Newest first:
 
+- [2026-10-22-1032](2026-10-22-1032.md) — process-code — 59 code pages checked: 21 drifted pages refreshed, 27
+  current, `UConnectIt_BoardRules` stale (sources retired), 10 recipes with no checkable paths; ConnectIt inventory gaps flagged.
+
 - [2026-10-07-1330](2026-10-07-1330.md) — by hand — advertising-strategy interview + plan for `Portfolio`
   (hub-and-spoke, weekly devlog); first `Portfolio/_discussions/` note.
 

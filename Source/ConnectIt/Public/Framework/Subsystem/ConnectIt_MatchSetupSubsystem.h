@@ -21,7 +21,7 @@ struct FConnectItMatchSettings
     TSoftObjectPtr<UWorld> Level;
 
     // How to play it, including who the AI is (the preset's director); unset
-    // = the level's own DefaultMatchPreset. The values below are tweaks
+    // = the map's own Default Match Preset (its World Settings). The values below are tweaks
     // applied on top of whichever preset plays.
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Match")
     TObjectPtr<UConnectIt_MatchPreset> MatchPreset = nullptr;
@@ -34,7 +34,7 @@ struct FConnectItMatchSettings
 // Carries the main menu's match choices (level, match preset, target score)
 // into the match. Lives on the GameInstance, so it survives OpenLevel.
 //
-// The menu builds an FConnectItMatchSettings (options from GetLevelCatalog)
+// The menu builds an FConnectItMatchSettings (options from its level catalog)
 // and calls StartMatch. In the match, AConnectIt_GameMode and
 // AConnectIt_AIController read it through GetSettingsForCurrentLevel, which
 // only returns settings whose Level is the level actually loaded -- so stale
@@ -63,11 +63,6 @@ public:
 
     UFUNCTION(BlueprintPure, Category = "ConnectIt|Match Setup")
     FConnectItMatchSettings GetMatchSettings() const { return Settings; }
-
-    // The project's catalog of playable levels and AI opponents (loaded on
-    // demand from ConnectIt_LevelConfigSettings). Null if none is set.
-    UFUNCTION(BlueprintCallable, Category = "ConnectIt|Match Setup")
-    UConnectIt_LevelCatalog* GetLevelCatalog() const;
 
     // The stored settings, if there are any AND they are for the level
     // WorldContextObject is in.

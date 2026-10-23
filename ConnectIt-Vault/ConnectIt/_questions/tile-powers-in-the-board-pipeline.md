@@ -1,0 +1,485 @@
+---
+created: 2026-10-21
+question: "How should tile powers fit into the board pipeline?"
+status: answered
+closed-by: "[2026-10-22-tile-powers-in-the-after-move-chain](../_decisions/2026-10-22-tile-powers-in-the-after-move-chain.md); [2026-10-22-tile-catalog-and-builder-tiles](../_decisions/2026-10-22-tile-catalog-and-builder-tiles.md)"
+tags:
+  - question
+---
+
+# How should tile powers fit into the board pipeline?
+
+## Why it matters
+
+A tile power ([tile-powers](../design/tile-powers.md)) is usually a reaction to a board change that makes another board
+change: a line scores through a Poison tile, so its diagonal neighbours lose multiplier. Two things in the code already
+react to board changes: the rules' after-move step (`FConnectItRuleSet::ResolveBoardChange`, which only scores today) and
+the Level director's triggers (Blueprint, after the move, not seen by the AI's search). Where powers run decides whether
+the AI and `Simulate Operation` can see them, whether a chain of effects is one move or several, and whether effects are
+written in C++ or Blueprint.
+
+## What would answer it
+
+Owner calls on: where powers run; whether a power belongs to a tile or to the level; what sets a power off and what
+happens to it after it fires; which faction a power's effect acts for, and whether a chain can score and win. Then a plan
+and a `_decisions/` note.
+
+## Current thinking
+
+**2026-10-21 (owner + Claude), round 1.**
+
+- **Decided (owner): powers run in the rules' after-move step** (`ResolveBoardChange`), not in the Level director. Why: the
+  AI's search and `Simulate Operation` go through the same step, so they see powers; a chain of effects stays inside one
+  move and one event list. Cost: a power's effect is C++ (a thread-safe struct); designers set its values as data. The
+  Level director keeps scripted moments and could give a tile a power through a new board operation.
+- **Shape discussed** (not decided): a power's effect issues the existing board operations (Remove, Capture, Force Place,
+  Toggle, Destroy Multiplier, plus a new Adjust Multiplier); the after-move step resolves in waves (operation → score →
+  powers fire on what changed → their operations → score what they touched → ...) until nothing fires or a cap is
+  reached; each tile fires at most once per move; fixed order (wave, then tile index); `StampWinState` once at the end; a
+  new `PowerTriggered` event before each effect's own events.
+- **Limits found in the code:**
+  - Triggers can't read the event list: the search passes `null` for events. The step needs a small, always-produced
+    record of what changed (positions a line scored through; pieces that arrived, left or changed owner; multipliers that
+    changed). `FConnectItTouchedPositions` is the start of one.
+  - Tile data is copied for every position the search looks at: a tile should hold a 1-byte index into a power table on
+    the rule set, not a tag or a struct.
+  - The rules now replicate (`AConnectIt_GameState::MatchRules`), so clients can read a power's threshold for charge
+    visuals (Crumble's cracks). The 2026-09-20 plan to copy the Crumble threshold onto the board state is no longer needed.
+  - Board Shift moves tile data, so a power on a tile moves with it.
+  - Scoring goes to the occupant of the tile, not to whoever caused the change.
+
+**Claude's leans on the open three** (round 2, for the owner to confirm or change):
+
+- **Tile or level: one mechanism for both.** Powers are an ordered list of power structs on the rule set. A tile power
+  only acts on tiles holding its index; a level-wide rule (Crumble, pole sync from
+  [switch-and-pole-tiles](../design/switch-and-pole-tiles.md)) ignores the index. The power list would be authored on the
+  Level director and copied into the rule set at match start, the same pattern as win conditions. A tile Blueprint names
+  its starting power (a gameplay tag through `IConnectIt_TileDataProvider`), resolved to the index when the board is built.
+- **What sets it off: an event plus an optional gate.** One event from a small fixed list (a line scored through this
+  tile, a piece arrived, a piece left, the owner changed, a neighbour changed) and an optional state check (e.g.
+  multiplier ≥ 3). This covers the 09-18 sketch ("once the multiplier is past N, the next line through it fires"), and
+  Crumble becomes "scored through, multiplier ≥ 5". Lifecycle: **once** (the power is removed from the tile) or **every
+  time** (once per move at most). A recharge comes free when the effect resets its own tile's multiplier, so no new state
+  is needed. Powers on a turn timer ("every 3 turns") are left out: the rules don't see turns.
+- **Which faction: the one whose change set it off** (the scoring faction for "scored through", the arriving piece's
+  owner for "arrived"), passed down a chain. Most sketched powers don't need a faction at all (Poison, Overgrowth,
+  Crumble, Magnet); only Siphon (capture) and anything that places pieces do. **Chains score and can win**: scoring is by
+  occupant, and the win check runs once after the chain, the same as level operations. A chain can hand points, or the
+  match, to the other side; the AI sees that and plays around it.
+
+**2026-10-21, round 3: owner steps back from the brainstormed powers to the logic.**
+
+- **Owner's model.** There are *actions* (place, swap, shift...) and *reactions*. A reaction only happens after an action
+  and can chain: P1 places → a line scores → a scored tile has *Push* (pushes a random adjacent piece one tile) → the
+  pushed piece completes another line → that line runs over another powered tile → ...
+- **Owner's leans:** one power per tile at a time; powers have a cooldown (0 = fires every time it's triggered).
+  **Priority: the visuals must understand a chain**; how the AI's search handles it matters less for now. (This replaces
+  round 2's "used once / every time, recharge by resetting the multiplier".)
+- **The visual side already plays a chain as a list.** A board change is an ordered event list; the board state
+  component queues each event with its own data, and the queue waits for one event's visuals before the next
+  (`EnqueueBoardEventTags`; the piece registry re-keys per event from that event's data). A chain is just a longer list
+  in the order things happened: `PiecePlaced, Scored, PowerTriggered, PieceMoved, Scored, PowerTriggered, ... , GameWon`.
+  What's new is on the server: the after-move step needs its own queue of reactions waiting to fire.
+- **Touched positions are not enough for the visuals.** Clients only get the board before the action and after the whole
+  chain; nothing in between. Each event has to carry everything needed to animate it. Gaps found:
+  - No event says a multiplier changed: `Scored` doesn't carry the +1 per tile, and `TileMultiplierDestroyed` has only the
+    position. In a chain a tile can go 2 → 3 → 1 → 2.
+  - No event for one piece moving one tile (`BoardShifted` describes a whole line).
+  - No event for a power firing, or for its state changing (cooldown started).
+  - Anything reading the *current* board when the snapshot arrives (`OnBoardStateChanged` listeners, any Blueprint
+    reading Current) jumps to the end of the chain before it has played.
+- **For the reactions themselves** (server), touched positions say *where* but not *how* (scored through, arrived, left,
+  changed owner), which the triggers need.
+- **Cooldown needs a turn number on the board:** `FConnectItBoardState::LastModifiedTurn` is set to 0 at init and never
+  updated; the turn number lives on the GameState.
+
+**2026-10-21, round 4.**
+
+- **Decided (owner):**
+  - **Strict waves**: everything one wave triggers fires before anything those powers cause.
+  - **Cooldowns count all turns** (both sides'). Counting only your own turns, or actions, stays a possible design
+    option.
+  - **The win is checked once, after the chain finishes** (as `StampWinState` already does after scoring).
+- **Owner's point: scoring comes first** after an action's changes. A piece placed on a Push tile that pushes itself away
+  before it can score would feel wrong. That splits powers into two trigger families: **movement** (a piece arrived on,
+  left, or changed owner on this tile) and **scoring** (a line scored through this tile).
+- **Current code path** (every path ends in `ResolveBoardChange`): action builds an operation → `ProcessRequest`
+  (loadout gate) → `DispatchRequest` (game over? stamp faction, `CanApply`) → `FConnectItRuleSet::CarryOutOperation`
+  (`Operation.Apply` → `ResolveBoardChange`: for each touched position in turn, `ApplyScoring` finds lines, adds
+  multiplier, +1 multiplier, clears pieces, appends `Scored`) → `StampWinState` → `Game Won` → `SetBoardState` →
+  `EnqueueBoardEventTags` on every machine. The Level director's `ProcessLevelOperation` joins at `DispatchRequest`;
+  the AI's search and `Simulate Operation` call the same two steps.
+- **Proposed wave step** (replaces the body of `ResolveBoardChange`): input = what the last step changed (wave 0: the
+  action). A, score at every position a piece arrived at; B, collect powers triggered by this wave's movement changes or
+  its scoring, in tile order, skipping tiles on cooldown or already fired this action; C, fire them one after another,
+  each against the board as it is then, recording what each changed; D, those changes are the next wave. Stops when B
+  finds nothing, or at a cap. Written recursively or as a loop; same thing.
+- **Claude's leans on what this raises:**
+  - Score first is the fixed rule. "Fires before scoring" could become a per-power option later (a trap tile) without
+    changing the loop.
+  - A piece cleared by scoring counts as "scored through", not "left", so the two families don't overlap.
+  - Scoring within a wave should find every line from every arrival before clearing any. Today it is one position at a
+    time, so scoring one arrival can break a line another arrival made.
+- **Still open:** whether a piece moved by a power stays on its tile when it completes a line (the operation's
+  `ArrivingPiecesSurviveScoring` covers wave 0 only); the display board for the visuals (round 3).
+
+**2026-10-21, round 5: owner's calls.**
+
+- **Display board:** every machine's visuals read a display board that starts as the board from before the action and
+  is updated by each event as it plays; it matches the snapshot's Current when the list finishes. Visuals never read the
+  snapshot directly. Server-side logic (directors, the Mediator) keeps reading the real board.
+- **Scoring within a wave:** find every line made by every arrival first, then score and clear them all (changes
+  today's one-position-at-a-time `ResolveBoardChange`).
+- **A piece moved by a power that completes a line:** the operation the power issues decides, through
+  `ArrivingPiecesSurviveScoring`, as for actions (Place keeps its piece, Swap keeps nothing).
+- **Level-wide rules use the same system:** a level-wide rule (Crumble) is a power that applies to every tile, on top
+  of any power a tile holds. So the once-per-action guard is per tile *and* power, not per tile.
+- **Order within a wave: movement powers first, then scoring powers**, each group in tile order. (Claude had leaned
+  tile order regardless of family.)
+- So one wave is: A, score every line the wave's arrivals made; B, collect triggered powers; C, fire movement powers,
+  then scoring powers, each in tile order, against the board as it is then; D, what they changed is the next wave.
+
+**Claude's defaults, for the owner to confirm or change before a plan:**
+
+- A piece cleared by scoring counts as "scored through", not "left".
+- Each event records which earlier event caused it.
+- Random choices come from a seed stored on the board, so `Simulate Operation` and the AI's search get the same result
+  as the real move; the event records the outcome.
+- A power's effect acts for the faction whose change set it off, passed down the chain.
+- A power with no valid target still adds its Power Triggered event (marked "no effect") and still starts its cooldown.
+- Every event can apply itself to a board; that is how the display board advances. A test checks that the board before
+  the action plus every event equals the board after.
+- Cooldown is stored as the turn the power is ready again; the Mediator stamps the turn number on the board.
+- A wave cap as a safety net, on top of the once-per-action guard.
+- New events: multiplier changed (or the new multipliers on `Scored`), Piece Moved, Power Triggered, and Power Changed
+  (a tile given or losing a power).
+
+**2026-10-21, round 6: pre-scoring powers come back.**
+
+- **Owner:** some tiles should fire *before* scoring; it adds a layer of complexity. This reverses "score first is the
+  fixed rule" from round 4: timing becomes a per-power setting. Triggers proposed: Tile Enter, Tile Exit, Scoring, Tile
+  Change; timings: Pre Scoring, Post Scoring.
+- **Chart and the wave with both timings:** [tile-power-triggers](../design/tile-power-triggers.md). A wave becomes
+  changes in → settle (pre powers) → find lines → pre-scoring Scoring powers → score → react (post powers) → next wave.
+- **Open there:** Scoring × pre read as "a line is about to score" (between finding lines and applying them); whether
+  the settle step runs until nothing more fires; where Capture belongs; one cell per power; the react order.
+
+**2026-10-21, round 7: the chart's open points, decided (owner).**
+
+- Pre-scoring powers settle until nothing more fires, then the wave scores.
+- Scoring powers are post only (the "about to score" moment is dropped).
+- One trigger and one timing per power.
+- Firing order within a step: Enter, Exit, Scoring, Change (Change last, so Crumble sees what scoring powers did).
+- A capture counts as both Tile Exit and Tile Enter (owner's suggestion; Claude agreed). Quirk: an Exit power that needs
+  an empty tile finds it occupied after a capture and does nothing.
+- The wave is now: changes in → settle (pre: Enter, Exit, Change, until quiet) → score (all lines at once) → react
+  (post: Enter, Exit, Scoring, Change) → next wave. Updated in [tile-power-triggers](../design/tile-power-triggers.md).
+- **Still unconfirmed:** Claude's round-5 defaults (cleared-by-scoring is not an exit, cause index on events, seeded
+  randomness, faction passed down the chain, a power with no target still shows and starts its cooldown, events apply
+  themselves to the display board, ready-again turn, wave cap, the new events).
+
+**2026-10-21, round 8: two phases, no post-scoring reactions (owner).**
+
+- **Owner:** post-scoring reactions are almost indistinguishable from scoring reactions and complicate the chain. Two
+  phases only: **pre scoring** and **scoring**. Resolve every pre-scoring reaction and its chain; then score; if scoring
+  sets off reactions, resolve them and score again; conclude only when there is no new scoring and no reaction to
+  scoring. A post-scoring step could be inserted at the end later; omitted for now.
+- **Director, checkpoint and win reactions** come after the chain, as new board requests (the Level director's existing
+  path already works this way).
+- **Effect on earlier rounds:** the per-power pre/post timing (round 6-7) is gone; a power's phase follows from its
+  trigger (Enter / Exit / Change: pre scoring; Scoring: scoring). The "React" step and its Enter, Exit, Scoring, Change
+  order are replaced by: settle (Enter, Exit, Change) → score → scoring powers → back to settle.
+- **Claude's reading, to confirm:** what scoring and the scoring powers change goes back through the settle step before
+  the next scoring pass -- the multipliers scoring raised (so Crumble, a Change power, fires there) and what scoring
+  powers moved (so a pushed piece landing on a Repel tile is repelled). The chain ends at the first scoring pass that
+  finds no lines. Written up in [tile-power-triggers](../design/tile-power-triggers.md).
+- **Confirmed (owner, round 8):** that reading is right -- scoring's and the scoring powers' changes go back through
+  settle before the next scoring pass, and the chain ends at the first scoring pass with no lines.
+
+**2026-10-21, round 9: the round-5 defaults (owner).**
+
+- **Agreed:** a piece cleared by scoring sets off Scoring powers, never Tile Exit (Tile Exit = a piece moved off the
+  tile by anything other than scoring); seeded randomness; a power with no effect still shows and starts its cooldown;
+  events apply themselves to the display board, with the before + events = after test; a cause index on events if it
+  stays cheap.
+- **Wave cap:** owner points out the once-per-action guard already guarantees the chain ends (finite tiles, one power
+  each, plus level-wide rules). Agreed: the cap is only a bug guard (log + stop), not a rule.
+- **Powers are operations (owner's direction):** "operation" covers player actions and tile powers alike -- anything
+  that changes the board. A power's effect is a board operation with its own event, so a power and a player action can
+  share it (a Push action and a Push tile). A power adds trigger, gate, cooldown and how it picks its target; an action
+  adds the loadout and the player's chosen target. Random targets are picked (from the board's seed) before the
+  operation runs, so the operation itself stays deterministic. Power Triggered stays as its own event, before the
+  operation's event.
+- **Clarification asked:** which faction a power's operation acts for (examples given); how a cooldown counts (stored as
+  the turn the power is ready again, compared rather than ticked).
+- **Decided (owner):** a power acts for the faction whose change set it off -- the scoring faction for Scoring powers,
+  the arriving piece's owner for Enter. (Claude's extension, to confirm in the plan: Exit = the leaving piece's owner;
+  Change = the faction of the change that caused it, e.g. the scoring faction for a multiplier raised by scoring; -1
+  when nobody, e.g. a Level director toggle.)
+- **Cooldown as explained:** a tile stores ready turn = the turn it fired + cooldown; it can fire when the current turn
+  ≥ ready turn. Cooldown 0 = again in a later action of the same turn; 1 = the opponent's turn; 2 = your next turn. The
+  Mediator stamps the current turn on the board (`LastModifiedTurn` is never updated today).
+
+**2026-10-21: plan written** at the owner's request: [tile-powers-plan](../design/tile-powers-plan.md) (six stages; not
+approved yet). Three points to confirm are listed at its end.
+
+**2026-10-21, round 10: the plan reviewed against the code (Claude; owner answered three calls).**
+
+- **Owner's calls:**
+  - **A shift is neither Tile Enter nor Tile Exit.** Board Shift moves whole tile data, so power, cooldown and piece
+    travel together; shifted positions are only scored (a separate `Moved` list in the change record).
+  - **The gate is a plain `MinMultiplier`** (0 = none) until a second kind of gate is needed.
+  - **`_SetTilePower` stays in Stage 5.**
+- **Fixed in the plan:**
+  - Scoring survival is per arrival (one pass mixes the action's pieces with pieces moved by powers).
+  - The AI's root board is stamped with the decision turn and `ApplyMove` adds 1 per ply. Otherwise cooldowns are off
+    by one at the root and never expire inside the search.
+  - A power's operations call `Apply`, not `CarryOutOperation` (which would nest a chain).
+  - The display board covers tiles and scores; match-level fields are copied from Current when the queue drains; it
+    resyncs and warns if it ends up different.
+  - The scoring rule gets one line-agnostic `ScorePass` call instead of `FindLines` / `ApplyLines` on the base.
+  - The once-per-action guard has a bit per level-wide power, not one for all of them.
+  - Crumble does nothing on an inactive tile (Toggle would otherwise reactivate it).
+- **Known issue noted, not fixed:** two board changes in one frame can reach a client as one snapshot, losing the first
+  change's events (predates powers).
+
+**2026-10-21, round 11: the plan's last three points (owner).**
+
+- **Faction:** Exit acts for the leaving piece's owner; Change for the faction of the change that caused it (-1 when
+  nobody).
+- **Display board:** applies an event when its queue entry completes.
+- **First powers:** Push, Repel, Crumble, **plus Vacuum** so every trigger ships. Claude's reading of Vacuum, written
+  into the plan for the owner to correct: the nearest piece in the tile's four orthogonal lines (ties broken by the
+  seed) is pulled into the emptied tile, at any distance.
+- **Collapsing snapshots (owner's direction):** lean on the turn / match phases. An operation phase ends only when its
+  visuals are complete, and level changes happen at turn end and turn start, so board changes are spaced out. Gaps
+  noted in the plan: an Immediately level change runs in the same call as the move, and several turn-start changes
+  apply back-to-back. Either they wait for visuals, or same-moment changes merge into one board change. Not decided.
+- The plan has nothing left to confirm; it waits for approval.
+
+**2026-10-21, round 12: one board change at a time (discussed, not decided).**
+
+- **Owner:** a second request arriving while one is resolving and its visuals play is a serious error. Proposal: a
+  successful request moves the match into a "processing request" state; the Mediator refuses new requests until the
+  visuals' completion event arrives.
+- **Claude, from the code:**
+  - The client already freezes its action stack until the outcome RPC (`bAwaitingRequestConfirmation`), but that
+    arrives straight after the server call, not after the visuals. The server's only guard is `IsDispatching`, which
+    lasts for the synchronous call.
+  - The turn-end gate already waits for the server's queued board events (FIFO), but only the server's.
+  - **"Visuals complete" needs an owner:** the server's queue reflects the host's visuals; on a dedicated server it
+    would be instant; clients' playback isn't awaited.
+- **Claude's leans:**
+  - The server owns the lock: player requests are refused (the existing failure path re-enables the client's action).
+  - Level changes queue behind the lock rather than being refused (Immediately = after this change's visuals; several
+    turn-start changes play one after another).
+  - Release on a marker tag queued after the change's events (`BindOnTagComplete`), with a safety timeout.
+  - The busy state is replicated so client UI can block input.
+  - A ConnectIt-side state, not a new plugin turn phase.
+  - Client acknowledgement before release comes later, with online play (still undecided).
+- **Decided (owner):** keep it ConnectIt-side; server visuals for now. Plan:
+  [one-board-change-at-a-time-plan](../design/one-board-change-at-a-time-plan.md).
+- **Built and settled (2026-10-21):** [one board change at a time](../_decisions/2026-10-21-one-board-change-at-a-time.md).
+  For tile powers this means a whole chain is one board change. The chain's events play before anything else changes
+  the board; director reactions follow as their own changes. The tile-powers plan's known issue is closed.
+
+**2026-10-22 (owner, from the chained-tiles discussion):** a capture is **not** Tile Exit + Tile Enter (replaces round
+7). The piece only changes faction; as exit + enter, the visuals would show a destroy, a chained tile snapping shut, a
+place and the chain reopening for something that isn't happening. New pre-scoring trigger **Piece Change** (acts for the
+new owner); settle order Enter → Exit → Piece Change → Tile Change. Updated in
+[tile-power-triggers](../design/tile-power-triggers.md) and [tile-powers-plan](../design/tile-powers-plan.md) (change
+record, faction, tests, Vacuum). See [chained-tiles](../design/chained-tiles.md).
+
+**2026-10-22, plan walkthrough (owner).** Trigger names: Piece Enter, Piece Exit, Piece Changed, Tile Changed (pre
+scoring) and Scoring. Tiles appearing or disappearing (Add / Remove Tiles, Change Layout) set off nothing; pieces on
+added tiles are still scored. A tile names its power by gameplay tag, not an index (an index breaks silently when the
+list changes). Stage 5 (operations and first powers) deferred to its own design; the plan proves the system with
+test-only powers. Plan updated: [tile-powers-plan](../design/tile-powers-plan.md). **Plan approved by the owner
+2026-10-22**; the question stays open until it is built and closes with its Stage 6 decision note.
+
+**2026-10-22, Stage 3 build: per-tile power values cost search speed (discussed, not decided).**
+
+- **Found while building:** carrying each tile's power with its values on the runtime tile data (an instanced struct,
+  as the [tile-power-setup](../design/tile-power-setup.md) decision required) costs ~17% AI search speed. That's
+  303,709 against 364,987 nodes/s, even with no powered tiles: board copies stop being plain memory copies. Without
+  that one field (tag, tile id and ready turn kept), speed is normal.
+- **Owner:** the editor side can use whatever is convenient, but runtime board state should be plain. Per-instance
+  editable power values are a bad setup: anyone can put bad values on a placed tile. Proposed instead: the level as
+  part of the power's tag (`TilePower.Poison.Level.1` / `.2`), and/or one Blueprint tile per power level, with its tag
+  set in Class Defaults and untouchable.
+- **Claude:**
+  - The cause is exactly the per-instance values: they force each tile to carry its own copy.
+  - If a tag names one exact definition (level included), the runtime tile carries only the tag. The definitions
+    live once, in the rules, copied once per match and once per search, not per node.
+  - The two proposals fit together. A per-level child Blueprint sets the tag (defaults only), and the tag names the
+    level.
+  - Lean: the values live in **one project-wide definitions list keyed by tag** (a data asset), not built by each
+    Blueprint. One place to tune, one definition per tag, readable without actors.
+  - What goes: `GetTilePower`, the captured power on layout cells, the Load Layout Into Level gap.
+  - Exception: a Chained tile's partner is per placed tile, but it is a link, not a power value. It is plain data
+    (a partner tile id) through the tile data provider and Set Chain Partner.
+- **Open:** a catalog asset or Blueprint class defaults for the values; then revise the plan's Stage 3.
+- **Owner (same day): a data asset, not Blueprints.** A map keyed by tag enforces one entry per power. Each entry
+  also slots in the **tile class that shows that power**. Trying a different skin or look in testing is then a new data
+  asset with other classes slotted in.
+- **Claude, what follows:**
+  - **Catalog:** a tile catalog data asset: `TMap<tag, {Tile Class, Power}>`.
+  - **Runtime:** the board tile carries the tag. The rules get the catalog's powers at match start. The tile class
+    stays in the asset, never in the rules or the board (it is a UObject reference, and the search runs on a worker
+    thread).
+  - **Authoring flips:** if the catalog decides a tag's class, then the placed tile or layout cell names the **tag**,
+    and the class follows from the catalog.
+    - Placed tiles pick only a tag from a list, never values. Validation: the tag must be in the catalog.
+    - This reverses "Tile Power Tag defaults-only on each subclass".
+  - Level-wide powers: the Level director lists tags; the definitions come from the catalog.
+  - **Still open:**
+    - Tag on the placed tile vs. in Blueprint class defaults (the catalog's class then has to agree with it).
+    - Hand-placed level tiles whose class differs from the catalog's: swapped at match start, by an editor tool, or
+      both.
+    - Where the catalog is chosen: the level config, with a project default.
+- **Owner (same day), on the three:**
+  1. The tag is set on the placed tile or layout cell; the catalog picks the look. Agreed.
+  2. **Builder tiles:** levels are blocked out with a placeholder **builder tile**. It takes a Tile Power Tag and shows
+     a small visual so designers can see which tile is where. An editor tool takes a tile catalog and swaps each
+     builder tile for the catalog's class. Levels must never be saved with those temporary swaps.
+  3. The catalog is chosen on the level config, with a project default; the default tile class becomes the catalog's
+     "no power" entry. Agreed.
+- **Claude, what follows:**
+  - **A preview, not a swap:** the tool spawns the catalog's actors as **transient** (never saved) and hides the
+    builder tiles with the editor's temporary hide (also never saved). Clearing the preview destroys the transient
+    actors and unhides the builders. Nothing the tool does can reach the saved level, so no pre-save hook is needed.
+  - **At match start the swap is real and always happens:** levels hold only builder tiles, so the tile registry
+    spawns the catalog's class for each one and retires the builder. The same spawn is used for Tiles Added (a layout
+    cell names a tag).
+  - **Layouts:** the layout tool captures builder tiles' tags and their per-tile settings.
+- **Decided (owner): revise.** Plan Stage 3 rewritten ([tile-powers-plan](../design/tile-powers-plan.md)); the
+  revision recorded in [tile-power-setup](../design/tile-power-setup.md) ("Revised: the tile catalog and builder
+  tiles"), its earlier class-held decision marked partly superseded. The code is reworked to match next.
+
+**2026-10-22, Stage 5 design round 1 (the first powers; discussed, not decided).** Stages 1-4 built. Stage 5 was
+deferred to its own plan; this round starts its design.
+
+- **Move Piece** (keeps the piece's owner; Exit at From + Enter at To; To must be empty and active; event Piece
+  Moved): **owner agrees.**
+- **Multiplier floor and ceiling per tile type (owner):** set per kind of tile. Some powered tiles shouldn't gain
+  multiplier, or shouldn't contribute to scoring at all (multiplier 0).
+  - Claude: they belong on the catalog entry and are enforced wherever a multiplier changes: scoring's +1, Adjust
+    Multiplier, Destroy Multiplier's reset, and the starting value.
+  - The power's gate field (`MinMultiplier`) would then clash by name: rename it.
+  - Open: plain tiles' limits; whether a 0-multiplier tile still forms lines (lean: yes, it just adds 0 points).
+- **Push (owner):** first find which orthogonal neighbours can be pushed, then pick one at random among them. Then it
+  always does something when it can, and a player who sees only one valid option can predict it. It never pushes its
+  own tile's piece.
+  - Claude: valid = an occupied orthogonal neighbour whose next tile beyond it (away from the Push tile) is empty
+    and active.
+- **Repel (owner):** as sketched, no piece could ever rest on it. Instead a **countdown**: each time it reaches 0, a
+  piece on it is pushed to a random open tile in any direction, if possible, and the countdown resets.
+  - Claude: that is a **turn-timer trigger** (the plan's "Not in this plan" list). The countdown can be the
+    existing cooldown: a Turn power fires whenever its ready turn comes, then cools down N.
+  - Open:
+    - when it ticks (turn start?) and which turns count;
+    - whether it resets when there's no piece;
+    - whether "any direction" means the 8 adjacent tiles;
+    - whether the AI's search simulates it per ply.
+- **Vacuum (owner):** fires on Piece Exit **and** Scoring; pulls a random piece from any direction onto itself (the
+  opposite of Repel, no timer).
+  - Claude: two triggers breaks "one trigger per power", so relax it to a trigger set.
+  - Lean: candidates are the first piece along each of the 8 directions (through empty tiles, stopped by an edge or
+    an inactive tile); pick one at random; only when its own tile is empty.
+- **Crumble (owner):** not a tile power: a board or map power. Set aside for another plan. (The level-wide machinery
+  built in Stage 4 stays, and so does its board-wide cooldown question.)
+- **First power in a level (owner):** the Chained tile, in the first place-piece level. A sandbox level tests the
+  others.
+- **Tile hooks (owner):** `AConnectIt_TileBase` gets virtuals: `OnPowerTriggered`, `OnPieceEnter`, ....
+  - Claude: yes, dispatched centrally (the tile registry looks up the event's tile and calls its hook) rather than
+    each tile binding the queue.
+  - Open: whether a hook can hold the event queue until its animation finishes.
+- **Order (owner):** the tile lock plan before Stage 5. The lock is universal, so every power and operation must
+  answer whether it can touch a locked tile.
+  - Claude agrees. The lock plan also brings the Chained tile, which needs revising for the catalog and builder
+    tiles first.
+
+**2026-10-22, Stage 5 design round 2 (owner).**
+
+- **No level suffix:** powers don't have levels yet (`ConnectIt.TilePower.Push`, not `.Push.1`). Tiles growing in
+  power is an idea not yet looked into.
+- **Plain tiles:** floor 1, no ceiling for now.
+- **A 0-multiplier tile still forms scoring lines**; it just adds nothing to the score.
+- **Repel's countdown:**
+  - counts all turns;
+  - resets when it reaches 0 even with no piece on it;
+  - "any direction" = all 8 directions;
+  - the AI's search ignores it for now (later).
+  - Asked Claude where it should tick. Claude's lean: at **turn start**, as its own board change before the player
+    acts, so the push plays out (and can score) before the player decides, rather than blurring into the previous
+    move's chain. It joins the existing turn-start level changes, one board change at a time.
+- **Vacuum:** pulls a piece from any of the 8 directions, at random. Claude reads this as the first piece along each
+  direction (a piece behind another can't jump it), picking one at random.
+- **Tile hooks:** the owner asked what was meant. Claude explained (below) and asked again.
+  - "Hooks" are the tile actor's own functions the owner proposed (`OnPowerTriggered`, `OnPieceEnter`, ...).
+  - The question is whether a hook can make the event queue **wait** for its animation, as gated visuals do today,
+    or is fire-and-forget. Lean: it can wait, so chains play in order.
+
+**2026-10-22, Stage 5 design round 3 (owner).**
+
+- **Repel's faction:** the faction whose turn it is. Clunky, but make it work first and clean it up later.
+- **Vacuum:** the nearest piece along each of the 8 directions, one picked at random. Confirmed.
+- **Hooks wait for their animations**, so a chain plays in order. The owner's flow: the game event fires → a
+  visualizer gets it → it calls the hooks on the actors. So the queue waits on the visualizer's answer, not on the
+  actors. Owner asked: how does the visualizer wait for a hook to finish -- by passing it a callback?
+- **Claude: yes, a completion handle per hook call.**
+  - The plugin already gates this way: a visualizer registers a `UGameEventTask_Async` for an event's tag, the queue
+    calls its execute delegate, and the queue moves on only when every registered task has called `CallOnComplete`.
+  - For tile hooks, the visualizer creates a small **reaction handle** for each hook it calls and passes it in. The
+    tile calls `Finish` on it when its animation ends. When every handle it handed out has finished, the visualizer
+    calls `CallOnComplete` on its task.
+  - Why not hand the tile the task itself: one event can call hooks on several tiles, and the first to finish would
+    release the queue early.
+  - Safety: the C++ default of every hook finishes at once, so a tile that doesn't override a hook never stalls the
+    queue. A handle whose tile is destroyed finishes itself.
+  - Where the visualizer lives (a C++ dispatcher, the tile registry or its own object) is for the Stage 5 plan.
+
+**2026-10-22, Stage 5 design round 4 (owner).**
+
+- **Tiles are never destroyed, only pooled**, so a destroyed tile can't lose a handle.
+  - Claude: the pooled equivalent is a tile returned to the pool mid-animation; returning it should finish its
+    handles.
+- **Calling Finish in every hook is error-prone (owner).** Wrap each virtual hook in a matching function that does
+  pre and post checks and fires Finish itself, so designers never have to.
+- **Claude:**
+  - Yes to the wrapper. A non-virtual function the visualizer calls checks, then calls the virtual hook, then
+    finishes.
+  - **But:** a Blueprint event returns at once, even when it starts a timeline or a delay. A wrapper that finishes
+    when the hook returns finishes before the animation ends.
+  - Options:
+    - **(a) Opt-in hold:** the wrapper finishes by default. A tile that animates calls Hold Reaction in its hook and
+      then Finish when done. A safety timeout finishes a forgotten hold, with a warning naming the tile.
+    - **(b)** The hook returns its animation's length, and the wrapper finishes after that long.
+    - **(c)** Always require Finish (the error-prone case).
+  - Lean: **(a)**. Most hooks need no thought, only animating tiles opt in, and a mistake costs a stall of at most
+    the timeout, with the tile named.
+
+**2026-10-22, Stage 5 design round 5 (owner): no wrapper.**
+
+- The wrapper is more trouble than it's worth, and its checks add little: the visualizers are responsible for only
+  calling hooks on the right actors.
+- **The hook is handed the handle and must call Finish** after its animation -- cache the handle, finish when done,
+  just like setting up responses to game events today. A clear design note says so.
+- Claude, what stays from earlier rounds:
+  - each hook's C++ default finishes at once, so a hook a tile doesn't override never stalls the queue;
+  - returning a tile to the pool finishes any handle it still holds.
+- **The Stage 5 design is settled enough to plan** (after tile-powers Stage 6 and the lock plan).
+
+## Resolution
+
+**Answered 2026-10-22**, with the tile-powers plan's Stages 1-4 built (Stage 6: vault):
+
+- **Where and how powers run:** in the rules' after-move step, as one chain per action -- settle, then scoring, until a
+  scoring pass finds no lines. Effects are board operations applied inside the chain; each power fires once per tile
+  per action; events apply themselves; visuals read a display board.
+  [Tile powers in the after-move chain](../_decisions/2026-10-22-tile-powers-in-the-after-move-chain.md).
+- **Where a power is defined:** once per tag, in a tile catalog. Designers place builder tiles that name a tag, and
+  the board carries only the tag. [Tile catalog and builder tiles](../_decisions/2026-10-22-tile-catalog-and-builder-tiles.md).
+- **Carried forward, not answered here:** the Stage 5 design rounds above (Move Piece, multiplier floor and ceiling per
+  tile type, Push, Repel as a turn-start countdown, Vacuum on Exit and Scoring, tile hooks with a reaction handle).
+  They become the Stage 5 plan, after the tile lock plan. Crumble is set aside as a board power for its own plan.
