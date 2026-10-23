@@ -55,7 +55,7 @@ void FConnectItRuleSet::ResolveConditionGroups(
     SetConditionGroups(true, false, AILoseConditions);
 }
 
-void FConnectItRuleSet::SetLevelWidePowers(const TArray<FConnectItTilePower>& Powers)
+void FConnectItRuleSet::SetTilePowers(const TArray<FConnectItTilePower>& Powers, const TArray<FGameplayTag>& LevelWide)
 {
     TilePowers.Reset(Powers.Num());
     for (int32 Index = 0; Index < Powers.Num(); Index++)
@@ -63,18 +63,42 @@ void FConnectItRuleSet::SetLevelWidePowers(const TArray<FConnectItTilePower>& Po
         const FConnectItTilePower& Power = Powers[Index];
         if (!Power.IsSet())
         {
-            UE_LOG(LogTemp, Warning, TEXT("ConnectIt_RuleSet: level-wide power %d has no name -- skipped"), Index);
+            UE_LOG(LogTemp, Warning, TEXT("ConnectIt_RuleSet: tile power %d has no name -- skipped"), Index);
             continue;
         }
-        if (TilePowers.ContainsByPredicate([&Power](const FConnectItTilePower& Added) { return Added.Name == Power.Name; }))
+        if (FindTilePower(Power.Name))
         {
-            UE_LOG(LogTemp, Warning, TEXT("ConnectIt_RuleSet: level-wide power %s is listed twice -- the second skipped"),
+            UE_LOG(LogTemp, Warning, TEXT("ConnectIt_RuleSet: tile power %s is defined twice -- the second skipped"),
                 *Power.Name.ToString());
             continue;
         }
-        FConnectItTilePower& Added = TilePowers.Add_GetRef(Power);
-        Added.bLevelWide = true;
+        TilePowers.Add(Power);
     }
+
+    LevelWidePowers.Reset(LevelWide.Num());
+    for (const FGameplayTag& Name : LevelWide)
+    {
+        if (!FindTilePower(Name))
+        {
+            UE_LOG(LogTemp, Warning,
+                TEXT("ConnectIt_RuleSet: level-wide power %s isn't in the tile catalog -- skipped"), *Name.ToString());
+            continue;
+        }
+        if (LevelWidePowers.Contains(Name))
+        {
+            UE_LOG(LogTemp, Warning, TEXT("ConnectIt_RuleSet: level-wide power %s is listed twice -- the second skipped"),
+                *Name.ToString());
+            continue;
+        }
+        LevelWidePowers.Add(Name);
+    }
+}
+
+const FConnectItTilePower* FConnectItRuleSet::FindTilePower(const FGameplayTag& Name) const
+{
+    return Name.IsValid()
+        ? TilePowers.FindByPredicate([&Name](const FConnectItTilePower& Power) { return Power.Name == Name; })
+        : nullptr;
 }
 
 void FConnectItRuleSet::SetConditionGroups(bool bForAI, bool bWinGoals,

@@ -7,7 +7,6 @@
 #include "GridMechanicsBaseStructs.h"
 #include "GameplayTagContainer.h"
 #include "StructUtils/InstancedStruct.h"
-#include "Board/Powers/ConnectIt_TilePower.h"
 #include "ConnectIt_Structs.generated.h"
 
 
@@ -53,17 +52,14 @@ struct FConnectItTileData
     int32 TileId = INDEX_NONE;
 
     // --- The tile's own power ---
-    // Copied from the tile when it joins the board (its class's Tile Power Tag,
-    // and the values the placed tile or layout cell gives it -- see
-    // AConnectIt_TileBase), then never changed: it travels with the tile.
 
-    // Which power (ConnectIt.TilePower.*); empty = none
+    // Which power (ConnectIt.TilePower.*), from the placed tile or layout
+    // cell when the tile joins the board, then never changed: it travels with
+    // the tile. Only the tag -- the definition is in the rules
+    // (FConnectItRuleSet::TilePowers), so the board stays plain data and
+    // copies cheaply. Empty = none.
     UPROPERTY(BlueprintReadOnly)
     FGameplayTag TilePowerTag;
-
-    // The power with its values; empty = none (only powered tiles carry one)
-    UPROPERTY(BlueprintReadOnly)
-    TInstancedStruct<FConnectItTilePower> TilePower;
 
     // The first turn (FConnectItBoardState::TurnNumber) its power can fire
     // again after a cooldown
@@ -75,17 +71,6 @@ struct FConnectItTileData
         FactionPiece = InFactionPiece;
         bIsOccupied = FactionPiece != -1;
     }
-
-    // Gives the tile Power (an empty one = no power)
-    void SetTilePower(const FConnectItTilePower& Power)
-    {
-        TilePowerTag = Power.Name;
-        TilePower = Power.IsSet()
-            ? TInstancedStruct<FConnectItTilePower>::Make(Power)
-            : TInstancedStruct<FConnectItTilePower>();
-    }
-
-    const FConnectItTilePower* GetTilePower() const { return TilePower.GetPtr(); }
 };
 
 // Full board state -- the single source of truth
@@ -278,7 +263,7 @@ struct FConnectItBoardState
     }
 
     // Whether Other has the same tiles (by position, in any order) holding
-    // the same data (piece, multiplier, flags, id, power), and the same scores. The match-level fields (turn, win
+    // the same data (piece, multiplier, flags, id, power tag), and the same scores. The match-level fields (turn, win
     // state, progress) aren't compared. Checks that a board stepped along by
     // its events (FConnectItBoardEvent::ApplyTo) arrived where the change did.
     bool HasSameTilesAndScores(const FConnectItBoardState& Other) const
@@ -304,8 +289,7 @@ struct FConnectItBoardState
                 || Ours.bCanShift != Theirs->bCanShift
                 || Ours.TileId != Theirs->TileId
                 || Ours.TilePowerTag != Theirs->TilePowerTag
-                || Ours.PowerReadyTurn != Theirs->PowerReadyTurn
-                || !(Ours.TilePower == Theirs->TilePower))
+                || Ours.PowerReadyTurn != Theirs->PowerReadyTurn)
             {
                 return false;
             }

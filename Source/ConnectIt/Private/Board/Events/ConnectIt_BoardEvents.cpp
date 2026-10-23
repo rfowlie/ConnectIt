@@ -210,14 +210,14 @@ void FConnectItBoardEvent_TilesAdded::ApplyTo(FConnectItBoardState& Board) const
         // The id it was given (a board that hasn't got that far gives the next)
         if (TileIds.IsValidIndex(Index))
         {
-            FConnectItTileData Tile = Cell.ToTileData(NumFactions);
+            FConnectItTileData Tile = Cell.TileData.ToTileData(NumFactions);
             Tile.TileId = TileIds[Index];
             Board.SetTileData(Cell.Position, Tile);
             Board.NextTileId = FMath::Max(Board.NextTileId, Tile.TileId + 1);
         }
         else
         {
-            Board.AddTile(Cell.Position, Cell.ToTileData(NumFactions));
+            Board.AddTile(Cell.Position, Cell.TileData.ToTileData(NumFactions));
         }
         if (Cell.TileData.HasStartingPiece(NumFactions)
             && Board.StartingPieces.IsValidIndex(Cell.TileData.StartingFactionPiece))

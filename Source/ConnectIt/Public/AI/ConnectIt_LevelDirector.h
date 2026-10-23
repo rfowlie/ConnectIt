@@ -99,11 +99,11 @@ public:
 
     // --- Tile powers ---
 
-    // Powers that apply to every tile, on top of a tile's own (e.g. Crumble).
-    // Copied into the match's rules when it starts. A tile's own power comes
-    // from its tile class, not from here.
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Level|Tile Powers")
-    TArray<FConnectItTilePower> TilePowers;
+    // Powers that apply to every tile, on top of a tile's own (e.g. Crumble),
+    // in firing order: their tags -- the level's tile catalog defines them.
+    // Copied into the match's rules when it starts.
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Level|Tile Powers", meta = (Categories = "ConnectIt.TilePower"))
+    TArray<FGameplayTag> LevelWidePowers;
 
     // --- Triggers ---
 

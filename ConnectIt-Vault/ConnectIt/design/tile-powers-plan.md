@@ -252,6 +252,57 @@ values on every board tile, and measured ~17% slower AI search even with no powe
   turn kept) -- the copy of the values on every tile. Reworked to the revision above: the turn stamping, tile ids, board
   fields and the Tiles Added ids stay; the power on the tile data, `GetTilePower`, the defaults-only tag, the layout
   cell's class and captured power, and the Level director's power definitions go.
+- *As built (rework, 2026-10-23; 55/55 tests; Throughput 392,028 nodes/s against 366k-379k -- back to normal):*
+  - **Catalog:** `UConnectIt_TileCatalog` (`Public/Board/Powers/`) has `Tiles` (tag -> {`TileClass`, `Power`}),
+    `PlainTileClass`, `GetTileClassFor`, `Defines`, `MakePowers` (each power named by its key), and `FindFor(world)`
+    (the level config's catalog, else the project default).
+  - **Settings:** `UConnectIt_ProjectSettings` (Project Settings > Game > ConnectIt) holds `DefaultTileCatalog` and
+    `BuilderTileClass`. The second wasn't in the plan: Load Layout Into Level needs to know which builder Blueprint to
+    place.
+  - **Tiles:** `AConnectIt_TileBase` is now just the shared C++ base. `AConnectIt_BuilderTile` implements the tile
+    data interface with an editable `TileData` (tag included) and `VisualVariant`, and validates its tag against its
+    level's catalog.
+  - **Data:** `FConnectItTileInitialData::TilePowerTag` reaches the board through `ToTileData`. `FConnectItTileData`
+    carries the tag, `TileId` and `PowerReadyTurn`, all plain. `FConnectItTilePower::bLevelWide` is gone (a power is
+    level-wide by being listed).
+  - **Rules:** `SetTilePowers(Powers, LevelWide)` and `FindTilePower(tag)`, with `TilePowers` and `LevelWidePowers`
+    (tags). The Level director has `LevelWidePowers` (tags), validated against the project default catalog.
+  - **Undefined tags:** at board build an undefined tag is dropped with a warning
+    (`MakeTileData(..., Catalog)`). Add Tiles has no catalog to hand: an undefined tag there just finds no power
+    when firing (Stage 4), and layout validation catches it earlier.
+  - **The swap:**
+    - `UConnectIt_TileRegistry::SwapBuilderTiles()` is called by the board state component: on the server right
+      after the board is built from the builder tiles, and on a client when its first snapshot arrives.
+    - Each builder becomes its catalog class, given the builder's values and look; the builder is unregistered and
+      destroyed.
+    - `Spawn Layout Tiles` picks a cell's class from the catalog, falling back to the level config's
+      `DefaultTileClass` when there is no catalog.
+  - **Layout tool:**
+    - Capture skips preview actors and takes tags through the tile data interface.
+    - Load places builder tiles.
+    - **Preview Tile Catalog** spawns the catalog's actors with `RF_Transient`, hidden from the outliner and tagged
+      so they can be found again, and temporarily hides the builders. **Clear Tile Catalog Preview** undoes both, and
+      Load clears any preview first.
+  - **Validation:**
+    - catalog: no tag, no class, no effect, or a power named other than its key; a missing plain class is a
+      warning;
+    - layouts: tags checked against the project default catalog;
+    - level config: a missing catalog is a warning.
+  - **Tests:** `ConnectIt.Board.TilePowerData` rewritten:
+    - the catalog's classes and powers;
+    - rules from the catalog, including the level-wide tags;
+    - a builder tile's tag reaching the board, and an undefined one dropped;
+    - ids; Add Tiles with a tag (replayed the same); a shift carrying tag, id and ready turn;
+    - catalog and director validation; the turn per ply.
+  - **Throughput:** 392,028 nodes/s, within noise of the baseline: the per-tile values were the whole cost. A first
+    run read 69,649 while Windows had the CPU capped at 30% of its maximum frequency (thermal or power limiting, which
+    comes and goes on this machine); the re-run was made with it at 99%.
+  - **Owner, editor:**
+    - a builder tile Blueprint with a blockout look (set it as Builder Tile Class);
+    - a tile catalog (Plain Tile Class plus entries), set on the level configs and as Default Tile Catalog;
+    - replace placed tiles with builder tiles and capture layouts again;
+    - Preview / Clear buttons on the layout tool widget;
+    - clear `DefaultTileClass` on level configs once they have a catalog.
 
 ## Stage 4: firing powers in the chain
 

@@ -11,7 +11,6 @@
 #include "AI/ConnectIt_AISelector.h"
 #include "Board/Rules/ConnectIt_MatchConditionAsset.h"
 #include "Board/Operations/ConnectIt_BoardOperations.h"
-#include "Board/ConnectIt_TileBase.h"
 #include "Board/Powers/ConnectIt_TilePower.h"
 #include "ConnectIt_MinMaxTestTerms.generated.h"
 
@@ -166,31 +165,4 @@ struct FConnectItTilePowerEffect_Test : public FConnectItTilePowerEffect
 
     UPROPERTY()
     int32 Strength = 1;
-};
-
-// Test-only powered tile (ConnectIt.Board.TilePowerData): builds its power
-// from Strength, named PowerName (normally its class's Tile Power Tag; a test
-// names another to see the mismatch reported). Tests set these on the class
-// defaults and put them back. Not meant for real levels.
-UCLASS(Hidden, NotBlueprintable)
-class AConnectIt_TestPoweredTile : public AConnectIt_TileBase
-{
-    GENERATED_BODY()
-
-public:
-
-    int32 Strength = 1;
-    FGameplayTag PowerName;
-
-    virtual FConnectItTilePower GetTilePower_Implementation() const override
-    {
-        FConnectItTilePower Power;
-        Power.Name = PowerName;
-        Power.Trigger = EConnectItPowerTrigger::PieceEnter;
-        Power.CooldownTurns = 2;
-        FConnectItTilePowerEffect_Test Effect;
-        Effect.Strength = Strength;
-        Power.Effect = TInstancedStruct<FConnectItTilePowerEffect>::Make<FConnectItTilePowerEffect_Test>(Effect);
-        return Power;
-    }
 };

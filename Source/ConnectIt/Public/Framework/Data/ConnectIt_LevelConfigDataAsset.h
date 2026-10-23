@@ -11,6 +11,7 @@ class AGridTileBase;
 class UConnectIt_TileRegistry;
 class UConnectIt_PieceRegistry;
 class UGridDefinition;
+class UConnectIt_TileCatalog;
 
 // A board: the tile and piece registries, grid geometry and pieces a map is
 // played on. Reusable -- any number of maps can name the same one in their
@@ -64,9 +65,15 @@ public:
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Instanced, Category = "ConnectIt|Board")
     TObjectPtr<UGridDefinition> GridDefinition;
 
-    // The tile actor spawned for a layout cell that names none, when a phased
-    // level changes the board to a new layout (UConnectIt_BoardLayout).
-    // Unused by levels that keep their placed tiles.
+    // Every kind of tile this board can have: each power tag's definition and
+    // the tile actor that shows it (UConnectIt_TileCatalog). None = the
+    // project default (Project Settings > ConnectIt).
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "ConnectIt|Board")
+    TObjectPtr<UConnectIt_TileCatalog> TileCatalog;
+
+    // Superseded by the tile catalog's Plain Tile Class: only used when there
+    // is no catalog at all. The tile actor spawned for a layout cell with no
+    // power tag. Clear it once the level has a catalog.
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "ConnectIt|Board")
     TSubclassOf<AGridTileBase> DefaultTileClass;
 

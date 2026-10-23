@@ -4,6 +4,7 @@
 #include "Board/Rules/ConnectIt_MatchConditionAsset.h"
 #include "Board/Rules/ConnectIt_RuleSet.h"
 #include "Misc/DataValidation.h"
+#include "Board/Powers/ConnectIt_TileCatalog.h"
 #include "Framework/GameMode/ConnectIt_GameMode.h"
 #include "Board/Operations/ConnectIt_BoardOperations.h"
 
@@ -182,30 +183,33 @@ EDataValidationResult UConnectIt_LevelDirector::IsDataValid(FDataValidationConte
     ValidateConditionList(this, TEXT("AI Lose Conditions"), AILoseConditions, Context, Result);
     ValidateConditionList(this, TEXT("Triggers"), GetTriggerConditions(), Context, Result);
 
-    // Level-wide powers: each named once, each doing something
+    // Level-wide powers: each named once, each one the catalog defines (the
+    // project default's -- a director isn't tied to one level)
+    const UConnectIt_TileCatalog* Catalog = UConnectIt_TileCatalog::GetProjectDefault();
     TSet<FGameplayTag> PowerNames;
-    for (int32 Index = 0; Index < TilePowers.Num(); Index++)
+    for (int32 Index = 0; Index < LevelWidePowers.Num(); Index++)
     {
-        const FConnectItTilePower& Power = TilePowers[Index];
-        if (!Power.IsSet())
+        const FGameplayTag& Name = LevelWidePowers[Index];
+        if (!Name.IsValid())
         {
             Context.AddError(FText::FromString(FString::Printf(TEXT(
-                "ConnectIt_LevelDirector: Tile Powers %d has no Name."), Index)));
+                "ConnectIt_LevelDirector: Level Wide Powers %d has no tag."), Index)));
             Result = EDataValidationResult::Invalid;
             continue;
         }
         bool bDuplicate = false;
-        PowerNames.Add(Power.Name, &bDuplicate);
+        PowerNames.Add(Name, &bDuplicate);
         if (bDuplicate)
         {
             Context.AddError(FText::FromString(FString::Printf(TEXT(
-                "ConnectIt_LevelDirector: Tile Powers lists %s twice."), *Power.Name.ToString())));
+                "ConnectIt_LevelDirector: Level Wide Powers lists %s twice."), *Name.ToString())));
             Result = EDataValidationResult::Invalid;
         }
-        if (!Power.Effect.IsValid())
+        if (Catalog && !Catalog->Defines(Name))
         {
             Context.AddError(FText::FromString(FString::Printf(TEXT(
-                "ConnectIt_LevelDirector: Tile Powers %s has no Effect."), *Power.Name.ToString())));
+                "ConnectIt_LevelDirector: Level Wide Powers %s isn't in tile catalog '%s'."),
+                *Name.ToString(), *Catalog->GetName())));
             Result = EDataValidationResult::Invalid;
         }
     }

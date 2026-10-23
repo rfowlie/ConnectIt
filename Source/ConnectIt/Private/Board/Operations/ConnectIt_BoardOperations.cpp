@@ -822,7 +822,7 @@ namespace
         }
     }
 
-    // Puts the tiles on, each with a new tile id and its cell's power (if any).
+    // Puts the tiles on, each with a new tile id and its cell's power tag (if any).
     // A starting piece is scored (reported as moved: a tile
     // appearing sets off no Piece Enter) and counts as one of its faction's
     // starting pieces, like a designer-placed piece at the start of the match
@@ -835,7 +835,7 @@ namespace
         {
             if (Board.GetTileData(Cell.Position)) continue;
 
-            const int32 TileId = Board.AddTile(Cell.Position, Cell.ToTileData(NumFactions));
+            const int32 TileId = Board.AddTile(Cell.Position, Cell.TileData.ToTileData(NumFactions));
             if (Cell.TileData.HasStartingPiece(NumFactions))
             {
                 OutChanges.AddMoved(Cell.Position, Cell.TileData.StartingFactionPiece, true);

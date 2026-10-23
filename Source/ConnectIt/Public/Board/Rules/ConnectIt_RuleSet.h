@@ -73,12 +73,19 @@ struct CONNECTIT_API FConnectItRuleSet
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Rules", meta = (ExcludeBaseStruct))
     TInstancedStruct<FConnectItScoringRule> ScoringRule;
 
-    // The level-wide tile powers: each applies to every tile, on top of a
-    // tile's own power (which is on the tile -- FConnectItTileData::TilePower
-    // -- not here). The Level director's Tile Powers, copied by
-    // SetLevelWidePowers when the match starts. Not authored.
+    // Every tile power the match can fire, one per name: the level's tile
+    // catalog's, copied by SetTilePowers when the match starts. A tile names
+    // its power by tag (FConnectItTileData::TilePowerTag) and firing looks it
+    // up here (FindTilePower). An array, not a map: the rules replicate. Not
+    // authored.
     UPROPERTY(Transient, BlueprintReadOnly, Category = "Rules")
     TArray<FConnectItTilePower> TilePowers;
+
+    // The powers that apply to every tile, on top of a tile's own, in firing
+    // order: the Level director's Level Wide Powers, each one TilePowers
+    // defines. Not authored.
+    UPROPERTY(Transient, BlueprintReadOnly, Category = "Rules")
+    TArray<FGameplayTag> LevelWidePowers;
 
     // Copies the Level director's condition assets into the win and lose
     // groups, in order (empty entries skipped, with a warning). Game thread,
@@ -89,9 +96,14 @@ struct CONNECTIT_API FConnectItRuleSet
         const TArray<TObjectPtr<UConnectIt_MatchConditionAsset>>& PlayerLoseConditions = {},
         const TArray<TObjectPtr<UConnectIt_MatchConditionAsset>>& AILoseConditions = {});
 
-    // Copies Powers into TilePowers, each marked level-wide. A power with no
-    // name, or a second one with the same name, is skipped with a warning.
-    void SetLevelWidePowers(const TArray<FConnectItTilePower>& Powers);
+    // Copies Powers into TilePowers and LevelWide into LevelWidePowers. A
+    // power with no name or a second one with the same name, and a
+    // level-wide tag Powers doesn't define or that is listed twice, are
+    // skipped with a warning.
+    void SetTilePowers(const TArray<FConnectItTilePower>& Powers, const TArray<FGameplayTag>& LevelWide);
+
+    // The power named Name, or null
+    const FConnectItTilePower* FindTilePower(const FGameplayTag& Name) const;
 
     // Replaces one side's win goals (bWinGoals) or lose conditions with
     // Conditions, resolved the same way. Game thread. The progress the board

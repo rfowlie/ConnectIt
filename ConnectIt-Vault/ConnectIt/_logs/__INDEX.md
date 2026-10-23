@@ -6,6 +6,8 @@ Vault-wide passes go in `_core/_logs/`.
 
 Newest first:
 
+- [2026-10-23-0030](2026-10-23-0030.md) — session — tile powers, Stage 3 rework: tile catalog, builder tiles, catalog
+  preview (never saved), swap at match start. 55/55 tests; Throughput 392,028 nodes/s (back to normal).
 - [2026-10-22-2245](2026-10-22-2245.md) — session — tile powers: Stages 1-2 checked; Stage 3 first build (per-tile
   power values cost ~17% search speed); redesign to a tile catalog + builder tiles; plan and setup note revised.
 - [2026-10-22-2200](2026-10-22-2200.md) — session — tile powers, Stage 2: self-applying events (`ApplyTo`), the display

@@ -25,6 +25,8 @@
 #include "Misc/DataValidation.h"
 #include "Misc/ScopeExit.h"
 #include "Board/ConnectIt_BoardStateComponent.h"
+#include "Board/ConnectIt_BuilderTile.h"
+#include "Board/Powers/ConnectIt_TileCatalog.h"
 #include "AI/ConnectIt_LevelDirector.h"
 #include "NativeGameplayTags.h"
 
@@ -40,6 +42,7 @@ namespace ConnectItMinMaxTests
     // Test-only tile power names (ConnectIt.Board.TilePowerData)
     UE_DEFINE_GAMEPLAY_TAG_STATIC(TestTilePowerTag, "ConnectIt.TilePower.Test");
     UE_DEFINE_GAMEPLAY_TAG_STATIC(TestOtherTilePowerTag, "ConnectIt.TilePower.TestOther");
+    UE_DEFINE_GAMEPLAY_TAG_STATIC(TestUndefinedTilePowerTag, "ConnectIt.TilePower.TestUndefined");
 
     // Empty Size x Size board, two factions, all tiles active, multiplier 1 --
     // the same initial tile data UConnectIt_BoardStateComponent::InitialiseBoardState
@@ -3381,28 +3384,36 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(FConnectItTilePowerDataTest,
 
 bool FConnectItTilePowerDataTest::RunTest(const FString& Parameters)
 {
-    // Stage 3 of tile powers: where powers live and travel. Nothing fires yet.
+    // Stage 3 of tile powers: where powers are defined and how tiles carry
+    // them. Nothing fires yet.
     const FGameplayTag PowerTag = TestTilePowerTag;
     const FGameplayTag OtherTag = TestOtherTilePowerTag;
-    if (!TestTrue(TEXT("the test power tags exist"), PowerTag.IsValid() && OtherTag.IsValid()))
+    const FGameplayTag UndefinedTag = TestUndefinedTilePowerTag;
+    if (!TestTrue(TEXT("the test power tags exist"), PowerTag.IsValid() && OtherTag.IsValid() && UndefinedTag.IsValid()))
     {
         return false;
     }
-    const auto StrengthOf = [](const FConnectItTileData* Tile) -> int32
+    const auto StrengthOf = [](const FConnectItTilePower* Power) -> int32
     {
-        const FConnectItTilePower* Power = Tile ? Tile->GetTilePower() : nullptr;
         const FConnectItTilePowerEffect_Test* Effect = Power ? Power->Effect.GetPtr<FConnectItTilePowerEffect_Test>() : nullptr;
         return Effect ? Effect->Strength : INDEX_NONE;
     };
-    const auto MakePower = [](FGameplayTag Name, int32 Strength)
+    const auto MakeEntry = [](int32 Strength)
     {
-        FConnectItTilePower Power;
-        Power.Name = Name;
+        FConnectItTileCatalogEntry Entry;
+        Entry.TileClass = AConnectIt_TileBase::StaticClass();
+        Entry.Power.CooldownTurns = 2;
         FConnectItTilePowerEffect_Test Effect;
         Effect.Strength = Strength;
-        Power.Effect = TInstancedStruct<FConnectItTilePowerEffect>::Make<FConnectItTilePowerEffect_Test>(Effect);
-        return Power;
+        Entry.Power.Effect = TInstancedStruct<FConnectItTilePowerEffect>::Make<FConnectItTilePowerEffect_Test>(Effect);
+        return Entry;
     };
+
+    // A catalog defining two powers
+    UConnectIt_TileCatalog* Catalog = NewObject<UConnectIt_TileCatalog>();
+    Catalog->PlainTileClass = AConnectIt_BuilderTile::StaticClass();
+    Catalog->Tiles.Add(PowerTag, MakeEntry(5));
+    Catalog->Tiles.Add(OtherTag, MakeEntry(9));
 
     // --- A fresh board and fresh rules have no powers ---
     {
@@ -3410,54 +3421,49 @@ bool FConnectItTilePowerDataTest::RunTest(const FString& Parameters)
         bool bAnyPower = false;
         for (int32 Index = 0; Index < Board.NumTiles(); Index++)
         {
-            const FConnectItTileData& Tile = Board.GetTileDataAt(Index);
-            bAnyPower |= Tile.GetTilePower() != nullptr || Tile.TilePowerTag.IsValid();
+            bAnyPower |= Board.GetTileDataAt(Index).TilePowerTag.IsValid();
         }
         TestFalse(TEXT("fresh board: no tile has a power"), bAnyPower);
-        TestTrue(TEXT("fresh rules: no level-wide powers"), FConnectItRuleSet().TilePowers.IsEmpty());
+        TestTrue(TEXT("fresh rules: no powers"), FConnectItRuleSet().TilePowers.IsEmpty() && FConnectItRuleSet().LevelWidePowers.IsEmpty());
     }
 
-    // --- Building the board: a powered tile brings its power and values ---
+    // --- The catalog: one entry per tag, a class for each, powers named by their tag ---
     {
-        AConnectIt_TestPoweredTile* Defaults = GetMutableDefault<AConnectIt_TestPoweredTile>();
-        const FGameplayTag SavedTag = Defaults->TilePowerTag;
-        const FGameplayTag SavedName = Defaults->PowerName;
-        const int32 SavedStrength = Defaults->Strength;
-        ON_SCOPE_EXIT
-        {
-            Defaults->TilePowerTag = SavedTag;
-            Defaults->PowerName = SavedName;
-            Defaults->Strength = SavedStrength;
-        };
+        TestTrue(TEXT("catalog: a tag's class"), Catalog->GetTileClassFor(PowerTag) == AConnectIt_TileBase::StaticClass());
+        TestTrue(TEXT("catalog: no tag is the plain class"), Catalog->GetTileClassFor(FGameplayTag()) == AConnectIt_BuilderTile::StaticClass());
+        TestTrue(TEXT("catalog: an undefined tag has none"), Catalog->GetTileClassFor(UndefinedTag) == nullptr);
 
-        Defaults->TilePowerTag = PowerTag;
-        Defaults->PowerName = PowerTag;
-        Defaults->Strength = 3;
-        const FConnectItTileData Tile = UConnectIt_BoardStateComponent::MakeTileData(Defaults, 2);
-        TestTrue(TEXT("build: the tile has its class's power"),
-            Tile.TilePowerTag == PowerTag && Tile.GetTilePower() && Tile.GetTilePower()->Name == PowerTag
-            && Tile.GetTilePower()->CooldownTurns == 2);
-        TestEqual(TEXT("build: with the placed tile's values"), StrengthOf(&Tile), 3);
-        TestTrue(TEXT("check: a matching power is fine"),
-            AConnectIt_TileBase::CheckTilePower(PowerTag, Defaults->GetTilePower()).IsEmpty());
+        const TArray<FConnectItTilePower> Powers = Catalog->MakePowers();
+        const FConnectItTilePower* Named = Powers.FindByPredicate([&PowerTag](const FConnectItTilePower& Power) { return Power.Name == PowerTag; });
+        TestTrue(TEXT("catalog: each power named by its key, with its values"),
+            Powers.Num() == 2 && Named && StrengthOf(Named) == 5 && Named->CooldownTurns == 2);
+    }
 
-        // A power named differently from the class's tag: reported, the tag wins
-        Defaults->PowerName = OtherTag;
-        FString Problem;
-        const FConnectItTilePower Mismatched = Defaults->MakeBoardPower(&Problem);
-        TestFalse(TEXT("mismatch: reported"), Problem.IsEmpty());
-        TestTrue(TEXT("mismatch: the class's tag is the identity"), Mismatched.Name == PowerTag);
+    // --- Rules: the catalog's powers and the level-wide tags ---
+    {
+        FConnectItRuleSet Rules;
+        Rules.SetTilePowers(Catalog->MakePowers(), { OtherTag, OtherTag, UndefinedTag });
+        TestEqual(TEXT("rules: every catalog power"), Rules.TilePowers.Num(), 2);
+        TestEqual(TEXT("rules: a tag finds its power and values"), StrengthOf(Rules.FindTilePower(PowerTag)), 5);
+        TestNull(TEXT("rules: an undefined tag finds none"), Rules.FindTilePower(UndefinedTag));
+        TestTrue(TEXT("rules: level-wide tags, a repeat and an undefined one skipped"),
+            Rules.LevelWidePowers == TArray<FGameplayTag>({ OtherTag }));
+    }
 
-        // No tag on the class: no power, whatever Get Tile Power says
-        Defaults->TilePowerTag = FGameplayTag();
-        const FConnectItTileData Plain = UConnectIt_BoardStateComponent::MakeTileData(Defaults, 2);
-        TestFalse(TEXT("no tag: no power"), Plain.GetTilePower() != nullptr || Plain.TilePowerTag.IsValid());
-        TestFalse(TEXT("no tag but a named power: reported"),
-            AConnectIt_TileBase::CheckTilePower(FGameplayTag(), Defaults->GetTilePower()).IsEmpty());
+    // --- Building the board: a builder tile's tag reaches its tile data ---
+    {
+        AConnectIt_BuilderTile* Builder = GetMutableDefault<AConnectIt_BuilderTile>();
+        const FConnectItTileInitialData Saved = Builder->TileData;
+        ON_SCOPE_EXIT { Builder->TileData = Saved; };
 
-        FConnectItTilePower NoEffect = MakePower(PowerTag, 1);
-        NoEffect.Effect.Reset();
-        TestFalse(TEXT("a power with no effect: reported"), AConnectIt_TileBase::CheckTilePower(PowerTag, NoEffect).IsEmpty());
+        Builder->TileData.TilePowerTag = PowerTag;
+        Builder->TileData.Multiplier = 2.f;
+        const FConnectItTileData Tile = UConnectIt_BoardStateComponent::MakeTileData(Builder, 2, 1.f, Catalog);
+        TestTrue(TEXT("build: the builder tile's tag and settings"), Tile.TilePowerTag == PowerTag && Tile.Multiplier == 2.f);
+
+        Builder->TileData.TilePowerTag = UndefinedTag;
+        const FConnectItTileData Undefined = UConnectIt_BoardStateComponent::MakeTileData(Builder, 2, 1.f, Catalog);
+        TestFalse(TEXT("build: a tag the catalog doesn't define gives no power"), Undefined.TilePowerTag.IsValid());
     }
 
     // --- Tile ids: given by the board, never reused ---
@@ -3471,7 +3477,7 @@ bool FConnectItTilePowerDataTest::RunTest(const FString& Parameters)
         TestTrue(TEXT("ids: each tile its own, a removed tile's id not reused"), First == 0 && Second == 1 && Third == 2);
     }
 
-    // --- Add Tiles: a cell's power and values, a new id; replayed the same ---
+    // --- Add Tiles: a cell's tag and a new id; replayed the same ---
     {
         FConnectItRuleSet Rules;
         FConnectItBoardState Board = MakeBoard(3);
@@ -3481,33 +3487,32 @@ bool FConnectItTilePowerDataTest::RunTest(const FString& Parameters)
         Add.Faction = INDEX_NONE;
         FConnectItBoardLayoutCell& Powered = Add.Cells.AddDefaulted_GetRef();
         Powered.Position = FGridPosition(3, 0);
-        Powered.TilePower = MakePower(PowerTag, 5);
+        Powered.TileData.TilePowerTag = PowerTag;
         Add.Cells.AddDefaulted_GetRef().Position = FGridPosition(3, 1);
 
         FConnectItBoardState After = Board;
         FConnectItBoardChangeEvent Events;
         Rules.CarryOutOperation(Add, After, &Events);
         const FConnectItTileData* Tile = After.GetTileData(FGridPosition(3, 0));
-        TestTrue(TEXT("add: the cell's power"), Tile && Tile->TilePowerTag == PowerTag);
-        TestEqual(TEXT("add: with its values"), StrengthOf(Tile), 5);
+        TestTrue(TEXT("add: the cell's power tag"), Tile && Tile->TilePowerTag == PowerTag);
         TestTrue(TEXT("add: new ids from the board's counter"),
             Tile && Tile->TileId == 9 && After.GetTileData(FGridPosition(3, 1))->TileId == 10 && After.NextTileId == 11);
-        TestFalse(TEXT("add: a cell with no power gives none"), After.GetTileData(FGridPosition(3, 1))->GetTilePower() != nullptr);
+        TestFalse(TEXT("add: a cell with no tag gives none"), After.GetTileData(FGridPosition(3, 1))->TilePowerTag.IsValid());
 
         const auto* Added = EventAt<FConnectItBoardEvent_TilesAdded>(Events, 0);
         TestTrue(TEXT("add: the event carries the ids"), Added && Added->TileIds == TArray<int32>({ 9, 10 }));
 
         FConnectItBoardState Replayed = Board;
         FConnectItBoardEvent::ApplyAll(Events, Replayed);
-        TestTrue(TEXT("add: before + events = after, ids and powers included"), Replayed.HasSameTilesAndScores(After));
+        TestTrue(TEXT("add: before + events = after, ids and tags included"), Replayed.HasSameTilesAndScores(After));
         TestEqual(TEXT("add: the replayed board's counter moved on too"), Replayed.NextTileId, After.NextTileId);
     }
 
-    // --- Shift: the power, its values and the id travel with the tile ---
+    // --- Shift: the tag, ready turn and id travel with the tile ---
     {
         FConnectItBoardState Board = MakeBoard(5);
         FConnectItTileData* Start = Board.GetTileDataMutable(FGridPosition(0, 0));
-        Start->SetTilePower(MakePower(PowerTag, 7));
+        Start->TilePowerTag = PowerTag;
         Start->TileId = 42;
         Start->PowerReadyTurn = 6;
 
@@ -3523,21 +3528,23 @@ bool FConnectItTilePowerDataTest::RunTest(const FString& Parameters)
         const FConnectItTileData* Moved = Board.GetTileData(FGridPosition(1, 0));
         TestTrue(TEXT("shift: the power moved with its tile"),
             Moved && Moved->TilePowerTag == PowerTag && Moved->TileId == 42 && Moved->PowerReadyTurn == 6);
-        TestEqual(TEXT("shift: with its values"), StrengthOf(Moved), 7);
-        TestFalse(TEXT("shift: and left nothing behind"), Board.GetTileData(FGridPosition(0, 0))->GetTilePower() != nullptr);
+        TestFalse(TEXT("shift: and left nothing behind"), Board.GetTileData(FGridPosition(0, 0))->TilePowerTag.IsValid());
     }
 
-    // --- Level-wide powers: copied into the rules, named once ---
+    // --- Validation: a catalog entry with no class or effect; level-wide tags named once ---
     {
+        UConnectIt_TileCatalog* Bad = NewObject<UConnectIt_TileCatalog>();
+        Bad->Tiles.Add(PowerTag, FConnectItTileCatalogEntry());
+        FConnectItTileCatalogEntry Misnamed = MakeEntry(1);
+        Misnamed.Power.Name = PowerTag;
+        Bad->Tiles.Add(OtherTag, Misnamed);
+        FDataValidationContext CatalogContext;
+        TestEqual(TEXT("catalog validation: fails"), Bad->IsDataValid(CatalogContext), EDataValidationResult::Invalid);
+        TestTrue(TEXT("catalog validation: no class, no effect, a power named other than its key"),
+            CatalogContext.GetNumErrors() == 3);
+
         UConnectIt_LevelDirector* Director = NewObject<UConnectIt_LevelDirector>();
-        Director->TilePowers = { MakePower(PowerTag, 1), MakePower(PowerTag, 2), MakePower(FGameplayTag(), 3), MakePower(OtherTag, 4) };
-
-        FConnectItRuleSet Rules;
-        Rules.SetLevelWidePowers(Director->TilePowers);
-        TestTrue(TEXT("level-wide: copied, a nameless one and a repeat skipped"),
-            Rules.TilePowers.Num() == 2 && Rules.TilePowers[0].Name == PowerTag && Rules.TilePowers[1].Name == OtherTag);
-        TestTrue(TEXT("level-wide: each marked so"), Rules.TilePowers[0].bLevelWide && Rules.TilePowers[1].bLevelWide);
-
+        Director->LevelWidePowers = { PowerTag, PowerTag, FGameplayTag() };
         FDataValidationContext Context;
         Director->IsDataValid(Context);
         const auto Reported = [&Context](const TCHAR* Text)
@@ -3547,8 +3554,8 @@ bool FConnectItTilePowerDataTest::RunTest(const FString& Parameters)
                 return Issue.Message.ToString().Contains(Text);
             });
         };
-        TestTrue(TEXT("level-wide: validation reports the repeat"), Reported(TEXT("twice")));
-        TestTrue(TEXT("level-wide: and the nameless one"), Reported(TEXT("has no Name")));
+        TestTrue(TEXT("director validation: a level-wide tag listed twice"), Reported(TEXT("twice")));
+        TestTrue(TEXT("director validation: and an empty one"), Reported(TEXT("has no tag")));
     }
 
     // --- The turn: the AI's search counts one per ply ---

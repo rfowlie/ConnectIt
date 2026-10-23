@@ -9,6 +9,7 @@
 #include "Framework/Controller/ConnectIt_AIController.h"
 #include "Action/ActionLoadoutDataAsset.h"
 #include "Framework/Data/ConnectIt_LevelConfigDataAsset.h"
+#include "Board/Powers/ConnectIt_TileCatalog.h"
 #include "Framework/Data/ConnectIt_WorldSettings.h"
 #include "Framework/Data/ConnectIt_MatchPreset.h"
 #include "Framework/Subsystem/ConnectIt_MatchSetupSubsystem.h"
@@ -159,7 +160,11 @@ void AConnectIt_GameMode::EnsureMatchSetupResolved()
         LevelDirectorClass ? *LevelDirectorClass : UConnectIt_LevelDirector::StaticClass());
     Rules.ResolveConditionGroups(LevelDefaults->PlayerWinConditions, LevelDefaults->AIWinConditions,
         LevelDefaults->PlayerLoseConditions, LevelDefaults->AILoseConditions);
-    Rules.SetLevelWidePowers(LevelDefaults->TilePowers);
+
+    // Every tile power the level's tile catalog defines, and which apply level-wide
+    const UConnectIt_TileCatalog* TileCatalog = UConnectIt_TileCatalog::FindFor(this);
+    Rules.SetTilePowers(TileCatalog ? TileCatalog->MakePowers() : TArray<FConnectItTilePower>(),
+        LevelDefaults->LevelWidePowers);
 
     // Tweaks from the menu, on top of whichever preset plays
     if (bHasMatchSettings)

@@ -2,6 +2,7 @@
 
 #include "Framework/Data/ConnectIt_LevelConfigDataAsset.h"
 #include "Board/ConnectIt_TileRegistry.h"
+#include "Board/Powers/ConnectIt_TileCatalog.h"
 #include "Grid/ConnectIt_GridPiece.h"
 #include "Misc/DataValidation.h"
 #include "Registry/GridDefinition.h"
@@ -37,6 +38,13 @@ EDataValidationResult UConnectIt_LevelConfigDataAsset::IsDataValid(
             "ConnectIt_LevelConfigDataAsset: No GridDefinition template set -- "
             "TileRegistry/PieceRegistry position mapping will not work.")));
         Result = EDataValidationResult::Invalid;
+    }
+
+    if (!IsValid(TileCatalog))
+    {
+        Context.AddWarning(FText::FromString(TEXT(
+            "ConnectIt_LevelConfigDataAsset: No Tile Catalog -- the project default (Project Settings > ConnectIt) "
+            "is used.")));
     }
 
     return Result;

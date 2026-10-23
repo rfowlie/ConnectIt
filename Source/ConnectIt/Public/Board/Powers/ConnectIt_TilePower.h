@@ -68,26 +68,24 @@ struct CONNECTIT_API FConnectItTilePowerEffect
     virtual void MakeOperations(const FConnectItTilePowerContext& Context, TArray<FInstancedStruct>& OutOperations) const {}
 };
 
-// One tile power: what sets it off, what stops it, and what it does. A tile's
-// own power comes from its class (AConnectIt_TileBase: the class names it,
-// the placed tile tunes its values) and is copied onto the tile's data;
-// level-wide powers are listed on the Level director (TilePowers) and copied
-// into the rules. Plain data.
+// One tile power: what sets it off, what stops it, and what it does. Defined
+// once per tag, in the level's tile catalog (UConnectIt_TileCatalog), and
+// copied into the rules when the match starts. A tile names its power by tag
+// only (FConnectItTileData::TilePowerTag); level-wide powers are named by tag
+// on the Level director. Plain data.
 USTRUCT(BlueprintType)
 struct CONNECTIT_API FConnectItTilePower
 {
     GENERATED_BODY()
 
-    // The power's identity (ConnectIt.TilePower.*). Empty = no power.
+    // The power's identity (ConnectIt.TilePower.*; a level is part of the
+    // tag, e.g. ConnectIt.TilePower.Poison.2). In a catalog it is the entry's
+    // key. Empty = no power.
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Power", meta = (Categories = "ConnectIt.TilePower"))
     FGameplayTag Name;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Power")
     EConnectItPowerTrigger Trigger = EConnectItPowerTrigger::PieceEnter;
-
-    // Applies to every tile (on top of a tile's own power) rather than one tile
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Power")
-    bool bLevelWide = false;
 
     // The gate: the tile's multiplier must be at least this. 0 = no gate.
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Power", meta = (ClampMin = 0))

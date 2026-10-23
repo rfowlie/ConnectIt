@@ -8,6 +8,8 @@
 #include "Registry/GridDefinition.h"
 #include "Tile/GridTileBase.h"
 #include "Board/ConnectIt_TileDataProvider.h"
+#include "Board/ConnectIt_BuilderTile.h"
+#include "Board/Powers/ConnectIt_TileCatalog.h"
 #include "Engine/World.h"
 
 
@@ -29,19 +31,22 @@ TArray<AGridTileBase*> UConnectIt_TileRegistry::SpawnLayoutTiles(const TArray<FC
         return Spawned;
     }
 
+    const UConnectIt_TileCatalog* Catalog = UConnectIt_TileCatalog::FindFor(this);
     const UConnectIt_LevelConfigDataAsset* LevelConfig = AConnectIt_WorldSettings::FindLevelConfig(this);
     const TSubclassOf<AGridTileBase> DefaultClass = LevelConfig ? LevelConfig->DefaultTileClass : nullptr;
 
     for (int32 Index = 0; Index < Cells.Num(); Index++)
     {
         const FConnectItBoardLayoutCell& Cell = Cells[Index];
-        const TSubclassOf<AGridTileBase> TileClass = Cell.TileClass ? Cell.TileClass : DefaultClass;
+        const TSubclassOf<AGridTileBase> TileClass = Catalog
+            ? Catalog->GetTileClassFor(Cell.TileData.TilePowerTag)
+            : DefaultClass;
         if (!TileClass)
         {
             UE_LOG(LogTemp, Warning,
-                TEXT("ConnectIt_TileRegistry: no tile actor for (%d,%d) -- the cell names no Tile Class and the "
-                     "level config has no Default Tile Class. The tile is on the board but not shown."),
-                Cell.Position.X, Cell.Position.Y);
+                TEXT("ConnectIt_TileRegistry: no tile actor for (%d,%d) -- the tile catalog has no class for '%s' "
+                     "(or there is no catalog and no Default Tile Class). The tile is on the board but not shown."),
+                Cell.Position.X, Cell.Position.Y, *Cell.TileData.TilePowerTag.ToString());
             continue;
         }
 
@@ -84,6 +89,64 @@ TArray<AGridTileBase*> UConnectIt_TileRegistry::UnregisterTilesAt(const TArray<F
         Removed.Add(Tile);
     }
     return Removed;
+}
+
+int32 UConnectIt_TileRegistry::SwapBuilderTiles()
+{
+    TArray<AConnectIt_BuilderTile*> Builders;
+    for (const TObjectPtr<AGridTileBase>& Tile : Tiles)
+    {
+        if (AConnectIt_BuilderTile* Builder = Cast<AConnectIt_BuilderTile>(Tile.Get()))
+        {
+            Builders.Add(Builder);
+        }
+    }
+    if (Builders.IsEmpty()) return 0;
+
+    UWorld* World = GetWorld();
+    const UConnectIt_TileCatalog* Catalog = UConnectIt_TileCatalog::FindFor(this);
+    if (!World || !Catalog)
+    {
+        UE_LOG(LogTemp, Error,
+            TEXT("ConnectIt_TileRegistry: SwapBuilderTiles -- %d builder tile(s) but no %s; they stay as they are"),
+            Builders.Num(), World ? TEXT("tile catalog") : TEXT("world"));
+        return 0;
+    }
+
+    int32 Swapped = 0;
+    for (AConnectIt_BuilderTile* Builder : Builders)
+    {
+        const TSubclassOf<AGridTileBase> TileClass = Catalog->GetTileClassFor(Builder->TileData.TilePowerTag);
+        if (!TileClass)
+        {
+            UE_LOG(LogTemp, Warning,
+                TEXT("ConnectIt_TileRegistry: tile catalog '%s' has no tile class for '%s' -- builder tile '%s' "
+                     "stays"),
+                *Catalog->GetName(), *Builder->TileData.TilePowerTag.ToString(), *Builder->GetName());
+            continue;
+        }
+
+        // Registers itself through the actor-spawned listener
+        FActorSpawnParameters Params;
+        Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+        AGridTileBase* Tile = World->SpawnActor<AGridTileBase>(TileClass, Builder->GetActorTransform(), Params);
+        if (!IsValid(Tile)) continue;
+
+        if (Tile->Implements<UConnectIt_TileDataProvider>())
+        {
+            IConnectIt_TileDataProvider::Execute_ApplyLayoutCell(Tile, Builder->TileData, Builder->VisualVariant);
+        }
+        UnregisterTile(Builder);
+        Builder->Destroy();
+
+        // The builder's position is the new tile's now
+        TileMap.Add(GetPositionOfTile(Tile), Tile);
+        Swapped++;
+    }
+
+    UE_LOG(LogTemp, Log, TEXT("ConnectIt_TileRegistry: %d builder tile(s) swapped from tile catalog '%s'"),
+        Swapped, *Catalog->GetName());
+    return Swapped;
 }
 
 TArray<AGridTileBase*> UConnectIt_TileRegistry::ShiftTiles(const TArray<FGridPosition>& StartPositions,

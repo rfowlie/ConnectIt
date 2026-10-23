@@ -3,7 +3,7 @@
 #include "Framework/Data/ConnectIt_BoardLayout.h"
 #include "ConnectIt_Structs.h"
 #include "Misc/DataValidation.h"
-#include "Board/ConnectIt_TileBase.h"
+#include "Board/Powers/ConnectIt_TileCatalog.h"
 
 
 const FConnectItBoardLayoutCell* UConnectIt_BoardLayout::FindCell(const FGridPosition& Position) const
@@ -54,6 +54,7 @@ EDataValidationResult UConnectIt_BoardLayout::IsDataValid(FDataValidationContext
     // Every match today has two factions (AConnectIt_GameMode::NumFactions)
     constexpr int32 MatchFactions = 2;
 
+    const UConnectIt_TileCatalog* Catalog = UConnectIt_TileCatalog::GetProjectDefault();
     TSet<FGridPosition> Seen;
     for (int32 Index = 0; Index < Cells.Num(); Index++)
     {
@@ -69,27 +70,13 @@ EDataValidationResult UConnectIt_BoardLayout::IsDataValid(FDataValidationContext
             Result = EDataValidationResult::Invalid;
         }
 
-        // A captured power must be the power of the cell's tile class
-        const AConnectIt_TileBase* TileDefaults = Cell.TileClass
-            ? Cast<AConnectIt_TileBase>(Cell.TileClass->GetDefaultObject())
-            : nullptr;
-        if (TileDefaults)
-        {
-            const FString Problem = AConnectIt_TileBase::CheckTilePower(TileDefaults->TilePowerTag, Cell.TilePower);
-            if (!Problem.IsEmpty())
-            {
-                Context.AddError(FText::FromString(FString::Printf(TEXT(
-                    "ConnectIt_BoardLayout: cell (%d,%d), tile class %s: %s. Capture the layout again from the level."),
-                    Cell.Position.X, Cell.Position.Y, *Cell.TileClass->GetName(), *Problem)));
-                Result = EDataValidationResult::Invalid;
-            }
-        }
-        else if (Cell.TileClass && Cell.TilePower.IsSet())
+        // Its power tag must be one the catalog defines (the project default:
+        // a layout isn't tied to one level)
+        if (Catalog && Cell.TileData.TilePowerTag.IsValid() && !Catalog->Defines(Cell.TileData.TilePowerTag))
         {
             Context.AddError(FText::FromString(FString::Printf(TEXT(
-                "ConnectIt_BoardLayout: cell (%d,%d) has power %s but its tile class %s isn't a ConnectIt tile "
-                "(AConnectIt_TileBase) -- only those carry powers."),
-                Cell.Position.X, Cell.Position.Y, *Cell.TilePower.Name.ToString(), *Cell.TileClass->GetName())));
+                "ConnectIt_BoardLayout: cell (%d,%d) names power %s, which tile catalog '%s' doesn't define."),
+                Cell.Position.X, Cell.Position.Y, *Cell.TileData.TilePowerTag.ToString(), *Catalog->GetName())));
             Result = EDataValidationResult::Invalid;
         }
 

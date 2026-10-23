@@ -33,6 +33,12 @@ struct CONNECTIT_API FConnectItTileInitialData
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Tile", meta = (ClampMin = -1))
     int32 StartingFactionPiece = -1;
 
+    // The tile's power (ConnectIt.TilePower.*), defined in the level's tile
+    // catalog -- which also decides the tile actor that shows it. Only the
+    // tag: a power's values are never set per tile. Empty = no power.
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Tile", meta = (Categories = "ConnectIt.TilePower"))
+    FGameplayTag TilePowerTag;
+
     // Whether StartingFactionPiece is a piece a board with NumFactions can hold
     bool HasStartingPiece(int32 NumFactions) const
     {
@@ -48,6 +54,7 @@ struct CONNECTIT_API FConnectItTileInitialData
         Tile.bIsActive  = bIsActive;
         Tile.bCanShift  = bCanShift;
         Tile.SetFactionPiece(HasStartingPiece(NumFactions) ? StartingFactionPiece : -1);
+        Tile.TilePowerTag = TilePowerTag;
         return Tile;
     }
 };

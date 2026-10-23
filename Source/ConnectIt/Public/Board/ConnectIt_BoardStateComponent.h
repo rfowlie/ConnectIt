@@ -10,6 +10,7 @@
 class UGridPieceRegistryBase;
 class UGridTileRegistryBase;
 class AGridTileBase;
+class UConnectIt_TileCatalog;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnConnectItDisplayBoardChanged);
 
@@ -59,10 +60,12 @@ public:
         float InTargetScore = 0.f);
 
     // The board tile a tile actor starts as (its id is the board's to give):
-    // the designer's values if it implements IConnectIt_TileDataProvider,
-    // else the defaults with InitialMultiplier; and, for an
-    // AConnectIt_TileBase, its power (MakeBoardPower). Logs what doesn't fit.
-    static FConnectItTileData MakeTileData(const AGridTileBase* Tile, int32 NumFactions, float InitialMultiplier = 1.0f);
+    // the designer's values -- power tag included -- if it implements
+    // IConnectIt_TileDataProvider (a builder tile does), else the defaults
+    // with InitialMultiplier. A power tag Catalog (if given) doesn't define
+    // is dropped, with a warning. Logs what doesn't fit.
+    static FConnectItTileData MakeTileData(const AGridTileBase* Tile, int32 NumFactions,
+        float InitialMultiplier = 1.0f, const UConnectIt_TileCatalog* Catalog = nullptr);
 
     // Captures current as previous, applies new state, and stores what
     // specifically changed (ChangeEvent) so it replicates atomically

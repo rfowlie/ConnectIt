@@ -41,12 +41,14 @@ public:
     // registry, as usual: Despawn Piece At for each removed position with a
     // piece; Spawn Piece At for each added cell with a starting piece.
 
-    // Spawns a tile actor for each cell -- the cell's Tile Class, else the
-    // board's Default Tile Class (level config) -- at its grid position. Each
-    // registers itself (queries, hover), and a tile implementing the tile
-    // data interface gets its cell's values and Visual Variant (Apply Layout
-    // Cell). Returns them in cell order (null for a cell with no class to
-    // spawn: logged), e.g. to play an appear animation.
+    // Spawns a tile actor for each cell -- the tile catalog's class for the
+    // cell's power tag (UConnectIt_TileCatalog::FindFor), else the level
+    // config's Default Tile Class when there is no catalog -- at its grid
+    // position. Each registers itself (queries, hover), and a tile
+    // implementing the tile data interface gets its cell's values and Visual
+    // Variant (Apply Layout Cell). Returns them in cell order (null for a
+    // cell with no class to spawn: logged), e.g. to play an appear
+    // animation.
     UFUNCTION(BlueprintCallable, Category = "ConnectIt|Board")
     TArray<AGridTileBase*> SpawnLayoutTiles(const TArray<FConnectItBoardLayoutCell>& Cells);
 
@@ -55,6 +57,16 @@ public:
     // the world: animate them out, then Destroy Actor.
     UFUNCTION(BlueprintCallable, Category = "ConnectIt|Board")
     TArray<AGridTileBase*> UnregisterTilesAt(const TArray<FGridPosition>& Positions);
+
+    // --- Builder tiles becoming the catalog's tiles ---
+
+    // Replaces every builder tile (AConnectIt_BuilderTile) with its tile
+    // catalog's class for its power tag, at the same place, given the
+    // builder's values and look (Apply Layout Cell); the builder is
+    // unregistered and destroyed. Called once the board is known -- the
+    // board state component does it when the board is seeded (server) or
+    // first arrives (client). Returns how many were swapped.
+    int32 SwapBuilderTiles();
 
     // --- Tiles moving with a shift ---
     // A shift moves whole tiles (their data, and with it their kind and

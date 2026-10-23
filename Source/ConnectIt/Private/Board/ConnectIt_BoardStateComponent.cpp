@@ -8,7 +8,8 @@
 #include "Library/CodingUtilsLibrary.h"
 #include "Net/UnrealNetwork.h"
 #include "Board/ConnectIt_TileDataProvider.h"
-#include "Board/ConnectIt_TileBase.h"
+#include "Board/ConnectIt_TileRegistry.h"
+#include "Board/Powers/ConnectIt_TileCatalog.h"
 #include "Tile/GridTileBase.h"
 #include "Tile/GridTileRegistryBase.h"
 
@@ -20,7 +21,7 @@ UConnectIt_BoardStateComponent::UConnectIt_BoardStateComponent()
 }
 
 FConnectItTileData UConnectIt_BoardStateComponent::MakeTileData(
-    const AGridTileBase* Tile, int32 NumFactions, float InitialMultiplier)
+    const AGridTileBase* Tile, int32 NumFactions, float InitialMultiplier, const UConnectIt_TileCatalog* Catalog)
 {
     FConnectItTileData TileData;
     TileData.SetFactionPiece(-1);
@@ -44,15 +45,13 @@ FConnectItTileData UConnectIt_BoardStateComponent::MakeTileData(
         }
     }
 
-    if (const AConnectIt_TileBase* PoweredTile = Cast<AConnectIt_TileBase>(Tile))
+    if (Catalog && TileData.TilePowerTag.IsValid() && !Catalog->Defines(TileData.TilePowerTag))
     {
-        FString Problem;
-        TileData.SetTilePower(PoweredTile->MakeBoardPower(&Problem));
-        if (!Problem.IsEmpty())
-        {
-            UE_LOG(LogTemp, Warning, TEXT("ConnectIt_BoardStateComponent: tile '%s': %s"),
-                *Tile->GetName(), *Problem);
-        }
+        UE_LOG(LogTemp, Warning,
+            TEXT("ConnectIt_BoardStateComponent: tile '%s' names power %s, which tile catalog '%s' doesn't "
+                 "define -- it has no power"),
+            *Tile->GetName(), *TileData.TilePowerTag.ToString(), *Catalog->GetName());
+        TileData.TilePowerTag = FGameplayTag();
     }
     return TileData;
 }
@@ -76,10 +75,11 @@ void UConnectIt_BoardStateComponent::InitialiseBoardState(
     TArray<int32> StartingPiecesPerFaction;
     StartingPiecesPerFaction.Init(0, NumFactions);
 
+    const UConnectIt_TileCatalog* Catalog = UConnectIt_TileCatalog::FindFor(this);
     int32 PoweredTiles = 0;
     for (AGridTileBase* Tile : TileRegistry->GetAllTiles())
     {
-        const FConnectItTileData TileData = MakeTileData(Tile, NumFactions, InitialMultiplier);
+        const FConnectItTileData TileData = MakeTileData(Tile, NumFactions, InitialMultiplier, Catalog);
 
         if (IsValid(Tile) && Tile->Implements<UConnectIt_TileDataProvider>())
         {
@@ -90,7 +90,7 @@ void UConnectIt_BoardStateComponent::InitialiseBoardState(
             StartingPieces++;
             StartingPiecesPerFaction[TileData.FactionPiece]++;
         }
-        if (TileData.GetTilePower())
+        if (TileData.TilePowerTag.IsValid())
         {
             PoweredTiles++;
         }
@@ -125,6 +125,13 @@ void UConnectIt_BoardStateComponent::InitialiseBoardState(
 
     DisplayBoard = InitialState;
     bDisplayBoardStarted = true;
+
+    // The board is built from the builder tiles: now they become the tile
+    // catalog's actors, before anything plays on them
+    if (UConnectIt_TileRegistry* ConnectItTiles = Cast<UConnectIt_TileRegistry>(TileRegistry))
+    {
+        ConnectItTiles->SwapBuilderTiles();
+    }
 
     // Mark this initial snapshot as the seed so visuals for any starting
     // pieces get created. It replicates with the snapshot, so clients see the
@@ -259,6 +266,14 @@ void UConnectIt_BoardStateComponent::OnRep_BoardSnapshot()
     {
         DisplayBoard = BoardSnapshot.PreviousState;
         bDisplayBoardStarted = true;
+
+        // ...and its builder tiles become the tile catalog's actors (tile
+        // actors are local: each machine swaps its own)
+        if (UConnectIt_TileRegistry* ConnectItTiles =
+            Cast<UConnectIt_TileRegistry>(UConnectIt_GameUtilityLibrary::GetTileRegistry(this)))
+        {
+            ConnectItTiles->SwapBuilderTiles();
+        }
     }
 
     // Previous and current both arrived atomically
