@@ -150,6 +150,12 @@ Unreferenced code kept in the tree for now; don't build on it or document it as 
   (`GameIntelligence/InfluenceMap/`). Nothing creates them, and the map compares tiles
   against `FConnectItBoardState::FactionTurn`, which nothing sets (always -1). The field
   goes with them: every AI search node copies it for nothing.
+- **Unused classes:** `UConnectIt_GameRulesLibrary`, `UConnectIt_GridRulesLibrary` (only
+  the facade uses it), `UConnectIt_GridFloodLibrary`, `UConnectIt_ActionRequestMediator`,
+  `UConnectIt_PieceRegistryComponent`, `UConnectIt_BlackboardSubsystem`, and the old game
+  events (`UConnectIt_PlacePieceGameEvent`, `UConnectIt_ScoreGameEvent`, with the
+  Mediator's unfinished game-event queue). The full list and the Blueprint assets to
+  delete first: [the 2026-10-23-1303 log](../_logs/2026-10-23-1303.md).
 
 Already removed: `AConnectIt_BoardManager` and its subsystem, the old ConnectIt shift
 pipeline, the tag-reactive interpreter, `UConnectIt_BoardRules`

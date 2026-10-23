@@ -6,6 +6,9 @@ Vault-wide passes go in `_core/_logs/`.
 
 Newest first:
 
+- [2026-10-23-1303](2026-10-23-1303.md) — session — Known issues reviewed and rewritten; legacy MVVM and influence map
+  marked deprecated; piece actors made local (no replication); dead code survey: Blueprint assets for the owner to
+  delete, then the C++ list for the next pass.
 - [2026-10-23-1126](2026-10-23-1126.md) — session — Adventure hub look and feel: node map, shards, gate currency, regions (new design note).
 
 - [2026-10-23-1119](2026-10-23-1119.md) — session — first tile powers, Stage 5 (vault): decision "the first tile
