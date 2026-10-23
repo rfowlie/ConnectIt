@@ -15,6 +15,11 @@
 //
 // Plain data with inline storage: built for every position the AI's search
 // tries, so an ordinary move allocates nothing.
+//
+// Each entry's Cause is the index (in the change's event list) of the event
+// that brought it about -- a tile power that fires on it records that as its
+// own event's CauseIndex. INDEX_NONE: the action itself, or no event list (the
+// AI's search).
 // ----------------------------------------------------------------------------
 
 // A piece now on Position that may score
@@ -29,6 +34,8 @@ struct FConnectItPieceArrival
     // the answer of the operation that brought it
     // (FConnectItBoardOperation::ArrivingPiecesSurviveScoring)
     bool bSurvivesScoring = true;
+
+    int32 Cause = INDEX_NONE;
 };
 
 // A piece that left Position (not cleared by scoring)
@@ -36,6 +43,7 @@ struct FConnectItPieceExit
 {
     FGridPosition Position;
     int32 Faction = INDEX_NONE;
+    int32 Cause = INDEX_NONE;
 };
 
 // The piece on Position changed owner (a capture)
@@ -45,6 +53,7 @@ struct FConnectItPieceChange
     int32 Faction = INDEX_NONE;
     int32 PreviousFaction = INDEX_NONE;
     bool bSurvivesScoring = true;
+    int32 Cause = INDEX_NONE;
 };
 
 // What about a tile changed
@@ -63,6 +72,16 @@ struct FConnectItTileChange
     // Whose change it was (the operation's faction, or the scoring faction
     // for a multiplier scoring raised); INDEX_NONE for nobody
     int32 Faction = INDEX_NONE;
+
+    int32 Cause = INDEX_NONE;
+};
+
+// A tile a scoring pass's line ran through, and whose line it was
+struct FConnectItScoredTile
+{
+    FGridPosition Position;
+    int32 Faction = INDEX_NONE;
+    int32 Cause = INDEX_NONE;
 };
 
 struct FConnectItBoardChanges
@@ -87,9 +106,9 @@ struct FConnectItBoardChanges
     // Changed powers.
     TArray<FConnectItTileChange, TInlineAllocator<4>> TileChanged;
 
-    // The positions a scoring pass's lines ran through (each once): where
-    // Scoring powers fire. Only a scoring pass fills it.
-    TArray<FGridPosition, TInlineAllocator<8>> ScoredThrough;
+    // The tiles a scoring pass's lines ran through (each once), with the
+    // scoring faction: where Scoring powers fire. Only a scoring pass fills it.
+    TArray<FConnectItScoredTile, TInlineAllocator<8>> ScoredThrough;
 
     // Whose change this step is (the operation's faction); INDEX_NONE for
     // nobody
@@ -115,9 +134,38 @@ struct FConnectItBoardChanges
         PieceChanged.Add({ Position, NewFaction, PreviousFaction, bSurvivesScoring });
     }
 
-    void AddTileChanged(const FGridPosition& Position, EConnectItTileChange What, int32 ChangeFaction)
+    void AddTileChanged(const FGridPosition& Position, EConnectItTileChange What, int32 ChangeFaction,
+        int32 Cause = INDEX_NONE)
     {
-        TileChanged.Add({ Position, What, ChangeFaction });
+        TileChanged.Add({ Position, What, ChangeFaction, Cause });
+    }
+
+    // Whether a scoring pass ran through Position
+    bool WasScoredThrough(const FGridPosition& Position) const
+    {
+        return ScoredThrough.ContainsByPredicate([&Position](const FConnectItScoredTile& Tile) { return Tile.Position == Position; });
+    }
+
+    // Adds every entry of Other (its faction is left as it is)
+    void Append(const FConnectItBoardChanges& Other)
+    {
+        Entered.Append(Other.Entered);
+        Exited.Append(Other.Exited);
+        Moved.Append(Other.Moved);
+        PieceChanged.Append(Other.PieceChanged);
+        TileChanged.Append(Other.TileChanged);
+        ScoredThrough.Append(Other.ScoredThrough);
+    }
+
+    // Every entry was brought about by the event at Cause
+    void SetCause(int32 Cause)
+    {
+        for (FConnectItPieceArrival& Entry : Entered) Entry.Cause = Cause;
+        for (FConnectItPieceExit& Entry : Exited) Entry.Cause = Cause;
+        for (FConnectItPieceArrival& Entry : Moved) Entry.Cause = Cause;
+        for (FConnectItPieceChange& Entry : PieceChanged) Entry.Cause = Cause;
+        for (FConnectItTileChange& Entry : TileChanged) Entry.Cause = Cause;
+        for (FConnectItScoredTile& Entry : ScoredThrough) Entry.Cause = Cause;
     }
 
     // Every piece that may score after this step, in order: arrivals, owner
@@ -128,7 +176,7 @@ struct FConnectItBoardChanges
         OutArrivals.Append(Entered);
         for (const FConnectItPieceChange& Change : PieceChanged)
         {
-            OutArrivals.Add({ Change.Position, Change.Faction, Change.bSurvivesScoring });
+            OutArrivals.Add({ Change.Position, Change.Faction, Change.bSurvivesScoring, Change.Cause });
         }
         OutArrivals.Append(Moved);
     }

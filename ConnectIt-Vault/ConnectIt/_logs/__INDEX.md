@@ -6,6 +6,8 @@ Vault-wide passes go in `_core/_logs/`.
 
 Newest first:
 
+- [2026-10-23-0045](2026-10-23-0045.md) — session — tile powers, Stage 4: powers fire in the chain (settle, Sync,
+  scoring reactions, guard, cooldowns, causes, Power Triggered). 56/56 tests; Throughput unchanged.
 - [2026-10-23-0030](2026-10-23-0030.md) — session — tile powers, Stage 3 rework: tile catalog, builder tiles, catalog
   preview (never saved), swap at match start. 55/55 tests; Throughput 392,028 nodes/s (back to normal).
 - [2026-10-22-2245](2026-10-22-2245.md) — session — tile powers: Stages 1-2 checked; Stage 3 first build (per-tile

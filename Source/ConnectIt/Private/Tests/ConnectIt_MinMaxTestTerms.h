@@ -166,3 +166,96 @@ struct FConnectItTilePowerEffect_Test : public FConnectItTilePowerEffect
     UPROPERTY()
     int32 Strength = 1;
 };
+
+// --- Test-only tile power effects (ConnectIt.Board.TilePowerChain). Not meant
+// for real levels: the first real powers are designed separately. ---
+
+// Force places a piece (for the power's faction) at each offset from the powered tile
+USTRUCT(meta = (Hidden, DisplayName = "(Test) Place At Offsets"))
+struct FConnectItTilePowerEffect_TestPlace : public FConnectItTilePowerEffect
+{
+    GENERATED_BODY()
+
+    UPROPERTY()
+    TArray<FIntPoint> Offsets;
+
+    virtual void MakeOperations(const FConnectItTilePowerContext& Context, TArray<FInstancedStruct>& OutOperations) const override
+    {
+        for (const FIntPoint& Offset : Offsets)
+        {
+            FConnectItBoardOperation_ForcePlacePiece Place;
+            Place.Position = FGridPosition(Context.Position.X + Offset.X, Context.Position.Y + Offset.Y);
+            OutOperations.Add(FInstancedStruct::Make(Place));
+        }
+    }
+};
+
+// "Moves" the piece at From to To (offsets from the powered tile): removes it
+// and places one for the power's faction -- there is no move operation yet
+USTRUCT(meta = (Hidden, DisplayName = "(Test) Move A Neighbour"))
+struct FConnectItTilePowerEffect_TestMove : public FConnectItTilePowerEffect
+{
+    GENERATED_BODY()
+
+    UPROPERTY()
+    FIntPoint From = FIntPoint::ZeroValue;
+
+    UPROPERTY()
+    FIntPoint To = FIntPoint::ZeroValue;
+
+    virtual void MakeOperations(const FConnectItTilePowerContext& Context, TArray<FInstancedStruct>& OutOperations) const override
+    {
+        const FGridPosition FromPosition(Context.Position.X + From.X, Context.Position.Y + From.Y);
+        if (!Context.Board.IsTileOccupied(FromPosition)) return;
+
+        FConnectItBoardOperation_RemovePiece Remove;
+        Remove.Position = FromPosition;
+        OutOperations.Add(FInstancedStruct::Make(Remove));
+
+        FConnectItBoardOperation_ForcePlacePiece Place;
+        Place.Position = FGridPosition(Context.Position.X + To.X, Context.Position.Y + To.Y);
+        OutOperations.Add(FInstancedStruct::Make(Place));
+    }
+};
+
+// Places a piece on an empty tile picked at random (the board's seeded stream)
+USTRUCT(meta = (Hidden, DisplayName = "(Test) Place At Random"))
+struct FConnectItTilePowerEffect_TestRandomPlace : public FConnectItTilePowerEffect
+{
+    GENERATED_BODY()
+
+    virtual void MakeOperations(const FConnectItTilePowerContext& Context, TArray<FInstancedStruct>& OutOperations) const override
+    {
+        TArray<FGridPosition> Empty;
+        for (int32 Index = 0; Index < Context.Board.NumTiles(); Index++)
+        {
+            if (!Context.Board.GetTileDataAt(Index).bIsOccupied) Empty.Add(Context.Board.GetPositionAt(Index));
+        }
+        if (Empty.IsEmpty()) return;
+
+        FConnectItBoardOperation_ForcePlacePiece Place;
+        Place.Position = Empty[Context.Random.RandRange(0, Empty.Num() - 1)];
+        OutOperations.Add(FInstancedStruct::Make(Place));
+    }
+};
+
+// A Sync power: the powered tile can't hold a piece while the tile at Watch
+// (an offset) has none -- it removes its own piece whenever that is so
+USTRUCT(meta = (Hidden, DisplayName = "(Test) Sync: Clear While Watched Tile Empty"))
+struct FConnectItTilePowerEffect_TestSyncClear : public FConnectItTilePowerEffect
+{
+    GENERATED_BODY()
+
+    UPROPERTY()
+    FIntPoint Watch = FIntPoint::ZeroValue;
+
+    virtual void MakeOperations(const FConnectItTilePowerContext& Context, TArray<FInstancedStruct>& OutOperations) const override
+    {
+        const FGridPosition Watched(Context.Position.X + Watch.X, Context.Position.Y + Watch.Y);
+        if (!Context.Board.IsTileOccupied(Context.Position) || Context.Board.IsTileOccupied(Watched)) return;
+
+        FConnectItBoardOperation_RemovePiece Remove;
+        Remove.Position = Context.Position;
+        OutOperations.Add(FInstancedStruct::Make(Remove));
+    }
+};

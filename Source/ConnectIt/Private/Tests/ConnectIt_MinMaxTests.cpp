@@ -43,6 +43,48 @@ namespace ConnectItMinMaxTests
     UE_DEFINE_GAMEPLAY_TAG_STATIC(TestTilePowerTag, "ConnectIt.TilePower.Test");
     UE_DEFINE_GAMEPLAY_TAG_STATIC(TestOtherTilePowerTag, "ConnectIt.TilePower.TestOther");
     UE_DEFINE_GAMEPLAY_TAG_STATIC(TestUndefinedTilePowerTag, "ConnectIt.TilePower.TestUndefined");
+    UE_DEFINE_GAMEPLAY_TAG_STATIC(TestPower1, "ConnectIt.TilePower.Test.1");
+    UE_DEFINE_GAMEPLAY_TAG_STATIC(TestPower2, "ConnectIt.TilePower.Test.2");
+    UE_DEFINE_GAMEPLAY_TAG_STATIC(TestPower3, "ConnectIt.TilePower.Test.3");
+    UE_DEFINE_GAMEPLAY_TAG_STATIC(TestPower4, "ConnectIt.TilePower.Test.4");
+    UE_DEFINE_GAMEPLAY_TAG_STATIC(TestPower5, "ConnectIt.TilePower.Test.5");
+
+    // A test power: Name, Trigger and Effect (a test effect struct)
+    template<typename TEffect>
+    FConnectItTilePower MakeTestPower(FGameplayTag Name, EConnectItPowerTrigger Trigger, const TEffect& Effect,
+        int32 CooldownTurns = 0, float MinMultiplier = 0.f)
+    {
+        FConnectItTilePower Power;
+        Power.Name = Name;
+        Power.Trigger = Trigger;
+        Power.CooldownTurns = CooldownTurns;
+        Power.MinMultiplier = MinMultiplier;
+        Power.Effect = TInstancedStruct<FConnectItTilePowerEffect>::Make<TEffect>(Effect);
+        return Power;
+    }
+
+    FConnectItTilePowerEffect_TestPlace PlaceAt(std::initializer_list<FIntPoint> Offsets)
+    {
+        FConnectItTilePowerEffect_TestPlace Effect;
+        Effect.Offsets = Offsets;
+        return Effect;
+    }
+
+    void SetPower(FConnectItBoardState& Board, int32 X, int32 Y, FGameplayTag Name)
+    {
+        Board.GetTileDataMutable(FGridPosition(X, Y))->TilePowerTag = Name;
+    }
+
+    // Every Power Triggered event of a change, in order
+    TArray<const FConnectItBoardEvent_PowerTriggered*> PowersTriggered(const FConnectItBoardChangeEvent& Change)
+    {
+        TArray<const FConnectItBoardEvent_PowerTriggered*> Found;
+        for (const FInstancedStruct& Entry : Change.Events)
+        {
+            if (const auto* Triggered = Entry.GetPtr<FConnectItBoardEvent_PowerTriggered>()) Found.Add(Triggered);
+        }
+        return Found;
+    }
 
     // Empty Size x Size board, two factions, all tiles active, multiplier 1 --
     // the same initial tile data UConnectIt_BoardStateComponent::InitialiseBoardState
@@ -3569,6 +3611,271 @@ bool FConnectItTilePowerDataTest::RunTest(const FString& Parameters)
         const auto Grandchild = Rules.ApplyMove(Child, PlaceMove(1, 1, 1));
         TestTrue(TEXT("turn: the root keeps the decision's turn, each ply adds one"),
             Root.Board.TurnNumber == 7 && Child.Board.TurnNumber == 8 && Grandchild.Board.TurnNumber == 9);
+    }
+    return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FConnectItTilePowerChainTest,
+    "ConnectIt.Board.TilePowerChain", TestFlags)
+
+bool FConnectItTilePowerChainTest::RunTest(const FString& Parameters)
+{
+    // Stage 4 of tile powers: firing them in the after-move chain, with
+    // test-only powers (the first real powers are designed separately)
+    using EPower = EConnectItPowerTrigger;
+    if (!TestTrue(TEXT("the test power tags exist"), FGameplayTag(TestPower5).IsValid()))
+    {
+        return false;
+    }
+    const auto CarryOut = [](const FConnectItRuleSet& Rules, const FConnectItBoardOperation& Operation,
+        FConnectItBoardState& Board, FConnectItBoardChangeEvent& OutEvents)
+    {
+        return Rules.CarryOutOperation(Operation, Board, &OutEvents);
+    };
+    const auto ReplaysTo = [](const FConnectItBoardState& Before, const FConnectItBoardChangeEvent& Events,
+        const FConnectItBoardState& After)
+    {
+        FConnectItBoardState Replayed = Before;
+        FConnectItBoardEvent::ApplyAll(Events, Replayed);
+        return Replayed.HasSameTilesAndScores(After);
+    };
+    using FPlace = FConnectItBoardOperation_PlacePiece;
+
+    // --- The owner's chain: place -> a line scores through a "move a
+    //     neighbour" tile -> the moved piece completes a line -> that tile's
+    //     Scoring power fires ---
+    {
+        FConnectItTilePowerEffect_TestMove Move;
+        Move.From = FIntPoint(3, 5);   // (2,0) + (3,5) = (5,5)
+        Move.To = FIntPoint(1, 3);     // (2,0) + (1,3) = (3,3)
+        FConnectItRuleSet Rules;
+        Rules.SetTilePowers({
+            MakeTestPower(TestPower1, EPower::Scoring, Move),
+            MakeTestPower(TestPower2, EPower::Scoring, FConnectItTilePowerEffect_Test()) }, {});
+
+        FConnectItBoardState Board = MakeBoard(6);
+        for (int32 X = 0; X < 3; X++)
+        {
+            Place(Board, X, 0, 0);
+            Place(Board, X, 3, 0);
+        }
+        Place(Board, 5, 5, 0);
+        SetPower(Board, 2, 0, TestPower1);
+        SetPower(Board, 3, 3, TestPower2);
+
+        FConnectItBoardState After = Board;
+        FConnectItBoardChangeEvent Events;
+        const float Points = CarryOut(Rules, MakeAt<FPlace>(0, 3, 0), After, Events);
+
+        TestEqual(TEXT("chain: two lines scored"), Points, 8.f);
+        TestTrue(TEXT("chain: the neighbour moved"), !After.IsTileOccupied(FGridPosition(5, 5)) && After.IsTileOccupied(FGridPosition(3, 3)));
+        const bool bOrder = Events.Events.Num() == 7
+            && EventAt<FConnectItBoardEvent_PiecePlaced>(Events, 0)
+            && EventAt<FConnectItBoardEvent_Scored>(Events, 1)
+            && EventAt<FConnectItBoardEvent_PowerTriggered>(Events, 2)
+            && EventAt<FConnectItBoardEvent_PieceRemoved>(Events, 3)
+            && EventAt<FConnectItBoardEvent_PiecePlaced>(Events, 4)
+            && EventAt<FConnectItBoardEvent_Scored>(Events, 5)
+            && EventAt<FConnectItBoardEvent_PowerTriggered>(Events, 6);
+        if (TestTrue(TEXT("chain: placed, scored, mover fired, moved, scored, second power fired"), bOrder))
+        {
+            const auto* Mover = EventAt<FConnectItBoardEvent_PowerTriggered>(Events, 2);
+            const auto* Second = EventAt<FConnectItBoardEvent_PowerTriggered>(Events, 6);
+            TestTrue(TEXT("chain: the mover is the tile's power, for the scoring faction"),
+                Mover->PowerName == TestPower1 && Mover->Position == FGridPosition(2, 0) && Mover->Faction == 0 && !Mover->bNoEffect);
+            TestTrue(TEXT("chain: each event names its cause"),
+                EventAt<FConnectItBoardEvent_PiecePlaced>(Events, 0)->CauseIndex == INDEX_NONE
+                && EventAt<FConnectItBoardEvent_Scored>(Events, 1)->CauseIndex == INDEX_NONE
+                && Mover->CauseIndex == 1
+                && EventAt<FConnectItBoardEvent_PieceRemoved>(Events, 3)->CauseIndex == 2
+                && EventAt<FConnectItBoardEvent_PiecePlaced>(Events, 4)->CauseIndex == 2
+                && EventAt<FConnectItBoardEvent_Scored>(Events, 5)->CauseIndex == 4
+                && Second->CauseIndex == 5);
+            TestTrue(TEXT("chain: the second power had nothing to do"), Second->PowerName == TestPower2 && Second->bNoEffect);
+        }
+        TestTrue(TEXT("chain: before + events = after"), ReplaysTo(Board, Events, After));
+    }
+
+    // --- Settle until quiet; each power fires once per action ---
+    {
+        FConnectItRuleSet Rules;
+        Rules.SetTilePowers({
+            MakeTestPower(TestPower1, EPower::PieceEnter, PlaceAt({ FIntPoint(0, 2) })),
+            MakeTestPower(TestPower2, EPower::PieceEnter, PlaceAt({ FIntPoint(0, -4) })) }, {});
+
+        FConnectItBoardState Board = MakeBoard(6);
+        SetPower(Board, 0, 0, TestPower1);   // -> (0,2)
+        SetPower(Board, 0, 2, TestPower1);   // -> (0,4)
+        SetPower(Board, 0, 4, TestPower2);   // -> back to (0,0), which has fired already
+
+        FConnectItBoardState After = Board;
+        FConnectItBoardChangeEvent Events;
+        CarryOut(Rules, MakeAt<FPlace>(0, 0, 0), After, Events);
+        const auto Triggered = PowersTriggered(Events);
+        TestEqual(TEXT("settle: three powers, each once"), Triggered.Num(), 3);
+        TestTrue(TEXT("settle: in the order they were set off"), Triggered.Num() == 3
+            && Triggered[0]->Position == FGridPosition(0, 0) && Triggered[1]->Position == FGridPosition(0, 2)
+            && Triggered[2]->Position == FGridPosition(0, 4));
+        TestTrue(TEXT("settle: the last placement (back on the first tile) ends it"),
+            Events.Events.Num() == 7 && EventAt<FConnectItBoardEvent_PiecePlaced>(Events, 6)
+            && EventAt<FConnectItBoardEvent_PiecePlaced>(Events, 6)->Position == FGridPosition(0, 0));
+        TestTrue(TEXT("settle: before + events = after"), ReplaysTo(Board, Events, After));
+    }
+
+    // --- Triggers: a capture is Piece Changed only; level-wide powers on every tile ---
+    {
+        FConnectItRuleSet Rules;
+        const FConnectItTilePowerEffect_Test Nothing;
+        Rules.SetTilePowers({
+            MakeTestPower(TestPower1, EPower::PieceEnter, Nothing),
+            MakeTestPower(TestPower2, EPower::PieceExit, Nothing),
+            MakeTestPower(TestPower3, EPower::PieceChanged, Nothing) },
+            { TestPower1, TestPower2, TestPower3 });
+
+        FConnectItBoardState Board = MakeBoard(5);
+        Place(Board, 1, 1, 1);
+        const auto NamesAfter = [&](const FConnectItBoardOperation& Operation)
+        {
+            FConnectItBoardState After = Board;
+            FConnectItBoardChangeEvent Events;
+            Rules.CarryOutOperation(Operation, After, &Events);
+            TArray<FGameplayTag> Names;
+            for (const auto* Triggered : PowersTriggered(Events))
+            {
+                Names.Add(Triggered->PowerName);
+            }
+            return MakeTuple(Names, PowersTriggered(Events).Num() == 1 ? PowersTriggered(Events)[0]->Faction : INDEX_NONE);
+        };
+        const auto Captured = NamesAfter(MakeAt<FConnectItBoardOperation_CapturePiece>(0, 1, 1));
+        TestTrue(TEXT("capture: Piece Changed only, for the new owner"),
+            Captured.Key == TArray<FGameplayTag>({ TestPower3 }) && Captured.Value == 0);
+        const auto Placed = NamesAfter(MakeAt<FPlace>(0, 2, 2));
+        TestTrue(TEXT("place: Piece Enter only"), Placed.Key == TArray<FGameplayTag>({ TestPower1 }) && Placed.Value == 0);
+        const auto Removed = NamesAfter(MakeAt<FConnectItBoardOperation_RemovePiece>(0, 1, 1));
+        TestTrue(TEXT("remove: Piece Exit only, for the leaving piece's owner"),
+            Removed.Key == TArray<FGameplayTag>({ TestPower2 }) && Removed.Value == 1);
+    }
+
+    // --- Cooldowns count turns; a power with nothing to do still shows and cools down ---
+    for (int32 Cooldown = 0; Cooldown <= 2; Cooldown++)
+    {
+        FConnectItRuleSet Rules;
+        Rules.SetTilePowers({ MakeTestPower(TestPower1, EPower::PieceEnter, FConnectItTilePowerEffect_Test(), Cooldown) }, {});
+
+        FConnectItBoardState Board = MakeBoard(3);
+        SetPower(Board, 0, 0, TestPower1);
+        Board.TurnNumber = 5;
+
+        FConnectItBoardState Fired = Board;
+        FConnectItBoardChangeEvent Events;
+        CarryOut(Rules, MakeAt<FPlace>(0, 0, 0), Fired, Events);
+        const auto First = PowersTriggered(Events);
+        TestTrue(FString::Printf(TEXT("cooldown %d: fires, with no effect, ready again at turn %d"), Cooldown, 5 + Cooldown),
+            First.Num() == 1 && First[0]->bNoEffect && First[0]->ReadyTurn == 5 + Cooldown
+            && TileAt(Fired, 0, 0).PowerReadyTurn == 5 + Cooldown);
+
+        for (int32 Later = 0; Later <= 2; Later++)
+        {
+            FConnectItBoardState Again = Fired;
+            Place(Again, 0, 0, -1);
+            Again.TurnNumber = 5 + Later;
+            FConnectItBoardChangeEvent AgainEvents;
+            CarryOut(Rules, MakeAt<FPlace>(0, 0, 0), Again, AgainEvents);
+            TestEqual(FString::Printf(TEXT("cooldown %d: %d turn(s) later it %s"), Cooldown, Later,
+                Later >= Cooldown ? TEXT("fires") : TEXT("doesn't")),
+                PowersTriggered(AgainEvents).Num(), Later >= Cooldown ? 1 : 0);
+        }
+    }
+
+    // --- The gate: the tile's multiplier ---
+    {
+        FConnectItRuleSet Rules;
+        Rules.SetTilePowers({ MakeTestPower(TestPower1, EPower::PieceEnter, FConnectItTilePowerEffect_Test(), 0, 2.f) }, {});
+        FConnectItBoardState Board = MakeBoard(3);
+        SetPower(Board, 0, 0, TestPower1);
+
+        FConnectItBoardState Low = Board;
+        FConnectItBoardChangeEvent LowEvents;
+        CarryOut(Rules, MakeAt<FPlace>(0, 0, 0), Low, LowEvents);
+        TestEqual(TEXT("gate: x1 is below x2, nothing fires"), PowersTriggered(LowEvents).Num(), 0);
+
+        FConnectItBoardState High = Board;
+        High.GetTileDataMutable(FGridPosition(0, 0))->Multiplier = 2.f;
+        FConnectItBoardChangeEvent HighEvents;
+        CarryOut(Rules, MakeAt<FPlace>(0, 0, 0), High, HighEvents);
+        TestEqual(TEXT("gate: at x2 it fires"), PowersTriggered(HighEvents).Num(), 1);
+    }
+
+    // --- Random choices come from the board's seed ---
+    {
+        FConnectItRuleSet Rules;
+        Rules.SetTilePowers({ MakeTestPower(TestPower1, EPower::PieceEnter, FConnectItTilePowerEffect_TestRandomPlace()) }, {});
+        FConnectItBoardState Board = MakeBoard(5);
+        SetPower(Board, 0, 0, TestPower1);
+        Board.RandomSeed = 123;
+
+        const auto RandomlyPlaced = [&](const FConnectItBoardState& From, FConnectItBoardState& OutAfter)
+        {
+            OutAfter = From;
+            FConnectItBoardChangeEvent Events;
+            CarryOut(Rules, MakeAt<FPlace>(0, 0, 0), OutAfter, Events);
+            const auto* Placed = EventAt<FConnectItBoardEvent_PiecePlaced>(Events, 2);
+            return Placed ? Placed->Position : FGridPosition(-1, -1);
+        };
+        FConnectItBoardState First;
+        FConnectItBoardState Second;
+        const FGridPosition FirstPick = RandomlyPlaced(Board, First);
+        const FGridPosition SecondPick = RandomlyPlaced(Board, Second);
+        TestTrue(TEXT("random: it placed somewhere"), FirstPick != FGridPosition(-1, -1));
+        TestTrue(TEXT("random: the same seed, the same result"), FirstPick == SecondPick);
+        TestTrue(TEXT("random: the seed moved on"), First.RandomSeed != Board.RandomSeed && First.RandomSeed == Second.RandomSeed);
+    }
+
+    // --- Sync: every settle pass, only when state calls for it, not once per action ---
+    {
+        FConnectItTilePowerEffect_TestSyncClear Clear;
+        Clear.Watch = FIntPoint(1, 0);   // S (2,2) watches (3,2)
+        FConnectItRuleSet Rules;
+        Rules.SetTilePowers({
+            MakeTestPower(TestPower1, EPower::PieceEnter, PlaceAt({ FIntPoint(2, 2), FIntPoint(0, 4) })),   // A (0,0) -> S, C
+            MakeTestPower(TestPower2, EPower::PieceEnter, PlaceAt({ FIntPoint(2, -2) })),                   // C (0,4) -> S
+            MakeTestPower(TestPower5, EPower::Sync, Clear) }, {});
+
+        FConnectItBoardState Board = MakeBoard(6);
+        SetPower(Board, 0, 0, TestPower1);
+        SetPower(Board, 0, 4, TestPower2);
+        SetPower(Board, 2, 2, TestPower5);
+
+        const auto SyncsAfterPlacing = [&](FConnectItBoardState& InOutBoard, FConnectItBoardChangeEvent& OutEvents)
+        {
+            CarryOut(Rules, MakeAt<FPlace>(0, 0, 0), InOutBoard, OutEvents);
+            int32 Syncs = 0;
+            for (const auto* Triggered : PowersTriggered(OutEvents))
+            {
+                Syncs += Triggered->PowerName == TestPower5 ? 1 : 0;
+            }
+            return Syncs;
+        };
+
+        FConnectItBoardState Watched = Board;
+        FConnectItBoardChangeEvent WatchedEvents;
+        TestEqual(TEXT("sync: S was filled twice in one action and cleared twice"), SyncsAfterPlacing(Watched, WatchedEvents), 2);
+        TestFalse(TEXT("sync: S ends empty"), Watched.IsTileOccupied(FGridPosition(2, 2)));
+        TestTrue(TEXT("sync: before + events = after"), ReplaysTo(Board, WatchedEvents, Watched));
+
+        FConnectItBoardState Kept = Board;
+        Place(Kept, 3, 2, 1);
+        FConnectItBoardChangeEvent KeptEvents;
+        TestEqual(TEXT("sync: with the watched tile filled, nothing calls for it -- no event"), SyncsAfterPlacing(Kept, KeptEvents), 0);
+        TestTrue(TEXT("sync: and S keeps its piece"), Kept.IsTileOccupied(FGridPosition(2, 2)));
+    }
+
+    // --- No powers: the chain is just scoring, as before ---
+    {
+        FConnectItBoardState Board = MakeBoard(5);
+        FConnectItBoardChangeEvent Events;
+        FConnectItRuleSet().CarryOutOperation(MakeAt<FPlace>(0, 0, 0), Board, &Events);
+        TestEqual(TEXT("no powers: one event"), Events.Events.Num(), 1);
     }
     return true;
 }

@@ -118,6 +118,12 @@ struct FConnectItBoardState
     UPROPERTY(BlueprintReadOnly)
     int32 NextTileId = 0;
 
+    // The first turn each level-wide power (FConnectItRuleSet::LevelWidePowers,
+    // same order) can fire again: a level-wide power cools down across the
+    // whole board, not per tile. Empty until one fires.
+    UPROPERTY(BlueprintReadOnly)
+    TArray<int32> LevelWideReadyTurns;
+
     UPROPERTY(BlueprintReadOnly)
     bool bGameOver = false;
 

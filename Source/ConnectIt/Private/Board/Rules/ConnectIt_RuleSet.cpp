@@ -5,6 +5,7 @@
 #include "Board/Events/ConnectIt_BoardEvents.h"
 #include "Board/Operations/ConnectIt_BoardOperation.h"
 #include "Board/Rules/ConnectIt_MatchConditionAsset.h"
+#include "Board/Powers/ConnectIt_PowerChain.h"
 
 
 namespace
@@ -173,13 +174,23 @@ float FConnectItRuleSet::ResolveBoardChange(
 
     float TotalPoints = 0.f;
 
+    // This action's tile powers (with none, only scoring runs and nothing is copied)
+    FConnectItPowerChain Powers(*this, Board, OutEvents);
+
     // What the last step changed: the operation's record, then each pass's
     FConnectItBoardChanges Next;
+    FConnectItBoardChanges Settled;
     const FConnectItBoardChanges* Step = &Changes;
     for (int32 Pass = 0; Pass < MaxPasses; Pass++)
     {
-        // 1. Settle: pre-scoring reactions to Step (tile powers -- not built
-        //    yet), adding to what arrived
+        // 1. Settle: the pre-scoring powers Step sets off, until quiet, adding
+        //    what they changed (and brought in) to what is scored
+        if (Powers.HasPowers())
+        {
+            Settled = *Step;
+            Powers.Settle(Settled);
+            Step = &Settled;
+        }
 
         // 2. Score every piece that arrived since the last pass
         if (!Step->HasScoringArrivals()) return TotalPoints;
@@ -194,8 +205,9 @@ float FConnectItRuleSet::ResolveBoardChange(
         // The chain ends at the first pass that scores nothing
         if (Scored.ScoredThrough.IsEmpty()) return TotalPoints;
 
-        // 3. Scoring reactions (tile powers -- not built yet), adding to
-        //    Scored
+        // 3. Scoring reactions: the Scoring powers on the tiles the lines ran
+        //    through, adding what they changed to Scored
+        Powers.ReactToScoring(Scored);
 
         // Back to settle with what scoring and its reactions changed
         Next = MoveTemp(Scored);

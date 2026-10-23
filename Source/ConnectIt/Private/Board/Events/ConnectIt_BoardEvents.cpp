@@ -74,6 +74,11 @@ FGameplayTag FConnectItBoardEvent_Scored::GetEventTag() const
     return ConnectIt_Event_Scored;
 }
 
+FGameplayTag FConnectItBoardEvent_PowerTriggered::GetEventTag() const
+{
+    return ConnectIt_Event_PowerTriggered;
+}
+
 FGameplayTag FConnectItBoardEvent_WinCheckpointReached::GetEventTag() const
 {
     return ConnectIt_Event_WinCheckpointReached;
@@ -256,6 +261,23 @@ void FConnectItBoardEvent_Scored::ApplyTo(FConnectItBoardState& Board) const
         {
             Tile->SetFactionPiece(-1);
         }
+    }
+}
+
+void FConnectItBoardEvent_PowerTriggered::ApplyTo(FConnectItBoardState& Board) const
+{
+    // Its cooldown: the tile's own power's, or the level-wide power's
+    if (LevelWideIndex == INDEX_NONE)
+    {
+        if (FConnectItTileData* Tile = Board.GetTileDataMutable(Position))
+        {
+            Tile->PowerReadyTurn = ReadyTurn;
+        }
+    }
+    else if (LevelWideIndex >= 0)
+    {
+        Board.LevelWideReadyTurns.SetNumZeroed(FMath::Max(Board.LevelWideReadyTurns.Num(), LevelWideIndex + 1));
+        Board.LevelWideReadyTurns[LevelWideIndex] = ReadyTurn;
     }
 }
 

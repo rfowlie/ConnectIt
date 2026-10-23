@@ -342,6 +342,44 @@ values on every board tile, and measured ~17% slower AI search even with no powe
   power fires);
   settle until quiet; a capture fires a Piece Changed power and no Piece Enter / Piece Exit power; cooldown 0 / 1 / 2 against the turn number; a power with
   no target still shows and cools down; same seed, same result; before + events = after on a chain.
+- *As built (2026-10-23; 56/56 tests; Throughput 393,038 / 389,361 nodes/s against 366k-392k -- no cost):*
+  - **`FConnectItPowerChain`** (`Private/Board/Powers/`) lives for one `ResolveBoardChange` call.
+    - **Settle:** Sync powers first in each loop; their changes join that loop's triggers. Then Piece Enter → Piece
+      Exit → Piece Changed → Tile Changed, in the record's order. Then loop on what changed until nothing fires.
+      Everything changed is added to the step, so it is scored.
+    - **Scoring reactions:** the Scoring powers on `ScoredThrough`, in order.
+    - **No powers:** with no tile powers in the rules, the chain is skipped and nothing extra is copied.
+  - **Firing:**
+    - The gate, the cooldown (`Board.TurnNumber >= ready turn`) and the once-per-action guard are checked first.
+      The guard keys on (tile id, or the position for a board built without ids; slot).
+    - It appends **`PowerTriggered`** (`ConnectIt.Event.PowerTriggered`; Blueprint `Get Active Power Triggered
+      Event`) and sets the ready turn.
+    - The effect rolls from `FRandomStream(Board.RandomSeed)`, and the seed moves on.
+    - Each operation is stamped with the power's faction and applied (`Apply`) if `CanApply`. Its events get the
+      Power Triggered event as their `CauseIndex`. With none applied: `bNoEffect`, or, for Sync, the event is
+      removed.
+    - `PowerTriggered::ApplyTo` sets the ready turn, so before + events = after holds on a chain.
+  - **Causes:**
+    - Every change-record entry carries a `Cause`: the event that brought it, or -1 for the action.
+    - `ScoredThrough` entries carry the scoring faction too (`FConnectItScoredTile`), which is the faction Scoring
+      powers act for.
+    - Scored events record their arrival's cause.
+  - **Filled gaps (the plan didn't say):**
+    - **A level-wide power cools down across the whole board**, not per tile:
+      `FConnectItBoardState::LevelWideReadyTurns`, in the same order as the rules' `LevelWidePowers`. A tile has
+      one ready turn, for its own power; per-tile cooldowns for level-wide powers would need more board data. To
+      revisit with Crumble.
+    - **A Sync power acts for the action's faction** with cause -1, since no single change sets it off.
+  - **Tests:** new `ConnectIt.Board.TilePowerChain`, with test-only effects in `ConnectIt_MinMaxTestTerms.h` (place
+    at offsets, move a neighbour, place at random, Sync clear):
+    - the owner's chain, checking event order and every cause;
+    - settle until quiet, where a power placing back on a fired tile doesn't fire it again;
+    - capture → Piece Changed only (place → Enter, remove → Exit), each for its faction;
+    - cooldown 0 / 1 / 2 against the turn, with no effect still cooling down;
+    - the gate; same seed, same result;
+    - a Sync power clearing twice in one action, and staying quiet when not called for;
+    - no powers → scoring only;
+    - before + events = after on the chains.
 
 ## Stage 5: new operations and the first powers -- deferred
 

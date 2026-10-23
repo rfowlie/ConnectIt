@@ -44,6 +44,8 @@ UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_Event_PiecePlaced);
 // create visuals for any designer-placed starting pieces
 UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_Event_BoardSeeded);
 UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_Event_Scored);
+// A tile power fired (see FConnectItBoardEvent_PowerTriggered)
+UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_Event_PowerTriggered);
 UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_Event_PlayerWin);
 // A faction completed a win condition group that was not its last (see
 // FConnectItBoardEvent_WinCheckpointReached)

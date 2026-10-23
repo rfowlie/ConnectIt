@@ -14,6 +14,9 @@ namespace
         int32 Faction = INDEX_NONE;
         bool bHasKeeper = false;
         FGridPosition Keeper;
+
+        // The event that brought the arrival that found it (its Scored event's cause)
+        int32 Cause = INDEX_NONE;
     };
 
     // The same line (same faction, same tiles in any order)
@@ -69,6 +72,7 @@ float FConnectItScoringRule_Lines::ScorePass(
             Added.Faction = Faction;
             Added.bHasKeeper = Arrival.bSurvivesScoring;
             Added.Keeper = Arrival.Position;
+            Added.Cause = Arrival.Cause;
         }
     }
 
@@ -95,13 +99,15 @@ float FConnectItScoringRule_Lines::ScorePass(
             MutableState.ScoreBoard[Line.Faction] += LinePoints;
         }
 
-        // What scoring did, for what follows (each tile once)
+        // What scoring did, for what follows (each tile once), caused by this
+        // line's Scored event
+        const int32 ScoredEventIndex = OutEvents ? OutEvents->Events.Num() : INDEX_NONE;
         for (const FGridPosition& Position : Line.Positions)
         {
-            if (!OutChanges.ScoredThrough.Contains(Position))
+            if (!OutChanges.WasScoredThrough(Position))
             {
-                OutChanges.ScoredThrough.Add(Position);
-                OutChanges.AddTileChanged(Position, EConnectItTileChange::Multiplier, Line.Faction);
+                OutChanges.ScoredThrough.Add({ Position, Line.Faction, ScoredEventIndex });
+                OutChanges.AddTileChanged(Position, EConnectItTileChange::Multiplier, Line.Faction, ScoredEventIndex);
             }
         }
 
@@ -109,6 +115,7 @@ float FConnectItScoringRule_Lines::ScorePass(
         if (OutEvents)
         {
             FConnectItBoardEvent_Scored Event;
+            Event.CauseIndex = Line.Cause;
             Event.Faction   = Line.Faction;
             Event.Points    = LinePoints;
             Event.Positions = Line.Positions;

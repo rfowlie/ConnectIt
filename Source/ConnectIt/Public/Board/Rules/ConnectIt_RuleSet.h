@@ -147,18 +147,21 @@ struct CONNECTIT_API FConnectItRuleSet
     // The step AFTER an operation has changed the board
     // (FConnectItBoardOperation::Apply), kept separate from the change
     // itself, starting from what the operation reported (Changes). A loop:
-    //   1. settle -- pre-scoring reactions to what changed (tile powers:
-    //      empty until they are built);
+    //   1. settle -- the Sync tile powers, then the Piece Enter / Piece Exit /
+    //      Piece Changed / Tile Changed ones what changed sets off, until
+    //      nothing more fires (FConnectItPowerChain);
     //   2. score -- one scoring pass over every piece that arrived since the
     //      last pass (FConnectItScoringRule::ScorePass: all found first, then
     //      all applied);
-    //   3. scoring reactions (tile powers: empty until built);
+    //   3. scoring reactions: the Scoring tile powers on the tiles the
+    //      lines ran through (FConnectItPowerChain);
     //   then back to 1 with what scoring and its reactions changed. The chain
     //   ends at the first pass that scores nothing (a bug guard stops it
     //   after 64 passes).
     // Returns the points scored; OutEvents, if given, gets one Scored event
-    // appended per thing that scored (the AI's search passes none). Does not
-    // check for a win -- see GetWinningFaction / StampWinState.
+    // appended per thing that scored, and each power's Power Triggered and
+    // its effect's events (the AI's search passes none). Does not check for
+    // a win -- see GetWinningFaction / StampWinState.
     float ResolveBoardChange(
         FConnectItBoardState& Board,
         const FConnectItBoardChanges& Changes,

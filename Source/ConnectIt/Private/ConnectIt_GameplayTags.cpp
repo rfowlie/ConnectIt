@@ -31,6 +31,7 @@ UE_DEFINE_GAMEPLAY_TAG_COMMENT(ConnectIt_Tile_Default, "ConnectIt.Tile.Default",
 UE_DEFINE_GAMEPLAY_TAG_COMMENT(ConnectIt_Event_PiecePlaced, "ConnectIt.Event.PiecePlaced", "");
 UE_DEFINE_GAMEPLAY_TAG_COMMENT(ConnectIt_Event_BoardSeeded, "ConnectIt.Event.BoardSeeded", "");
 UE_DEFINE_GAMEPLAY_TAG_COMMENT(ConnectIt_Event_Scored, "ConnectIt.Event.Scored", "Something scored as a result of a board change (see FConnectItBoardEvent_Scored)");
+UE_DEFINE_GAMEPLAY_TAG_COMMENT(ConnectIt_Event_PowerTriggered, "ConnectIt.Event.PowerTriggered", "A tile power fired (see FConnectItBoardEvent_PowerTriggered)");
 UE_DEFINE_GAMEPLAY_TAG_COMMENT(ConnectIt_Event_PlayerWin, "ConnectIt.Event.PlayerWin", "");
 UE_DEFINE_GAMEPLAY_TAG_COMMENT(ConnectIt_Event_LoseConditionMet, "ConnectIt.Event.LoseConditionMet", "A faction met one of its lose conditions, so it has lost (see FConnectItBoardEvent_LoseConditionMet)");
 UE_DEFINE_GAMEPLAY_TAG_COMMENT(ConnectIt_Event_GoalsChanged, "ConnectIt.Event.GoalsChanged", "A side's goals were replaced mid-match (see FConnectItBoardEvent_GoalsChanged)");

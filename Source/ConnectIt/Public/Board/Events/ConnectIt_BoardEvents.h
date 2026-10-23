@@ -371,6 +371,44 @@ struct CONNECTIT_API FConnectItBoardEvent_Scored : public FConnectItBoardResultE
     virtual void ApplyTo(FConnectItBoardState& Board) const override;
 };
 
+// A tile power fired: its trigger, gate and cooldown allowed it. The events
+// its effect made follow it, each with this event as its CauseIndex; this
+// event's own CauseIndex is the event that set it off. bNoEffect when the
+// effect found nothing to do (the power still shows and cools down). A Sync
+// power only appears when it changed something.
+USTRUCT(BlueprintType, meta = (DisplayName = "Power Triggered"))
+struct CONNECTIT_API FConnectItBoardEvent_PowerTriggered : public FConnectItBoardResultEvent
+{
+    GENERATED_BODY()
+
+    // The tile it fired on
+    UPROPERTY(BlueprintReadOnly, Category = "Event")
+    FGridPosition Position;
+
+    // Which power (ConnectIt.TilePower.*)
+    UPROPERTY(BlueprintReadOnly, Category = "Event")
+    FGameplayTag PowerName;
+
+    // Whose change set it off -- the faction its effect acted for (-1: none)
+    UPROPERTY(BlueprintReadOnly, Category = "Event")
+    int32 Faction = -1;
+
+    UPROPERTY(BlueprintReadOnly, Category = "Event")
+    bool bNoEffect = false;
+
+    // Which of the rules' level-wide powers it was (FConnectItRuleSet::
+    // LevelWidePowers), or -1: the tile's own power
+    UPROPERTY(BlueprintReadOnly, Category = "Event")
+    int32 LevelWideIndex = INDEX_NONE;
+
+    // The first turn it can fire again (its cooldown)
+    UPROPERTY(BlueprintReadOnly, Category = "Event")
+    int32 ReadyTurn = 0;
+
+    virtual FGameplayTag GetEventTag() const override;
+    virtual void ApplyTo(FConnectItBoardState& Board) const override;
+};
+
 // A faction just completed one of its win condition groups, and it was not the
 // last one (completing the last is the win: see GameWon). One per group
 // completed, in order -- a move that completes two in a row produces two. The
