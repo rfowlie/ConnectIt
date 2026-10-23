@@ -6,6 +6,8 @@ Vault-wide passes go in `_core/_logs/`.
 
 Newest first:
 
+- [2026-10-23-0205](2026-10-23-0205.md) — session — first tile powers, Stage 4: tile hooks on `AConnectIt_TileBase`,
+  reaction handles, the tile visualizer (gated tasks per event tag). 62/62 tests; Throughput unchanged.
 - [2026-10-23-0155](2026-10-23-0155.md) — session — first tile powers, Stage 3: Turn Start trigger (a countdown),
   the Turn Start change at turn start, Repel, Get Power Turns Left. 61/61 tests; Throughput unchanged.
 - [2026-10-23-0140](2026-10-23-0140.md) — session — tile catalog takes ConnectIt tiles only (Default Tile Class rename

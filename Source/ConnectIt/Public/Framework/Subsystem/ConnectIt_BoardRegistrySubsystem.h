@@ -7,6 +7,7 @@
 #include "ConnectIt_BoardRegistrySubsystem.generated.h"
 
 class UConnectIt_TileRegistry;
+class UConnectIt_TileVisualizer;
 class UConnectIt_PieceRegistry;
 class UGridDefinition;
 
@@ -69,4 +70,8 @@ private:
 
     UPROPERTY()
     TObjectPtr<UGridDefinition> GridDefinition;
+
+    // Calls the tile actors' hooks as board events play (every machine)
+    UPROPERTY()
+    TObjectPtr<UConnectIt_TileVisualizer> TileVisualizer;
 };

@@ -242,6 +242,37 @@ stages.
 - **Design note** (in the recipe): a hook that overrides must call `Finish` -- cache the reaction, finish when the
   animation ends.
 - Tests: what they can without a world -- reaction finish counting and a second Finish. The dispatch is checked in PIE.
+- *As built (2026-10-23; 62/62 tests; Throughput 361,177 nodes/s, unchanged):*
+  - **`UConnectIt_TileReaction`** (`Public/Board/ConnectIt_TileReaction.h`):
+    - `Finish` (Blueprint), `IsFinished`, `Tile`, and a C++ `OnFinished` callback;
+    - a second Finish is ignored;
+    - finishing removes it from its tile.
+  - **`AConnectIt_TileBase` hooks** (`BlueprintNativeEvent`, each with a Reaction; defaults finish):
+    - `OnPowerTriggered(Event)`;
+    - `OnPieceEnter` / `OnPieceExit(Faction, Cause)`, where Cause is the board event's tag;
+    - `OnMultiplierChanged(NewMultiplier)`, `OnLockChanged(bLocked)`, `OnActiveChanged(bActive)`;
+    - `OnChainPartnerChanged(Event)`, on the chained tile and its new partner.
+  - **The tile holds its reactions:** `HoldReaction`, `ForgetReaction`, and `FinishPendingReactions` (Blueprint, for
+    a pool to call; `EndPlay` calls it too).
+  - **`UConnectIt_TileVisualizer`** (`Public/Board/ConnectIt_TileVisualizer.h`), created by the board registry
+    subsystem after the tile registry, on every machine:
+    - **Tasks:** one persistent gated task per handled tag (12: Power Triggered, Piece Placed / Swapped / Captured /
+      Removed / Moved, Scored, Multiplier Changed, Tile Multiplier Destroyed, Tile Lock Changed, Tile Active
+      Toggled, Chain Partner Changed), all with one handler that reads the queue's active payload.
+    - **Swaps:** the pieces' owners come from the display board, which still shows the board before the event.
+    - **Scored:** calls `OnMultiplierChanged` on each tile of the line. Cleared pieces aren't a tile hook (the piece
+      visuals show them).
+  - **Completion is deferred to the next tick when it happens during the visualizer's own dispatch** (no tile actor,
+    or every hook finished at once). The plugin's event queue calls each gated task from inside a loop over that
+    phase's tasks, and completing a task removes it from that same array. A later Finish completes at once.
+  - **Every handled event now waits at least a frame** for the visualizer, even with no tile actor. Unnoticeable at
+    one event per frame, but a long chain plays a frame per event slower.
+  - **Tests:** new `ConnectIt.Board.TileHooks`:
+    - a reaction finishes once;
+    - all seven hook defaults finish;
+    - a tile finishing what it holds counts each reaction once;
+    - the 12 handled tags.
+    - The dispatch itself needs a world: check it in PIE.
 
 ## Stage 5: vault
 

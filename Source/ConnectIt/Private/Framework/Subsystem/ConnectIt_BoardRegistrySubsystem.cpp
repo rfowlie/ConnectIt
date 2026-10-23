@@ -5,6 +5,7 @@
 
 #include "Board/ConnectIt_PieceRegistry.h"
 #include "Board/ConnectIt_TileRegistry.h"
+#include "Board/ConnectIt_TileVisualizer.h"
 #include "Framework/Data/ConnectIt_LevelConfigDataAsset.h"
 #include "Framework/Data/ConnectIt_WorldSettings.h"
 #include "Framework/Library/ConnectIt_GameUtilityLibrary.h"
@@ -72,6 +73,10 @@ void UConnectIt_BoardRegistrySubsystem::OnWorldBeginPlay(UWorld& InWorld)
                 "OnWorldBeginPlay — no UGameEventTaskSubsystem, TileRegistry "
                 "mappings will not stay in sync"));
         }
+
+        // The tile actors' hooks, as board events play
+        TileVisualizer = NewObject<UConnectIt_TileVisualizer>(this);
+        TileVisualizer->Initialise(TileRegistry);
     }
     else
     {
