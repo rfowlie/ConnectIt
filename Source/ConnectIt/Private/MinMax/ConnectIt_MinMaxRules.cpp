@@ -189,8 +189,9 @@ FConnectItMinMaxRules::FState FConnectItMinMaxRules::ApplyMove(
     Rules.AdvanceWinGroups(Child.Board);
 
     // 3. The turn passes. The one thing still assumed here: every move ends
-    //    the turn.
+    //    the turn. Turns count both sides' (as tile power cooldowns do).
     Child.SideToMove = Opponent(State.SideToMove);
+    Child.Board.TurnNumber++;
     return Child;
 }
 

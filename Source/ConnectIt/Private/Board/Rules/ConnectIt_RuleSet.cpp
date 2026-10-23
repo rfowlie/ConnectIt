@@ -55,6 +55,28 @@ void FConnectItRuleSet::ResolveConditionGroups(
     SetConditionGroups(true, false, AILoseConditions);
 }
 
+void FConnectItRuleSet::SetLevelWidePowers(const TArray<FConnectItTilePower>& Powers)
+{
+    TilePowers.Reset(Powers.Num());
+    for (int32 Index = 0; Index < Powers.Num(); Index++)
+    {
+        const FConnectItTilePower& Power = Powers[Index];
+        if (!Power.IsSet())
+        {
+            UE_LOG(LogTemp, Warning, TEXT("ConnectIt_RuleSet: level-wide power %d has no name -- skipped"), Index);
+            continue;
+        }
+        if (TilePowers.ContainsByPredicate([&Power](const FConnectItTilePower& Added) { return Added.Name == Power.Name; }))
+        {
+            UE_LOG(LogTemp, Warning, TEXT("ConnectIt_RuleSet: level-wide power %s is listed twice -- the second skipped"),
+                *Power.Name.ToString());
+            continue;
+        }
+        FConnectItTilePower& Added = TilePowers.Add_GetRef(Power);
+        Added.bLevelWide = true;
+    }
+}
+
 void FConnectItRuleSet::SetConditionGroups(bool bForAI, bool bWinGoals,
     const TArray<TObjectPtr<UConnectIt_MatchConditionAsset>>& Conditions)
 {

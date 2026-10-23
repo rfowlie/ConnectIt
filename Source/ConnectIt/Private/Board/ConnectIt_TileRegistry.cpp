@@ -85,3 +85,37 @@ TArray<AGridTileBase*> UConnectIt_TileRegistry::UnregisterTilesAt(const TArray<F
     }
     return Removed;
 }
+
+TArray<AGridTileBase*> UConnectIt_TileRegistry::ShiftTiles(const TArray<FGridPosition>& StartPositions,
+    const TArray<FGridPosition>& EndPositions)
+{
+    TArray<AGridTileBase*> Moving;
+    if (StartPositions.Num() != EndPositions.Num())
+    {
+        UE_LOG(LogTemp, Error,
+            TEXT("ConnectIt_TileRegistry: ShiftTiles -- %d start positions but %d end positions, nothing moved"),
+            StartPositions.Num(), EndPositions.Num());
+        return Moving;
+    }
+
+    // Read every moving tile before writing any: a later pair's start can be
+    // an earlier pair's end
+    Moving.Reserve(StartPositions.Num());
+    for (const FGridPosition& Start : StartPositions)
+    {
+        const TObjectPtr<AGridTileBase>* Found = TileMap.Find(Start);
+        Moving.Add(Found ? Found->Get() : nullptr);
+    }
+    for (const FGridPosition& Start : StartPositions)
+    {
+        TileMap.Remove(Start);
+    }
+    for (int32 Index = 0; Index < EndPositions.Num(); Index++)
+    {
+        if (Moving[Index])
+        {
+            TileMap.Add(EndPositions[Index], Moving[Index]);
+        }
+    }
+    return Moving;
+}

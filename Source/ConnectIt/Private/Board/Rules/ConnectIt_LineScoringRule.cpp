@@ -113,6 +113,12 @@ float FConnectItScoringRule_Lines::ScorePass(
             Event.Points    = LinePoints;
             Event.Positions = Line.Positions;
             Event.ClearedPositions = MoveTemp(ClearedPositions);
+            Event.NewMultipliers.Reserve(Line.Positions.Num());
+            for (const FGridPosition& Position : Line.Positions)
+            {
+                const FConnectItTileData* Tile = MutableState.GetTileData(Position);
+                Event.NewMultipliers.Add(Tile ? Tile->Multiplier : 1.f);
+            }
             OutEvents->Add(Event);
         }
     }

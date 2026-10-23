@@ -7,14 +7,16 @@
 #include "GridMechanicsBaseStructs.h"
 #include "Templates/SubclassOf.h"
 #include "Board/ConnectIt_TileDataProvider.h"
+#include "Board/Powers/ConnectIt_TilePower.h"
 #include "ConnectIt_BoardLayoutCell.generated.h"
 
 class AGridTileBase;
 
 // One tile of a board layout (UConnectIt_BoardLayout): where it is, what it
-// starts with, and which tile actor shows it. The gameplay values (TileData)
-// are copied into the board's own tile data when the tile is added; the class
-// and variant are only for the visuals that spawn it. Plain data.
+// starts with, and which tile actor shows it. The gameplay values (TileData,
+// TilePower) are copied into the board's own tile data when the tile is
+// added; the class and variant are only for the visuals that spawn it. Plain
+// data.
 USTRUCT(BlueprintType)
 struct CONNECTIT_API FConnectItBoardLayoutCell
 {
@@ -32,10 +34,24 @@ struct CONNECTIT_API FConnectItBoardLayoutCell
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Cell", meta = (ShowOnlyInnerProperties))
     FConnectItTileInitialData TileData;
 
+    // The tile's power with its values, captured from the placed tile
+    // (AConnectIt_TileBase::GetTilePower) by the layout tool. Its name must
+    // match the Tile Class's Tile Power Tag. Empty = no power.
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Cell")
+    FConnectItTilePower TilePower;
+
     // Optional: a look for the tile actor to pick (e.g. cracked, mossy) --
     // the actor's own business; gameplay never reads it
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Cell")
     FGameplayTag VisualVariant;
+
+    // The board tile this cell starts as (its id is the board's to give)
+    FConnectItTileData ToTileData(int32 NumFactions) const
+    {
+        FConnectItTileData Tile = TileData.ToTileData(NumFactions);
+        Tile.SetTilePower(TilePower);
+        return Tile;
+    }
 };
 
 // What changes to turn one set of tiles into a layout: the tiles that go and

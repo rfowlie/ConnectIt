@@ -547,8 +547,10 @@ void FConnectItBoardOperation_DestroyTileMultiplier::Apply(
     FConnectItBoardChanges& OutChanges,
     FConnectItBoardChangeEvent* OutEvents) const
 {
+    float PreviousMultiplier = 1.0f;
     if (FConnectItTileData* Tile = Board.GetTileDataMutable(Position))
     {
+        PreviousMultiplier = Tile->Multiplier;
         Tile->Multiplier = 1.0f;
         OutChanges.AddTileChanged(Position, EConnectItTileChange::Multiplier, Faction);
     }
@@ -556,7 +558,8 @@ void FConnectItBoardOperation_DestroyTileMultiplier::Apply(
     if (OutEvents)
     {
         FConnectItBoardEvent_TileMultiplierDestroyed Event;
-        Event.Position = Position;
+        Event.Position           = Position;
+        Event.PreviousMultiplier = PreviousMultiplier;
         OutEvents->Add(Event);
     }
 }
@@ -819,7 +822,8 @@ namespace
         }
     }
 
-    // Puts the tiles on. A starting piece is scored (reported as moved: a tile
+    // Puts the tiles on, each with a new tile id and its cell's power (if any).
+    // A starting piece is scored (reported as moved: a tile
     // appearing sets off no Piece Enter) and counts as one of its faction's
     // starting pieces, like a designer-placed piece at the start of the match
     // (piece-count goals measure from those).
@@ -831,7 +835,7 @@ namespace
         {
             if (Board.GetTileData(Cell.Position)) continue;
 
-            Board.SetTileData(Cell.Position, Cell.TileData.ToTileData(NumFactions));
+            const int32 TileId = Board.AddTile(Cell.Position, Cell.ToTileData(NumFactions));
             if (Cell.TileData.HasStartingPiece(NumFactions))
             {
                 OutChanges.AddMoved(Cell.Position, Cell.TileData.StartingFactionPiece, true);
@@ -841,6 +845,7 @@ namespace
                 }
             }
             OutEvent.Cells.Add(Cell);
+            OutEvent.TileIds.Add(TileId);
         }
     }
 

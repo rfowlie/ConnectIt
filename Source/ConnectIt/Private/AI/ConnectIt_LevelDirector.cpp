@@ -181,6 +181,34 @@ EDataValidationResult UConnectIt_LevelDirector::IsDataValid(FDataValidationConte
     ValidateConditionList(this, TEXT("AI Win Conditions"), AIWinConditions, Context, Result);
     ValidateConditionList(this, TEXT("AI Lose Conditions"), AILoseConditions, Context, Result);
     ValidateConditionList(this, TEXT("Triggers"), GetTriggerConditions(), Context, Result);
+
+    // Level-wide powers: each named once, each doing something
+    TSet<FGameplayTag> PowerNames;
+    for (int32 Index = 0; Index < TilePowers.Num(); Index++)
+    {
+        const FConnectItTilePower& Power = TilePowers[Index];
+        if (!Power.IsSet())
+        {
+            Context.AddError(FText::FromString(FString::Printf(TEXT(
+                "ConnectIt_LevelDirector: Tile Powers %d has no Name."), Index)));
+            Result = EDataValidationResult::Invalid;
+            continue;
+        }
+        bool bDuplicate = false;
+        PowerNames.Add(Power.Name, &bDuplicate);
+        if (bDuplicate)
+        {
+            Context.AddError(FText::FromString(FString::Printf(TEXT(
+                "ConnectIt_LevelDirector: Tile Powers lists %s twice."), *Power.Name.ToString())));
+            Result = EDataValidationResult::Invalid;
+        }
+        if (!Power.Effect.IsValid())
+        {
+            Context.AddError(FText::FromString(FString::Printf(TEXT(
+                "ConnectIt_LevelDirector: Tile Powers %s has no Effect."), *Power.Name.ToString())));
+            Result = EDataValidationResult::Invalid;
+        }
+    }
     return Result;
 }
 

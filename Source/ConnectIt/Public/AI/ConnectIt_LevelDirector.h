@@ -97,6 +97,14 @@ public:
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Level|Conditions")
     TArray<TObjectPtr<UConnectIt_MatchConditionAsset>> AILoseConditions;
 
+    // --- Tile powers ---
+
+    // Powers that apply to every tile, on top of a tile's own (e.g. Crumble).
+    // Copied into the match's rules when it starts. A tile's own power comes
+    // from its tile class, not from here.
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Level|Tile Powers")
+    TArray<FConnectItTilePower> TilePowers;
+
     // --- Triggers ---
 
     // What the level watches for. Each fires once (until re-armed).

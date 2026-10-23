@@ -3,6 +3,7 @@
 #include "Framework/Data/ConnectIt_BoardLayout.h"
 #include "ConnectIt_Structs.h"
 #include "Misc/DataValidation.h"
+#include "Board/ConnectIt_TileBase.h"
 
 
 const FConnectItBoardLayoutCell* UConnectIt_BoardLayout::FindCell(const FGridPosition& Position) const
@@ -65,6 +66,30 @@ EDataValidationResult UConnectIt_BoardLayout::IsDataValid(FDataValidationContext
             Context.AddError(FText::FromString(FString::Printf(TEXT(
                 "ConnectIt_BoardLayout: cell %d repeats position (%d,%d) -- one tile per position."),
                 Index, Cell.Position.X, Cell.Position.Y)));
+            Result = EDataValidationResult::Invalid;
+        }
+
+        // A captured power must be the power of the cell's tile class
+        const AConnectIt_TileBase* TileDefaults = Cell.TileClass
+            ? Cast<AConnectIt_TileBase>(Cell.TileClass->GetDefaultObject())
+            : nullptr;
+        if (TileDefaults)
+        {
+            const FString Problem = AConnectIt_TileBase::CheckTilePower(TileDefaults->TilePowerTag, Cell.TilePower);
+            if (!Problem.IsEmpty())
+            {
+                Context.AddError(FText::FromString(FString::Printf(TEXT(
+                    "ConnectIt_BoardLayout: cell (%d,%d), tile class %s: %s. Capture the layout again from the level."),
+                    Cell.Position.X, Cell.Position.Y, *Cell.TileClass->GetName(), *Problem)));
+                Result = EDataValidationResult::Invalid;
+            }
+        }
+        else if (Cell.TileClass && Cell.TilePower.IsSet())
+        {
+            Context.AddError(FText::FromString(FString::Printf(TEXT(
+                "ConnectIt_BoardLayout: cell (%d,%d) has power %s but its tile class %s isn't a ConnectIt tile "
+                "(AConnectIt_TileBase) -- only those carry powers."),
+                Cell.Position.X, Cell.Position.Y, *Cell.TilePower.Name.ToString(), *Cell.TileClass->GetName())));
             Result = EDataValidationResult::Invalid;
         }
 

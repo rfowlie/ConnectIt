@@ -297,5 +297,64 @@ list changes). Stage 5 (operations and first powers) deferred to its own design;
 test-only powers. Plan updated: [tile-powers-plan](../design/tile-powers-plan.md). **Plan approved by the owner
 2026-10-22**; the question stays open until it is built and closes with its Stage 6 decision note.
 
+**2026-10-22, Stage 3 build: per-tile power values cost search speed (discussed, not decided).**
+
+- **Found while building:** carrying each tile's power with its values on the runtime tile data (an instanced struct,
+  as the [tile-power-setup](../design/tile-power-setup.md) decision required) costs ~17% AI search speed. That's
+  303,709 against 364,987 nodes/s, even with no powered tiles: board copies stop being plain memory copies. Without
+  that one field (tag, tile id and ready turn kept), speed is normal.
+- **Owner:** the editor side can use whatever is convenient, but runtime board state should be plain. Per-instance
+  editable power values are a bad setup: anyone can put bad values on a placed tile. Proposed instead: the level as
+  part of the power's tag (`TilePower.Poison.Level.1` / `.2`), and/or one Blueprint tile per power level, with its tag
+  set in Class Defaults and untouchable.
+- **Claude:**
+  - The cause is exactly the per-instance values: they force each tile to carry its own copy.
+  - If a tag names one exact definition (level included), the runtime tile carries only the tag. The definitions
+    live once, in the rules, copied once per match and once per search, not per node.
+  - The two proposals fit together. A per-level child Blueprint sets the tag (defaults only), and the tag names the
+    level.
+  - Lean: the values live in **one project-wide definitions list keyed by tag** (a data asset), not built by each
+    Blueprint. One place to tune, one definition per tag, readable without actors.
+  - What goes: `GetTilePower`, the captured power on layout cells, the Load Layout Into Level gap.
+  - Exception: a Chained tile's partner is per placed tile, but it is a link, not a power value. It is plain data
+    (a partner tile id) through the tile data provider and Set Chain Partner.
+- **Open:** a catalog asset or Blueprint class defaults for the values; then revise the plan's Stage 3.
+- **Owner (same day): a data asset, not Blueprints.** A map keyed by tag enforces one entry per power. Each entry
+  also slots in the **tile class that shows that power**. Trying a different skin or look in testing is then a new data
+  asset with other classes slotted in.
+- **Claude, what follows:**
+  - **Catalog:** a tile catalog data asset: `TMap<tag, {Tile Class, Power}>`.
+  - **Runtime:** the board tile carries the tag. The rules get the catalog's powers at match start. The tile class
+    stays in the asset, never in the rules or the board (it is a UObject reference, and the search runs on a worker
+    thread).
+  - **Authoring flips:** if the catalog decides a tag's class, then the placed tile or layout cell names the **tag**,
+    and the class follows from the catalog.
+    - Placed tiles pick only a tag from a list, never values. Validation: the tag must be in the catalog.
+    - This reverses "Tile Power Tag defaults-only on each subclass".
+  - Level-wide powers: the Level director lists tags; the definitions come from the catalog.
+  - **Still open:**
+    - Tag on the placed tile vs. in Blueprint class defaults (the catalog's class then has to agree with it).
+    - Hand-placed level tiles whose class differs from the catalog's: swapped at match start, by an editor tool, or
+      both.
+    - Where the catalog is chosen: the level config, with a project default.
+- **Owner (same day), on the three:**
+  1. The tag is set on the placed tile or layout cell; the catalog picks the look. Agreed.
+  2. **Builder tiles:** levels are blocked out with a placeholder **builder tile**. It takes a Tile Power Tag and shows
+     a small visual so designers can see which tile is where. An editor tool takes a tile catalog and swaps each
+     builder tile for the catalog's class. Levels must never be saved with those temporary swaps.
+  3. The catalog is chosen on the level config, with a project default; the default tile class becomes the catalog's
+     "no power" entry. Agreed.
+- **Claude, what follows:**
+  - **A preview, not a swap:** the tool spawns the catalog's actors as **transient** (never saved) and hides the
+    builder tiles with the editor's temporary hide (also never saved). Clearing the preview destroys the transient
+    actors and unhides the builders. Nothing the tool does can reach the saved level, so no pre-save hook is needed.
+  - **At match start the swap is real and always happens:** levels hold only builder tiles, so the tile registry
+    spawns the catalog's class for each one and retires the builder. The same spawn is used for Tiles Added (a layout
+    cell names a tag).
+  - **Layouts:** the layout tool captures builder tiles' tags and their per-tile settings.
+- **Decided (owner): revise.** Plan Stage 3 rewritten ([tile-powers-plan](../design/tile-powers-plan.md)); the
+  revision recorded in [tile-power-setup](../design/tile-power-setup.md) ("Revised: the tile catalog and builder
+  tiles"), its earlier class-held decision marked partly superseded. The code is reworked to match next.
+
 ## Resolution
 

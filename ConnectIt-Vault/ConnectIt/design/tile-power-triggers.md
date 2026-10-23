@@ -21,6 +21,10 @@ action).
 | **Piece Changed** | Pre scoring | The piece on the tile changes but stays: a capture (new owner) | **Loyal** (sketch): a captured piece flips back once |
 | **Tile Changed** | Pre scoring | The tile itself changes: multiplier, active/inactive, power given or lost | **Crumble** (level-wide): multiplier reaches 5, the tile deactivates and its piece is removed. **Overflow**: multiplier past 4, each neighbour gets +1. **Fuse**: multiplier changed, the tile turns inactive |
 | **Scoring** | Scoring | A line scores through the tile (whether or not its piece is cleared) | **Push** (the owner's chain example), **Poison**, **Overgrowth**, **Siphon** |
+| **Sync** | Every settle pass (first) | Not an event: the power checks state each pass and changes the board only when state calls for it | **Chained**: locked while its partner has no piece; unlocks when it has one; re-locks (destroying its piece) when it empties -- for any reason, scoring included |
+
+**Sync powers** (added 2026-10-22 with one-sided chained tiles) run first in every settle pass, are exempt from the
+once-per-action guard (they only follow state, so they can't loop) and have no cooldown.
 
 Pre-scoring powers fire in the order Piece Enter, Piece Exit, Piece Changed, Tile Changed, each in tile order. Scoring powers fire in
 tile order.

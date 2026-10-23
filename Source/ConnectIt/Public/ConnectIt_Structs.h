@@ -7,6 +7,7 @@
 #include "GridMechanicsBaseStructs.h"
 #include "GameplayTagContainer.h"
 #include "StructUtils/InstancedStruct.h"
+#include "Board/Powers/ConnectIt_TilePower.h"
 #include "ConnectIt_Structs.generated.h"
 
 
@@ -43,11 +44,48 @@ struct FConnectItTileData
     UPROPERTY(BlueprintReadOnly)
     bool bCanShift = true;
 
+    // This tile's id on its board: given by the board when the tile joins it
+    // (FConnectItBoardState::AddTile -- building the board, Add Tiles), never
+    // reused, never authored. It travels with the tile's data (a shift moves
+    // it along), so a power that refers to another tile stores this rather
+    // than a position. INDEX_NONE until the tile is on a board.
+    UPROPERTY(BlueprintReadOnly)
+    int32 TileId = INDEX_NONE;
+
+    // --- The tile's own power ---
+    // Copied from the tile when it joins the board (its class's Tile Power Tag,
+    // and the values the placed tile or layout cell gives it -- see
+    // AConnectIt_TileBase), then never changed: it travels with the tile.
+
+    // Which power (ConnectIt.TilePower.*); empty = none
+    UPROPERTY(BlueprintReadOnly)
+    FGameplayTag TilePowerTag;
+
+    // The power with its values; empty = none (only powered tiles carry one)
+    UPROPERTY(BlueprintReadOnly)
+    TInstancedStruct<FConnectItTilePower> TilePower;
+
+    // The first turn (FConnectItBoardState::TurnNumber) its power can fire
+    // again after a cooldown
+    UPROPERTY(BlueprintReadOnly)
+    int32 PowerReadyTurn = 0;
+
     void SetFactionPiece(const int32 InFactionPiece)
     {
         FactionPiece = InFactionPiece;
         bIsOccupied = FactionPiece != -1;
     }
+
+    // Gives the tile Power (an empty one = no power)
+    void SetTilePower(const FConnectItTilePower& Power)
+    {
+        TilePowerTag = Power.Name;
+        TilePower = Power.IsSet()
+            ? TInstancedStruct<FConnectItTilePower>::Make(Power)
+            : TInstancedStruct<FConnectItTilePower>();
+    }
+
+    const FConnectItTilePower* GetTilePower() const { return TilePower.GetPtr(); }
 };
 
 // Full board state -- the single source of truth
@@ -78,8 +116,22 @@ struct FConnectItBoardState
     UPROPERTY(BlueprintReadOnly)
     TArray<float> ScoreBoard;
 
+    // The turn this board is at (the GameState's turn number), stamped by
+    // whoever resolves a change on it: the Mediator for a real change, the
+    // caller of Simulate Operation, the AI for its search root (+1 per ply).
+    // Tile power cooldowns count against it.
     UPROPERTY(BlueprintReadOnly)
-    int32 LastModifiedTurn = 0;
+    int32 TurnNumber = 0;
+
+    // The seed of the board's random stream: tile powers that choose at
+    // random roll from it and advance it, so every copy of the board (server,
+    // the AI's search) rolls the same
+    UPROPERTY(BlueprintReadOnly)
+    int32 RandomSeed = 0;
+
+    // The id the next tile to join this board gets (FConnectItTileData::TileId)
+    UPROPERTY(BlueprintReadOnly)
+    int32 NextTileId = 0;
 
     UPROPERTY(BlueprintReadOnly)
     bool bGameOver = false;
@@ -168,6 +220,15 @@ struct FConnectItBoardState
         }
     }
 
+    // A new tile joins the board at Position: Data, given the board's next
+    // tile id. Returns the id.
+    int32 AddTile(const FGridPosition& Position, FConnectItTileData Data)
+    {
+        Data.TileId = NextTileId++;
+        SetTileData(Position, Data);
+        return Data.TileId;
+    }
+
     // Take a tile off the board, with whatever is on it (the other tiles keep
     // their order). False if there was no tile there.
     bool RemoveTileData(const FGridPosition& Position)
@@ -214,6 +275,42 @@ struct FConnectItBoardState
     const FConnectItTileData& GetTileDataAt(int32 Index) const
     {
         return TileDataArray[Index];
+    }
+
+    // Whether Other has the same tiles (by position, in any order) holding
+    // the same data (piece, multiplier, flags, id, power), and the same scores. The match-level fields (turn, win
+    // state, progress) aren't compared. Checks that a board stepped along by
+    // its events (FConnectItBoardEvent::ApplyTo) arrived where the change did.
+    bool HasSameTilesAndScores(const FConnectItBoardState& Other) const
+    {
+        if (TilePositions.Num() != Other.TilePositions.Num()) return false;
+        if (ScoreBoard.Num() != Other.ScoreBoard.Num()) return false;
+
+        for (int32 Index = 0; Index < ScoreBoard.Num(); Index++)
+        {
+            if (!FMath::IsNearlyEqual(ScoreBoard[Index], Other.ScoreBoard[Index])) return false;
+        }
+
+        for (int32 Index = 0; Index < TilePositions.Num(); Index++)
+        {
+            const FConnectItTileData* Theirs = Other.GetTileData(TilePositions[Index]);
+            if (!Theirs) return false;
+
+            const FConnectItTileData& Ours = TileDataArray[Index];
+            if (Ours.FactionPiece != Theirs->FactionPiece
+                || !FMath::IsNearlyEqual(Ours.Multiplier, Theirs->Multiplier)
+                || Ours.bIsActive != Theirs->bIsActive
+                || Ours.bIsOccupied != Theirs->bIsOccupied
+                || Ours.bCanShift != Theirs->bCanShift
+                || Ours.TileId != Theirs->TileId
+                || Ours.TilePowerTag != Theirs->TilePowerTag
+                || Ours.PowerReadyTurn != Theirs->PowerReadyTurn
+                || !(Ours.TilePower == Theirs->TilePower))
+            {
+                return false;
+            }
+        }
+        return true;
     }
 };
 

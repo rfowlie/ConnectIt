@@ -8,6 +8,7 @@
 #include "Library/CodingUtilsLibrary.h"
 #include "Net/UnrealNetwork.h"
 #include "Board/ConnectIt_TileDataProvider.h"
+#include "Board/ConnectIt_TileBase.h"
 #include "Tile/GridTileBase.h"
 #include "Tile/GridTileRegistryBase.h"
 
@@ -18,8 +19,47 @@ UConnectIt_BoardStateComponent::UConnectIt_BoardStateComponent()
     SetIsReplicatedByDefault(true);
 }
 
+FConnectItTileData UConnectIt_BoardStateComponent::MakeTileData(
+    const AGridTileBase* Tile, int32 NumFactions, float InitialMultiplier)
+{
+    FConnectItTileData TileData;
+    TileData.SetFactionPiece(-1);
+    TileData.Multiplier   = InitialMultiplier;
+    TileData.bIsActive    = true;
+    if (!IsValid(Tile)) return TileData;
+
+    if (Tile->Implements<UConnectIt_TileDataProvider>())
+    {
+        const FConnectItTileInitialData Designer =
+            IConnectIt_TileDataProvider::Execute_GetInitialTileData(Tile);
+
+        TileData = Designer.ToTileData(NumFactions);
+        if (Designer.StartingFactionPiece >= 0 && !Designer.HasStartingPiece(NumFactions))
+        {
+            UE_LOG(LogTemp, Warning,
+                TEXT("ConnectIt_BoardStateComponent: tile '%s' has "
+                     "StartingFactionPiece %d but the board only has %d "
+                     "factions -- starting empty"),
+                *Tile->GetName(), Designer.StartingFactionPiece, NumFactions);
+        }
+    }
+
+    if (const AConnectIt_TileBase* PoweredTile = Cast<AConnectIt_TileBase>(Tile))
+    {
+        FString Problem;
+        TileData.SetTilePower(PoweredTile->MakeBoardPower(&Problem));
+        if (!Problem.IsEmpty())
+        {
+            UE_LOG(LogTemp, Warning, TEXT("ConnectIt_BoardStateComponent: tile '%s': %s"),
+                *Tile->GetName(), *Problem);
+        }
+    }
+    return TileData;
+}
+
 // Each tile that implements IConnectIt_TileDataProvider supplies its own
-// designer-set starting values; any other tile gets the defaults below.
+// designer-set starting values; any other tile gets the defaults (see
+// MakeTileData). Each tile gets its board id in registry order.
 void UConnectIt_BoardStateComponent::InitialiseBoardState(
     UGridTileRegistryBase* TileRegistry,
     UGridPieceRegistryBase* PieceRegistry,
@@ -36,40 +76,26 @@ void UConnectIt_BoardStateComponent::InitialiseBoardState(
     TArray<int32> StartingPiecesPerFaction;
     StartingPiecesPerFaction.Init(0, NumFactions);
 
+    int32 PoweredTiles = 0;
     for (AGridTileBase* Tile : TileRegistry->GetAllTiles())
     {
-        FConnectItTileData TileData;
-        TileData.SetFactionPiece(-1);
-        TileData.Multiplier   = InitialMultiplier;
-        TileData.bIsActive    = true;
+        const FConnectItTileData TileData = MakeTileData(Tile, NumFactions, InitialMultiplier);
 
         if (IsValid(Tile) && Tile->Implements<UConnectIt_TileDataProvider>())
         {
-            const FConnectItTileInitialData Designer =
-                IConnectIt_TileDataProvider::Execute_GetInitialTileData(Tile);
-
-            TileData = Designer.ToTileData(NumFactions);
             TilesWithDesignerData++;
-
-            if (Designer.StartingFactionPiece >= 0)
-            {
-                if (Designer.HasStartingPiece(NumFactions))
-                {
-                    StartingPieces++;
-                    StartingPiecesPerFaction[Designer.StartingFactionPiece]++;
-                }
-                else
-                {
-                    UE_LOG(LogTemp, Warning,
-                        TEXT("ConnectIt_BoardStateComponent: tile '%s' has "
-                             "StartingFactionPiece %d but the board only has %d "
-                             "factions -- starting empty"),
-                        *Tile->GetName(), Designer.StartingFactionPiece, NumFactions);
-                }
-            }
+        }
+        if (StartingPiecesPerFaction.IsValidIndex(TileData.FactionPiece))
+        {
+            StartingPieces++;
+            StartingPiecesPerFaction[TileData.FactionPiece]++;
+        }
+        if (TileData.GetTilePower())
+        {
+            PoweredTiles++;
         }
 
-        InitialState.SetTileData(TileRegistry->GetPositionOfTile(Tile), TileData);
+        InitialState.AddTile(TileRegistry->GetPositionOfTile(Tile), TileData);
     }
 
     FString PerFactionSummary;
@@ -80,13 +106,13 @@ void UConnectIt_BoardStateComponent::InitialiseBoardState(
     }
     UE_LOG(LogTemp, Log,
         TEXT("ConnectIt_BoardStateComponent: InitialiseBoardState -- %d tiles, "
-             "%d with designer data, %d starting pieces (faction:count %s)"),
-        InitialState.TilePositions.Num(), TilesWithDesignerData,
+             "%d with designer data, %d with a power, %d starting pieces (faction:count %s)"),
+        InitialState.TilePositions.Num(), TilesWithDesignerData, PoweredTiles,
         StartingPieces, *PerFactionSummary);
 
     // Initialise scoreboard with one entry per faction
     InitialState.ScoreBoard.Init(0.f, NumFactions);
-    InitialState.LastModifiedTurn = 0;
+    InitialState.TurnNumber       = 0;
     InitialState.bGameOver        = false;
     InitialState.WinningFactionSlot = -1;
     InitialState.TargetScore      = InTargetScore;
@@ -96,6 +122,9 @@ void UConnectIt_BoardStateComponent::InitialiseBoardState(
     // Apply without capturing snapshot -- no previous state yet
     BoardSnapshot.PreviousState = InitialState;
     BoardSnapshot.CurrentState  = InitialState;
+
+    DisplayBoard = InitialState;
+    bDisplayBoardStarted = true;
 
     // Mark this initial snapshot as the seed so visuals for any starting
     // pieces get created. It replicates with the snapshot, so clients see the
@@ -211,14 +240,33 @@ void UConnectIt_BoardStateComponent::GetLifetimeReplicatedProps(TArray<FLifetime
     DOREPLIFETIME(UConnectIt_BoardStateComponent, BoardSnapshot);
 }
 
+void UConnectIt_BoardStateComponent::EndPlay(const EEndPlayReason::Type EndPlayReason)
+{
+    if (UGameEventTaskSubsystem* GameEventSubsystem =
+        GetWorld() ? GetWorld()->GetSubsystem<UGameEventTaskSubsystem>() : nullptr)
+    {
+        GameEventSubsystem->OnAnyTagComplete.RemoveDynamic(
+            this, &UConnectIt_BoardStateComponent::HandleQueueEntryComplete);
+    }
+    Super::EndPlay(EndPlayReason);
+}
+
 void UConnectIt_BoardStateComponent::OnRep_BoardSnapshot()
 {
+    // A client's display board starts from the board before its first
+    // snapshot's change (the seed itself, unless it joined mid-match)
+    if (!bDisplayBoardStarted)
+    {
+        DisplayBoard = BoardSnapshot.PreviousState;
+        bDisplayBoardStarted = true;
+    }
+
     // Previous and current both arrived atomically
     BroadcastChange();
     EnqueueBoardEventTags();
 }
 
-void UConnectIt_BoardStateComponent::EnqueueBoardEventTags() const
+void UConnectIt_BoardStateComponent::EnqueueBoardEventTags()
 {
     UGameEventTaskSubsystem* GameEventSubsystem =
         GetWorld() ? GetWorld()->GetSubsystem<UGameEventTaskSubsystem>() : nullptr;
@@ -231,15 +279,16 @@ void UConnectIt_BoardStateComponent::EnqueueBoardEventTags() const
         return;
     }
 
-    // One queue entry per event, in the order they happened. Each carries
-    // its own data as the entry's payload, so a listener always reads the
-    // event that is actually playing (UConnectIt_BoardEventLibrary) -- even if this
-    // snapshot has been replaced by a newer one by then.
+    // The display board steps along as these complete
+    GameEventSubsystem->OnAnyTagComplete.AddUniqueDynamic(
+        this, &UConnectIt_BoardStateComponent::HandleQueueEntryComplete);
+
+    // Only entries that are board events with a tag are queued
+    TArray<const FInstancedStruct*, TInlineAllocator<16>> ToQueue;
     for (const FInstancedStruct& Entry : BoardSnapshot.ChangeEvent.Events)
     {
         const FConnectItBoardEvent* Event = Entry.GetPtr<FConnectItBoardEvent>();
-        const FGameplayTag EventTag = Event ? Event->GetEventTag() : FGameplayTag();
-        if (!EventTag.IsValid())
+        if (!Event || !Event->GetEventTag().IsValid())
         {
             UE_LOG(LogTemp, Error,
                 TEXT("ConnectIt_BoardStateComponent: EnqueueBoardEventTags — "
@@ -247,7 +296,64 @@ void UConnectIt_BoardStateComponent::EnqueueBoardEventTags() const
                 *GetNameSafe(Entry.GetScriptStruct()));
             continue;
         }
-
-        GameEventSubsystem->QueueTagContainerWithPayload(FGameplayTagContainer(EventTag), Entry);
+        ToQueue.Add(&Entry);
     }
+
+    // Counted before any is queued: with no visuals bound an entry completes
+    // inside its own queue call, and the display board mustn't catch up to
+    // Current until the last one has applied
+    PendingDisplayEvents += ToQueue.Num();
+    if (PendingDisplayEvents == 0)
+    {
+        CatchDisplayBoardUp();
+        return;
+    }
+
+    // One queue entry per event, in the order they happened. Each carries
+    // its own data as the entry's payload, so a listener always reads the
+    // event that is actually playing (UConnectIt_BoardEventLibrary) -- even if this
+    // snapshot has been replaced by a newer one by then.
+    for (const FInstancedStruct* Entry : ToQueue)
+    {
+        const FGameplayTag EventTag = Entry->Get<FConnectItBoardEvent>().GetEventTag();
+        GameEventSubsystem->QueueTagContainerWithPayload(FGameplayTagContainer(EventTag), *Entry);
+    }
+}
+
+void UConnectIt_BoardStateComponent::HandleQueueEntryComplete(FGameplayTag Tag)
+{
+    if (PendingDisplayEvents <= 0) return;
+
+    const UGameEventTaskSubsystem* GameEventSubsystem =
+        GetWorld() ? GetWorld()->GetSubsystem<UGameEventTaskSubsystem>() : nullptr;
+    if (!GameEventSubsystem) return;
+
+    // Still the completing entry's payload (the queue clears it after this);
+    // anything else completing (the change-complete marker, other game
+    // events) carries no board event
+    const FConnectItBoardEvent* Event = GameEventSubsystem->GetActivePayload().GetPtr<FConnectItBoardEvent>();
+    if (!Event) return;
+
+    Event->ApplyTo(DisplayBoard);
+    PendingDisplayEvents--;
+
+    if (PendingDisplayEvents == 0)
+    {
+        CatchDisplayBoardUp();
+        return;
+    }
+    OnDisplayBoardChanged.Broadcast();
+}
+
+void UConnectIt_BoardStateComponent::CatchDisplayBoardUp()
+{
+    if (!DisplayBoard.HasSameTilesAndScores(BoardSnapshot.CurrentState))
+    {
+        UE_LOG(LogTemp, Warning,
+            TEXT("ConnectIt_BoardStateComponent: the display board's tiles or scores don't match the current "
+                 "board after its events played -- snapping to it (a snapshot was missed, or an event doesn't "
+                 "carry its whole change)"));
+    }
+    DisplayBoard = BoardSnapshot.CurrentState;
+    OnDisplayBoardChanged.Broadcast();
 }

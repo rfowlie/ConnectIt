@@ -1,6 +1,9 @@
 # Tile power setup: tile classes as identity
 
-Design note (2026-10-22). **Under discussion; nothing decided beyond the owner's direction; nothing built.** Builds on
+Design note (2026-10-22). **Decided with the owner the same day (below), then revised the same day after the first
+build: see "Revised: the tile catalog and builder tiles" at the end -- that section is current; "Decided" is kept as
+the history.** Folded into the tile-powers plan's Stage 3.
+Builds on
 [tile-power-triggers](tile-power-triggers.md) and the approved [tile-powers-plan](tile-powers-plan.md) (Stage 3: power
 data and authoring) and [tile-lock-and-chained-tiles-plan](tile-lock-and-chained-tiles-plan.md).
 
@@ -62,8 +65,64 @@ For art and design, **a tile's power is part of what the tile *is***:
 7. **The tile registry and replacement.** Replacing a tile (Remove + Add) gives it a new actor; anything holding the old
    actor (UI highlights, hover) must look tiles up by position each time, not cache actors.
 
-## Open
+## Decided (owner, 2026-10-22) -- partly superseded the same day
 
-- Shift: which option for powered tiles?
-- Power definitions: class-held, Level-director list (approved), or a project catalog with per-level overrides?
-- Confirm dropping `_SetTilePower` (tile replacement instead).
+*Superseded by the revision below: the defaults-only `TilePowerTag` per subclass (Pitfall 2's values from each
+Blueprint) and Pitfall 3's one subclass per power. Still standing: `_SetTilePower` dropped, per-tile configuration on
+instances, tile actors following the board (Pitfall 1), validation, and visualizers handling replaced tiles.*
+
+- **`_SetTilePower` dropped.** A tile becomes another kind by Remove Tiles + Add Tiles with a different class.
+- **`TilePowerTag`** (renamed from `PowerTag`) lives on the new C++ **`AConnectIt_TileBase`** as **defaults-only**.
+- **Per-tile configuration stays exposed** on instances (starting piece, multiplier, active, shiftable, lock, chain
+  link).
+- **Pitfall 1 isn't one:** keeping tile actors where the board says is the visualizers' job -- on a shift they move the
+  tile actors with their data (as the piece registry does for pieces), so class and data never disagree on screen.
+- **Pitfall 2 -- values come from the Blueprint subclass:** a powered tile's Blueprint exposes its tunable values and
+  hands them over through `GetTilePower()`, so values are tuned per placed tile and per layout cell. The class decides
+  *what* the power is, instances tune *how much*. The values are copied onto the tile's data (and travel with it); the
+  Level director's list keeps only level-wide powers.
+- **Pitfall 3 isn't one:** one `AConnectIt_TileBase` subclass per power; visual variants as Blueprint subclasses of
+  that, or handled inside the one power class -- that's what Blueprints are for.
+- **Pitfall 4 (validation):** agreed.
+- **Pitfall 5:** the visualizers handle a tile being replaced at runtime.
+
+Folded into [tile-powers-plan](tile-powers-plan.md) Stage 3 (and a tile-actor bullet in Stage 2).
+
+## Revised (owner, 2026-10-22): the tile catalog and builder tiles
+
+**Why:** the first Stage 3 build carried each tile's power, with its values, on the board's tile data (each placed
+tile could tune its own values, so each board tile needed its own copy). That made every board copy slower: ~17% AI
+search speed (303,709 against 364,987 nodes/s), even with no powered tiles. The owner also judged per-tile editable
+values a bad setup: anyone can put bad values on a placed tile, and errors spread quickly. Discussion:
+[tile-powers-in-the-board-pipeline](../_questions/tile-powers-in-the-board-pipeline.md) (Stage 3 build round).
+
+- **A power is defined once, by tag.** A level is part of the tag (`ConnectIt.TilePower.Poison.1`, `.2`); the tag
+  names one exact definition. Nothing about a power's values is set on a placed tile.
+- **The tile catalog** (a data asset): a **map from tag to an entry** -- the **tile class** that shows it and the
+  **power** (trigger, gate, cooldown, effect and its values). One entry per tag by construction. Its "no power" entry
+  (the plain tile class) replaces the level config's default tile class. **Trying another skin or look** = a copy of
+  the catalog with other classes slotted in.
+- **Chosen on the level config**, with a **project default** (ConnectIt project settings).
+- **Builder tiles:** the only tile designers place to block out a level. A builder tile names a **tag** (picked from
+  `ConnectIt.TilePower.*`, editable on the placed tile) and carries the per-tile settings (starting piece, multiplier,
+  active, shiftable; later lock and chain partner). A small visual shows designers what is where. Layout cells name a
+  tag the same way; the layout tool captures builder tiles and places them back.
+- **Editor preview, never saved:** a tool takes a catalog and shows each builder tile as the catalog's class. It
+  spawns those actors as **transient** (never saved) and hides the builders with the editor's **temporary hide** (not
+  saved either); clearing the preview undoes both. Nothing it does can reach the saved level -- the owner's
+  requirement that levels never save the temporary swaps.
+- **At match start the swap is real:** the board is built from the builder tiles, then the tile registry spawns the
+  catalog's class for each one (every machine) and retires the builder. Tiles added mid-match (a layout's cells) get
+  their class from the catalog too.
+- **At runtime, plain data only:** a board tile carries its tag (plus its ready turn and tile id); the rules get the
+  catalog's powers at match start, and firing looks the tag up there. The tile classes stay in the catalog -- never in
+  the rules or the board, which the AI copies on a worker thread.
+- **Level-wide powers** (Crumble): the Level director lists their **tags**; the definitions come from the catalog.
+- **Pitfall 2 answered:** one place to tune (the catalog), one definition per tag. **Pitfall 3:** classes are looks,
+  slotted per tag in the catalog, not one subclass per power the designer must pick. **Pitfall 6:** validation checks
+  each builder tile's and layout cell's tag against the catalog, and each catalog entry for a class and an effect.
+- **Follows for the lock plan** ([tile-lock-and-chained-tiles-plan](tile-lock-and-chained-tiles-plan.md), not yet
+  updated): the Chained tile is a catalog entry (`ConnectIt.TilePower.Chained`) rather than a Blueprint subclass, and
+  its partner picker sits on the builder tile.
+
+Folded into [tile-powers-plan](tile-powers-plan.md) Stage 3 (revised 2026-10-22).

@@ -246,7 +246,12 @@ bool UConnectIt_BoardRequestMediator::DispatchRequest(
     // changes the board, appending the event saying what it did; the rule set
     // then scores where pieces arrived, appending Scored events) -- the same
     // call a Blueprint "Simulate Operation" makes...
+    // Resolved at the turn being played (tile power cooldowns count against it)
     FConnectItBoardState NewState = Current;
+    if (const ATurnBasedGameState* GameState = GetWorld() ? GetWorld()->GetGameState<ATurnBasedGameState>() : nullptr)
+    {
+        NewState.TurnNumber = GameState->GetActiveTurnNumber();
+    }
     const float PointsScored = Rules->CarryOutOperation(Operation, NewState, &ChangeEvent);
 
     // ...then how far each side has got through its win groups (appending a

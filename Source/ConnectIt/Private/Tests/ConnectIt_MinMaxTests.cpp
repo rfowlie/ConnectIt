@@ -23,6 +23,10 @@
 #include "Board/Events/ConnectIt_BoardEvents.h"
 #include "ConnectIt_GameplayTags.h"
 #include "Misc/DataValidation.h"
+#include "Misc/ScopeExit.h"
+#include "Board/ConnectIt_BoardStateComponent.h"
+#include "AI/ConnectIt_LevelDirector.h"
+#include "NativeGameplayTags.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
 
@@ -32,6 +36,10 @@ namespace ConnectItMinMaxTests
 
     constexpr EAutomationTestFlags TestFlags =
         EAutomationTestFlags::EditorContext | EAutomationTestFlags::ProductFilter;
+
+    // Test-only tile power names (ConnectIt.Board.TilePowerData)
+    UE_DEFINE_GAMEPLAY_TAG_STATIC(TestTilePowerTag, "ConnectIt.TilePower.Test");
+    UE_DEFINE_GAMEPLAY_TAG_STATIC(TestOtherTilePowerTag, "ConnectIt.TilePower.TestOther");
 
     // Empty Size x Size board, two factions, all tiles active, multiplier 1 --
     // the same initial tile data UConnectIt_BoardStateComponent::InitialiseBoardState
@@ -1699,7 +1707,7 @@ bool FConnectItSimulateOperationTest::RunTest(const FString& Parameters)
         FConnectItBoardOperation_PlacePiece Operation;
         Operation.Position = FGridPosition(X, Y);
         FConnectItBoardChangeEvent Events;
-        return FLibrary::SimulateOperation(Board, Rules, FInstancedStruct::Make(Operation), Faction,
+        return FLibrary::SimulateOperation(Board, Rules, FInstancedStruct::Make(Operation), Faction, -1,
             OutBoard, OutPoints, OutNumScored, Events);
     };
 
@@ -1732,7 +1740,7 @@ bool FConnectItSimulateOperationTest::RunTest(const FString& Parameters)
 
     FConnectItBoardChangeEvent Events;
     TestFalse(TEXT("so does a struct that isn't a board operation"),
-        FLibrary::SimulateOperation(Board, Rules, FInstancedStruct::Make(FGridPosition(0, 0)), 0,
+        FLibrary::SimulateOperation(Board, Rules, FInstancedStruct::Make(FGridPosition(0, 0)), 0, -1,
             Result, Points, NumScored, Events));
     return true;
 }
@@ -3122,6 +3130,439 @@ bool FConnectItDirectorOrderTest::RunTest(const FString& Parameters)
 
     TestEqual(TEXT("the level director speaks for no side"), Level->GetFaction(), static_cast<int32>(INDEX_NONE));
     TestEqual(TEXT("a player director with no player has no side yet"), PlayerA->GetFaction(), static_cast<int32>(INDEX_NONE));
+    return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FConnectItEventsReplayTest,
+    "ConnectIt.Board.Events.Replay", TestFlags)
+
+bool FConnectItEventsReplayTest::RunTest(const FString& Parameters)
+{
+    // The display board's promise: the board before a change, plus every one
+    // of its events applied in order, is the board after it (tiles and
+    // scores). Carries Operation out on a copy of Before and replays its
+    // events on another; returns the events.
+    const auto Replay = [this](const TCHAR* What, const FConnectItRuleSet& Rules,
+        const FConnectItBoardOperation& Operation, const FConnectItBoardState& Before,
+        FConnectItBoardState* OutAfter = nullptr, FConnectItBoardState* OutReplayed = nullptr)
+    {
+        FConnectItBoardChangeEvent Events;
+        FConnectItBoardState After = Before;
+        FString WhyNot;
+        const bool bCanApply = Operation.CanApply(After, &WhyNot);
+        if (!TestTrue(FString::Printf(TEXT("%s: can apply (%s)"), What, *WhyNot), bCanApply))
+        {
+            return Events;
+        }
+        Rules.CarryOutOperation(Operation, After, &Events);
+
+        FConnectItBoardState Replayed = Before;
+        FConnectItBoardEvent::ApplyAll(Events, Replayed);
+        TestTrue(FString::Printf(TEXT("%s: before + its events = after"), What), Replayed.HasSameTilesAndScores(After));
+        if (OutAfter) *OutAfter = After;
+        if (OutReplayed) *OutReplayed = Replayed;
+        return Events;
+    };
+    const auto MakeCell = [](int32 X, int32 Y, int32 StartingFaction = -1, float Multiplier = 1.f)
+    {
+        FConnectItBoardLayoutCell Cell;
+        Cell.Position = FGridPosition(X, Y);
+        Cell.TileData.StartingFactionPiece = StartingFaction;
+        Cell.TileData.Multiplier = Multiplier;
+        return Cell;
+    };
+
+    FConnectItRuleSet Rules;   // Lines of 4
+
+    // --- A placement scoring two crossing lines ---
+    {
+        FConnectItBoardState Board = MakeBoard(5);
+        Place(Board, 0, 1, 0);
+        Place(Board, 1, 1, 0);
+        Place(Board, 2, 1, 0);
+        Place(Board, 3, 2, 0);
+        Place(Board, 3, 3, 0);
+        Place(Board, 3, 4, 0);
+        Board.GetTileDataMutable(FGridPosition(1, 1))->Multiplier = 2.f;
+
+        const FConnectItBoardChangeEvent Events =
+            Replay(TEXT("place, two lines"), Rules, MakeAt<FConnectItBoardOperation_PlacePiece>(0, 3, 1), Board);
+        const auto* First = EventAt<FConnectItBoardEvent_Scored>(Events, 1);
+        const auto* Second = EventAt<FConnectItBoardEvent_Scored>(Events, 2);
+        if (TestTrue(TEXT("place: two Scored events"), First && Second))
+        {
+            TestEqual(TEXT("scored: one new multiplier per position"), First->NewMultipliers.Num(), First->Positions.Num());
+            const auto* RowLine = First->Positions.Contains(FGridPosition(1, 1)) ? First : Second;
+            const int32 Raised = RowLine->Positions.IndexOfByKey(FGridPosition(1, 1));
+            if (TestTrue(TEXT("scored: the x2 tile is in a line"), Raised != INDEX_NONE))
+            {
+                TestEqual(TEXT("scored: its new multiplier is 3"), RowLine->NewMultipliers[Raised], 3.f);
+            }
+
+            const int32 SharedFirst = First->Positions.IndexOfByKey(FGridPosition(3, 1));
+            const int32 SharedSecond = Second->Positions.IndexOfByKey(FGridPosition(3, 1));
+            if (TestTrue(TEXT("scored: the shared tile is in both lines"),
+                SharedFirst != INDEX_NONE && SharedSecond != INDEX_NONE))
+            {
+                TestEqual(TEXT("scored: the shared tile after the first line"), First->NewMultipliers[SharedFirst], 2.f);
+                TestEqual(TEXT("scored: and after the second"), Second->NewMultipliers[SharedSecond], 3.f);
+            }
+        }
+    }
+
+    // --- Swap completing a line ---
+    {
+        FConnectItBoardState Board = MakeBoard(5);
+        Place(Board, 0, 0, 0);
+        Place(Board, 1, 0, 0);
+        Place(Board, 2, 0, 0);
+        Place(Board, 3, 0, 1);
+        Place(Board, 3, 2, 0);
+        FConnectItBoardOperation_SwapPieces Swap;
+        Swap.Faction = 0;
+        Swap.PositionA = FGridPosition(3, 2);
+        Swap.PositionB = FGridPosition(3, 0);
+        const FConnectItBoardChangeEvent Events = Replay(TEXT("swap"), Rules, Swap, Board);
+        TestNotNull(TEXT("swap: it scored"), EventAt<FConnectItBoardEvent_Scored>(Events, 1));
+    }
+
+    // --- Shift: whole tiles move, past an unshiftable one ---
+    {
+        FConnectItBoardState Board = MakeBoard(5);
+        Place(Board, 0, 0, 0);
+        Place(Board, 1, 0, 1);
+        Board.GetTileDataMutable(FGridPosition(2, 0))->bCanShift = false;
+        Board.GetTileDataMutable(FGridPosition(4, 0))->Multiplier = 3.f;
+        Board.GetTileDataMutable(FGridPosition(3, 0))->bIsActive = false;
+
+        FConnectItBoardOperation_Shift Shift;
+        Shift.Faction = 0;
+        Shift.Direction = EGridDirection::Right;
+        for (int32 X = 0; X < 5; X++)
+        {
+            Shift.Positions.Add(FGridPosition(X, 0));
+        }
+        Replay(TEXT("shift"), Rules, Shift, Board);
+        Shift.Steps = 2;
+        Replay(TEXT("shift two steps"), Rules, Shift, Board);
+    }
+
+    // --- The single-tile operations ---
+    {
+        FConnectItBoardState Board = MakeBoard(5);
+        Place(Board, 1, 1, 1);
+        Place(Board, 2, 2, 0);
+        Board.GetTileDataMutable(FGridPosition(3, 3))->Multiplier = 3.f;
+
+        Replay(TEXT("force place"), Rules, MakeAt<FConnectItBoardOperation_ForcePlacePiece>(0, 1, 1), Board);
+        Replay(TEXT("capture"), Rules, MakeAt<FConnectItBoardOperation_CapturePiece>(0, 1, 1), Board);
+        Replay(TEXT("remove piece"), Rules, MakeAt<FConnectItBoardOperation_RemovePiece>(0, 1, 1), Board);
+        Replay(TEXT("toggle"), Rules, MakeAt<FConnectItBoardOperation_ToggleTileActive>(0, 1, 1), Board);
+
+        const FConnectItBoardChangeEvent Destroyed =
+            Replay(TEXT("destroy multiplier"), Rules, MakeAt<FConnectItBoardOperation_DestroyTileMultiplier>(0, 3, 3), Board);
+        const auto* Event = OnlyEvent<FConnectItBoardEvent_TileMultiplierDestroyed>(Destroyed);
+        TestTrue(TEXT("destroy: the event carries the multiplier it took"), Event && Event->PreviousMultiplier == 3.f);
+    }
+
+    // --- A capture completing a line ---
+    {
+        FConnectItBoardState Board = MakeBoard(5);
+        Place(Board, 0, 0, 0);
+        Place(Board, 1, 0, 0);
+        Place(Board, 2, 0, 0);
+        Place(Board, 3, 0, 1);
+        const FConnectItBoardChangeEvent Events =
+            Replay(TEXT("capture, scoring"), Rules, MakeAt<FConnectItBoardOperation_CapturePiece>(0, 3, 0), Board);
+        TestNotNull(TEXT("capture: it scored"), EventAt<FConnectItBoardEvent_Scored>(Events, 1));
+    }
+
+    // --- Tiles coming and going ---
+    {
+        FConnectItBoardState Board = MakeBoard(3);
+        Board.StartingPieces = { 0, 0 };
+        Place(Board, 0, 0, 0);
+        Place(Board, 1, 0, 0);
+        Place(Board, 2, 0, 0);
+
+        FConnectItBoardOperation_RemoveTiles Remove;
+        Remove.Positions = { FGridPosition(1, 1), FGridPosition(2, 2) };
+        Replay(TEXT("remove tiles"), Rules, Remove, Board);
+
+        FConnectItBoardOperation_AddTiles Add;
+        Add.Faction = INDEX_NONE;
+        Add.Cells = { MakeCell(3, 0, 0, 2.f), MakeCell(3, 1) };
+        FConnectItBoardState After;
+        FConnectItBoardState Replayed;
+        Replay(TEXT("add tiles, scoring"), Rules, Add, Board, &After, &Replayed);
+        TestTrue(TEXT("add tiles: the starting piece is counted on the replayed board too"),
+            Replayed.StartingPieces == After.StartingPieces);
+
+        UConnectIt_BoardLayout* Layout = NewObject<UConnectIt_BoardLayout>(GetTransientPackage(), TEXT("CIBL_TestReplay"));
+        for (int32 X = 0; X < 4; X++)
+        {
+            FConnectItBoardLayoutCell& Cell = Layout->Cells.AddDefaulted_GetRef();
+            Cell.Position = FGridPosition(X, 1);
+            Cell.TileData.Multiplier = 1.f + X;
+        }
+        Replay(TEXT("change layout"), Rules, Layout->MakeChangeFrom(Board), Board);
+    }
+
+    // --- Phases ---
+    {
+        const FGameplayTag Phase1 = FGameplayTag::RequestGameplayTag(TEXT("ConnectIt.Phase.1"), false);
+        FConnectItBoardOperation_BeginPhase Begin;
+        Begin.Phase = Phase1;
+        FConnectItBoardState After;
+        FConnectItBoardState Replayed;
+        Replay(TEXT("begin phase"), Rules, Begin, MakeBoard(3), &After, &Replayed);
+        TestTrue(TEXT("begin phase: the replayed board is in the phase"), Replayed.CurrentPhase == After.CurrentPhase);
+    }
+
+    // --- Goals: progress restarts, then a goal already met is a checkpoint ---
+    // (The win itself -- game over, winner -- is match-level: the Mediator's
+    // Game Won event carries it, and the display board copies it from Current
+    // once the queue drains.)
+    {
+        UConnectIt_MatchConditionAsset* Score4 = NewObject<UConnectIt_MatchConditionAsset>(GetTransientPackage(), TEXT("WC_Test_Replay4"));
+        Score4->Conditions.Add(TInstancedStruct<FConnectItMatchCondition>::Make<FConnectItMatchCondition_ScoreThreshold>(ScoreAtLeast(4.f)));
+        UConnectIt_MatchConditionAsset* Score20 = NewObject<UConnectIt_MatchConditionAsset>(GetTransientPackage(), TEXT("WC_Test_Replay20"));
+        Score20->Conditions.Add(TInstancedStruct<FConnectItMatchCondition>::Make<FConnectItMatchCondition_ScoreThreshold>(ScoreAtLeast(20.f)));
+
+        FConnectItRuleSet GoalRules;
+        GoalRules.AIFaction = 1;
+        GoalRules.ResolveConditionGroups({ Score20, Score20 }, { Score20 });
+        GoalRules.SetConditionGroups(false, true, { Score4, Score20 });
+
+        FConnectItBoardState Board = MakeBoard(5);
+        Board.ScoreBoard = { 6.f, 0.f };
+        Board.GroupsCompleted = { 1, 0 };
+
+        FConnectItBoardOperation_ChangeGoals Change;
+        Change.Factions = { 0 };
+        Change.bWinGoals = true;
+        Change.GroupNames = { Score4->GetFName(), Score20->GetFName() };
+
+        FConnectItBoardChangeEvent Events;
+        FConnectItBoardState After = Board;
+        GoalRules.CarryOutOperation(Change, After, &Events);
+        GoalRules.StampWinState(After, &Events);
+
+        FConnectItBoardState Replayed = Board;
+        FConnectItBoardEvent::ApplyAll(Events, Replayed);
+        TestTrue(TEXT("goals: before + its events = after"), Replayed.HasSameTilesAndScores(After));
+        TestTrue(TEXT("goals: the first new goal is met (a checkpoint, no win)"),
+            After.GroupsCompleted[0] == 1 && !After.bGameOver);
+        TestTrue(TEXT("goals: the replayed board has the same progress"), Replayed.GroupsCompleted == After.GroupsCompleted);
+    }
+
+    // --- The check itself notices a difference ---
+    {
+        const FConnectItBoardState Board = MakeBoard(3);
+        FConnectItBoardState Moved = Board;
+        Place(Moved, 1, 1, 0);
+        TestFalse(TEXT("a different piece is a different board"), Moved.HasSameTilesAndScores(Board));
+        FConnectItBoardState Scored = Board;
+        Scored.ScoreBoard[1] = 2.f;
+        TestFalse(TEXT("a different score is a different board"), Scored.HasSameTilesAndScores(Board));
+        FConnectItBoardState Reordered;
+        Reordered.ScoreBoard = Board.ScoreBoard;
+        for (int32 Index = Board.NumTiles() - 1; Index >= 0; Index--)
+        {
+            Reordered.SetTileData(Board.GetPositionAt(Index), Board.GetTileDataAt(Index));
+        }
+        TestTrue(TEXT("tile order doesn't matter"), Reordered.HasSameTilesAndScores(Board));
+    }
+    return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FConnectItTilePowerDataTest,
+    "ConnectIt.Board.TilePowerData", TestFlags)
+
+bool FConnectItTilePowerDataTest::RunTest(const FString& Parameters)
+{
+    // Stage 3 of tile powers: where powers live and travel. Nothing fires yet.
+    const FGameplayTag PowerTag = TestTilePowerTag;
+    const FGameplayTag OtherTag = TestOtherTilePowerTag;
+    if (!TestTrue(TEXT("the test power tags exist"), PowerTag.IsValid() && OtherTag.IsValid()))
+    {
+        return false;
+    }
+    const auto StrengthOf = [](const FConnectItTileData* Tile) -> int32
+    {
+        const FConnectItTilePower* Power = Tile ? Tile->GetTilePower() : nullptr;
+        const FConnectItTilePowerEffect_Test* Effect = Power ? Power->Effect.GetPtr<FConnectItTilePowerEffect_Test>() : nullptr;
+        return Effect ? Effect->Strength : INDEX_NONE;
+    };
+    const auto MakePower = [](FGameplayTag Name, int32 Strength)
+    {
+        FConnectItTilePower Power;
+        Power.Name = Name;
+        FConnectItTilePowerEffect_Test Effect;
+        Effect.Strength = Strength;
+        Power.Effect = TInstancedStruct<FConnectItTilePowerEffect>::Make<FConnectItTilePowerEffect_Test>(Effect);
+        return Power;
+    };
+
+    // --- A fresh board and fresh rules have no powers ---
+    {
+        const FConnectItBoardState Board = MakeBoard(3);
+        bool bAnyPower = false;
+        for (int32 Index = 0; Index < Board.NumTiles(); Index++)
+        {
+            const FConnectItTileData& Tile = Board.GetTileDataAt(Index);
+            bAnyPower |= Tile.GetTilePower() != nullptr || Tile.TilePowerTag.IsValid();
+        }
+        TestFalse(TEXT("fresh board: no tile has a power"), bAnyPower);
+        TestTrue(TEXT("fresh rules: no level-wide powers"), FConnectItRuleSet().TilePowers.IsEmpty());
+    }
+
+    // --- Building the board: a powered tile brings its power and values ---
+    {
+        AConnectIt_TestPoweredTile* Defaults = GetMutableDefault<AConnectIt_TestPoweredTile>();
+        const FGameplayTag SavedTag = Defaults->TilePowerTag;
+        const FGameplayTag SavedName = Defaults->PowerName;
+        const int32 SavedStrength = Defaults->Strength;
+        ON_SCOPE_EXIT
+        {
+            Defaults->TilePowerTag = SavedTag;
+            Defaults->PowerName = SavedName;
+            Defaults->Strength = SavedStrength;
+        };
+
+        Defaults->TilePowerTag = PowerTag;
+        Defaults->PowerName = PowerTag;
+        Defaults->Strength = 3;
+        const FConnectItTileData Tile = UConnectIt_BoardStateComponent::MakeTileData(Defaults, 2);
+        TestTrue(TEXT("build: the tile has its class's power"),
+            Tile.TilePowerTag == PowerTag && Tile.GetTilePower() && Tile.GetTilePower()->Name == PowerTag
+            && Tile.GetTilePower()->CooldownTurns == 2);
+        TestEqual(TEXT("build: with the placed tile's values"), StrengthOf(&Tile), 3);
+        TestTrue(TEXT("check: a matching power is fine"),
+            AConnectIt_TileBase::CheckTilePower(PowerTag, Defaults->GetTilePower()).IsEmpty());
+
+        // A power named differently from the class's tag: reported, the tag wins
+        Defaults->PowerName = OtherTag;
+        FString Problem;
+        const FConnectItTilePower Mismatched = Defaults->MakeBoardPower(&Problem);
+        TestFalse(TEXT("mismatch: reported"), Problem.IsEmpty());
+        TestTrue(TEXT("mismatch: the class's tag is the identity"), Mismatched.Name == PowerTag);
+
+        // No tag on the class: no power, whatever Get Tile Power says
+        Defaults->TilePowerTag = FGameplayTag();
+        const FConnectItTileData Plain = UConnectIt_BoardStateComponent::MakeTileData(Defaults, 2);
+        TestFalse(TEXT("no tag: no power"), Plain.GetTilePower() != nullptr || Plain.TilePowerTag.IsValid());
+        TestFalse(TEXT("no tag but a named power: reported"),
+            AConnectIt_TileBase::CheckTilePower(FGameplayTag(), Defaults->GetTilePower()).IsEmpty());
+
+        FConnectItTilePower NoEffect = MakePower(PowerTag, 1);
+        NoEffect.Effect.Reset();
+        TestFalse(TEXT("a power with no effect: reported"), AConnectIt_TileBase::CheckTilePower(PowerTag, NoEffect).IsEmpty());
+    }
+
+    // --- Tile ids: given by the board, never reused ---
+    {
+        FConnectItBoardState Board;
+        Board.ScoreBoard = { 0.f, 0.f };
+        const int32 First = Board.AddTile(FGridPosition(0, 0), FConnectItTileData());
+        const int32 Second = Board.AddTile(FGridPosition(1, 0), FConnectItTileData());
+        Board.RemoveTileData(FGridPosition(1, 0));
+        const int32 Third = Board.AddTile(FGridPosition(1, 0), FConnectItTileData());
+        TestTrue(TEXT("ids: each tile its own, a removed tile's id not reused"), First == 0 && Second == 1 && Third == 2);
+    }
+
+    // --- Add Tiles: a cell's power and values, a new id; replayed the same ---
+    {
+        FConnectItRuleSet Rules;
+        FConnectItBoardState Board = MakeBoard(3);
+        Board.NextTileId = 9;
+
+        FConnectItBoardOperation_AddTiles Add;
+        Add.Faction = INDEX_NONE;
+        FConnectItBoardLayoutCell& Powered = Add.Cells.AddDefaulted_GetRef();
+        Powered.Position = FGridPosition(3, 0);
+        Powered.TilePower = MakePower(PowerTag, 5);
+        Add.Cells.AddDefaulted_GetRef().Position = FGridPosition(3, 1);
+
+        FConnectItBoardState After = Board;
+        FConnectItBoardChangeEvent Events;
+        Rules.CarryOutOperation(Add, After, &Events);
+        const FConnectItTileData* Tile = After.GetTileData(FGridPosition(3, 0));
+        TestTrue(TEXT("add: the cell's power"), Tile && Tile->TilePowerTag == PowerTag);
+        TestEqual(TEXT("add: with its values"), StrengthOf(Tile), 5);
+        TestTrue(TEXT("add: new ids from the board's counter"),
+            Tile && Tile->TileId == 9 && After.GetTileData(FGridPosition(3, 1))->TileId == 10 && After.NextTileId == 11);
+        TestFalse(TEXT("add: a cell with no power gives none"), After.GetTileData(FGridPosition(3, 1))->GetTilePower() != nullptr);
+
+        const auto* Added = EventAt<FConnectItBoardEvent_TilesAdded>(Events, 0);
+        TestTrue(TEXT("add: the event carries the ids"), Added && Added->TileIds == TArray<int32>({ 9, 10 }));
+
+        FConnectItBoardState Replayed = Board;
+        FConnectItBoardEvent::ApplyAll(Events, Replayed);
+        TestTrue(TEXT("add: before + events = after, ids and powers included"), Replayed.HasSameTilesAndScores(After));
+        TestEqual(TEXT("add: the replayed board's counter moved on too"), Replayed.NextTileId, After.NextTileId);
+    }
+
+    // --- Shift: the power, its values and the id travel with the tile ---
+    {
+        FConnectItBoardState Board = MakeBoard(5);
+        FConnectItTileData* Start = Board.GetTileDataMutable(FGridPosition(0, 0));
+        Start->SetTilePower(MakePower(PowerTag, 7));
+        Start->TileId = 42;
+        Start->PowerReadyTurn = 6;
+
+        FConnectItBoardOperation_Shift Shift;
+        Shift.Faction = 0;
+        Shift.Direction = EGridDirection::Right;
+        for (int32 X = 0; X < 5; X++)
+        {
+            Shift.Positions.Add(FGridPosition(X, 0));
+        }
+        FConnectItBoardChanges Changes;
+        Shift.Apply(Board, Changes, nullptr);
+        const FConnectItTileData* Moved = Board.GetTileData(FGridPosition(1, 0));
+        TestTrue(TEXT("shift: the power moved with its tile"),
+            Moved && Moved->TilePowerTag == PowerTag && Moved->TileId == 42 && Moved->PowerReadyTurn == 6);
+        TestEqual(TEXT("shift: with its values"), StrengthOf(Moved), 7);
+        TestFalse(TEXT("shift: and left nothing behind"), Board.GetTileData(FGridPosition(0, 0))->GetTilePower() != nullptr);
+    }
+
+    // --- Level-wide powers: copied into the rules, named once ---
+    {
+        UConnectIt_LevelDirector* Director = NewObject<UConnectIt_LevelDirector>();
+        Director->TilePowers = { MakePower(PowerTag, 1), MakePower(PowerTag, 2), MakePower(FGameplayTag(), 3), MakePower(OtherTag, 4) };
+
+        FConnectItRuleSet Rules;
+        Rules.SetLevelWidePowers(Director->TilePowers);
+        TestTrue(TEXT("level-wide: copied, a nameless one and a repeat skipped"),
+            Rules.TilePowers.Num() == 2 && Rules.TilePowers[0].Name == PowerTag && Rules.TilePowers[1].Name == OtherTag);
+        TestTrue(TEXT("level-wide: each marked so"), Rules.TilePowers[0].bLevelWide && Rules.TilePowers[1].bLevelWide);
+
+        FDataValidationContext Context;
+        Director->IsDataValid(Context);
+        const auto Reported = [&Context](const TCHAR* Text)
+        {
+            return Context.GetIssues().ContainsByPredicate([Text](const FDataValidationContext::FIssue& Issue)
+            {
+                return Issue.Message.ToString().Contains(Text);
+            });
+        };
+        TestTrue(TEXT("level-wide: validation reports the repeat"), Reported(TEXT("twice")));
+        TestTrue(TEXT("level-wide: and the nameless one"), Reported(TEXT("has no Name")));
+    }
+
+    // --- The turn: the AI's search counts one per ply ---
+    {
+        const FConnectItBoardState Board = MakeBoard(5);
+        const FConnectItMinMaxRules Rules(Board, FConnectItRuleSet(), DefaultEvaluationWeights(), DefaultOrderingWeights(), PlaceOnly(), PlaceOnly());
+        FConnectItBoardState AtTurn = Board;
+        AtTurn.TurnNumber = 7;
+        const auto Root = Rules.MakeRoot(AtTurn, 0);
+        const auto Child = Rules.ApplyMove(Root, PlaceMove(0, 0, 0));
+        const auto Grandchild = Rules.ApplyMove(Child, PlaceMove(1, 1, 1));
+        TestTrue(TEXT("turn: the root keeps the decision's turn, each ply adds one"),
+            Root.Board.TurnNumber == 7 && Child.Board.TurnNumber == 8 && Grandchild.Board.TurnNumber == 9);
+    }
     return true;
 }
 

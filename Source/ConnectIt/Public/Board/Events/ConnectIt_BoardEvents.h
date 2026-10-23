@@ -6,6 +6,7 @@
 #include "GameplayTagContainer.h"
 #include "GridMechanicsBaseEnums.h"
 #include "GridMechanicsBaseStructs.h"
+#include "ConnectIt_Structs.h"
 #include "Board/ConnectIt_BoardLayoutCell.h"
 #include "ConnectIt_BoardEvents.generated.h"
 
@@ -28,9 +29,16 @@ class UConnectIt_MatchConditionAsset;
 //   * FConnectItBoardResultEvent    -- what followed from it (scoring,
 //     appended by the scoring rule; winning, appended by the Mediator).
 //
+// Self-applying: each event carries everything it changed, and ApplyTo makes
+// that change to a board from its own data alone. The board before a change
+// plus every event's ApplyTo, in order, is the board after it (tiles and
+// scores; tested) -- which is how the display board
+// (UConnectIt_BoardStateComponent::GetDisplayBoard) steps along as the events
+// play.
+//
 // Plain data: every field a UPROPERTY (they replicate, and Blueprint reads
-// them), no UObject references. A new kind of event is a new struct here,
-// plus (if it has data) its GetActive...Event function in
+// them), no UObject references. A new kind of event is a new struct here with
+// its ApplyTo, plus (if it has data) its GetActive...Event function in
 // UConnectIt_BoardEventLibrary.
 
 
@@ -44,6 +52,17 @@ struct CONNECTIT_API FConnectItBoardEvent
     // The game event tag listeners bind to for this kind of event
     // (ConnectIt.Event.*)
     virtual FGameplayTag GetEventTag() const { return FGameplayTag(); }
+
+    // Makes this event's change to Board, from the event's own data
+    virtual void ApplyTo(FConnectItBoardState& Board) const {}
+
+    // The index (in the same change's list) of the event that set this one
+    // off, or -1: the action itself. Tile powers fill it; until then always -1.
+    UPROPERTY(BlueprintReadOnly, Category = "Event")
+    int32 CauseIndex = INDEX_NONE;
+
+    // Every event of Events applied to Board, in order
+    static void ApplyAll(const FConnectItBoardChangeEvent& Events, FConnectItBoardState& Board);
 };
 
 // What a board operation did
@@ -68,6 +87,7 @@ struct CONNECTIT_API FConnectItBoardEvent_BoardSeeded : public FConnectItBoardEv
     GENERATED_BODY()
 
     virtual FGameplayTag GetEventTag() const override;
+    virtual void ApplyTo(FConnectItBoardState& Board) const override;
 };
 
 // ---------------------------------------------------------------------------
@@ -87,6 +107,7 @@ struct CONNECTIT_API FConnectItBoardEvent_PiecePlaced : public FConnectItBoardOp
     int32 Faction = -1;
 
     virtual FGameplayTag GetEventTag() const override;
+    virtual void ApplyTo(FConnectItBoardState& Board) const override;
 };
 
 // The pieces on two tiles traded places
@@ -102,6 +123,7 @@ struct CONNECTIT_API FConnectItBoardEvent_PiecesSwapped : public FConnectItBoard
     FGridPosition PositionB;
 
     virtual FGameplayTag GetEventTag() const override;
+    virtual void ApplyTo(FConnectItBoardState& Board) const override;
 };
 
 // A line of tiles shifted Steps places. StartPositions / EndPositions say where
@@ -132,6 +154,7 @@ struct CONNECTIT_API FConnectItBoardEvent_BoardShifted : public FConnectItBoardO
     TArray<FGridPosition> EndPositions;
 
     virtual FGameplayTag GetEventTag() const override;
+    virtual void ApplyTo(FConnectItBoardState& Board) const override;
 };
 
 // A piece changed owner where it stood
@@ -150,6 +173,7 @@ struct CONNECTIT_API FConnectItBoardEvent_PieceCaptured : public FConnectItBoard
     int32 PreviousFaction = -1;
 
     virtual FGameplayTag GetEventTag() const override;
+    virtual void ApplyTo(FConnectItBoardState& Board) const override;
 };
 
 // A piece was taken off the board
@@ -166,6 +190,7 @@ struct CONNECTIT_API FConnectItBoardEvent_PieceRemoved : public FConnectItBoardO
     int32 RemovedFaction = -1;
 
     virtual FGameplayTag GetEventTag() const override;
+    virtual void ApplyTo(FConnectItBoardState& Board) const override;
 };
 
 // A tile's score multiplier was reset to 1
@@ -177,7 +202,12 @@ struct CONNECTIT_API FConnectItBoardEvent_TileMultiplierDestroyed : public FConn
     UPROPERTY(BlueprintReadOnly, Category = "Event")
     FGridPosition Position;
 
+    // What it was before the reset
+    UPROPERTY(BlueprintReadOnly, Category = "Event")
+    float PreviousMultiplier = 1.f;
+
     virtual FGameplayTag GetEventTag() const override;
+    virtual void ApplyTo(FConnectItBoardState& Board) const override;
 };
 
 // A tile was switched between active and inactive
@@ -193,6 +223,7 @@ struct CONNECTIT_API FConnectItBoardEvent_TileActiveToggled : public FConnectItB
     bool bNowActive = false;
 
     virtual FGameplayTag GetEventTag() const override;
+    virtual void ApplyTo(FConnectItBoardState& Board) const override;
 };
 
 // The level replaced a side's goals mid-match (the Level director's Set Win
@@ -217,6 +248,7 @@ struct CONNECTIT_API FConnectItBoardEvent_GoalsChanged : public FConnectItBoardO
     TArray<FName> GroupNames;
 
     virtual FGameplayTag GetEventTag() const override;
+    virtual void ApplyTo(FConnectItBoardState& Board) const override;
 };
 
 // Tiles left the board, with any pieces on them. The visuals remove those
@@ -234,6 +266,7 @@ struct CONNECTIT_API FConnectItBoardEvent_TilesRemoved : public FConnectItBoardO
     TArray<int32> PieceFactions;
 
     virtual FGameplayTag GetEventTag() const override;
+    virtual void ApplyTo(FConnectItBoardState& Board) const override;
 };
 
 // Tiles joined the board, each with its starting values (and starting piece,
@@ -247,7 +280,12 @@ struct CONNECTIT_API FConnectItBoardEvent_TilesAdded : public FConnectItBoardOpe
     UPROPERTY(BlueprintReadOnly, Category = "Event")
     TArray<FConnectItBoardLayoutCell> Cells;
 
+    // The id each tile got (FConnectItTileData::TileId), parallel to Cells
+    UPROPERTY(BlueprintReadOnly, Category = "Event")
+    TArray<int32> TileIds;
+
     virtual FGameplayTag GetEventTag() const override;
+    virtual void ApplyTo(FConnectItBoardState& Board) const override;
 };
 
 // A phased level moved to a new phase (the Level director's Begin Phase). The
@@ -267,6 +305,7 @@ struct CONNECTIT_API FConnectItBoardEvent_PhaseChanged : public FConnectItBoardO
     FGameplayTag Phase;
 
     virtual FGameplayTag GetEventTag() const override;
+    virtual void ApplyTo(FConnectItBoardState& Board) const override;
 };
 
 // The board changed to a new layout: follows that change's Tiles Removed /
@@ -288,6 +327,7 @@ struct CONNECTIT_API FConnectItBoardEvent_LayoutChanged : public FConnectItBoard
     FTransform CameraTransform;
 
     virtual FGameplayTag GetEventTag() const override;
+    virtual void ApplyTo(FConnectItBoardState& Board) const override;
 };
 
 // ---------------------------------------------------------------------------
@@ -321,7 +361,14 @@ struct CONNECTIT_API FConnectItBoardEvent_Scored : public FConnectItBoardResultE
     UPROPERTY(BlueprintReadOnly, Category = "Event")
     TArray<FGridPosition> ClearedPositions;
 
+    // Each tile's multiplier after this score, parallel to Positions (a tile
+    // in two lines of one change appears in both, the second with the higher
+    // value)
+    UPROPERTY(BlueprintReadOnly, Category = "Event")
+    TArray<float> NewMultipliers;
+
     virtual FGameplayTag GetEventTag() const override;
+    virtual void ApplyTo(FConnectItBoardState& Board) const override;
 };
 
 // A faction just completed one of its win condition groups, and it was not the
@@ -350,6 +397,7 @@ struct CONNECTIT_API FConnectItBoardEvent_WinCheckpointReached : public FConnect
     FName GroupName;
 
     virtual FGameplayTag GetEventTag() const override;
+    virtual void ApplyTo(FConnectItBoardState& Board) const override;
 };
 
 // A faction just met one of its lose conditions, so it has lost; a Game Won
@@ -371,6 +419,7 @@ struct CONNECTIT_API FConnectItBoardEvent_LoseConditionMet : public FConnectItBo
     FName GroupName;
 
     virtual FGameplayTag GetEventTag() const override;
+    virtual void ApplyTo(FConnectItBoardState& Board) const override;
 };
 
 // The game was just won. Appears once, on the change that ended the game
@@ -384,4 +433,5 @@ struct CONNECTIT_API FConnectItBoardEvent_GameWon : public FConnectItBoardResult
     int32 WinningFaction = -1;
 
     virtual FGameplayTag GetEventTag() const override;
+    virtual void ApplyTo(FConnectItBoardState& Board) const override;
 };

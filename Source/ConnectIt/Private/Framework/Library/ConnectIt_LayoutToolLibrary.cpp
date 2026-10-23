@@ -7,6 +7,7 @@
 #include "Framework/Data/ConnectIt_LevelConfigDataAsset.h"
 #include "Framework/Data/ConnectIt_WorldSettings.h"
 #include "Board/ConnectIt_TileDataProvider.h"
+#include "Board/ConnectIt_TileBase.h"
 #include "Registry/GridDefinition.h"
 #include "Tile/GridTileBase.h"
 #include "Engine/Engine.h"
@@ -78,6 +79,17 @@ int32 UConnectIt_LayoutToolLibrary::CaptureLayoutFromLevel(const UObject* WorldC
         if (Tile->Implements<UConnectIt_TileDataProvider>())
         {
             Cell.TileData = IConnectIt_TileDataProvider::Execute_GetInitialTileData(Tile);
+        }
+        // The power with this placed tile's values
+        if (const AConnectIt_TileBase* PoweredTile = Cast<AConnectIt_TileBase>(Tile))
+        {
+            FString Problem;
+            Cell.TilePower = PoweredTile->MakeBoardPower(&Problem);
+            if (!Problem.IsEmpty())
+            {
+                UE_LOG(LogTemp, Warning, TEXT("ConnectIt_LayoutTool: '%s' at (%d,%d): %s"),
+                    *Tile->GetActorLabel(), Cell.Position.X, Cell.Position.Y, *Problem);
+            }
         }
         if (const FGameplayTag* Variant = Variants.Find(Cell.Position))
         {

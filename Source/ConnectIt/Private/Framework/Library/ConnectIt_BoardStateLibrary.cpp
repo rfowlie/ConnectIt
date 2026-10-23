@@ -150,6 +150,7 @@ bool UConnectIt_BoardStateLibrary::SimulateOperation(
     const FConnectItRuleSet& Rules,
     const FInstancedStruct& Operation,
     int32 Faction,
+    int32 TurnNumber,
     FConnectItBoardState& ResultBoard,
     float& PointsScored,
     int32& NumScoredEvents,
@@ -169,6 +170,10 @@ bool UConnectIt_BoardStateLibrary::SimulateOperation(
     BoardOperation->Faction = Faction;
     if (!BoardOperation->CanApply(Board)) return false;
 
+    if (TurnNumber >= 0)
+    {
+        ResultBoard.TurnNumber = TurnNumber;
+    }
     PointsScored = Rules.CarryOutOperation(*BoardOperation, ResultBoard, &Events);
     Rules.StampWinState(ResultBoard, &Events);
 

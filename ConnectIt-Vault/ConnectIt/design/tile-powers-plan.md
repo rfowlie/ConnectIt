@@ -16,7 +16,8 @@ Design: [tile-power-triggers](tile-power-triggers.md). Discussion and every deci
 [tile-powers-in-the-board-pipeline](../_questions/tile-powers-in-the-board-pipeline.md). Power sketches:
 [tile-powers](tile-powers.md). Written 2026-10-21; reviewed against the code the same day (round 10 in the question:
 Shift, per-arrival survival, the search's turn number, the display board's limits, the scoring-rule interface, the
-gate, the guard, Crumble); walked through with the owner and **approved 2026-10-22**. Not built -- building happens in its own session.
+gate, the guard, Crumble); walked through with the owner and **approved 2026-10-22**. Stage 3 **revised 2026-10-22** at the owner's direction
+after its first build (the tile catalog and builder tiles). Building in progress (Stages 1-2 built).
 
 ## Context
 
@@ -127,43 +128,136 @@ stages; nothing is committed by me.
   logs a warning. A guard: since one board change at a time, snapshots only collapse where the lock can't wait for
   visuals (a dedicated server).
 - Server logic (directors, Mediator, influence map) keeps reading the real board.
+- **Tile actors follow the board** (owner, 2026-10-22): a tile's identity (class, power) travels with its data, so the
+  visuals move tile actors to the positions the board says -- on Board Shifted the tile registry re-keys tile actors the
+  way the piece registry re-keys pieces -- and swap actors when tiles are replaced (Tiles Removed / Added; the added
+  tile's class comes from the tile catalog, Stage 3).
 - Tests: for each operation and a scoring move, Previous + every event's `ApplyTo` == Current, comparing tiles and scores.
 - **Owner, editor:** move visual Blueprints that read the current board (tiles, score UI, `CI_PieceVisualHandler`) to
   the display board.
+- *As built (2026-10-22; 54/54 tests; Throughput 368,438 nodes/s, inside 366k-379k):*
+  - **Events:**
+    - Every event has `ApplyTo` (`ConnectIt_BoardEvents.cpp`), and `FConnectItBoardEvent::ApplyAll(Events, Board)`
+      applies a whole list.
+    - Board Seeded and Layout Changed change nothing (the layout's tiles come in Tiles Removed / Tiles Added).
+    - Each other event mirrors its operation exactly. Shift reads every moving tile before writing any. Tiles Added
+      skips a position that is already a tile and counts starting pieces. Goals Changed restarts win progress.
+  - **New fields:** `Scored::NewMultipliers` (parallel to `Positions`, each tile's value after that line -- a tile in
+    two lines shows the higher value in the second) and `TileMultiplierDestroyed::PreviousMultiplier`, both filled.
+  - **`FConnectItBoardState::HasSameTilesAndScores`:** compares tiles by position, in any order (piece, multiplier,
+    active, occupied, shiftable), and scores.
+  - **What the events don't carry:** win progress for the **last** goal group, game over and the winner. Completing the
+    last group is the win, not a checkpoint, and Game Won comes from the Mediator. So these are match-level, copied
+    from Current when the queue drains, as planned.
+  - **Display board** (`UConnectIt_BoardStateComponent`): `GetDisplayBoard()`, `OnDisplayBoardChanged` (no
+    parameters).
+    - **Start:** the server starts it in `InitialiseBoardState`; a client starts it from its first snapshot's Previous.
+    - **Stepping:** it binds `OnAnyTagComplete` just before queuing (so the seed is never missed) and unbinds in
+      `EndPlay`. Each completing entry whose payload is a board event is applied.
+    - **Counting:** queued events are counted **before** any is queued. With no visuals bound, an entry completes inside
+      its own queue call, and the board mustn't catch up to Current partway through a list.
+    - **Catch-up:** at zero pending it copies Current, warning if the tiles or scores differ. An empty list catches up
+      at once.
+  - **Tile actors on a shift:** `UConnectIt_TileRegistry::ShiftTiles(StartPositions, EndPositions)` re-keys the tile
+    actors (read all, then write) and returns them in order, ready to animate. Replaced tiles already go through
+    `Spawn Layout Tiles` / `Unregister Tiles At`.
+  - **Tests:** new `ConnectIt.Board.Events.Replay` checks before + events = after for:
+    - Place scoring two crossing lines (also checks `NewMultipliers`);
+    - Swap and Capture, each completing a line;
+    - Shift, by one and two steps, past a fixed tile;
+    - Force Place, Capture, Remove, Toggle and Destroy (also checks `PreviousMultiplier`);
+    - Remove Tiles, Add Tiles (scoring), Change Layout, Begin Phase;
+    - Change Goals with a checkpoint;
+    - and that the comparison itself catches a difference.
+  - **Owner, editor (still to do):**
+    - move the visual Blueprints to `GetDisplayBoard()` / `OnDisplayBoardChanged`;
+    - call `Shift Tiles` from the Board Shifted handler and animate the actors it returns.
 
-## Stage 3: power data, authoring and turn stamping
+## Stage 3: power data, the tile catalog, builder tiles and turn stamping
 
-- **`FConnectItTilePower`** (new, `Public/Board/Powers/ConnectIt_TilePower.h`, plain thread-safe struct): `Name`
-  (gameplay tag, `ConnectIt.TilePower.*` -- the power's identity), `Trigger` (Piece Enter / Piece Exit / Piece Changed /
-  Tile Changed / Scoring), `bLevelWide`, `MinMultiplier` (the gate; 0 = none -- a
-  plain field until a second kind of gate is needed), `CooldownTurns`, `Effect` (an instanced
-  `FConnectItTilePowerEffect`: chooses targets
-  from the board, the tile, the faction and the seeded random stream, and returns the board operations to carry out).
-- **Rule set:** `TilePowers` (array). Authored on the **Level director** (`TilePowers`, Class Defaults) and copied in
-  at match start, like win conditions; replicates with the rules (clients read cooldowns / thresholds for visuals).
-- **Tile data:** `PowerTag` (gameplay tag, empty = none) and `PowerReadyTurn` (int32) on `FConnectItTileData`, and
-  `PowerTag` on `FConnectItTileInitialData` (so placed tiles and layout cells name their power). **A tag, not an index**
-  (owner, 2026-10-22): an index into the power list breaks silently if the list is reordered or changed mid-match; a
-  tag survives both and reads clearly in the editor and logs. A gameplay tag is plain data (cheap to copy into the AI's
-  search, safe on its thread) and replicates compactly. Firing looks the tag up in the rule set's `TilePowers` (a short
-  list; a lookup cache only if Throughput says so). A tag the level doesn't list: warning when the board is built or
-  tiles are added, and the tile has no power.
-- **Board:** `TurnNumber` (replaces the unused `LastModifiedTurn`) and `RandomSeed` (advanced as powers roll).
+*Revised 2026-10-22 (owner, second time -- see [tile-power-setup](tile-power-setup.md), "Revised: the tile catalog"):
+**power values are defined once per tag, in a tile catalog**, never on placed tiles. Levels are blocked out with
+**builder tiles** that name a tag; the catalog says which tile class shows each tag. Replaces the class-held power
+(`TilePowerTag` defaults-only per subclass, values from each Blueprint's exposed variables): that put a copy of the
+values on every board tile, and measured ~17% slower AI search even with no powered tiles (below).*
+
+- **`FConnectItTilePower`** (`Public/Board/Powers/ConnectIt_TilePower.h`, plain thread-safe struct): `Name` (gameplay
+  tag, `ConnectIt.TilePower.*` -- **a level is part of the tag**, e.g. `ConnectIt.TilePower.Poison.2`), `Trigger`
+  (Piece Enter / Piece Exit / Piece Changed / Tile Changed / Scoring / Sync), `MinMultiplier` (the gate; 0 = none),
+  `CooldownTurns`, `Effect` (an instanced `FConnectItTilePowerEffect` holding its values: chooses targets from the
+  board, the tile, the faction and the seeded random stream, and returns the board operations to carry out).
+- **Tile catalog** -- `UConnectIt_TileCatalog` (new data asset):
+  - `Tiles`: a **map from power tag to an entry** (one entry per tag, by construction): the **tile class** that shows it
+    and the **power** (trigger, gate, cooldown, effect and its values; its `Name` is the key).
+  - `PlainTileClass`: the "no power" entry -- the tile class for a tile with no tag. Replaces the level config's
+    `DefaultTileClass` (kept as the fallback while levels have no catalog; removed once they do -- owner, editor).
+  - **Chosen on the level config** (`TileCatalog`), with a project default in a new ConnectIt project settings
+    (`UDeveloperSettings`, "Default Tile Catalog"). Trying another skin or look = a copy of the catalog with other
+    classes slotted in, picked on the level config.
+  - The tile classes stay in the catalog (UObject references): never in the rules or the board, which the search copies
+    on a worker thread.
+- **Builder tile** -- `AConnectIt_BuilderTile` (new, C++; derives from `AConnectIt_TileBase`, the C++ base for the
+  project's tile actors): the **only tile designers place** in a level.
+  - **`TilePowerTag`** -- editable on the placed tile, picked from `ConnectIt.TilePower.*`; empty = no power. Only the
+    tag: values are never set per tile.
+  - The per-tile settings (starting piece, multiplier, active, shiftable; later lock and chain partner) through
+    `IConnectIt_TileDataProvider`, as tiles have them today.
+  - A small visual so designers see what is where (owner, editor: a Blueprint subclass showing the tag).
+- **Tag in the tile's settings:** `TilePowerTag` joins `FConnectItTileInitialData` (what a placed tile and a layout
+  cell give the board), so it reaches the board through the same path as the other settings.
+- **Layout cells name a tag, not a class:** the cell's `TileClass` and captured power go (the catalog decides the
+  class). The layout tool captures builder tiles (their tags and settings); Load Layout Into Level places builder
+  tiles. Owner, editor: capture existing layouts again.
+- **Tile data** (`FConnectItTileData`, plain, so board copies stay plain memory copies): `TilePowerTag`,
+  `PowerReadyTurn`, and a **stable `TileId`**. The id is generated by the board when a tile joins it (build, Add Tiles;
+  a counter on the board, never reused), travels with the tile's data through shifts, and is never authored -- powers
+  that refer to another tile (Chained's partner) store its id, which a shift can't break. Tiles Added carries the ids it
+  gave, so replaying it gives the same ones.
+- **Rules:**
+  - `TilePowers`: the catalog's powers, copied from the level's catalog at match start (an array keyed by `Name` --
+    the rules replicate and a `TMap` doesn't). Firing (Stage 4) looks a tile's tag up here.
+  - `LevelWidePowers`: the **tags** of the level-wide powers (Crumble), in firing order -- listed on the Level director
+    (`LevelWidePowers`, Class Defaults), their definitions from the catalog.
+  - A tile tag or level-wide tag the catalog doesn't define: warning when the board is built or tiles are added, and
+    the tile has no power (its tag is cleared).
+- **Board:** `TurnNumber` (replaces the unused `LastModifiedTurn`), `RandomSeed` (advanced as powers roll),
+  `NextTileId`.
 - **Every copy of the board resolves at the right turn:**
   - the Mediator stamps the GameState's turn before resolving;
-  - the AI's `MakeRoot` stamps the decision turn (the controller already holds `DecisionTurnNumber`), and `ApplyMove`
-    adds 1 per ply (cooldowns count all turns) -- otherwise the root carries the opponent's last turn and no power
-    ever comes off cooldown inside the search;
-  - `Simulate Operation`'s callers stamp the current turn.
-- Validation: duplicate power names, a tile naming a power the level doesn't list (or a level-wide one), an effect left
-  empty.
-- Tests: a tile's power tag finds its power; an unknown tag warns and gives no power; Add Tiles carries a cell's power;
-  rules copy; a fresh board has no powers; `ApplyMove` advances the turn.
+  - the AI's decision board is stamped with the decision turn (the controller already holds `DecisionTurnNumber`), so
+    the search root and the AI's simulations start there, and `ApplyMove` adds 1 per ply (cooldowns count all turns)
+    -- otherwise the root carries the opponent's last turn and no power ever comes off cooldown inside the search;
+  - `Simulate Operation` takes the turn to simulate at (-1 = the board's own).
+- **Previewing a catalog in the editor** (layout tool library): **Preview Catalog** spawns the catalog's tile class
+  over each builder tile as a **transient** actor (never saved) and hides the builder tiles with the editor's
+  **temporary hide** (not saved either); **Clear Catalog Preview** undoes both. Nothing the preview does can reach the
+  saved level. Owner, editor: buttons on the layout tool widget.
+- **At match start the swap is real:** after the board is built from the builder tiles, the tile registry spawns the
+  catalog's class for each builder tile (on every machine -- tile actors are local) and retires the builder.
+  `Spawn Layout Tiles` uses the catalog too (a cell's tag picks the class).
+- **Validation** (asset save / map check):
+  - catalog: an entry with no tile class, no effect, or a power `Name` that isn't its key; no plain tile class;
+  - builder tiles and layout cells: a tag the catalog doesn't define (levels against their own catalog, layouts against
+    the project default);
+  - Level director: a level-wide tag the catalog doesn't define, or listed twice;
+  - level config: no catalog (warning: falls back to the project default).
+- **Tests:** a builder tile's tag reaches the tile data; Add Tiles carries a cell's tag and gives new ids (replayed the
+  same); a shift carries the tag, ready turn and id; the catalog's powers and the level-wide tags copy into the rules;
+  an undefined tag warns and gives no power; a fresh board has no powers; `ApplyMove` advances the turn; Throughput back
+  at the baseline.
+- *First build (2026-10-22, the class-held design, before this revision; 55/55 tests):* built `FConnectItTilePower`,
+  `AConnectIt_TileBase` with a defaults-only tag and `GetTilePower()`, the power with its values on the tile data (an
+  instanced struct), tile ids, the board fields, turn stamping, level-wide powers on the Level director, layout capture
+  and validation. **Throughput 303,709 nodes/s against 364,987 with the instanced struct removed** (tag, id and ready
+  turn kept) -- the copy of the values on every tile. Reworked to the revision above: the turn stamping, tile ids, board
+  fields and the Tiles Added ids stay; the power on the tile data, `GetTilePower`, the defaults-only tag, the layout
+  cell's class and captured power, and the Level director's power definitions go.
 
 ## Stage 4: firing powers in the chain
 
 - In `ResolveBoardChange`: **settle** collects powers set off by the record's Piece Enter / Piece Exit / Piece Changed / Tile Changed
-  (tile's own power and level-wide ones), skips gated-out, cooling-down and already-fired ones, fires them in Piece Enter →
+  (the tile's own power -- its `TilePowerTag` looked up in the rules' `TilePowers`, a short list; a lookup cache only if
+  Throughput says so -- and the level-wide ones), skips gated-out, cooling-down and already-fired ones, fires them in Piece Enter →
   Piece Exit → Piece Changed → Tile Changed, tile order, and loops on what they changed until nothing fires. **Scoring reactions** fire the Scoring powers on the tiles
   the pass's lines ran through, in tile order.
 - **Firing a power:** append **`PowerTriggered`** {Position, power name, Faction, `bNoEffect`, CauseIndex}; set
@@ -180,14 +274,18 @@ stages; nothing is committed by me.
   - Tile Changed: the faction of the change that caused it -- the scoring faction for a multiplier scoring raised, a power's
     faction for its effect, the operation's faction for a Level director change (-1 when it has none).
   - An effect that needs a faction (Capture, placing) finds nothing to do at -1: its operation's `CanApply` fails.
-- **Sync rules in the settle step** (added 2026-10-22 for
-  [tile-lock-and-chained-tiles-plan](tile-lock-and-chained-tiles-plan.md)): besides triggered powers, the rule set can
-  hold rules that run on **every settle pass** and keep some state true (first one: chained tiles). They check state,
-  not the change record, so they catch what no trigger reports (a partner cleared by scoring). Each appends its own
-  events and its changes feed the same settle pass's triggers. They must be idempotent. This stage only adds the hook
-  (an ordered list on the rule set, empty by default); chained tiles fill it.
+- **Sync powers** (revised 2026-10-22, owner: the chain is a tile power -- see
+  [tile-lock-and-chained-tiles-plan](tile-lock-and-chained-tiles-plan.md)): a power with the **Sync** trigger runs on
+  **every settle pass**, first in the pass, and keeps some state true (first one: Chained). It checks state, not the
+  change record, so it catches what no trigger reports (a partner cleared by scoring). It appends Power Triggered only
+  when it changes something, plus its own events; its changes feed the same pass's other triggers. Sync powers must be
+  idempotent; they are **exempt from the once-per-action guard** (they only follow state, so they can't loop) and have
+  no cooldown. A tile's own power or a level-wide one can be Sync. This stage adds the Sync trigger and its pass; the
+  Chained power itself comes with the lock plan.
 - Once-per-action guard: a bit per (tile, power slot) -- the slots are the tile's own power plus each level-wide power
   (there can be several). Bug guard: 64 settle loops or scoring passes, log + stop.
+- Tests also cover a test-only Sync power (runs every pass, changes only when state calls for it, not limited by the
+  once-per-action guard).
 - Tests use **test-only powers** (simple effects defined in the test code, since the first real powers are deferred):
   the owner's chain (place → score through a "move a neighbour" tile → the moved piece completes a line → its tile's
   power fires);
@@ -197,7 +295,8 @@ stages; nothing is committed by me.
 ## Stage 5: new operations and the first powers -- deferred
 
 **Deferred (owner, 2026-10-22): to be designed another time**, in its own plan. Kept here as the starting point:
-`_MovePiece` / `_AdjustMultiplier` / `_SetTilePower` operations with their events, and the first powers sketched in the
+`_MovePiece` / `_AdjustMultiplier` operations with their events (`_SetTilePower` **dropped**, owner 2026-10-22: a tile
+becomes another kind by Remove Tiles + Add Tiles with a different class), and the first powers sketched in the
 2026-10-21 rounds (Push, Repel, Vacuum, Crumble). Without it, this plan builds the **system** (record, scoring pass,
 events, display board, power data, firing) and proves it with **test-only powers** defined in the tests (Stage 4); no
 power ships to levels yet.
@@ -206,8 +305,9 @@ power ships to levels yet.
 
 Decision note (tile powers: two phases, operations as effects, display board); close the question with it; `code/`
 recipe "add a tile power"; `code/systems/` flow for the chain; status lines in `tile-powers.md`,
-`tile-power-triggers.md`, `board-request-objects.md` (reactions built); `three-directors.md` (the Level director owns
-`TilePowers`) and `code/recipes/script-a-level.md` (powers are authored on the Level director); mark
+`tile-power-triggers.md`, `board-request-objects.md` (reactions built); `three-directors.md` (the Level director lists
+the level-wide power tags) and `code/recipes/script-a-level.md` (blocking out with builder tiles, picking the tile
+catalog); `code/` recipe "add a tile power" is a catalog entry plus its tile class; mark
 [the Crumble-threshold decision](../_decisions/2026-09-20-crumble-threshold-stamped-on-replicated-board-state.md)
 superseded (rules replicate); log.
 
@@ -244,7 +344,17 @@ superseded (rules replicate); log.
 - Tiles appearing or disappearing set off nothing; pieces on added tiles are still scored (Stage 1).
 - The phased-levels events also apply themselves (Stage 2).
 - A tile names its power by **gameplay tag**, not an index (Stage 3).
+- **Sync** trigger and a stable generated **`TileId`** (Stage 3 / 4), for one-sided chained tiles.
 - Powers use the lock-aware check once the tile lock exists (Stage 4).
 - **Stage 5 (operations and first powers) deferred**; the system is proved with test-only powers.
+- **Tile power setup** ([tile-power-setup](tile-power-setup.md)): the power is the tile class's identity --
+  `TilePowerTag` defaults-only on `AConnectIt_TileBase`, values from the Blueprint subclass's exposed variables, carried
+  on the tile data; `_SetTilePower` dropped; tile visuals follow the board through shifts and replacements (Stage 3, 2).
+  **Revised the same day** (below).
+- **Tile catalog and builder tiles** (owner, 2026-10-22, after the first Stage 3 build measured the per-tile values at
+  ~17% search speed): power values are defined once per tag in a tile catalog (tag -> tile class + power; a level is
+  part of the tag); designers place builder tiles that name a tag; an editor preview swaps in the catalog's classes
+  without saving them; the swap is real at match start; the catalog is chosen on the level config with a project
+  default (Stage 3).
 
 Approved by the owner 2026-10-22.

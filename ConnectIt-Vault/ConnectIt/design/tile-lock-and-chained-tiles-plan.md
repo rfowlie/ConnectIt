@@ -27,15 +27,19 @@ Settled with the owner on 2026-10-22:
 - **A locked tile** is on the board and in play but can't take a piece by a player's placement. It can hold a piece, and
   that piece counts in lines. Different from an inactive tile (out of play).
 - **Each operation declares whether it works on locked tiles** (`CanOperateOnLockedTiles()`, default no). For now only
-  Board Shift (the lock moves with its tile), Force Place, Remove Tiles, Change Layout, Set Tile Locked and (later)
-  Set Tile Power can; Place, Swap, Capture, Remove, Destroy / Adjust Multiplier, Toggle Active and (later) Move Piece
+  Board Shift (the lock moves with its tile), Force Place, Remove Tiles, Change Layout, Set Tile Locked and Set Chain
+  Partner can (Set Tile Power was dropped 2026-10-22); Place, Swap, Capture, Remove, Destroy / Adjust Multiplier, Toggle Active and (later) Move Piece
   can't. Adjust when something comes up.
 - **The AI treats an empty locked tile as blocking** a line.
 - **A chained tile** is locked exactly while its **partner** tile has no piece -- for any reason, scoring included. A
   piece placed on the partner unlocks it; when the partner empties, the chained tile locks again and **its piece is
   destroyed** (removed first, then locked). A **capture** on the partner changes nothing (the piece only changes
-  faction). Linked by a shared tag, not by position, so shifts don't break the link. **For now a chain is a pair: one
-  partner, one chained tile** (more per group can be tested later).
+  faction).
+- **Revised 2026-10-22 (owner): one-sided chains.** The chain is a **tile power** on the chained tile (a Chained tile
+  class); only it names its partner, which can be **any tile** (no power for the chain, so it keeps its own power
+  slot). **No partner is valid** -- the tile stays locked and shows a "no partner" icon. **Several chained tiles may
+  share one partner.** Partners can be set mid-match with **Set Chain Partner**. The link uses a stable tile id (not a
+  position, not a shared tag), so shifts don't break it. Runs on the **Sync** trigger.
 
 Each stage builds and passes the tests before the next; the editor must be closed for builds; the owner commits between
 stages.
@@ -70,30 +74,40 @@ stages.
 
 ## Stage 2: chained tiles
 
-- **Tile data:** a chain role (None / Partner / Chained) and a chain group, both on `FConnectItTileInitialData` (role +
-  a `ChainTag` gameplay tag) and on `FConnectItTileData` (role + the `ChainTag` itself -- a tag, not a resolved index,
-  for the same reason as tile powers (owner, 2026-10-22); plain data, cheap to copy in the search). A chained tile also
+*Rewritten 2026-10-22 for the one-sided model ([chained-tiles](chained-tiles.md)).*
+
+- **The Chained tile class:** an `AConnectIt_TileBase` subclass (Blueprint) with `TilePowerTag` =
+  `ConnectIt.TilePower.Chained` (defaults-only) and a power whose trigger is **Sync** (tile-powers Stage 3 / 4). It
   starts locked.
-- **Validation** (board build and layout assets): a chain group must be exactly one partner and one chained tile;
-  anything else -> warning, the group is ignored.
-- **The chain rule is a settle rule** in the tile-powers chain (`FConnectItRuleSet::ResolveBoardChange`, tile-powers
-  Stage 4), so every path runs it (the Mediator, Simulate Operation, the AI's search):
-  - **Each settle pass** (before the first scoring pass, and again after every scoring pass, since what scoring changed
-    goes back through settle): for each chain, if the partner has a piece and the chained tile is locked → unlock; if the
-    partner is empty and the chained tile is unlocked → remove its piece (if any), then lock.
-  - It is a **sync rule, not a triggered power**: it runs every settle pass and checks state, so it also catches a
-    partner cleared by scoring (which is not a Piece Exit, so no trigger would fire). It is idempotent and can't loop.
-  - Applied directly (it is the rule, not an operation going through the lock check), appending **Piece Removed** then
-    **Tile Lock Changed** for each change. Its lock changes count as **Tile Changed** for tile powers, and the removed
-    piece as a **Piece Exit**, so they can set off powers in the same settle.
-  - **Needs from the tile-powers plan:** a hook for sync rules in the settle step (added to that plan's Stage 4).
-- Tests: place on the partner → chained tile unlocks; the partner's piece removed / swapped away → chained tile's piece
-  destroyed and the tile locked (piece removed before lock); scoring clears the partner → re-chains after scoring; capture
-  on the partner → nothing; a shift moving both keeps the link; Simulate Operation and the AI see the same.
+- **Naming the partner** (an exposed value on the placed tile, like any power's tunable values):
+  - in a level: an **actor picker** on the placed Chained tile (click the partner tile); empty = no partner;
+  - in a layout cell: the partner's **cell position** in that layout (captured by the grid layout tool).
+  When the tile joins the board (`InitialiseBoardState`, Add Tiles) it is resolved to the partner's **stable tile id**
+  (tile-powers Stage 3) and stored in the chained tile's power values. A partner that isn't on the board -> no partner.
+- **No partner is valid:** the tile stays locked; its visual shows a "no partner" icon. Several Chained tiles may name
+  the same partner. A partner removed by Remove Tiles / Change Layout leaves its chained tiles unpartnered.
+- **Set Chain Partner** operation {Chained tile position, Partner tile position or none} → event **Chain Partner
+  Changed** {Chained, Partner (or none)}; works on locked tiles (it's the chain's own setup); refused if the first tile
+  isn't a Chained tile. For the Level director (e.g. Change Layout to bring partners in, then Set Chain Partner).
+- **Running the chain (Sync power):** on **every settle pass** (before the first scoring pass and after each one), each
+  Chained tile checks its partner: partner has a piece and the tile is locked → unlock; no partner, or partner empty,
+  and the tile is unlocked → remove its piece (if any), then lock. State-based, so it catches a partner cleared by
+  scoring; idempotent, so it can't loop (exempt from the once-per-action guard, no cooldown). Applied directly,
+  appending **Power Triggered** (only when something changes), **Piece Removed**, **Tile Lock Changed**; those count as
+  Piece Exit / Tile Changed for other powers in the same settle.
+- **Visuals know a tile is a partner without stored state:** `GetChainedTilesFor(Position)` (Blueprint) lists the
+  Chained tiles naming it; the partner's look updates on board seed, tiles added and Chain Partner Changed.
+- **Validation** (map check / layout save): a Chained tile naming a tile that isn't on the board (informational -- it
+  will start unpartnered); a Chained tile naming another Chained tile (warning until a chain of chains is tested).
+- Tests: place on the partner → unlocks; partner emptied (removed, swapped away, cleared by scoring) → piece destroyed
+  then locked; capture on the partner → nothing; no partner → stays locked; two Chained tiles on one partner open and
+  close together; Set Chain Partner links mid-match (and unlinks with none); a shift keeps the link; removing the partner
+  leaves the chained tile unpartnered; Simulate Operation and the AI see the same.
 
 ## Stage 3: visuals and the tutorial (owner, editor)
 
-- Tile visuals: a locked look, and a chained look (chains) that snaps on Tile Lock Changed for a chained tile.
+- Tile visuals: a locked look; a chained look (chains) that snaps on Tile Lock Changed; a "no partner" icon; the
+  partner's look (from `GetChainedTilesFor`).
 - Refused-click message from `GetPlacementBlocker`.
 - Level 1 "Placing pieces": the phase that teaches locked / chained tiles.
 
@@ -105,20 +119,21 @@ chain two tiles"; status lines in `tile-lock.md`, `chained-tiles.md`; plan prope
 ## Not in this plan
 
 - Several reasons to lock one tile at once (a lock-reason container) -- one owner per tile for now.
-- Several partners for one chained tile, or several chained tiles for one partner.
+- Several partners for one chained tile (several chained tiles for one partner **is** in).
 - Tile powers themselves (a prerequisite, see above).
 
 ## Verification
 
 - Each stage: build (editor closed); `Automation RunTests ConnectIt` all pass.
-- Owner, PIE: a board with a locked tile (can't place, hover shows it, refused click says "locked"); a chained pair --
+- Owner, PIE: a board with a locked tile (can't place, hover shows it, refused click says "locked"); a chained tile --
   place on the partner, the chain opens; place on the chained tile; remove / score the partner's piece, the chain closes
   and the piece goes; vs AI, the AI never tries a locked tile.
 
 ## Settled before approval (owner, 2026-10-22)
 
-1. A chain is a pair -- one partner, one chained tile -- for now; more per group to be tested later.
+1. ~~A chain is a pair~~ -- replaced the same day: one-sided chains, no partner valid, many chained tiles per partner,
+   Set Chain Partner, the Sync trigger (see Context and Stage 2).
 2. Tile powers are built next: the chain rule goes straight into their settle step, and this plan **requires the
    tile-powers plan** (Stage 2 waits for its Stage 4).
 3. Chain changes reuse **Piece Removed** + **Tile Lock Changed** (no separate Chained / Unchained events); the visual
-   knows a tile is chained from its tile data.
+   knows a tile is chained from its class / power. New: **Chain Partner Changed** for Set Chain Partner.

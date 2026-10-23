@@ -334,6 +334,9 @@ void AConnectIt_AIController::BeginDecision()
     DecisionTurnNumber = GameState->GetActiveTurnNumber();
     DecisionBoardChanges = GameMode->GetNumBoardChanges();
     Context.TurnNumber = DecisionTurnNumber;
+    // The board the decision searches and simulates from is at this turn
+    // (the search's root; each ply after it adds one)
+    Context.Board.TurnNumber = DecisionTurnNumber;
     Context.DecisionIndexThisTurn = DecisionsThisTurn;
 
     // The kinds of move this AI may make right now: produced by an action in

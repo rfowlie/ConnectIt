@@ -159,6 +159,7 @@ void AConnectIt_GameMode::EnsureMatchSetupResolved()
         LevelDirectorClass ? *LevelDirectorClass : UConnectIt_LevelDirector::StaticClass());
     Rules.ResolveConditionGroups(LevelDefaults->PlayerWinConditions, LevelDefaults->AIWinConditions,
         LevelDefaults->PlayerLoseConditions, LevelDefaults->AILoseConditions);
+    Rules.SetLevelWidePowers(LevelDefaults->TilePowers);
 
     // Tweaks from the menu, on top of whichever preset plays
     if (bHasMatchSettings)

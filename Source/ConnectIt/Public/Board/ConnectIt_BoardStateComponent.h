@@ -9,6 +9,9 @@
 
 class UGridPieceRegistryBase;
 class UGridTileRegistryBase;
+class AGridTileBase;
+
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnConnectItDisplayBoardChanged);
 
 
 // Everything a debug widget needs to know about this component's current
@@ -54,6 +57,12 @@ public:
         int32 NumFactions,
         float InitialMultiplier = 1.0f,
         float InTargetScore = 0.f);
+
+    // The board tile a tile actor starts as (its id is the board's to give):
+    // the designer's values if it implements IConnectIt_TileDataProvider,
+    // else the defaults with InitialMultiplier; and, for an
+    // AConnectIt_TileBase, its power (MakeBoardPower). Logs what doesn't fit.
+    static FConnectItTileData MakeTileData(const AGridTileBase* Tile, int32 NumFactions, float InitialMultiplier = 1.0f);
 
     // Captures current as previous, applies new state, and stores what
     // specifically changed (ChangeEvent) so it replicates atomically
@@ -114,6 +123,30 @@ public:
         return { BoardSnapshot.CurrentState, BoardSnapshot.ChangeEvent };
     }
 
+    // --- Display board ---
+    // The board as the player has seen it so far, for visuals: it steps along
+    // one board event at a time, each applied (FConnectItBoardEvent::ApplyTo,
+    // from the event's own payload) when that event's queue entry completes.
+    // So a handler playing an event sees the board before it, plus the event.
+    // On every machine. Starts as the seeded board (a client: its first
+    // snapshot's Previous). It never resets in the middle of a list -- a newer
+    // snapshot's events just queue behind. When the last queued event
+    // completes it copies Current (the match-level fields no event carries:
+    // win progress, target score, game over, turn), snapping to it with a
+    // warning if the tiles or scores differ (a snapshot was missed).
+    // Game logic (directors, Mediator, AI) reads Current, never this.
+
+    UFUNCTION(BlueprintPure, Category = "Board State")
+    const FConnectItBoardState& GetDisplayBoard() const
+    {
+        return DisplayBoard;
+    }
+
+    // Fires each time the display board moves on (an event applied, or the
+    // copy of Current once the queue drains)
+    UPROPERTY(BlueprintAssignable, Category = "Board State")
+    FOnConnectItDisplayBoardChanged OnDisplayBoardChanged;
+
     // --- Helpers ---
 
     // get count of pieces a player has, probably a better way to track this
@@ -139,6 +172,8 @@ public:
 
     virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
+    virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
+
 private:
 
     // THE ONE REPLICATED PROPERTY
@@ -155,6 +190,24 @@ private:
     // carrying the event's tag and the event itself as payload. The queue
     // plays them one at a time, waiting for each one's visuals. Called
     // symmetrically from both SetBoardState (server) and OnRep_BoardSnapshot
-    // (client), right after BroadcastChange.
-    void EnqueueBoardEventTags() const;
+    // (client), right after BroadcastChange. Counts them for the display
+    // board.
+    void EnqueueBoardEventTags();
+
+    // See GetDisplayBoard
+    FConnectItBoardState DisplayBoard;
+
+    // Whether DisplayBoard has been started (seed, or a client's first snapshot)
+    bool bDisplayBoardStarted = false;
+
+    // Board events queued whose entries haven't completed yet
+    int32 PendingDisplayEvents = 0;
+
+    // Bound to UGameEventTaskSubsystem::OnAnyTagComplete (before the first
+    // event is queued): applies a completing board event to DisplayBoard
+    UFUNCTION()
+    void HandleQueueEntryComplete(FGameplayTag Tag);
+
+    // DisplayBoard = Current, warning when the tiles or scores differ
+    void CatchDisplayBoardUp();
 };

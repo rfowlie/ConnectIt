@@ -55,4 +55,16 @@ public:
     // the world: animate them out, then Destroy Actor.
     UFUNCTION(BlueprintCallable, Category = "ConnectIt|Board")
     TArray<AGridTileBase*> UnregisterTilesAt(const TArray<FGridPosition>& Positions);
+
+    // --- Tiles moving with a shift ---
+    // A shift moves whole tiles (their data, and with it their kind and
+    // power), so the tile actors move too. Call from the Board Shifted
+    // handler with its Start / End Positions, on every machine: the tile
+    // actor at each start position becomes the tile at the matching end
+    // position (a rotation: every one is read before any is moved). Returns
+    // them in order (null where there was none), to animate each to its end
+    // position.
+    UFUNCTION(BlueprintCallable, Category = "ConnectIt|Board")
+    TArray<AGridTileBase*> ShiftTiles(const TArray<FGridPosition>& StartPositions,
+        const TArray<FGridPosition>& EndPositions);
 };

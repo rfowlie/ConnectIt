@@ -130,6 +130,10 @@ public:
     //
     // The operation's own Faction field is ignored: Faction is used instead,
     // as the server does with the requester's.
+    //
+    // TurnNumber: the turn to simulate at (the GameState's Active Turn
+    // Number) -- tile power cooldowns count against it. -1 = Board's own,
+    // which is the turn of the board's last change, not necessarily now.
     UFUNCTION(BlueprintCallable, Category = "ConnectIt|Board State",
         meta = (ExpandBoolAsExecs = "ReturnValue"))
     static bool SimulateOperation(
@@ -137,6 +141,7 @@ public:
         const FConnectItRuleSet& Rules,
         const FInstancedStruct& Operation,
         int32 Faction,
+        int32 TurnNumber,
         FConnectItBoardState& ResultBoard,
         float& PointsScored,
         int32& NumScoredEvents,

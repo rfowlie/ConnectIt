@@ -6,6 +6,10 @@ Vault-wide passes go in `_core/_logs/`.
 
 Newest first:
 
+- [2026-10-22-2245](2026-10-22-2245.md) — session — tile powers: Stages 1-2 checked; Stage 3 first build (per-tile
+  power values cost ~17% search speed); redesign to a tile catalog + builder tiles; plan and setup note revised.
+- [2026-10-22-2200](2026-10-22-2200.md) — session — tile powers, Stage 2: self-applying events (`ApplyTo`), the display
+  board, `Shift Tiles` for tile actors. 54/54 tests; Throughput unchanged.
 - [2026-10-22-1435](2026-10-22-1435.md) — session — tile powers, Stage 1: change record (`FConnectItBoardChanges`),
   one find-all-then-apply scoring pass, the after-move loop shape. 53/53 tests; Throughput unchanged.
 - [2026-10-22-1018](2026-10-22-1018.md) — session — phased levels, Stage 7 (vault): two decisions, recipe "script a phased

@@ -7,6 +7,7 @@
 #include "Board/Rules/ConnectIt_ScoringRule.h"
 #include "Board/Rules/ConnectIt_MatchCondition.h"
 #include "Board/Rules/ConnectIt_MatchConditionGroup.h"
+#include "Board/Powers/ConnectIt_TilePower.h"
 #include "ConnectIt_RuleSet.generated.h"
 
 struct FConnectItBoardOperation;
@@ -72,6 +73,13 @@ struct CONNECTIT_API FConnectItRuleSet
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Rules", meta = (ExcludeBaseStruct))
     TInstancedStruct<FConnectItScoringRule> ScoringRule;
 
+    // The level-wide tile powers: each applies to every tile, on top of a
+    // tile's own power (which is on the tile -- FConnectItTileData::TilePower
+    // -- not here). The Level director's Tile Powers, copied by
+    // SetLevelWidePowers when the match starts. Not authored.
+    UPROPERTY(Transient, BlueprintReadOnly, Category = "Rules")
+    TArray<FConnectItTilePower> TilePowers;
+
     // Copies the Level director's condition assets into the win and lose
     // groups, in order (empty entries skipped, with a warning). Game thread,
     // once per match, before the rules are used -- the GameMode does it.
@@ -80,6 +88,10 @@ struct CONNECTIT_API FConnectItRuleSet
         const TArray<TObjectPtr<UConnectIt_MatchConditionAsset>>& AIWinConditions,
         const TArray<TObjectPtr<UConnectIt_MatchConditionAsset>>& PlayerLoseConditions = {},
         const TArray<TObjectPtr<UConnectIt_MatchConditionAsset>>& AILoseConditions = {});
+
+    // Copies Powers into TilePowers, each marked level-wide. A power with no
+    // name, or a second one with the same name, is skipped with a warning.
+    void SetLevelWidePowers(const TArray<FConnectItTilePower>& Powers);
 
     // Replaces one side's win goals (bWinGoals) or lose conditions with
     // Conditions, resolved the same way. Game thread. The progress the board

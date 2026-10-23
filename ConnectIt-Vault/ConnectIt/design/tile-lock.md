@@ -81,7 +81,8 @@ reach it.
 | Remove Tiles, Change Layout | **Yes** -- a layout change must be able to remove any tile (lean, not objected to) |
 | Add Tiles, Change Goals, Begin Phase | n/a (no existing tiles) |
 | *Planned:* Set Tile Locked | **Yes**, necessarily |
-| *Planned:* Set Tile Power | **Yes** (lean, not objected to) |
+| ~~Set Tile Power~~ | dropped (owner, 2026-10-22): a tile is replaced instead |
+| *Planned:* Set Chain Partner | **Yes** -- the chain's own setup (2026-10-22) |
 | *Planned:* Adjust Multiplier | **No** |
 | *Planned:* Move Piece | **No**, either direction -- so the plain bool is enough; no per-role special case |
 
