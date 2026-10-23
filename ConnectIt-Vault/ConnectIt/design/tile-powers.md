@@ -5,10 +5,15 @@ alongside) just scoring points, a tile can trigger an effect on the board once i
 scored on enough. The multiplier already tracks "how many times has a line been completed
 through this tile" for free; a power just gives that number a second job.
 
-> **Under discussion (2026-10-21):** how powers fit the board pipeline is tracked in
-> [tile-powers-in-the-board-pipeline](../_questions/tile-powers-in-the-board-pipeline.md). Settled so far: powers run in
-> the rules' after-move step (`FConnectItRuleSet::ResolveBoardChange`), not in the Level director. Triggers and the
-> resolution loop: [tile-power-triggers](tile-power-triggers.md); plan: [tile-powers-plan](tile-powers-plan.md) (approved 2026-10-22, not built).
+> **Status: the system is built (2026-10-22); no power ships yet.** Powers run in the rules' after-move step as one chain
+> per action ([decision](../_decisions/2026-10-22-tile-powers-in-the-after-move-chain.md)), and each is defined once per
+> tag in a tile catalog ([decision](../_decisions/2026-10-22-tile-catalog-and-builder-tiles.md)). Triggers:
+> [tile-power-triggers](tile-power-triggers.md); plan: [tile-powers-plan](tile-powers-plan.md); how to make one:
+> `code/recipes/add-a-tile-power.md`. The first real powers (Push, Repel as a turn-start countdown, Vacuum) are being
+> designed for their own plan -- see the question's Stage 5 rounds
+> ([tile-powers-in-the-board-pipeline](../_questions/tile-powers-in-the-board-pipeline.md)). Crumble is set aside as a
+> board power. The sketches below predate all of this: thresholds are now gates, and Poison / Overgrowth need the planned
+> Adjust Multiplier operation.
 
 ## Why this fits what already exists
 

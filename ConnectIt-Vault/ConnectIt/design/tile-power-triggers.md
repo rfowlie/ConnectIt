@@ -1,8 +1,13 @@
 # Tile power triggers
 
-Design note (2026-10-21), from the owner's idea that some tile powers fire **before** scoring. Nothing is built. The
-wider discussion is [tile-powers-in-the-board-pipeline](../_questions/tile-powers-in-the-board-pipeline.md); the original
-power sketches are [tile-powers](tile-powers.md).
+Design note (2026-10-21), from the owner's idea that some tile powers fire **before** scoring. **Built 2026-10-22**
+(tile-powers plan Stages 1-4: every trigger in the table, including Sync, fires in the chain; flow:
+`code/systems/tile-power-chain.md`); decision:
+[tile powers in the after-move chain](../_decisions/2026-10-22-tile-powers-in-the-after-move-chain.md). Since then (Stage 5
+design, not built): Vacuum is to fire on Piece Exit **and** Scoring (one trigger per power relaxed to a set), Repel became a
+turn-start countdown, and Crumble is set aside as a board power. The wider discussion is
+[tile-powers-in-the-board-pipeline](../_questions/tile-powers-in-the-board-pipeline.md); the original power sketches are
+[tile-powers](tile-powers.md).
 
 > **Revised (round 8):** an earlier version had a pre / post timing per power (a two-column chart). The owner dropped
 > post-scoring reactions: they are almost indistinguishable from scoring reactions and make the chain much harder to

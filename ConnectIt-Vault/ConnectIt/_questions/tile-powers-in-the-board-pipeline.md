@@ -1,8 +1,8 @@
 ---
 created: 2026-10-21
 question: "How should tile powers fit into the board pipeline?"
-status: open
-closed-by:
+status: answered
+closed-by: "[2026-10-22-tile-powers-in-the-after-move-chain](../_decisions/2026-10-22-tile-powers-in-the-after-move-chain.md); [2026-10-22-tile-catalog-and-builder-tiles](../_decisions/2026-10-22-tile-catalog-and-builder-tiles.md)"
 tags:
   - question
 ---
@@ -356,5 +356,130 @@ test-only powers. Plan updated: [tile-powers-plan](../design/tile-powers-plan.md
   revision recorded in [tile-power-setup](../design/tile-power-setup.md) ("Revised: the tile catalog and builder
   tiles"), its earlier class-held decision marked partly superseded. The code is reworked to match next.
 
+**2026-10-22, Stage 5 design round 1 (the first powers; discussed, not decided).** Stages 1-4 built. Stage 5 was
+deferred to its own plan; this round starts its design.
+
+- **Move Piece** (keeps the piece's owner; Exit at From + Enter at To; To must be empty and active; event Piece
+  Moved): **owner agrees.**
+- **Multiplier floor and ceiling per tile type (owner):** set per kind of tile. Some powered tiles shouldn't gain
+  multiplier, or shouldn't contribute to scoring at all (multiplier 0).
+  - Claude: they belong on the catalog entry and are enforced wherever a multiplier changes: scoring's +1, Adjust
+    Multiplier, Destroy Multiplier's reset, and the starting value.
+  - The power's gate field (`MinMultiplier`) would then clash by name: rename it.
+  - Open: plain tiles' limits; whether a 0-multiplier tile still forms lines (lean: yes, it just adds 0 points).
+- **Push (owner):** first find which orthogonal neighbours can be pushed, then pick one at random among them. Then it
+  always does something when it can, and a player who sees only one valid option can predict it. It never pushes its
+  own tile's piece.
+  - Claude: valid = an occupied orthogonal neighbour whose next tile beyond it (away from the Push tile) is empty
+    and active.
+- **Repel (owner):** as sketched, no piece could ever rest on it. Instead a **countdown**: each time it reaches 0, a
+  piece on it is pushed to a random open tile in any direction, if possible, and the countdown resets.
+  - Claude: that is a **turn-timer trigger** (the plan's "Not in this plan" list). The countdown can be the
+    existing cooldown: a Turn power fires whenever its ready turn comes, then cools down N.
+  - Open:
+    - when it ticks (turn start?) and which turns count;
+    - whether it resets when there's no piece;
+    - whether "any direction" means the 8 adjacent tiles;
+    - whether the AI's search simulates it per ply.
+- **Vacuum (owner):** fires on Piece Exit **and** Scoring; pulls a random piece from any direction onto itself (the
+  opposite of Repel, no timer).
+  - Claude: two triggers breaks "one trigger per power", so relax it to a trigger set.
+  - Lean: candidates are the first piece along each of the 8 directions (through empty tiles, stopped by an edge or
+    an inactive tile); pick one at random; only when its own tile is empty.
+- **Crumble (owner):** not a tile power: a board or map power. Set aside for another plan. (The level-wide machinery
+  built in Stage 4 stays, and so does its board-wide cooldown question.)
+- **First power in a level (owner):** the Chained tile, in the first place-piece level. A sandbox level tests the
+  others.
+- **Tile hooks (owner):** `AConnectIt_TileBase` gets virtuals: `OnPowerTriggered`, `OnPieceEnter`, ....
+  - Claude: yes, dispatched centrally (the tile registry looks up the event's tile and calls its hook) rather than
+    each tile binding the queue.
+  - Open: whether a hook can hold the event queue until its animation finishes.
+- **Order (owner):** the tile lock plan before Stage 5. The lock is universal, so every power and operation must
+  answer whether it can touch a locked tile.
+  - Claude agrees. The lock plan also brings the Chained tile, which needs revising for the catalog and builder
+    tiles first.
+
+**2026-10-22, Stage 5 design round 2 (owner).**
+
+- **No level suffix:** powers don't have levels yet (`ConnectIt.TilePower.Push`, not `.Push.1`). Tiles growing in
+  power is an idea not yet looked into.
+- **Plain tiles:** floor 1, no ceiling for now.
+- **A 0-multiplier tile still forms scoring lines**; it just adds nothing to the score.
+- **Repel's countdown:**
+  - counts all turns;
+  - resets when it reaches 0 even with no piece on it;
+  - "any direction" = all 8 directions;
+  - the AI's search ignores it for now (later).
+  - Asked Claude where it should tick. Claude's lean: at **turn start**, as its own board change before the player
+    acts, so the push plays out (and can score) before the player decides, rather than blurring into the previous
+    move's chain. It joins the existing turn-start level changes, one board change at a time.
+- **Vacuum:** pulls a piece from any of the 8 directions, at random. Claude reads this as the first piece along each
+  direction (a piece behind another can't jump it), picking one at random.
+- **Tile hooks:** the owner asked what was meant. Claude explained (below) and asked again.
+  - "Hooks" are the tile actor's own functions the owner proposed (`OnPowerTriggered`, `OnPieceEnter`, ...).
+  - The question is whether a hook can make the event queue **wait** for its animation, as gated visuals do today,
+    or is fire-and-forget. Lean: it can wait, so chains play in order.
+
+**2026-10-22, Stage 5 design round 3 (owner).**
+
+- **Repel's faction:** the faction whose turn it is. Clunky, but make it work first and clean it up later.
+- **Vacuum:** the nearest piece along each of the 8 directions, one picked at random. Confirmed.
+- **Hooks wait for their animations**, so a chain plays in order. The owner's flow: the game event fires → a
+  visualizer gets it → it calls the hooks on the actors. So the queue waits on the visualizer's answer, not on the
+  actors. Owner asked: how does the visualizer wait for a hook to finish -- by passing it a callback?
+- **Claude: yes, a completion handle per hook call.**
+  - The plugin already gates this way: a visualizer registers a `UGameEventTask_Async` for an event's tag, the queue
+    calls its execute delegate, and the queue moves on only when every registered task has called `CallOnComplete`.
+  - For tile hooks, the visualizer creates a small **reaction handle** for each hook it calls and passes it in. The
+    tile calls `Finish` on it when its animation ends. When every handle it handed out has finished, the visualizer
+    calls `CallOnComplete` on its task.
+  - Why not hand the tile the task itself: one event can call hooks on several tiles, and the first to finish would
+    release the queue early.
+  - Safety: the C++ default of every hook finishes at once, so a tile that doesn't override a hook never stalls the
+    queue. A handle whose tile is destroyed finishes itself.
+  - Where the visualizer lives (a C++ dispatcher, the tile registry or its own object) is for the Stage 5 plan.
+
+**2026-10-22, Stage 5 design round 4 (owner).**
+
+- **Tiles are never destroyed, only pooled**, so a destroyed tile can't lose a handle.
+  - Claude: the pooled equivalent is a tile returned to the pool mid-animation; returning it should finish its
+    handles.
+- **Calling Finish in every hook is error-prone (owner).** Wrap each virtual hook in a matching function that does
+  pre and post checks and fires Finish itself, so designers never have to.
+- **Claude:**
+  - Yes to the wrapper. A non-virtual function the visualizer calls checks, then calls the virtual hook, then
+    finishes.
+  - **But:** a Blueprint event returns at once, even when it starts a timeline or a delay. A wrapper that finishes
+    when the hook returns finishes before the animation ends.
+  - Options:
+    - **(a) Opt-in hold:** the wrapper finishes by default. A tile that animates calls Hold Reaction in its hook and
+      then Finish when done. A safety timeout finishes a forgotten hold, with a warning naming the tile.
+    - **(b)** The hook returns its animation's length, and the wrapper finishes after that long.
+    - **(c)** Always require Finish (the error-prone case).
+  - Lean: **(a)**. Most hooks need no thought, only animating tiles opt in, and a mistake costs a stall of at most
+    the timeout, with the tile named.
+
+**2026-10-22, Stage 5 design round 5 (owner): no wrapper.**
+
+- The wrapper is more trouble than it's worth, and its checks add little: the visualizers are responsible for only
+  calling hooks on the right actors.
+- **The hook is handed the handle and must call Finish** after its animation -- cache the handle, finish when done,
+  just like setting up responses to game events today. A clear design note says so.
+- Claude, what stays from earlier rounds:
+  - each hook's C++ default finishes at once, so a hook a tile doesn't override never stalls the queue;
+  - returning a tile to the pool finishes any handle it still holds.
+- **The Stage 5 design is settled enough to plan** (after tile-powers Stage 6 and the lock plan).
+
 ## Resolution
 
+**Answered 2026-10-22**, with the tile-powers plan's Stages 1-4 built (Stage 6: vault):
+
+- **Where and how powers run:** in the rules' after-move step, as one chain per action -- settle, then scoring, until a
+  scoring pass finds no lines. Effects are board operations applied inside the chain; each power fires once per tile
+  per action; events apply themselves; visuals read a display board.
+  [Tile powers in the after-move chain](../_decisions/2026-10-22-tile-powers-in-the-after-move-chain.md).
+- **Where a power is defined:** once per tag, in a tile catalog. Designers place builder tiles that name a tag, and
+  the board carries only the tag. [Tile catalog and builder tiles](../_decisions/2026-10-22-tile-catalog-and-builder-tiles.md).
+- **Carried forward, not answered here:** the Stage 5 design rounds above (Move Piece, multiplier floor and ceiling per
+  tile type, Push, Repel as a turn-start countdown, Vacuum on Exit and Scoring, tile hooks with a reaction handle).
+  They become the Stage 5 plan, after the tile lock plan. Crumble is set aside as a board power for its own plan.

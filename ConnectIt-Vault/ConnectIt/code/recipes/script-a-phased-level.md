@@ -4,11 +4,11 @@ task: Script a phased level -- a level that, when something happens (a checkpoin
 touches:
   - the Level director Blueprint (Begin Phase, Set Win / Lose Conditions, Set Layout, On Phase Changed)
   - UConnectIt_BoardLayout data assets (one per layout), made with the layout tool in a sandbox level
-  - the level config (Default Tile Class)
-  - tile Blueprints (the tile data interface's Apply Layout Cell)
+  - the level config's tile catalog (which tile actor shows each power tag; its Plain Tile Class for none)
+  - builder tiles (what the layout tool places and captures) and the catalog's tile Blueprints (Apply Layout Cell)
   - the visual handlers for Tiles Removed / Tiles Added / Layout Changed / Phase Changed (once per project)
 reconciled: 2026-10-22
-commit: 1d514b1
+commit: f6d511d
 ---
 
 # Recipe: script a phased level
@@ -27,23 +27,28 @@ Design: [phased-levels](../../design/phased-levels.md); decision:
 
 - A level scripted with a Level director ([[script-a-level]]): both sides' starting goals are its Player / AI Win / Lose
   Conditions ([[add-a-win-condition]]). The starting layout is the tiles placed in the map, as for any level.
-- The level config's **Default Tile Class** set (the tile actor for layout cells that name none).
+- A **tile catalog** on the level config (or the project default): the tile actor for each power tag, and a **Plain Tile
+  Class** for cells with none. (Without any catalog, the level config's old **Default Tile Class** is used.)
 - **Once per project** (Blueprint):
-  - **Tile Blueprints:** implement the tile data interface's **Apply Layout Cell** (take the starting values and the
-    Visual Variant's look).
+  - **The catalog's tile Blueprints:** implement the tile data interface's **Apply Layout Cell** (take the starting values
+    and the Visual Variant's look).
+  - **A builder tile Blueprint** (`ConnectIt_BuilderTile`), set as Project Settings > Game > ConnectIt > **Builder Tile
+    Class**: the layout tool places these.
   - **Visual handlers** for the board events, on every machine:
     - **Tiles Removed:** Unregister Tiles At; animate out; Destroy Actor; Despawn Piece At where Piece Factions isn't -1.
     - **Tiles Added:** Spawn Layout Tiles; appear; Spawn Piece At for cells with a starting piece.
     - **Layout Changed:** the camera moves to its transform.
     - **Phase Changed** (optional): a banner.
   - **The layout tool:** an editor utility widget over `Capture Layout From Level` / `Load Layout Into Level` / `Set Layout
-    Camera`, plus `Save Loaded Asset`; and a **sandbox map** whose World Settings name the board's level config.
+    Camera` / `Preview Tile Catalog` / `Clear Tile Catalog Preview`, plus `Save Loaded Asset`; and a **sandbox map** whose
+    World Settings name the board's level config.
 
 ## Steps
 
 1. **Make each phase's layout** (skip for phases that keep the board):
    1. Open the sandbox map.
-   2. Lay the tiles out and set each one's data (multiplier, active, shiftable, starting piece).
+   2. Lay **builder tiles** out and set each one's data (multiplier, active, shiftable, starting piece, power tag).
+      **Preview Tile Catalog** to see it as the catalog's tiles (never saved); **Clear** before editing again.
    3. In the tool: pick or create a `ConnectIt Board Layout` asset (e.g. `CIBL_Tutorial3_Phase2`).
    4. **Capture**.
    5. Frame the view and **Set Camera** (optional).
@@ -93,8 +98,11 @@ Design: [phased-levels](../../design/phased-levels.md); decision:
   the phase should start clean.
 - **Starting pieces on added tiles count as starting pieces** (piece-count goals measure progress from them). Pieces removed
   with their tiles don't lower that count.
-- **A layout cell with no Tile Class and no Default Tile Class** is on the board but not shown (warning: `no tile actor for
-  (X,Y)`).
+- **A layout cell whose power tag has no tile class in the catalog** (or no catalog and no Default Tile Class) is on the
+  board but not shown (warning: `no tile actor for (X,Y)`). Layout validation flags tags the project default catalog
+  doesn't define.
+- **Layouts captured before the tile catalog** named a Tile Class per cell; that field is gone. Capture them again from
+  builder tiles.
 - **The AI can't foresee a phase change**: it plays the current phase until the change happens, and never decides
   mid-change (it waits for the board to settle).
 - **Get Current Phase runs ahead of the visuals**: it reads the committed board. For a banner timed with the board, use the

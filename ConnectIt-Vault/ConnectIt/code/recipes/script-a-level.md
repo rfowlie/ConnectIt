@@ -5,8 +5,9 @@ touches:
   - a Blueprint subclass of UConnectIt_LevelDirector (named by the match preset's Level Director Class -- required)
   - condition assets for its goals and triggers
   - (board changes) board operation structs; (rule changes) scoring rule structs
+  - (tiles) builder tiles placed in the level, the level config's tile catalog; (level-wide powers) Level Wide Powers
 reconciled: 2026-10-22
-commit: 1d514b1
+commit: f6d511d
 ---
 
 # Recipe: script a level
@@ -57,7 +58,12 @@ layout and goals as it goes is a phased level: [[script-a-phased-level]].
    visuals ([one board change at a time](../../_decisions/2026-10-21-one-board-change-at-a-time.md)). **Next Turn Start** =
    when the next turn begins: they join the same line, before the directors hear the turn started. The player can't act,
    and the AI doesn't decide, until they have all played out.
-8. Other sides: **Get Player Director (Faction)** / **Get AI Director** -- e.g. a Player director Blueprint with a custom event
+8. **The level's tiles:** block the board out with **builder tiles** (`ConnectIt_BuilderTile` Blueprints). Each has its
+   per-tile settings and, for a powered tile, a **Tile Power Tag**. The level config's **Tile Catalog** (else the project
+   default) decides which tile actor shows each tag. Builders become those actors when the match starts. In the editor, the
+   layout tool's **Preview Tile Catalog** shows them (never saved). Powers that apply to every tile: the tags in this
+   director's **Level Wide Powers**. Making a power: [[add-a-tile-power]].
+9. Other sides: **Get Player Director (Faction)** / **Get AI Director** -- e.g. a Player director Blueprint with a custom event
    "Grant Swap" that the level calls at a checkpoint; the Player director then changes its own loadout.
 
 ### Examples
@@ -90,6 +96,6 @@ layout and goals as it goes is a phased level: [[script-a-phased-level]].
 ## See also
 
 - Design: [three-directors](../../design/three-directors.md), [mid-level-rule-changes](../../design/mid-level-rule-changes.md)
-- Recipes: [[script-a-phased-level]], [[add-a-win-condition]], [[direct-the-ai-during-a-match]], [[set-up-a-custom-ai-opponent]],
+- Recipes: [[script-a-phased-level]], [[add-a-tile-power]], [[add-a-win-condition]], [[direct-the-ai-during-a-match]], [[set-up-a-custom-ai-opponent]],
   [[add-a-board-request-type]]
 - Flow: [[ai-turn]]

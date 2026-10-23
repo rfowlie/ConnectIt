@@ -1,13 +1,13 @@
 ---
 type: plan
-status: in-progress
+status: complete
 approved: true
 approved-on: 2026-10-22
-completed-on:
+completed-on: 2026-10-22
 playtested: false
 design: "[tile-power-triggers](tile-power-triggers.md)"
 question: "[tile-powers-in-the-board-pipeline](../_questions/tile-powers-in-the-board-pipeline.md)"
-decision:
+decision: "[tile powers in the after-move chain](../_decisions/2026-10-22-tile-powers-in-the-after-move-chain.md); [tile catalog and builder tiles](../_decisions/2026-10-22-tile-catalog-and-builder-tiles.md)"
 ---
 
 # Plan: tile powers (chain reactions in the after-move step)
@@ -17,7 +17,8 @@ Design: [tile-power-triggers](tile-power-triggers.md). Discussion and every deci
 [tile-powers](tile-powers.md). Written 2026-10-21; reviewed against the code the same day (round 10 in the question:
 Shift, per-arrival survival, the search's turn number, the display board's limits, the scoring-rule interface, the
 gate, the guard, Crumble); walked through with the owner and **approved 2026-10-22**. Stage 3 **revised 2026-10-22** at the owner's direction
-after its first build (the tile catalog and builder tiles). Building in progress (Stages 1-2 built).
+after its first build (the tile catalog and builder tiles). **Complete 2026-10-22:** Stages 1-4 and 6 built; Stage 5 (the
+first real powers) moved to its own plan, to follow the tile lock plan.
 
 ## Context
 
@@ -252,7 +253,7 @@ values on every board tile, and measured ~17% slower AI search even with no powe
   turn kept) -- the copy of the values on every tile. Reworked to the revision above: the turn stamping, tile ids, board
   fields and the Tiles Added ids stay; the power on the tile data, `GetTilePower`, the defaults-only tag, the layout
   cell's class and captured power, and the Level director's power definitions go.
-- *As built (rework, 2026-10-23; 55/55 tests; Throughput 392,028 nodes/s against 366k-379k -- back to normal):*
+- *As built (rework, 2026-10-22; 55/55 tests; Throughput 392,028 nodes/s against 366k-379k -- back to normal):*
   - **Catalog:** `UConnectIt_TileCatalog` (`Public/Board/Powers/`) has `Tiles` (tag -> {`TileClass`, `Power`}),
     `PlainTileClass`, `GetTileClassFor`, `Defines`, `MakePowers` (each power named by its key), and `FindFor(world)`
     (the level config's catalog, else the project default).
@@ -342,7 +343,7 @@ values on every board tile, and measured ~17% slower AI search even with no powe
   power fires);
   settle until quiet; a capture fires a Piece Changed power and no Piece Enter / Piece Exit power; cooldown 0 / 1 / 2 against the turn number; a power with
   no target still shows and cools down; same seed, same result; before + events = after on a chain.
-- *As built (2026-10-23; 56/56 tests; Throughput 393,038 / 389,361 nodes/s against 366k-392k -- no cost):*
+- *As built (2026-10-22; 56/56 tests; Throughput 393,038 / 389,361 nodes/s against 366k-392k -- no cost):*
   - **`FConnectItPowerChain`** (`Private/Board/Powers/`) lives for one `ResolveBoardChange` call.
     - **Settle:** Sync powers first in each loop; their changes join that loop's triggers. Then Piece Enter → Piece
       Exit → Piece Changed → Tile Changed, in the record's order. Then loop on what changed until nothing fires.
@@ -381,7 +382,7 @@ values on every board tile, and measured ~17% slower AI search even with no powe
     - no powers → scoring only;
     - before + events = after on the chains.
 
-## Stage 5: new operations and the first powers -- deferred
+## Stage 5: new operations and the first powers -- deferred (moved to its own plan)
 
 **Deferred (owner, 2026-10-22): to be designed another time**, in its own plan. Kept here as the starting point:
 `_MovePiece` / `_AdjustMultiplier` operations with their events (`_SetTilePower` **dropped**, owner 2026-10-22: a tile
@@ -399,6 +400,29 @@ the level-wide power tags) and `code/recipes/script-a-level.md` (blocking out wi
 catalog); `code/` recipe "add a tile power" is a catalog entry plus its tile class; mark
 [the Crumble-threshold decision](../_decisions/2026-09-20-crumble-threshold-stamped-on-replicated-board-state.md)
 superseded (rules replicate); log.
+
+- *As built (2026-10-22):*
+  - **Decisions:**
+    - [tile powers in the after-move chain](../_decisions/2026-10-22-tile-powers-in-the-after-move-chain.md) (two phases,
+      operations as effects, once per action, self-applying events and the display board);
+    - [tile catalog and builder tiles](../_decisions/2026-10-22-tile-catalog-and-builder-tiles.md), a second note since
+      it is a separate call made at Stage 3;
+    - both indexed.
+    - The catalog note leaves one point open for the owner: the project settings class that the 2026-10-21
+      [no ConnectIt project settings](../_decisions/2026-10-21-no-connectit-project-settings.md) decision had removed.
+  - **Question closed:** [tile-powers-in-the-board-pipeline](../_questions/tile-powers-in-the-board-pipeline.md) is
+    answered, with a resolution. Its Stage 5 design rounds are carried into the Stage 5 plan.
+  - **Code pages:**
+    - new recipe `code/recipes/add-a-tile-power.md` and flow `code/systems/tile-power-chain.md` (with a diagram), both
+      indexed;
+    - `script-a-level.md` (builder tiles, the catalog, Level Wide Powers) and `script-a-phased-level.md` (the catalog
+      replaces Default Tile Class, the layout tool places builder tiles, preview / clear, recapture old layouts)
+      updated and anchored at `f6d511d`.
+  - **Status lines:** `tile-powers.md`, `tile-power-triggers.md`, `board-request-objects.md` (reactions built as tile
+    powers; mostly superseded) and `three-directors.md` (Level Wide Powers).
+  - **Crumble-threshold decision:** superseded.
+  - **Not done here:** the type pages and the `code/__INDEX.md` inventory for the new types (tile power, catalog,
+    builder tile, power chain, Power Triggered, project settings). Left to a `/process-code` pass.
 
 ## Not in this plan
 

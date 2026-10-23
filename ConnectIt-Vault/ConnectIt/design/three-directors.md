@@ -23,7 +23,8 @@ Decision: [2026-10-20-three-directors-and-match-conditions](../_decisions/2026-1
 
 - **A shared base director**, three kinds with the same responsibility in different contexts:
   - **Level director** -- the level's own script: **level conditions** (triggers) and **board changes**. One instance,
-    owned by the GameMode.
+    owned by the GameMode. Since 2026-10-22 it also names the level's **level-wide tile powers** (`Level Wide Powers`:
+    tags; the tile catalog defines them).
   - **Player director** -- a human side: its starting loadout, its **win and lose conditions**, loadout changes during play.
     One instance per human player, owned by the GameMode (in versus both players get an instance of the same class).
   - **AI director** -- what `UConnectIt_AIDirector` is today (loadout, strategies, selector, think time) plus the AI's

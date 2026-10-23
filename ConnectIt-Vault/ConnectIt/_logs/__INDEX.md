@@ -6,13 +6,15 @@ Vault-wide passes go in `_core/_logs/`.
 
 Newest first:
 
-- [2026-10-23-0045](2026-10-23-0045.md) — session — tile powers, Stage 4: powers fire in the chain (settle, Sync,
+- [2026-10-22-2250](2026-10-22-2250.md) — session — tile powers, Stage 6 (vault): two decisions, question closed, recipe
+  "add a tile power", flow "tile power chain", level recipes and status lines updated; plan complete; misdated logs fixed.
+- [2026-10-22-1745](2026-10-22-1745.md) — session — tile powers, Stage 4: powers fire in the chain (settle, Sync,
   scoring reactions, guard, cooldowns, causes, Power Triggered). 56/56 tests; Throughput unchanged.
-- [2026-10-23-0030](2026-10-23-0030.md) — session — tile powers, Stage 3 rework: tile catalog, builder tiles, catalog
+- [2026-10-22-1730](2026-10-22-1730.md) — session — tile powers, Stage 3 rework: tile catalog, builder tiles, catalog
   preview (never saved), swap at match start. 55/55 tests; Throughput 392,028 nodes/s (back to normal).
-- [2026-10-22-2245](2026-10-22-2245.md) — session — tile powers: Stages 1-2 checked; Stage 3 first build (per-tile
+- [2026-10-22-1530](2026-10-22-1530.md) — session — tile powers: Stages 1-2 checked; Stage 3 first build (per-tile
   power values cost ~17% search speed); redesign to a tile catalog + builder tiles; plan and setup note revised.
-- [2026-10-22-2200](2026-10-22-2200.md) — session — tile powers, Stage 2: self-applying events (`ApplyTo`), the display
+- [2026-10-22-1500](2026-10-22-1500.md) — session — tile powers, Stage 2: self-applying events (`ApplyTo`), the display
   board, `Shift Tiles` for tile actors. 54/54 tests; Throughput unchanged.
 - [2026-10-22-1435](2026-10-22-1435.md) — session — tile powers, Stage 1: change record (`FConnectItBoardChanges`),
   one find-all-then-apply scoring pass, the after-move loop shape. 53/53 tests; Throughput unchanged.

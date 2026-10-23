@@ -1,7 +1,12 @@
 # Board request objects, reactions and the step-list ChangeEvent
 
-Design note (no schema, like the rest of `design/`). **Nothing is built.** Settled in a design
-talk on 2026-09-20 that started from the [Crumble](tile-powers.md#crumble) power. Decisions:
+Design note (no schema, like the rest of `design/`). **Superseded in large part:** board requests became board
+operation structs and the change event an ordered list of board events (built in October), and **reactions are built as
+tile powers** (2026-10-22): they run in the rules' after-move chain, defined per tag in a tile catalog, with level-wide
+powers named on the Level director rather than a `BoardReactions` array on the level config -- see
+[tile powers in the after-move chain](../_decisions/2026-10-22-tile-powers-in-the-after-move-chain.md). Crumble itself is set
+aside as a board power for its own plan. Kept as the history of the 2026-09-20 talk that started from the
+[Crumble](tile-powers.md#crumble) power. Decisions:
 [layers](../_decisions/2026-09-20-board-changes-layered-primitives-requests-reactions.md),
 [step-list event](../_decisions/2026-09-20-board-change-event-is-an-ordered-step-list.md),
 [Crumble threshold on replicated state](../_decisions/2026-09-20-crumble-threshold-stamped-on-replicated-board-state.md).
