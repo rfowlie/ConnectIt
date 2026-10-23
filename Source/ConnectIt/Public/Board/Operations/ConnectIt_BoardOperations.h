@@ -491,3 +491,22 @@ struct CONNECTIT_API FConnectItBoardOperation_AdjustMultiplier : public FConnect
     virtual FString Describe() const override;
     virtual void GetTargetPositions(TArray<FGridPosition>& OutPositions) const override { OutPositions.Add(Position); }
 };
+
+// A turn has started: the Turn Start tile powers whose countdown has run out
+// fire (e.g. Repel), for the faction whose turn it is. Changes nothing itself
+// and has no event of its own -- the powers' events are the change. The
+// GameMode commits it first at each turn start, but only when one is ready
+// (FConnectItRuleSet::HasTurnStartPowerReady).
+USTRUCT(BlueprintType, meta = (DisplayName = "Turn Start"))
+struct CONNECTIT_API FConnectItBoardOperation_TurnStart : public FConnectItBoardOperation
+{
+    GENERATED_BODY()
+
+    virtual FGameplayTag GetRequestType() const override;
+    virtual bool CanApply(const FConnectItBoardState& Board, FString* OutWhyNot = nullptr) const override { return true; }
+    virtual void Apply(
+        FConnectItBoardState& Board,
+        FConnectItBoardChanges& OutChanges,
+        FConnectItBoardChangeEvent* OutEvents) const override;
+    virtual FString Describe() const override { return TEXT("turn start"); }
+};

@@ -105,6 +105,11 @@ struct CONNECTIT_API FConnectItRuleSet
     // The power named Name, or null
     const FConnectItTilePower* FindTilePower(const FGameplayTag& Name) const;
 
+    // Whether a Turn Start tile power would fire on Board when turn TurnNumber
+    // starts (its countdown has run out) -- the GameMode commits a Turn Start
+    // operation only then
+    bool HasTurnStartPowerReady(const FConnectItBoardState& Board, int32 TurnNumber) const;
+
     // Value within the multiplier limits of Tile's type (its power tag's
     // floor and ceiling; a plain tile: floor 1, no ceiling)
     float ClampMultiplier(const FConnectItTileData& Tile, float Value) const;

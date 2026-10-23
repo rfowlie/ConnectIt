@@ -288,6 +288,11 @@ struct CONNECTIT_API FConnectItBoardEvent_TilesAdded : public FConnectItBoardOpe
     UPROPERTY(BlueprintReadOnly, Category = "Event")
     TArray<int32> TileIds;
 
+    // Each tile's power ready turn (a Turn Start power's countdown starts as
+    // the tile joins), parallel to Cells
+    UPROPERTY(BlueprintReadOnly, Category = "Event")
+    TArray<int32> PowerReadyTurns;
+
     virtual FGameplayTag GetEventTag() const override;
     virtual void ApplyTo(FConnectItBoardState& Board) const override;
 };

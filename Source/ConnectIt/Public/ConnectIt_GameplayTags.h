@@ -24,12 +24,15 @@ UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_Game_SetTileLocked);
 UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_Game_SetChainPartner);
 UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_Game_MovePiece);
 UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_Game_AdjustMultiplier);
+UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_Game_TurnStart);
 // The Chained tile's power (FConnectItTilePowerEffect_Chained): locked while its partner has no piece
 UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_TilePower_Chained);
 // Push (FConnectItTilePowerEffect_Push): pushes a neighbouring piece one tile away
 UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_TilePower_Push);
 // Vacuum (FConnectItTilePowerEffect_Vacuum): pulls the nearest piece in some direction onto its empty tile
 UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_TilePower_Vacuum);
+// Repel (FConnectItTilePowerEffect_Repel): on a countdown, moves its piece to an open neighbour
+UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_TilePower_Repel);
 UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_Game_CapturePiece);
 UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_Game_Shift);
 // Level only (FConnectItBoardOperation_ChangeGoals): no action produces it

@@ -95,6 +95,28 @@ void FConnectItRuleSet::SetTilePowers(const TArray<FConnectItTilePower>& Powers,
     }
 }
 
+bool FConnectItRuleSet::HasTurnStartPowerReady(const FConnectItBoardState& Board, int32 TurnNumber) const
+{
+    for (int32 Index = 0; Index < LevelWidePowers.Num(); Index++)
+    {
+        const FConnectItTilePower* Power = FindTilePower(LevelWidePowers[Index]);
+        const int32 ReadyTurn = Board.LevelWideReadyTurns.IsValidIndex(Index) ? Board.LevelWideReadyTurns[Index] : 0;
+        if (Power && Power->HasTrigger(EConnectItPowerTrigger::TurnStart) && TurnNumber >= ReadyTurn && Board.NumTiles() > 0)
+        {
+            return true;
+        }
+    }
+    for (const FConnectItTileData& Tile : Board.TileDataArray)
+    {
+        const FConnectItTilePower* Power = FindTilePower(Tile.TilePowerTag);
+        if (Power && Power->HasTrigger(EConnectItPowerTrigger::TurnStart) && TurnNumber >= Tile.PowerReadyTurn)
+        {
+            return true;
+        }
+    }
+    return false;
+}
+
 float FConnectItRuleSet::ClampMultiplier(const FConnectItTileData& Tile, float Value) const
 {
     return FConnectItTilePower::ClampMultiplier(FindTilePower(Tile.TilePowerTag), Value);

@@ -345,6 +345,17 @@ void AConnectIt_GameMode::HandleTurnPhaseChanged(ETurnPhase NewPhase)
     {
         LevelChangesInARow = 0;
         LevelChanges.StartTurn();
+
+        // The turn's Turn Start tile powers (e.g. Repel's countdown) come first,
+        // as their own board change -- only when one is ready
+        const UConnectIt_BoardStateComponent* BoardState = UConnectIt_GameUtilityLibrary::GetBoardStateComponent(this);
+        if (IsValid(BoardState) && Rules.HasTurnStartPowerReady(BoardState->GetCurrentState(), TurnNumber))
+        {
+            FConnectItLevelChange TurnStart;
+            TurnStart.Operation = FInstancedStruct::Make(FConnectItBoardOperation_TurnStart());
+            TurnStart.AsFaction = Faction;
+            LevelChanges.AddFirst(TurnStart);
+        }
         if (!IsBoardChangeResolving())
         {
             DrainLevelChanges();

@@ -75,6 +75,14 @@ public:
         meta = (DisplayName = "Get Placement Blocker (Board State)"))
     static EConnectItPlacementBlocker GetPlacementBlocker(const FConnectItBoardState& State, FGridPosition Position);
 
+    // How many turns until the tile at Position's power can fire again (its
+    // countdown, for a Turn Start power like Repel); 0 = ready. CurrentTurn:
+    // the GameState's Active Turn Number (the board's own turn is its last
+    // change's).
+    UFUNCTION(BlueprintPure, Category = "ConnectIt|Board State",
+        meta = (DisplayName = "Get Power Turns Left (Board State)"))
+    static int32 GetPowerTurnsLeft(const FConnectItBoardState& State, FGridPosition Position, int32 CurrentTurn);
+
     // --- Chained tiles ---
 
     // The Chained tiles whose partner is the tile at Position -- e.g. to give

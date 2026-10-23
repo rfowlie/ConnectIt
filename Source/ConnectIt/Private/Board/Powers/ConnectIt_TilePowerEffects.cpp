@@ -79,6 +79,23 @@ void FConnectItTilePowerEffect_Vacuum::MakeOperations(
     AddRandomMove(Context, Candidates, OutOperations);
 }
 
+void FConnectItTilePowerEffect_Repel::MakeOperations(
+    const FConnectItTilePowerContext& Context, TArray<FInstancedStruct>& OutOperations) const
+{
+    if (!Context.Board.IsTileOccupied(Context.Position)) return;
+
+    TArray<FConnectItBoardOperation_MovePiece, TInlineAllocator<8>> Candidates;
+    for (const FIntPoint& Direction : AllDirections)
+    {
+        FConnectItBoardOperation_MovePiece Move;
+        if (CanMove(Context, Context.Position, Step(Context.Position, Direction), Move))
+        {
+            Candidates.Add(Move);
+        }
+    }
+    AddRandomMove(Context, Candidates, OutOperations);
+}
+
 void FConnectItTilePowerEffect_Chained::MakeOperations(
     const FConnectItTilePowerContext& Context, TArray<FInstancedStruct>& OutOperations) const
 {

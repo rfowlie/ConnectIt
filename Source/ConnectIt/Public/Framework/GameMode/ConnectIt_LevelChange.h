@@ -74,6 +74,10 @@ public:
     // waiting line
     void StartTurn();
 
+    // Change goes to the front of the waiting line (the turn's start comes
+    // before anything queued for it)
+    void AddFirst(const FConnectItLevelChange& Change) { Waiting.Insert(Change, 0); }
+
     // The next waiting change, removed; false if none
     bool TakeNext(FConnectItLevelChange& OutChange);
 

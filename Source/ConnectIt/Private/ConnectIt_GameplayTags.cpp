@@ -18,9 +18,11 @@ UE_DEFINE_GAMEPLAY_TAG_COMMENT(ConnectIt_Game_ToggleTileActive, "ConnectIt.Game.
 UE_DEFINE_GAMEPLAY_TAG_COMMENT(ConnectIt_Game_SetTileLocked, "ConnectIt.Game.State.SetTileLocked", "Lock or unlock a tile (FConnectItBoardOperation_SetTileLocked)");
 UE_DEFINE_GAMEPLAY_TAG_COMMENT(ConnectIt_Game_MovePiece, "ConnectIt.Game.State.MovePiece", "Move a piece to an empty tile, keeping its owner (FConnectItBoardOperation_MovePiece)");
 UE_DEFINE_GAMEPLAY_TAG_COMMENT(ConnectIt_Game_AdjustMultiplier, "ConnectIt.Game.State.AdjustMultiplier", "Change a tile's multiplier by an amount (FConnectItBoardOperation_AdjustMultiplier)");
+UE_DEFINE_GAMEPLAY_TAG_COMMENT(ConnectIt_Game_TurnStart, "ConnectIt.Game.State.TurnStart", "A turn started: the Turn Start tile powers that are ready fire (FConnectItBoardOperation_TurnStart)");
 UE_DEFINE_GAMEPLAY_TAG_COMMENT(ConnectIt_Game_SetChainPartner, "ConnectIt.Game.State.SetChainPartner", "Set or clear a Chained tile's partner (FConnectItBoardOperation_SetChainPartner)");
 UE_DEFINE_GAMEPLAY_TAG_COMMENT(ConnectIt_TilePower_Push, "ConnectIt.TilePower.Push", "Push tile: pushes a neighbouring piece one tile away (FConnectItTilePowerEffect_Push)");
 UE_DEFINE_GAMEPLAY_TAG_COMMENT(ConnectIt_TilePower_Vacuum, "ConnectIt.TilePower.Vacuum", "Vacuum tile: pulls the nearest piece in some direction onto its empty tile (FConnectItTilePowerEffect_Vacuum)");
+UE_DEFINE_GAMEPLAY_TAG_COMMENT(ConnectIt_TilePower_Repel, "ConnectIt.TilePower.Repel", "Repel tile: on a countdown, moves its piece to an open neighbour (FConnectItTilePowerEffect_Repel)");
 UE_DEFINE_GAMEPLAY_TAG_COMMENT(ConnectIt_TilePower_Chained, "ConnectIt.TilePower.Chained", "Chained tile: locked while its partner has no piece (FConnectItTilePowerEffect_Chained, a Sync power)");
 UE_DEFINE_GAMEPLAY_TAG_COMMENT(ConnectIt_Game_CapturePiece, "ConnectIt.Game.State.CapturePiece", "");
 UE_DEFINE_GAMEPLAY_TAG_COMMENT(ConnectIt_Game_Shift, "ConnectIt.Game.State.Shift", "");

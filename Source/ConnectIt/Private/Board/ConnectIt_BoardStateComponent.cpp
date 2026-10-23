@@ -46,10 +46,15 @@ FConnectItTileData UConnectIt_BoardStateComponent::MakeTileData(
         }
     }
 
-    // Its starting multiplier within its type's limits (its catalog entry's; a plain tile's)
+    // Its starting multiplier within its type's limits (its catalog entry's; a
+    // plain tile's), and a Turn Start power's countdown from the first turn
     {
         const FConnectItTileCatalogEntry* Entry = Catalog ? Catalog->Tiles.Find(TileData.TilePowerTag) : nullptr;
         TileData.Multiplier = FConnectItTilePower::ClampMultiplier(Entry ? &Entry->Power : nullptr, TileData.Multiplier);
+        if (Entry && Entry->Power.HasTrigger(EConnectItPowerTrigger::TurnStart))
+        {
+            TileData.PowerReadyTurn = Entry->Power.CooldownTurns;
+        }
     }
 
     if (Catalog && TileData.TilePowerTag.IsValid() && !Catalog->Defines(TileData.TilePowerTag))

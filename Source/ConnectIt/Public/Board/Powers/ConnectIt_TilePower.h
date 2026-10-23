@@ -33,6 +33,10 @@ enum class EConnectItPowerTrigger : uint8
     // Every settle pass, first: keeps some state true (e.g. Chained). No
     // cooldown, and not limited to once per action.
     Sync,
+    // A turn started and the power's countdown ran out (its cooldown is the
+    // countdown: all turns count, and it starts when the tile joins the
+    // board). Fires for the faction whose turn it is (e.g. Repel).
+    TurnStart,
 };
 
 // What an effect is given when its power fires

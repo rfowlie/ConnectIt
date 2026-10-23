@@ -237,6 +237,7 @@ void FConnectItBoardEvent_TilesAdded::ApplyTo(FConnectItBoardState& Board) const
         {
             FConnectItTileData Tile = Cell.TileData.ToTileData(NumFactions);
             Tile.TileId = TileIds[Index];
+            Tile.PowerReadyTurn = PowerReadyTurns.IsValidIndex(Index) ? PowerReadyTurns[Index] : 0;
             Board.SetTileData(Cell.Position, Tile);
             Board.NextTileId = FMath::Max(Board.NextTileId, Tile.TileId + 1);
         }

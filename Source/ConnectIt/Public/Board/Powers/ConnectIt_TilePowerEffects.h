@@ -37,6 +37,19 @@ struct CONNECTIT_API FConnectItTilePowerEffect_Vacuum : public FConnectItTilePow
     virtual void MakeOperations(const FConnectItTilePowerContext& Context, TArray<FInstancedStruct>& OutOperations) const override;
 };
 
+// Repel (Turn Start, ConnectIt.TilePower.Repel; its cooldown is the
+// countdown): when the countdown runs out with a piece on the tile, the piece
+// moves to a random open tile among the 8 around it (one it may move to:
+// empty, active, unlocked). Boxed in, or no piece: nothing, and the countdown
+// resets all the same.
+USTRUCT(BlueprintType, meta = (DisplayName = "Repel"))
+struct CONNECTIT_API FConnectItTilePowerEffect_Repel : public FConnectItTilePowerEffect
+{
+    GENERATED_BODY()
+
+    virtual void MakeOperations(const FConnectItTilePowerContext& Context, TArray<FInstancedStruct>& OutOperations) const override;
+};
+
 // Chained (a Sync power, ConnectIt.TilePower.Chained): the tile is locked
 // exactly while its partner (FConnectItTileData::ChainPartnerId) has no piece.
 // Partner has a piece and the tile is locked: unlock it. No partner, or an

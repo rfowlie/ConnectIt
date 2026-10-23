@@ -46,6 +46,17 @@ void FConnectItPowerChain::Settle(FConnectItBoardChanges& InOutStep)
     // The first loop reacts to the whole step; each later one to what the
     // loop before it changed
     FConnectItBoardChanges Triggers = InOutStep;
+
+    // A turn's start: its Turn Start powers fire first, once; what they change
+    // is reacted to like the rest of the step
+    if (InOutStep.bTurnStarted)
+    {
+        FConnectItBoardChanges Ticked;
+        Ticked.Faction = InOutStep.Faction;
+        RunTurnStartPowers(InOutStep.Faction, Ticked);
+        Triggers.Append(Ticked);
+        InOutStep.Append(Ticked);
+    }
     for (int32 Loop = 0; Loop < MaxSettleLoops; Loop++)
     {
         // Sync powers first; what they change feeds this loop's triggers
@@ -157,6 +168,33 @@ bool FConnectItPowerChain::RunSyncPowers(int32 Faction, FConnectItBoardChanges& 
         }
     }
     return bChanged;
+}
+
+bool FConnectItPowerChain::RunTurnStartPowers(int32 Faction, FConnectItBoardChanges& OutChanges)
+{
+    // The positions as they are now (a power may add or remove tiles)
+    const TArray<FGridPosition, TInlineAllocator<64>> Positions(Board.TilePositions);
+
+    bool bFired = false;
+    for (const FGridPosition& Position : Positions)
+    {
+        const FConnectItTileData* Tile = Board.GetTileData(Position);
+        if (!Tile) continue;
+
+        const FConnectItTilePower* Own = Rules.FindTilePower(Tile->TilePowerTag);
+        if (Own && Own->HasTrigger(EConnectItPowerTrigger::TurnStart))
+        {
+            bFired |= TryFire(Position, *Own, INDEX_NONE, Faction, INDEX_NONE, OutChanges);
+        }
+        for (int32 Index = 0; Index < LevelWide.Num(); Index++)
+        {
+            if (LevelWide[Index] && LevelWide[Index]->HasTrigger(EConnectItPowerTrigger::TurnStart))
+            {
+                bFired |= TryFire(Position, *LevelWide[Index], Index, Faction, INDEX_NONE, OutChanges);
+            }
+        }
+    }
+    return bFired;
 }
 
 bool FConnectItPowerChain::TryFire(const FGridPosition& Position, const FConnectItTilePower& Power,

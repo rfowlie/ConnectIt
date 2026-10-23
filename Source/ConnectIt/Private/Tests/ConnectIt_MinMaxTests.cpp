@@ -1837,8 +1837,8 @@ bool FConnectItAICandidatesTest::RunTest(const FString& Parameters)
         && AllTypes.Contains(FGameplayTag(ConnectIt_Game_Shift)));
     // The eight player-facing ones and the level's Change Goals, Begin
     // Phase, Remove Tiles, Add Tiles, Change Layout, Set Tile Locked, Set
-    // Chain Partner, Move Piece and Adjust Multiplier
-    TestEqual(TEXT("one per kind of operation"), AllTypes.Num(), 17);
+    // Chain Partner, Move Piece, Adjust Multiplier and Turn Start
+    TestEqual(TEXT("one per kind of operation"), AllTypes.Num(), 18);
     return true;
 }
 
@@ -4585,6 +4585,140 @@ bool FConnectItPushAndVacuumTest::RunTest(const FString& Parameters)
             Board.IsTileOccupied(FGridPosition(1, 0))
             && (!Board.IsTileOccupied(FGridPosition(1, 5)) || !Board.IsTileOccupied(FGridPosition(3, 0))));
         TestEqual(TEXT("vacuum scoring: fired once (Scoring), not again for the Exit it caused"), PowersTriggered(Events).Num(), 1);
+    }
+    return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FConnectItTurnStartPowersTest,
+    "ConnectIt.Board.TurnStartPowers", TestFlags)
+
+bool FConnectItTurnStartPowersTest::RunTest(const FString& Parameters)
+{
+    // First tile powers plan, Stage 3: Turn Start powers (a countdown) and Repel
+    FConnectItTilePower Repel = MakeTestPower(ConnectIt_TilePower_Repel, EConnectItPowerTrigger::TurnStart,
+        FConnectItTilePowerEffect_Repel(), /*CooldownTurns=*/3);
+    FConnectItRuleSet Rules;
+    Rules.SetTilePowers({ Repel }, {});
+    const FConnectItBoardOperation_TurnStart TurnStart;
+
+    const auto StartTurn = [&Rules, &TurnStart](FConnectItBoardState& Board, int32 Turn)
+    {
+        Board.TurnNumber = Turn;
+        FConnectItBoardChangeEvent Events;
+        if (Rules.HasTurnStartPowerReady(Board, Turn))
+        {
+            FConnectItBoardOperation_TurnStart Operation = TurnStart;
+            Operation.Faction = Turn % 2;
+            Rules.CarryOutOperation(Operation, Board, &Events);
+        }
+        return Events;
+    };
+    const auto ReplaysTo = [](const FConnectItBoardState& Before, const FConnectItBoardChangeEvent& Events, const FConnectItBoardState& After)
+    {
+        FConnectItBoardState Replayed = Before;
+        FConnectItBoardEvent::ApplyAll(Events, Replayed);
+        return Replayed.HasSameTilesAndScores(After);
+    };
+
+    // --- The countdown: every 3 turns, reset even with no piece ---
+    {
+        FConnectItBoardState Board = MakeBoard(5);
+        FConnectItTileData* Tile = Board.GetTileDataMutable(FGridPosition(2, 2));
+        Tile->TilePowerTag = ConnectIt_TilePower_Repel;
+        Tile->PowerReadyTurn = 3;   // built at turn 0
+        Place(Board, 2, 2, 0);
+
+        TArray<int32> FiredOn;
+        bool bReplays = true;
+        for (int32 Turn = 1; Turn <= 7; Turn++)
+        {
+            const FConnectItBoardState Before = Board;
+            const FConnectItBoardChangeEvent Events = StartTurn(Board, Turn);
+            if (!PowersTriggered(Events).IsEmpty()) FiredOn.Add(Turn);
+            bReplays &= ReplaysTo(Before, Events, Board);
+        }
+        TestTrue(TEXT("countdown: fires on turns 3 and 6"), FiredOn == TArray<int32>({ 3, 6 }));
+        TestFalse(TEXT("countdown: the first time it moved the piece off"), Board.IsTileOccupied(FGridPosition(2, 2)));
+        TestEqual(TEXT("countdown: the second (no piece) still reset it"), TileAt(Board, 2, 2).PowerReadyTurn, 9);
+        TestTrue(TEXT("countdown: before + events = after, each turn"), bReplays);
+        TestFalse(TEXT("countdown: nothing ready -- no turn-start change to make"), Rules.HasTurnStartPowerReady(Board, 8));
+        TestFalse(TEXT("countdown: no Turn Start powers -- none"), FConnectItRuleSet().HasTurnStartPowerReady(Board, 9));
+    }
+
+    // --- The countdown starts when the tile joins the board ---
+    {
+        FConnectItBoardState Board = MakeBoard(3);
+        Board.TurnNumber = 5;
+        FConnectItBoardOperation_AddTiles Add;
+        Add.Faction = INDEX_NONE;
+        FConnectItBoardLayoutCell& Cell = Add.Cells.AddDefaulted_GetRef();
+        Cell.Position = FGridPosition(3, 0);
+        Cell.TileData.TilePowerTag = ConnectIt_TilePower_Repel;
+        const FConnectItBoardState Before = Board;
+        FConnectItBoardChangeEvent Events;
+        Rules.CarryOutOperation(Add, Board, &Events);
+        TestEqual(TEXT("join: added at turn 5, first fires at turn 8"), TileAt(Board, 3, 0).PowerReadyTurn, 8);
+        TestTrue(TEXT("join: before + events = after"), ReplaysTo(Before, Events, Board));
+
+        UConnectIt_TileCatalog* Catalog = NewObject<UConnectIt_TileCatalog>();
+        FConnectItTileCatalogEntry Entry;
+        Entry.Power = Repel;
+        Catalog->Tiles.Add(ConnectIt_TilePower_Repel, Entry);
+        AConnectIt_BuilderTile* Builder = GetMutableDefault<AConnectIt_BuilderTile>();
+        const FConnectItTileInitialData Saved = Builder->TileData;
+        ON_SCOPE_EXIT { Builder->TileData = Saved; };
+        Builder->TileData.TilePowerTag = ConnectIt_TilePower_Repel;
+        TestEqual(TEXT("join: built with the board, first fires at turn 3"),
+            UConnectIt_BoardStateComponent::MakeTileData(Builder, 2, 1.f, Catalog).PowerReadyTurn, 3);
+    }
+
+    // --- Repel: only to an open neighbour; boxed in, it stays ---
+    {
+        FConnectItBoardState Board = MakeBoard(3);
+        Board.GetTileDataMutable(FGridPosition(1, 1))->TilePowerTag = ConnectIt_TilePower_Repel;
+        for (int32 X = 0; X < 3; X++)
+        {
+            for (int32 Y = 0; Y < 3; Y++)
+            {
+                Place(Board, X, Y, (X + Y) % 2);
+            }
+        }
+        Place(Board, 0, 0, -1);
+        Board.GetTileDataMutable(FGridPosition(0, 0))->bIsLocked = true;   // open but locked
+        Place(Board, 2, 2, -1);
+        Board.GetTileDataMutable(FGridPosition(2, 2))->bIsActive = false;  // open but inactive
+
+        FConnectItBoardState Boxed = Board;
+        const FConnectItBoardChangeEvent Events = StartTurn(Boxed, 1);
+        const auto Triggered = PowersTriggered(Events);
+        TestTrue(TEXT("repel: boxed in (locked, inactive) -- fires, does nothing"),
+            Triggered.Num() == 1 && Triggered[0]->bNoEffect && TileAt(Boxed, 1, 1).FactionPiece == 0);
+
+        Place(Board, 2, 1, -1);   // one open neighbour
+        bool bAlwaysThere = true;
+        for (int32 Seed = 1; Seed <= 6; Seed++)
+        {
+            FConnectItBoardState Seeded = Board;
+            Seeded.RandomSeed = Seed;
+            StartTurn(Seeded, 1);
+            bAlwaysThere &= TileAt(Seeded, 2, 1).FactionPiece == 0 && !Seeded.IsTileOccupied(FGridPosition(1, 1));
+        }
+        TestTrue(TEXT("repel: to the one open tile, every seed"), bAlwaysThere);
+    }
+
+    // --- A repelled piece can score ---
+    {
+        FConnectItBoardState Board = MakeBoard(5);
+        Place(Board, 1, 0, 0);
+        Place(Board, 2, 0, 0);
+        Place(Board, 3, 0, 0);
+        Board.GetTileDataMutable(FGridPosition(0, 1))->TilePowerTag = ConnectIt_TilePower_Repel;
+        Place(Board, 0, 1, 0);   // repelled to (0,0), the only open neighbour
+        Place(Board, 1, 1, 1);
+        Place(Board, 0, 2, 1);
+        Place(Board, 1, 2, 1);
+        StartTurn(Board, 3);
+        TestEqual(TEXT("scoring: the repelled piece completed (0..3, 0)"), Board.GetScore(0), 4.f);
     }
     return true;
 }

@@ -195,6 +195,31 @@ stages.
   - the Turn Start change is committed only when some tile has the trigger;
   - a repelled piece can score;
   - replay.
+- *As built (2026-10-23; 61/61 tests; Throughput 359,319 nodes/s, unchanged):*
+  - **Trigger:** `EConnectItPowerTrigger::TurnStart`, added last so existing bitmask values keep their meaning.
+  - **Turn Start operation:** `FConnectItBoardOperation_TurnStart` (`ConnectIt.Game.State.TurnStart`; the operation
+    catalog is now 18) sets `FConnectItBoardChanges::bTurnStarted`.
+  - **Settle:** fires the Turn Start powers first, once (`FConnectItPowerChain::RunTurnStartPowers`), before Sync and
+    the triggered powers, so those react to what Repel moved. Cooldown and the once-per-action guard apply as usual;
+    the countdown resets even with nothing to do (`bNoEffect`).
+  - **The GameMode:** at turn start, after the turn's queued level changes join the line, it puts a Turn Start change
+    first (`FConnectItLevelChangeQueue::AddFirst`), for the active faction, when
+    `FConnectItRuleSet::HasTurnStartPowerReady(board, turn)`.
+  - **Countdown start:**
+    - the board build sets a Turn Start power's ready turn to its cooldown (built at turn 0);
+    - Add Tiles sets it to the board's turn plus the cooldown, and Tiles Added carries `PowerReadyTurns` so a replay
+      matches.
+  - **Repel:** `FConnectItTilePowerEffect_Repel` (`ConnectIt.TilePower.Repel`) uses the Push / Vacuum candidate
+    helpers over the 8 neighbours.
+  - **Blueprint:** `Get Power Turns Left (State, Position, CurrentTurn)`, where CurrentTurn is the GameState's Active
+    Turn Number (the board's own turn is its last change's).
+  - **Tests:** new `ConnectIt.Board.TurnStartPowers`:
+    - the countdown fires on turns 3 and 6 of 7, the first moves the piece, the second (no piece) still resets;
+    - replay every turn;
+    - not ready → no change;
+    - the countdown starts on Add Tiles (turn 5 → 8) and at board build (3);
+    - Repel boxed in by locked and inactive tiles does nothing, with a single open tile always used;
+    - a repelled piece completes a line.
 
 ## Stage 4: tile hooks and reaction handles
 

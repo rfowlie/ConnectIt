@@ -118,6 +118,10 @@ struct FConnectItBoardChanges
     // nobody
     int32 Faction = INDEX_NONE;
 
+    // A turn started (the Turn Start operation): the step's settle fires the
+    // Turn Start tile powers whose countdown has run out
+    bool bTurnStarted = false;
+
     // The rules the change is carried out under, set by whoever carries it out
     // (CarryOutOperation, the scoring pass, the power chain, the AI's
     // ApplyMove), so an operation or the scoring rule can ask them -- e.g. a
@@ -214,6 +218,7 @@ struct FConnectItBoardChanges
         TileChanged.Reset();
         ScoredThrough.Reset();
         Faction = INDEX_NONE;
+        bTurnStarted = false;
     }
 };
 

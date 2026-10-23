@@ -34,7 +34,8 @@ public:
     // Whether the match has any tile powers (none: the chain is just scoring)
     bool HasPowers() const { return bHasPowers; }
 
-    // Settle, before a scoring pass: Sync powers first, then the Piece Enter,
+    // Settle, before a scoring pass: on a turn's start, its Turn Start powers
+    // first (once); then Sync powers, then the Piece Enter,
     // Piece Exit, Piece Changed and Tile Changed powers InOutStep sets off (in
     // that order, in the order the record lists them); then again on what
     // those changed, until nothing more fires. Everything they changed is
@@ -58,6 +59,10 @@ private:
 
     // Every Sync power, on every tile it applies to. True if any changed something.
     bool RunSyncPowers(int32 Faction, FConnectItBoardChanges& OutChanges);
+
+    // Every Turn Start power whose countdown has run out, on every tile it
+    // applies to. True if any fired.
+    bool RunTurnStartPowers(int32 Faction, FConnectItBoardChanges& OutChanges);
 
     // One power on one tile (LevelWideIndex: which level-wide power, or
     // INDEX_NONE for the tile's own). True if it fired (a Sync power: if it

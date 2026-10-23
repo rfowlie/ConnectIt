@@ -1,6 +1,7 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 #include "Board/Operations/ConnectIt_BoardOperations.h"
+#include "Board/Rules/ConnectIt_RuleSet.h"
 #include "Board/Events/ConnectIt_BoardEvents.h"
 #include "ConnectIt_GameplayTags.h"
 #include "StructUtils/InstancedStruct.h"
@@ -846,6 +847,13 @@ namespace
             TileData.Multiplier = OutChanges.ClampMultiplier(TileData, TileData.Multiplier);
             Added.TileData.Multiplier = TileData.Multiplier;
 
+            // A Turn Start power's countdown starts now
+            const FConnectItTilePower* Power = OutChanges.Rules ? OutChanges.Rules->FindTilePower(TileData.TilePowerTag) : nullptr;
+            if (Power && Power->HasTrigger(EConnectItPowerTrigger::TurnStart))
+            {
+                TileData.PowerReadyTurn = Board.TurnNumber + Power->CooldownTurns;
+            }
+
             const int32 TileId = Board.AddTile(Cell.Position, TileData);
             if (Cell.TileData.HasStartingPiece(NumFactions))
             {
@@ -857,6 +865,7 @@ namespace
             }
             OutEvent.Cells.Add(Added);
             OutEvent.TileIds.Add(TileId);
+            OutEvent.PowerReadyTurns.Add(TileData.PowerReadyTurn);
         }
 
         // Partners once every cell is a tile (a partner can be one added alongside)
@@ -1207,4 +1216,21 @@ void FConnectItBoardOperation_AdjustMultiplier::Apply(
 FString FConnectItBoardOperation_AdjustMultiplier::Describe() const
 {
     return FString::Printf(TEXT("%s %+.1f"), *PositionText(Position), Delta);
+}
+
+// ---------------------------------------------------------------------------
+// Turn Start
+// ---------------------------------------------------------------------------
+
+FGameplayTag FConnectItBoardOperation_TurnStart::GetRequestType() const
+{
+    return ConnectIt_Game_TurnStart;
+}
+
+void FConnectItBoardOperation_TurnStart::Apply(
+    FConnectItBoardState& Board,
+    FConnectItBoardChanges& OutChanges,
+    FConnectItBoardChangeEvent* OutEvents) const
+{
+    OutChanges.bTurnStarted = true;
 }
