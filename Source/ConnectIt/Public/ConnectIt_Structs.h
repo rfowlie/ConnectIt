@@ -30,8 +30,8 @@ struct FConnectItTileData
     UPROPERTY(BlueprintReadOnly)
     bool bIsActive = true;
 
-    // mark tiles that are active but not placeable by players
-    // (non player piece occupying)
+    // Whether the tile holds a piece (FactionPiece != -1; kept in step by
+    // SetFactionPiece)
     UPROPERTY(BlueprintReadOnly)
     bool bIsOccupied = true;
 
@@ -42,6 +42,13 @@ struct FConnectItTileData
     // FConnectItBoardOperation_Shift.
     UPROPERTY(BlueprintReadOnly)
     bool bCanShift = true;
+
+    // A locked tile is on the board and in play, but a player can't place on
+    // it, and only operations that say so (CanOperateOnLockedTiles) act on
+    // it. It can hold a piece, and that piece counts in lines. Different from
+    // an inactive tile, which is out of play.
+    UPROPERTY(BlueprintReadOnly)
+    bool bIsLocked = false;
 
     // This tile's id on its board: given by the board when the tile joins it
     // (FConnectItBoardState::AddTile -- building the board, Add Tiles), never
@@ -269,7 +276,7 @@ struct FConnectItBoardState
     }
 
     // Whether Other has the same tiles (by position, in any order) holding
-    // the same data (piece, multiplier, flags, id, power tag), and the same scores. The match-level fields (turn, win
+    // the same data (piece, multiplier, flags, lock, id, power tag), and the same scores. The match-level fields (turn, win
     // state, progress) aren't compared. Checks that a board stepped along by
     // its events (FConnectItBoardEvent::ApplyTo) arrived where the change did.
     bool HasSameTilesAndScores(const FConnectItBoardState& Other) const
@@ -293,6 +300,7 @@ struct FConnectItBoardState
                 || Ours.bIsActive != Theirs->bIsActive
                 || Ours.bIsOccupied != Theirs->bIsOccupied
                 || Ours.bCanShift != Theirs->bCanShift
+                || Ours.bIsLocked != Theirs->bIsLocked
                 || Ours.TileId != Theirs->TileId
                 || Ours.TilePowerTag != Theirs->TilePowerTag
                 || Ours.PowerReadyTurn != Theirs->PowerReadyTurn)

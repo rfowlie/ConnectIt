@@ -36,6 +36,17 @@ bool UConnectIt_BoardStateLibrary::IsTileValidForPlacement(
     return FConnectItBoardOperation_PlacePiece::IsTilePlaceableAt(State, Position);
 }
 
+EConnectItPlacementBlocker UConnectIt_BoardStateLibrary::GetPlacementBlocker(
+    const FConnectItBoardState& State, FGridPosition Position)
+{
+    const FConnectItTileData* Tile = State.GetTileData(Position);
+    if (!Tile) return EConnectItPlacementBlocker::NotATile;
+    if (!Tile->bIsActive) return EConnectItPlacementBlocker::Inactive;
+    if (Tile->bIsOccupied) return EConnectItPlacementBlocker::Occupied;
+    if (Tile->bIsLocked) return EConnectItPlacementBlocker::Locked;
+    return EConnectItPlacementBlocker::None;
+}
+
 int32 UConnectIt_BoardStateLibrary::GetTileFaction(
     const FConnectItBoardState& State, FGridPosition Position)
 {
@@ -168,7 +179,7 @@ bool UConnectIt_BoardStateLibrary::SimulateOperation(
     if (!BoardOperation) return false;
 
     BoardOperation->Faction = Faction;
-    if (!BoardOperation->CanApply(Board)) return false;
+    if (!Rules.CanCarryOut(*BoardOperation, Board)) return false;
 
     if (TurnNumber >= 0)
     {

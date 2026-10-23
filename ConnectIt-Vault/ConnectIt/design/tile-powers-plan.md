@@ -298,9 +298,12 @@ values on every board tile, and measured ~17% slower AI search even with no powe
   - **Throughput:** 392,028 nodes/s, within noise of the baseline: the per-tile values were the whole cost. A first
     run read 69,649 while Windows had the CPU capped at 30% of its maximum frequency (thermal or power limiting, which
     comes and goes on this machine); the re-run was made with it at 99%.
+  - **Moved afterwards (owner, 2026-10-22):** the catalog is named in the map's **World Settings** (`TileCatalog`), not
+    the level config, to stay with the level. The project default and the builder tile class stay in ConnectIt project
+    settings. 56/56 tests.
   - **Owner, editor:**
     - a builder tile Blueprint with a blockout look (set it as Builder Tile Class);
-    - a tile catalog (Plain Tile Class plus entries), set on the level configs and as Default Tile Catalog;
+    - a tile catalog (Plain Tile Class plus entries), set in maps' World Settings and as Default Tile Catalog;
     - replace placed tiles with builder tiles and capture layouts again;
     - Preview / Clear buttons on the layout tool widget;
     - clear `DefaultTileClass` on level configs once they have a catalog.

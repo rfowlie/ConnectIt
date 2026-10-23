@@ -10,6 +10,19 @@
 #include "Board/Operations/ConnectIt_BoardOperation.h"
 #include "ConnectIt_BoardStateLibrary.generated.h"
 
+// Why a piece can't be placed on a tile (UConnectIt_BoardStateLibrary::
+// GetPlacementBlocker) -- e.g. for the message a refused click shows
+UENUM(BlueprintType)
+enum class EConnectItPlacementBlocker : uint8
+{
+    // It can be placed on
+    None,
+    NotATile,
+    Inactive,
+    Occupied,
+    Locked,
+};
+
 // Blueprint-callable queries over FConnectItBoardState/FConnectItTileData,
 // taken by const& rather than resolved from a component. USTRUCT member
 // functions can't carry UFUNCTION (an engine/UHT restriction), so
@@ -54,6 +67,13 @@ public:
     UFUNCTION(BlueprintPure, Category = "ConnectIt|Board State",
         meta = (DisplayName = "Is Tile Valid For Placement (Board State)"))
     static bool IsTileValidForPlacement(const FConnectItBoardState& State, FGridPosition Position);
+
+    // Why a piece can't be placed on Position (None: it can) -- the same
+    // checks as Is Tile Valid For Placement, named, e.g. for the message a
+    // refused click shows
+    UFUNCTION(BlueprintPure, Category = "ConnectIt|Board State",
+        meta = (DisplayName = "Get Placement Blocker (Board State)"))
+    static EConnectItPlacementBlocker GetPlacementBlocker(const FConnectItBoardState& State, FGridPosition Position);
 
     // -1 when the position is empty or isn't on this board
     UFUNCTION(BlueprintPure, Category = "ConnectIt|Board State")

@@ -83,6 +83,12 @@ bool UConnectIt_BoardEventLibrary::GetActiveScoredEvent(
     return TryGetActiveBoardEvent(WorldContextObject, OutEvent, TEXT("GetActiveScoredEvent"));
 }
 
+bool UConnectIt_BoardEventLibrary::GetActiveTileLockChangedEvent(
+    const UObject* WorldContextObject, FConnectItBoardEvent_TileLockChanged& OutEvent)
+{
+    return TryGetActiveBoardEvent(WorldContextObject, OutEvent, TEXT("GetActiveTileLockChangedEvent"));
+}
+
 bool UConnectIt_BoardEventLibrary::GetActivePowerTriggeredEvent(
     const UObject* WorldContextObject, FConnectItBoardEvent_PowerTriggered& OutEvent)
 {

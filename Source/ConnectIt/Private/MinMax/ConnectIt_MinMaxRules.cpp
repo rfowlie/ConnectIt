@@ -275,9 +275,10 @@ float FConnectItMinMaxRules::LinePotential(const FConnectItBoardState& Board, in
             {
                 Pieces++;
             }
-            else if (!Tile.bIsActive || Tile.bIsOccupied)
+            else if (!Tile.bIsActive || Tile.bIsOccupied || Tile.bIsLocked)
             {
-                // Inactive, the other faction's piece, or a non-faction blocker
+                // Inactive, the other faction's piece, a non-faction blocker,
+                // or an empty locked tile (nobody can place there)
                 bOpen = false;
                 break;
             }

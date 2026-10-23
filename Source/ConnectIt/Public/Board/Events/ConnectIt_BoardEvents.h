@@ -330,6 +330,23 @@ struct CONNECTIT_API FConnectItBoardEvent_LayoutChanged : public FConnectItBoard
     virtual void ApplyTo(FConnectItBoardState& Board) const override;
 };
 
+// A tile was locked or unlocked (Set Tile Locked -- the Level director, or a
+// Chained tile's power)
+USTRUCT(BlueprintType, meta = (DisplayName = "Tile Lock Changed"))
+struct CONNECTIT_API FConnectItBoardEvent_TileLockChanged : public FConnectItBoardOperationEvent
+{
+    GENERATED_BODY()
+
+    UPROPERTY(BlueprintReadOnly, Category = "Event")
+    FGridPosition Position;
+
+    UPROPERTY(BlueprintReadOnly, Category = "Event")
+    bool bLocked = false;
+
+    virtual FGameplayTag GetEventTag() const override;
+    virtual void ApplyTo(FConnectItBoardState& Board) const override;
+};
+
 // ---------------------------------------------------------------------------
 // Result events
 // ---------------------------------------------------------------------------

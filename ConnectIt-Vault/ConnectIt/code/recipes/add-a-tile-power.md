@@ -4,7 +4,7 @@ task: Add a tile power -- a kind of tile that does something when a piece arrive
 touches:
   - Source/ConnectIt/Public/Board/Powers/ConnectIt_TilePower.h (subclass FConnectItTilePowerEffect)
   - Config/DefaultGameplayTags.ini (a ConnectIt.TilePower.* tag)
-  - a UConnectIt_TileCatalog data asset (the entry -- tile class + power) named by the level config or Project Settings
+  - a UConnectIt_TileCatalog data asset (the entry -- tile class + power) named by the map's World Settings or Project Settings
   - a tile Blueprint (the catalog's tile class) and builder tiles placed in the level
   - (level-wide) the Level director's Level Wide Powers
 reconciled: 2026-10-22
@@ -24,7 +24,7 @@ values. Placed tiles only name the tag. Decision:
 
 ## Prerequisites
 
-- A tile catalog (`ConnectIt Tile Catalog` data asset) set on the level config (**Tile Catalog**) or as Project Settings >
+- A tile catalog (`ConnectIt Tile Catalog` data asset) set in the map's World Settings (**Tile Catalog**) or as Project Settings >
   Game > ConnectIt > **Default Tile Catalog**, with a **Plain Tile Class**.
 - A builder tile Blueprint (parent `ConnectIt_BuilderTile`) with a blockout look, set as **Builder Tile Class** in the same
   settings.

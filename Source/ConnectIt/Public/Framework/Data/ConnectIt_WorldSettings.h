@@ -8,9 +8,10 @@
 
 class UConnectIt_LevelConfigDataAsset;
 class UConnectIt_MatchPreset;
+class UConnectIt_TileCatalog;
 
 // A ConnectIt map's own setup, in its World Settings: which board it is played
-// on and how it plays by default. The map is the one thing that is truly per
+// on, how it plays by default, and which tile catalog its tiles come from. The map is the one thing that is truly per
 // level, so this is where the pairing lives -- both assets stay reusable: a
 // level config (the board) can serve many maps, a match preset (how a match
 // is played) many levels. The main menu can still choose another preset for
@@ -36,6 +37,13 @@ public:
     // Adventure setup, or what opening the map directly in the editor plays)
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "ConnectIt")
     TObjectPtr<UConnectIt_MatchPreset> DefaultMatchPreset = nullptr;
+
+    // Every kind of tile this map's builder tiles can name: each power tag's
+    // definition and the tile actor that shows it (UConnectIt_TileCatalog --
+    // read through UConnectIt_TileCatalog::FindFor). None = the project
+    // default (Project Settings > Game > ConnectIt).
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "ConnectIt")
+    TObjectPtr<UConnectIt_TileCatalog> TileCatalog = nullptr;
 
     // The level config (board) of the map WorldContextObject is in; null if
     // its World Settings name none (or aren't ConnectIt's) -- callers that

@@ -33,8 +33,8 @@ struct CONNECTIT_API FConnectItTileCatalogEntry
 // (AConnectIt_BuilderTile) that name a tag; when the match starts each
 // becomes its entry's tile class, and the rules get the entries' powers.
 //
-// Chosen on the level config (TileCatalog), else the project default
-// (Project Settings > ConnectIt > Default Tile Catalog). Trying another skin
+// Chosen in the map's World Settings (Tile Catalog), else the project default
+// (Project Settings > Game > ConnectIt > Default Tile Catalog). Trying another skin
 // or look is a copy of a catalog with other tile classes slotted in.
 UCLASS(BlueprintType)
 class CONNECTIT_API UConnectIt_TileCatalog : public UDataAsset
@@ -63,7 +63,7 @@ public:
     // Every power, each named by its key: what the rules play with
     TArray<FConnectItTilePower> MakePowers() const;
 
-    // The catalog WorldContextObject's level uses: its level config's, else
+    // The catalog WorldContextObject's map uses: its World Settings', else
     // the project default. Null (with a warning) if neither is set.
     static const UConnectIt_TileCatalog* FindFor(const UObject* WorldContextObject);
 

@@ -97,6 +97,11 @@ public:
         meta = (WorldContext = "WorldContextObject", ExpandBoolAsExecs = "ReturnValue"))
     static bool GetActiveScoredEvent(const UObject* WorldContextObject, FConnectItBoardEvent_Scored& OutEvent);
 
+    // For listeners of ConnectIt.Event.TileLockChanged
+    UFUNCTION(BlueprintCallable, Category = "ConnectIt|Board Events",
+        meta = (WorldContext = "WorldContextObject", ExpandBoolAsExecs = "ReturnValue"))
+    static bool GetActiveTileLockChangedEvent(const UObject* WorldContextObject, FConnectItBoardEvent_TileLockChanged& OutEvent);
+
     // For listeners of ConnectIt.Event.PowerTriggered
     UFUNCTION(BlueprintCallable, Category = "ConnectIt|Board Events",
         meta = (WorldContext = "WorldContextObject", ExpandBoolAsExecs = "ReturnValue"))

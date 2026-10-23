@@ -222,7 +222,7 @@ bool UConnectIt_BoardRequestMediator::DispatchRequest(
 
     // May this be done to the board as it stands?
     FString WhyNot;
-    if (!Operation.CanApply(Current, &WhyNot))
+    if (!Rules->CanCarryOut(Operation, Current, &WhyNot))
     {
         UE_LOG(LogTemp, Warning,
             TEXT("ConnectIt_BoardRequestMediator: '%s' by faction %d rejected "

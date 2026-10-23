@@ -20,9 +20,11 @@ struct FConnectItRuleSet;
 // Firing a power: its gate (the tile's multiplier) and cooldown (the board's
 // turn) must allow it, and -- unless it is Sync -- it must not have fired on
 // that tile this action. It appends Power Triggered, starts its cooldown, asks
-// its effect for operations, and applies each one that can apply (Apply, not
-// CarryOutOperation: what it changed goes back into this chain, not a new
-// one), acting for the faction of the change that set it off.
+// its effect for operations, and applies each one the rules allow
+// (FConnectItRuleSet::CanCarryOut -- so not on a locked tile unless the
+// operation may). It applies them with Apply, not CarryOutOperation: what
+// they change goes back into this chain, not a new one. They act for the
+// faction of the change that set the power off.
 class FConnectItPowerChain
 {
 public:

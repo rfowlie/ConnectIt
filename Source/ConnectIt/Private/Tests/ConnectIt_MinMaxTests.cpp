@@ -1835,8 +1835,8 @@ bool FConnectItAICandidatesTest::RunTest(const FString& Parameters)
         && AllTypes.Contains(FGameplayTag(ConnectIt_Game_SwapPieces))
         && AllTypes.Contains(FGameplayTag(ConnectIt_Game_Shift)));
     // The eight player-facing ones and the level's Change Goals, Begin
-    // Phase, Remove Tiles, Add Tiles and Change Layout
-    TestEqual(TEXT("one per kind of operation"), AllTypes.Num(), 13);
+    // Phase, Remove Tiles, Add Tiles, Change Layout and Set Tile Locked
+    TestEqual(TEXT("one per kind of operation"), AllTypes.Num(), 14);
     return true;
 }
 
@@ -3876,6 +3876,159 @@ bool FConnectItTilePowerChainTest::RunTest(const FString& Parameters)
         FConnectItBoardChangeEvent Events;
         FConnectItRuleSet().CarryOutOperation(MakeAt<FPlace>(0, 0, 0), Board, &Events);
         TestEqual(TEXT("no powers: one event"), Events.Events.Num(), 1);
+    }
+    return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FConnectItTileLockTest,
+    "ConnectIt.Board.TileLock", TestFlags)
+
+bool FConnectItTileLockTest::RunTest(const FString& Parameters)
+{
+    // Tile lock plan, Stage 1: a locked tile is in play but can't be placed on,
+    // and only operations that say so act on it
+    FConnectItRuleSet Rules;
+    const auto Lock = [](FConnectItBoardState& Board, int32 X, int32 Y, bool bLocked = true)
+    {
+        Board.GetTileDataMutable(FGridPosition(X, Y))->bIsLocked = bLocked;
+    };
+    const auto RefusedAsLocked = [&Rules](const FConnectItBoardOperation& Operation, const FConnectItBoardState& Board)
+    {
+        FString WhyNot;
+        return !Rules.CanCarryOut(Operation, Board, &WhyNot) && WhyNot.Contains(TEXT("locked"));
+    };
+
+    // --- Placement ---
+    {
+        FConnectItBoardState Board = MakeBoard(3);
+        Lock(Board, 1, 1);
+        using FPlace = FConnectItBoardOperation_PlacePiece;
+        TestFalse(TEXT("place: a locked tile isn't placeable"), FPlace::IsTilePlaceableAt(Board, FGridPosition(1, 1)));
+        TestFalse(TEXT("place: refused"), Rules.CanCarryOut(MakeAt<FPlace>(0, 1, 1), Board));
+        TestTrue(TEXT("place: the AI never tries it"), [&Board]()
+        {
+            bool bOffered = false;
+            FPlace::ForEachMove(Board, 0, [&bOffered](const FPlace& Move) { bOffered |= Move.Position == FGridPosition(1, 1); });
+            return !bOffered;
+        }());
+        TestEqual(TEXT("blocker: Locked"), UConnectIt_BoardStateLibrary::GetPlacementBlocker(Board, FGridPosition(1, 1)),
+            EConnectItPlacementBlocker::Locked);
+        TestEqual(TEXT("blocker: None on a free tile"), UConnectIt_BoardStateLibrary::GetPlacementBlocker(Board, FGridPosition(0, 0)),
+            EConnectItPlacementBlocker::None);
+        TestEqual(TEXT("blocker: Not A Tile"), UConnectIt_BoardStateLibrary::GetPlacementBlocker(Board, FGridPosition(9, 9)),
+            EConnectItPlacementBlocker::NotATile);
+
+        Lock(Board, 1, 1, false);
+        TestTrue(TEXT("place: allowed once unlocked"), Rules.CanCarryOut(MakeAt<FPlace>(0, 1, 1), Board));
+    }
+
+    // --- Each operation on a locked target ---
+    {
+        FConnectItBoardState Board = MakeBoard(5);
+        Place(Board, 1, 1, 1);
+        Place(Board, 2, 2, 0);
+        Board.GetTileDataMutable(FGridPosition(1, 1))->Multiplier = 3.f;
+        Lock(Board, 1, 1);
+
+        TestTrue(TEXT("capture: refused (locked)"), RefusedAsLocked(MakeAt<FConnectItBoardOperation_CapturePiece>(0, 1, 1), Board));
+        TestTrue(TEXT("remove: refused (locked)"), RefusedAsLocked(MakeAt<FConnectItBoardOperation_RemovePiece>(0, 1, 1), Board));
+        TestTrue(TEXT("destroy multiplier: refused (locked)"),
+            RefusedAsLocked(MakeAt<FConnectItBoardOperation_DestroyTileMultiplier>(0, 1, 1), Board));
+        TestTrue(TEXT("toggle: refused (locked)"), RefusedAsLocked(MakeAt<FConnectItBoardOperation_ToggleTileActive>(0, 1, 1), Board));
+        FConnectItBoardOperation_SwapPieces Swap;
+        Swap.Faction = 0;
+        Swap.PositionA = FGridPosition(2, 2);
+        Swap.PositionB = FGridPosition(1, 1);
+        TestTrue(TEXT("swap: refused (one tile locked)"), RefusedAsLocked(Swap, Board));
+
+        TestTrue(TEXT("force place: allowed"), Rules.CanCarryOut(MakeAt<FConnectItBoardOperation_ForcePlacePiece>(0, 1, 1), Board));
+        FConnectItBoardOperation_RemoveTiles RemoveTiles;
+        RemoveTiles.Positions = { FGridPosition(1, 1) };
+        TestTrue(TEXT("remove tiles: allowed"), Rules.CanCarryOut(RemoveTiles, Board));
+        FConnectItBoardOperation_Shift Shift;
+        Shift.Faction = 0;
+        Shift.Direction = EGridDirection::Right;
+        for (int32 X = 0; X < 5; X++)
+        {
+            Shift.Positions.Add(FGridPosition(X, 1));
+        }
+        TestTrue(TEXT("shift: allowed"), Rules.CanCarryOut(Shift, Board));
+
+        // The lock moves with its tile
+        FConnectItBoardState Shifted = Board;
+        FConnectItBoardChanges Changes;
+        Shift.Apply(Shifted, Changes, nullptr);
+        TestTrue(TEXT("shift: the lock moved with the tile"),
+            TileAt(Shifted, 2, 1).bIsLocked && !TileAt(Shifted, 1, 1).bIsLocked && TileAt(Shifted, 2, 1).FactionPiece == 1);
+    }
+
+    // --- Set Tile Locked ---
+    {
+        FConnectItBoardState Board = MakeBoard(3);
+        using FSetLocked = FConnectItBoardOperation_SetTileLocked;
+        FSetLocked SetLocked = MakeAt<FSetLocked>(INDEX_NONE, 1, 1);
+        TestTrue(TEXT("set locked: can apply"), Rules.CanCarryOut(SetLocked, Board));
+
+        FConnectItBoardState After = Board;
+        FConnectItBoardChangeEvent Events;
+        const float Points = Rules.CarryOutOperation(SetLocked, After, &Events);
+        TestTrue(TEXT("set locked: the tile is locked, nothing scored"), TileAt(After, 1, 1).bIsLocked && Points == 0.f);
+        const auto* Changed = OnlyEvent<FConnectItBoardEvent_TileLockChanged>(Events);
+        TestTrue(TEXT("set locked: one Tile Lock Changed"), Changed && Changed->Position == FGridPosition(1, 1) && Changed->bLocked);
+        FConnectItBoardState Replayed = Board;
+        FConnectItBoardEvent::ApplyAll(Events, Replayed);
+        TestTrue(TEXT("set locked: before + events = after"), Replayed.HasSameTilesAndScores(After));
+
+        TestFalse(TEXT("set locked: already locked is refused"), Rules.CanCarryOut(SetLocked, After));
+        SetLocked.bLocked = false;
+        TestTrue(TEXT("set locked: unlocking a locked tile is allowed"), Rules.CanCarryOut(SetLocked, After));
+    }
+
+    // --- Legality: only locked empty tiles left = no legal placement; locked pieces can't be swapped ---
+    {
+        FConnectItBoardState Board = MakeBoard(2);
+        Place(Board, 0, 0, 0);
+        Place(Board, 1, 0, 1);
+        Lock(Board, 0, 1);
+        Lock(Board, 1, 1);
+        TestEqual(TEXT("legality: no placeable tile"),
+            FConnectItBoardOperation::GetLegality(ConnectIt_Game_PlacePiece, Board, 0), EConnectItMoveLegality::NoLegalMove);
+        TestEqual(TEXT("legality: a swap is still possible"),
+            FConnectItBoardOperation::GetLegality(ConnectIt_Game_SwapPieces, Board, 0), EConnectItMoveLegality::Legal);
+        Lock(Board, 1, 0);
+        TestEqual(TEXT("legality: the only enemy piece is locked -- no swap"),
+            FConnectItBoardOperation::GetLegality(ConnectIt_Game_SwapPieces, Board, 0), EConnectItMoveLegality::NoLegalMove);
+    }
+
+    // --- The AI: an empty locked tile blocks a line ---
+    {
+        FConnectItBoardState Open = MakeBoard(4);
+        Place(Open, 0, 0, 0);
+        Place(Open, 1, 0, 0);
+        Place(Open, 2, 0, 0);
+        FConnectItBoardState Blocked = Open;
+        Lock(Blocked, 3, 0);
+        const FConnectItMinMaxRules MinMax(Open, RulesWonAt(100.f), DefaultEvaluationWeights(), DefaultOrderingWeights(), PlaceOnly(), PlaceOnly());
+        TestTrue(TEXT("ai: three in a row is worth less when the fourth tile is locked"),
+            MinMax.EvaluateState(MinMax.MakeRoot(Blocked, 0)) < MinMax.EvaluateState(MinMax.MakeRoot(Open, 0)));
+    }
+
+    // --- Tile powers respect the lock ---
+    {
+        FConnectItTilePowerEffect_TestMove Move;
+        Move.From = FIntPoint(1, 1);   // (0,0) + (1,1) = the locked (1,1)
+        Move.To = FIntPoint(2, 0);
+        Rules.SetTilePowers({ MakeTestPower(TestPower1, EConnectItPowerTrigger::PieceEnter, Move) }, {});
+        FConnectItBoardState Board = MakeBoard(3);
+        Board.GetTileDataMutable(FGridPosition(0, 0))->TilePowerTag = TestPower1;
+        Place(Board, 1, 1, 1);
+        Lock(Board, 1, 1);
+
+        FConnectItBoardChangeEvent Events;
+        Rules.CarryOutOperation(MakeAt<FConnectItBoardOperation_PlacePiece>(0, 0, 0), Board, &Events);
+        const auto Triggered = PowersTriggered(Events);
+        TestTrue(TEXT("powers: the power fired but couldn't take the locked tile's piece"),
+            Triggered.Num() == 1 && Triggered[0]->bNoEffect == false && TileAt(Board, 1, 1).FactionPiece == 1);
     }
     return true;
 }

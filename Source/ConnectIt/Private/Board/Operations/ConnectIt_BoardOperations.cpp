@@ -170,7 +170,8 @@ EConnectItMoveLegality FConnectItBoardOperation_SwapPieces::HasAnyLegalInstance(
     bool bHasOther = false;
     for (const FConnectItTileData& Tile : Board.TileDataArray)
     {
-        if (!Tile.bIsOccupied) continue;
+        // A locked tile's piece can't be swapped
+        if (!Tile.bIsOccupied || Tile.bIsLocked) continue;
         if (Tile.FactionPiece == ForFaction) bHasOwn = true;
         else bHasOther = true;
         if (bHasOwn && bHasOther) return EConnectItMoveLegality::Legal;
@@ -972,4 +973,55 @@ FString FConnectItBoardOperation_ChangeLayout::Describe() const
 {
     return FString::Printf(TEXT("'%s': -%d tile(s), +%d tile(s)"),
         *LayoutName.ToString(), RemovePositions.Num(), AddCells.Num());
+}
+
+// ---------------------------------------------------------------------------
+// Set Tile Locked
+// ---------------------------------------------------------------------------
+
+FGameplayTag FConnectItBoardOperation_SetTileLocked::GetRequestType() const
+{
+    return ConnectIt_Game_SetTileLocked;
+}
+
+bool FConnectItBoardOperation_SetTileLocked::CanApply(const FConnectItBoardState& Board, FString* OutWhyNot) const
+{
+    const FConnectItTileData* Tile = Board.GetTileData(Position);
+    if (!Tile)
+    {
+        SetWhyNot(OutWhyNot, FString::Printf(TEXT("position %s not registered"), *PositionText(Position)));
+        return false;
+    }
+    if (Tile->bIsLocked == bLocked)
+    {
+        SetWhyNot(OutWhyNot, FString::Printf(TEXT("tile %s is already %s"), *PositionText(Position),
+            bLocked ? TEXT("locked") : TEXT("unlocked")));
+        return false;
+    }
+    return true;
+}
+
+void FConnectItBoardOperation_SetTileLocked::Apply(
+    FConnectItBoardState& Board,
+    FConnectItBoardChanges& OutChanges,
+    FConnectItBoardChangeEvent* OutEvents) const
+{
+    if (FConnectItTileData* Tile = Board.GetTileDataMutable(Position))
+    {
+        Tile->bIsLocked = bLocked;
+        OutChanges.AddTileChanged(Position, EConnectItTileChange::Lock, Faction);
+    }
+
+    if (OutEvents)
+    {
+        FConnectItBoardEvent_TileLockChanged Event;
+        Event.Position = Position;
+        Event.bLocked  = bLocked;
+        OutEvents->Add(Event);
+    }
+}
+
+FString FConnectItBoardOperation_SetTileLocked::Describe() const
+{
+    return FString::Printf(TEXT("%s %s"), *PositionText(Position), bLocked ? TEXT("locked") : TEXT("unlocked"));
 }

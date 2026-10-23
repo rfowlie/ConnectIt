@@ -74,6 +74,11 @@ FGameplayTag FConnectItBoardEvent_Scored::GetEventTag() const
     return ConnectIt_Event_Scored;
 }
 
+FGameplayTag FConnectItBoardEvent_TileLockChanged::GetEventTag() const
+{
+    return ConnectIt_Event_TileLockChanged;
+}
+
 FGameplayTag FConnectItBoardEvent_PowerTriggered::GetEventTag() const
 {
     return ConnectIt_Event_PowerTriggered;
@@ -261,6 +266,14 @@ void FConnectItBoardEvent_Scored::ApplyTo(FConnectItBoardState& Board) const
         {
             Tile->SetFactionPiece(-1);
         }
+    }
+}
+
+void FConnectItBoardEvent_TileLockChanged::ApplyTo(FConnectItBoardState& Board) const
+{
+    if (FConnectItTileData* Tile = Board.GetTileDataMutable(Position))
+    {
+        Tile->bIsLocked = bLocked;
     }
 }
 

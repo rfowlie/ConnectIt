@@ -28,6 +28,10 @@ struct CONNECTIT_API FConnectItTileInitialData
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Tile")
     bool bCanShift = true;
 
+    // Starts locked: in play, but no placing on it (FConnectItTileData::bIsLocked)
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Tile")
+    bool bIsLocked = false;
+
     // Faction slot that owns a piece on this tile at the start of the match,
     // or -1 for an empty tile. Must be a valid faction slot for the level.
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Tile", meta = (ClampMin = -1))
@@ -53,6 +57,7 @@ struct CONNECTIT_API FConnectItTileInitialData
         Tile.Multiplier = Multiplier;
         Tile.bIsActive  = bIsActive;
         Tile.bCanShift  = bCanShift;
+        Tile.bIsLocked  = bIsLocked;
         Tile.SetFactionPiece(HasStartingPiece(NumFactions) ? StartingFactionPiece : -1);
         Tile.TilePowerTag = TilePowerTag;
         return Tile;

@@ -231,9 +231,10 @@ bool FConnectItPowerChain::TryFire(const FGridPosition& Position, const FConnect
             continue;
         }
 
-        // It acts for the change that set it off, and only if it can
+        // It acts for the change that set it off, and only if it can (locked
+        // tiles included)
         Operation->Faction = Faction;
-        if (!Operation->CanApply(Board)) continue;
+        if (!Rules.CanCarryOut(*Operation, Board)) continue;
 
         const int32 FirstEvent = Events ? Events->Events.Num() : INDEX_NONE;
         FConnectItBoardChanges Changed;

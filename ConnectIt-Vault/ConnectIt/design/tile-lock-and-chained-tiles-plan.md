@@ -1,6 +1,6 @@
 ---
 type: plan
-status: not-started
+status: in-progress
 approved: true
 approved-on: 2026-10-22
 completed-on:
@@ -15,10 +15,13 @@ requires: "[tile-powers-plan](tile-powers-plan.md)"
 
 Design: [tile-lock](tile-lock.md), [chained-tiles](chained-tiles.md). First use: the first adventure level, "Placing
 pieces" ([adventure-modules-and-progression](adventure-modules-and-progression.md), Level 1 draft). Written 2026-10-22
-in a design-only session; **approved by the owner 2026-10-22**. Not built -- building happens in its own session.
+in a design-only session; **approved by the owner 2026-10-22**. **Revised 2026-10-22 (evening) for the tile catalog and
+builder tiles** -- **re-approved by the owner the same evening**, including the Sync pass on the seeded board; what changed is listed
+under "Revision for the tile catalog" at the end. Building in progress.
 
-> **Prerequisite: [tile-powers-plan](tile-powers-plan.md)** (owner, 2026-10-22: tile powers are built next). Stage 1
-> (the lock) doesn't depend on it; **Stage 2 (chained tiles) needs its settle step** (tile-powers Stage 4).
+> **Prerequisite met:** the [tile-powers-plan](tile-powers-plan.md) is complete (its settle step and Sync powers are
+> built). This plan comes **before** the first real powers (tile-powers Stage 5, its own plan), because every power and
+> operation must answer whether it can touch a locked tile (owner, 2026-10-22).
 
 ## Context
 
@@ -40,6 +43,10 @@ Settled with the owner on 2026-10-22:
   slot). **No partner is valid** -- the tile stays locked and shows a "no partner" icon. **Several chained tiles may
   share one partner.** Partners can be set mid-match with **Set Chain Partner**. The link uses a stable tile id (not a
   position, not a shared tag), so shifts don't break it. Runs on the **Sync** trigger.
+- **With the tile catalog (2026-10-22, evening):** the Chained tile is a **catalog entry**
+  (`ConnectIt.TilePower.Chained`: its tile class shows the chain, its power is Sync). Designers place a **builder tile**
+  with that tag and pick its partner there. The partner is a per-tile **link**, not a power value, so it rides with the
+  tile's settings and its board data, never in the catalog.
 
 Each stage builds and passes the tests before the next; the editor must be closed for builds; the owner commits between
 stages.
@@ -47,8 +54,8 @@ stages.
 ## Stage 1: the lock
 
 - **State:** `bIsLocked` on `FConnectItTileData` (replicated with the board, Blueprint-readable) and on
-  `FConnectItTileInitialData` (so placed tiles and layout cells can start locked; `InitialiseBoardState` and Add Tiles
-  copy it).
+  `FConnectItTileInitialData` (so builder tiles and layout cells can start locked; `InitialiseBoardState` and Add Tiles
+  copy it). Compared by `HasSameTilesAndScores`; Tile Lock Changed applies itself.
 - **The placement rule:** `FConnectItBoardOperation_PlacePiece::IsTilePlaceable` = active and not occupied **and not
   locked** -- Place Piece's `CanApply`, its legality (`No Legal Move`), the AI's move generation and the hover highlight
   all follow.
@@ -59,8 +66,9 @@ stages.
     Swap: both; Shift: its line; Change Goals / Begin Phase / Add Tiles: none).
   - **One check**, `FConnectItRuleSet::CanCarryOut(Operation, Board, OutWhyNot)`: `CanApply` plus "no locked target
     unless the operation allows it" ("tile (3,2) is locked"). Called where `CanApply` is called today
-    (`UConnectIt_BoardRequestMediator` dispatch, `UConnectIt_BoardStateLibrary::SimulateOperation`), and by tile powers
-    later.
+    (`UConnectIt_BoardRequestMediator` dispatch, `UConnectIt_BoardStateLibrary::SimulateOperation`, the Level director's
+    operations) **and by tile powers' effects** (`FConnectItPowerChain::TryFire`, built in tile-powers Stage 4 with
+    `CanApply`).
 - **Set Tile Locked** operation {Position, bLocked} → event **Tile Lock Changed** {Position, bLocked} (typed Blueprint
   getter in `UConnectIt_BoardEventLibrary`). Scores nothing. For the Level director (guided tutorial steps) and later
   tile powers (a lock change is a Tile Changed trigger).
@@ -71,56 +79,121 @@ stages.
 - Tests: placement refused on a locked tile and allowed after unlocking; each operation's allow / refuse on a locked
   target per the table; Shift carries the lock; Set Tile Locked's event; legality with only locked empty tiles = No Legal
   Move; the AI's evaluation sees a window blocked by a locked tile.
+- *As built (2026-10-22; 57/57 tests; Throughput 356k-363k nodes/s with or without the lock checks):*
+  - **Lock state:**
+    - `bIsLocked` on `FConnectItTileData` and `FConnectItTileInitialData` (builder tiles and layout cells can start
+      locked; `ToTileData` copies it).
+    - It is compared by `HasSameTilesAndScores`.
+    - `EConnectItTileChange::Lock` is reported by Set Tile Locked.
+    - `bIsOccupied`'s comment is fixed.
+  - **The rule:**
+    - `FConnectItBoardOperation::CanOperateOnLockedTiles` is true for Shift, Force Place, Remove Tiles, Change Layout
+      and Set Tile Locked.
+    - `GetTargetPositions` is implemented for the operations that can't act on locked tiles: Place, Swap, Capture,
+      Remove, Destroy Multiplier, Toggle.
+    - `FConnectItRuleSet::CanCarryOut` is called by the Mediator's dispatch (players and the Level director), Simulate
+      Operation, and the tile power chain's effects.
+  - **Placement:** `IsTilePlaceable` adds `!bIsLocked`, so Place's check, its legality, the AI's moves and the hover
+    highlight follow. Swap's legality skips locked pieces.
+  - **Set Tile Locked:**
+    - `FConnectItBoardOperation_SetTileLocked` (`ConnectIt.Game.State.SetTileLocked`) is refused when the tile is
+      already that way, which keeps the Chained Sync power idempotent.
+    - Event `Tile Lock Changed` (`ConnectIt.Event.TileLockChanged`, applies itself; Blueprint getter).
+    - The operation catalog is now 14.
+  - **Blueprint:** `Get Placement Blocker` (None / Not A Tile / Inactive / Occupied / Locked) on the board state
+    library.
+  - **AI:** `LinePotential` treats an empty locked tile as blocking.
+  - **Tests:** new `ConnectIt.Board.TileLock`:
+    - placement, the blocker, and unlocking;
+    - each operation on a locked target, refused or allowed per the table;
+    - Shift carries the lock;
+    - Set Tile Locked: its event, replay, and refusing a no-op;
+    - legality for Place and Swap;
+    - the AI's evaluation;
+    - a power's effect refused on a locked tile.
+  - **Throughput:** an apparent drop from Stage 4's ~390k is the machine. With the two hot-path lock checks removed,
+    readings are the same (349k-363k).
 
 ## Stage 2: chained tiles
 
-*Rewritten 2026-10-22 for the one-sided model ([chained-tiles](chained-tiles.md)).*
+*Rewritten 2026-10-22 for the one-sided model ([chained-tiles](chained-tiles.md)); revised the same evening for the tile
+catalog and builder tiles.*
 
-- **The Chained tile class:** an `AConnectIt_TileBase` subclass (Blueprint) with `TilePowerTag` =
-  `ConnectIt.TilePower.Chained` (defaults-only) and a power whose trigger is **Sync** (tile-powers Stage 3 / 4). It
-  starts locked.
-- **Naming the partner** (an exposed value on the placed tile, like any power's tunable values):
-  - in a level: an **actor picker** on the placed Chained tile (click the partner tile); empty = no partner;
-  - in a layout cell: the partner's **cell position** in that layout (captured by the grid layout tool).
-  When the tile joins the board (`InitialiseBoardState`, Add Tiles) it is resolved to the partner's **stable tile id**
-  (tile-powers Stage 3) and stored in the chained tile's power values. A partner that isn't on the board -> no partner.
+- **The Chained power:** a C++ effect, `FConnectItTilePowerEffect_Chained`, and a native tag `ConnectIt.TilePower.Chained`.
+  The owner's catalog gets an entry for it: trigger **Sync**, this effect, and the tile class that shows a chained tile.
+  - The effect reads its tile's partner from the board. If the partner has a piece and the tile is locked: Set Tile
+    Locked (false). If there is no partner, or it is empty, and the tile is unlocked: Remove Piece (if any), then Set
+    Tile Locked (true).
+  - State-based, so it catches a partner cleared by scoring. Idempotent, so it can't loop: exempt from the
+    once-per-action guard, no cooldown, and Power Triggered only when something changes (tile-powers Stage 4, as built).
+  - Its changes are Piece Exit / Tile Changed for other powers in the same settle.
+- **The partner is a per-tile link:**
+  - **Settings** (`FConnectItTileInitialData`): `bHasChainPartner` + `ChainPartner` (a grid position). Layout cells
+    carry these as captured.
+  - **Builder tile:** an actor picker, `Chain Partner Tile` (click the partner builder tile; empty = no partner). Its
+    grid position fills the settings.
+  - **Board** (`FConnectItTileData`): `ChainPartnerId` (the partner's stable tile id; INDEX_NONE = none). It travels
+    with the tile through shifts.
+  - **Resolved when tiles join the board:** `InitialiseBoardState`, once every tile has its id; Add Tiles, against the
+    board after adding, so a partner can be an existing tile or one added alongside. A partner position that isn't a
+    tile → no partner, with a warning.
+  - Only a Chained tile's link means anything. A link on another tile is ignored, with a validation warning.
+- **Starting state -- Sync powers settle the seeded board** (approved, owner 2026-10-22):
+  - When the board is seeded, the GameMode runs one Sync pass on it (the rule set's chain with an empty change), before
+    it is committed.
+  - So a Chained tile starts locked unless its partner starts with a piece, without the designer setting it.
+  - The pass's events (Power Triggered, Tile Lock Changed) follow Board Seeded in the seed's event list, and the
+    display board replays them.
+  - The alternative is the builder tile's own "starts locked" setting plus a validation check. Simpler, but wrong when
+    the partner starts with a piece.
 - **No partner is valid:** the tile stays locked; its visual shows a "no partner" icon. Several Chained tiles may name
-  the same partner. A partner removed by Remove Tiles / Change Layout leaves its chained tiles unpartnered.
-- **Set Chain Partner** operation {Chained tile position, Partner tile position or none} → event **Chain Partner
-  Changed** {Chained, Partner (or none)}; works on locked tiles (it's the chain's own setup); refused if the first tile
-  isn't a Chained tile. For the Level director (e.g. Change Layout to bring partners in, then Set Chain Partner).
-- **Running the chain (Sync power):** on **every settle pass** (before the first scoring pass and after each one), each
-  Chained tile checks its partner: partner has a piece and the tile is locked → unlock; no partner, or partner empty,
-  and the tile is unlocked → remove its piece (if any), then lock. State-based, so it catches a partner cleared by
-  scoring; idempotent, so it can't loop (exempt from the once-per-action guard, no cooldown). Applied directly,
-  appending **Power Triggered** (only when something changes), **Piece Removed**, **Tile Lock Changed**; those count as
-  Piece Exit / Tile Changed for other powers in the same settle.
-- **Visuals know a tile is a partner without stored state:** `GetChainedTilesFor(Position)` (Blueprint) lists the
-  Chained tiles naming it; the partner's look updates on board seed, tiles added and Chain Partner Changed.
-- **Validation** (map check / layout save): a Chained tile naming a tile that isn't on the board (informational -- it
-  will start unpartnered); a Chained tile naming another Chained tile (warning until a chain of chains is tested).
-- Tests: place on the partner → unlocks; partner emptied (removed, swapped away, cleared by scoring) → piece destroyed
-  then locked; capture on the partner → nothing; no partner → stays locked; two Chained tiles on one partner open and
-  close together; Set Chain Partner links mid-match (and unlinks with none); a shift keeps the link; removing the partner
-  leaves the chained tile unpartnered; Simulate Operation and the AI see the same.
+  the same partner. A partner removed by Remove Tiles / Change Layout leaves its chained tiles unpartnered: the link
+  points at an id no tile has, which reads as none.
+- **Set Chain Partner** operation {Position, bHasPartner, PartnerPosition} → event **Chain Partner Changed** {Position,
+  partner id and position, or none}, applying itself.
+  - Works on locked tiles (it's the chain's own setup).
+  - Refused if the tile isn't Chained (its `TilePowerTag`) or the partner position isn't a tile.
+  - For the Level director, e.g. Change Layout to bring partners in, then Set Chain Partner.
+- **Visuals know a tile is a partner without stored state:** `GetChainedTilesFor(Board, Position)` (Blueprint) lists the
+  Chained tiles naming it. The partner's look updates on board seed, tiles added and Chain Partner Changed.
+- **Validation** (map check / layout save):
+  - a Chained builder tile or cell naming a position that isn't a tile (informational: it starts unpartnered);
+  - naming another Chained tile (warning until a chain of chains is tested);
+  - a partner set on a tile that isn't Chained (warning: ignored).
+- **Tests:**
+  - place on the partner → unlocks;
+  - partner emptied (removed, swapped away, cleared by scoring) → piece destroyed, then locked;
+  - capture on the partner → nothing;
+  - no partner → stays locked;
+  - two Chained tiles on one partner open and close together;
+  - Set Chain Partner links mid-match (and unlinks with none);
+  - a shift keeps the link;
+  - removing the partner leaves the chained tile unpartnered;
+  - the seeded board settles: locked, or unlocked when the partner starts with a piece;
+  - before + events = after;
+  - Simulate Operation and the AI see the same.
 
 ## Stage 3: visuals and the tutorial (owner, editor)
 
+- The catalog entry for `ConnectIt.TilePower.Chained` (the Chained tile class, the power with the Chained effect).
 - Tile visuals: a locked look; a chained look (chains) that snaps on Tile Lock Changed; a "no partner" icon; the
   partner's look (from `GetChainedTilesFor`).
+- Builder tiles in the level: the Chained tag and its partner picked.
 - Refused-click message from `GetPlacementBlocker`.
 - Level 1 "Placing pieces": the phase that teaches locked / chained tiles.
 
 ## Stage 4: vault
 
-Decision notes (the tile lock with per-operation rules; chained tiles as derived state); `code/` recipe "lock a tile /
-chain two tiles"; status lines in `tile-lock.md`, `chained-tiles.md`; plan properties; log.
+Decision notes (the tile lock with per-operation rules; chained tiles as a Sync tile power with a per-tile link);
+`code/` recipe "lock a tile / chain two tiles"; the tile-powers recipe and flow (the lock-aware check); status lines in
+`tile-lock.md`, `chained-tiles.md`; plan properties; log.
 
 ## Not in this plan
 
 - Several reasons to lock one tile at once (a lock-reason container) -- one owner per tile for now.
 - Several partners for one chained tile (several chained tiles for one partner **is** in).
-- Tile powers themselves (a prerequisite, see above).
+- Tile powers themselves (built: the tile-powers plan); the first real powers (Push, Repel, Vacuum) are their own plan,
+  after this one.
 
 ## Verification
 
@@ -137,3 +210,18 @@ chain two tiles"; status lines in `tile-lock.md`, `chained-tiles.md`; plan prope
    tile-powers plan** (Stage 2 waits for its Stage 4).
 3. Chain changes reuse **Piece Removed** + **Tile Lock Changed** (no separate Chained / Unchained events); the visual
    knows a tile is chained from its class / power. New: **Chain Partner Changed** for Set Chain Partner.
+
+## Revision for the tile catalog (2026-10-22, evening; approved the same evening)
+
+Since approval, tile powers were built with a **tile catalog and builder tiles**
+([decision](../_decisions/2026-10-22-tile-catalog-and-builder-tiles.md)): power values live once per tag in the catalog,
+designers place builder tiles naming a tag, and the board carries only the tag. This revision follows from that:
+
+- **The Chained tile is a catalog entry**, not a Blueprint subclass with a defaults-only tag: a C++ Sync effect and a
+  native tag, with the owner's catalog entry giving its tile class.
+- **The partner is a per-tile link** in the tile settings (builder tile picker, layout cell position) and on the board
+  (`ChainPartnerId`), not "a power's tunable value": the catalog holds no per-tile values.
+- **New (approved):** Sync powers settle the seeded board, so a chained tile starts in the right state; and a link on
+  a non-Chained tile is ignored with a warning.
+- **Stage 1:** tile powers' effects switch from `CanApply` to the lock-aware `CanCarryOut` (tile powers are built now);
+  `bIsLocked` joins the board comparison and the self-applying events.

@@ -89,6 +89,21 @@ struct CONNECTIT_API FConnectItBoardOperation
     // Short text for logs, e.g. "(3,2)"
     virtual FString Describe() const { return FString(); }
 
+    // --- Locked tiles (FConnectItTileData::bIsLocked) ---
+    // Checked by FConnectItRuleSet::CanCarryOut, not CanApply: whether an
+    // operation may touch a locked tile is the same rule for every operation,
+    // kept in one place.
+
+    // Whether this kind of operation may act on locked tiles. Default no;
+    // Shift (the lock moves with its tile), Force Place, Remove Tiles, Change
+    // Layout and Set Tile Locked say yes.
+    virtual bool CanOperateOnLockedTiles() const { return false; }
+
+    // The existing tiles this operation acts on (Place: its tile; Swap: both),
+    // for the lock check. None by default (an operation that acts on no
+    // existing tile, or may act on locked ones).
+    virtual void GetTargetPositions(TArray<FGridPosition>& OutPositions) const {}
+
     // Whether ForFaction could make ANY operation of this kind on Board -- e.g.
     // Place Piece: is any tile placeable? Asked of a default instance (this
     // operation's own fields are ignored). Board only: says nothing about the

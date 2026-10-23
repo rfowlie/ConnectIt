@@ -18,7 +18,7 @@ class CONNECTIT_API UConnectIt_ProjectSettings : public UDeveloperSettings
 
 public:
 
-    // The tile catalog a level uses when its level config names none
+    // The tile catalog a map uses when its World Settings name none
     UPROPERTY(Config, EditAnywhere, Category = "Tiles")
     TSoftObjectPtr<UConnectIt_TileCatalog> DefaultTileCatalog;
 

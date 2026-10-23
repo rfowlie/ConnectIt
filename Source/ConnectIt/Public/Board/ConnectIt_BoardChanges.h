@@ -62,6 +62,7 @@ enum class EConnectItTileChange : uint8
     Multiplier,
     Active,
     Power,
+    Lock,
 };
 
 struct FConnectItTileChange
@@ -102,7 +103,7 @@ struct FConnectItBoardChanges
     // powers.
     TArray<FConnectItPieceChange, TInlineAllocator<2>> PieceChanged;
 
-    // A tile's own data changed (multiplier, active, power). Sets off Tile
+    // A tile's own data changed (multiplier, active, power, lock). Sets off Tile
     // Changed powers.
     TArray<FConnectItTileChange, TInlineAllocator<4>> TileChanged;
 

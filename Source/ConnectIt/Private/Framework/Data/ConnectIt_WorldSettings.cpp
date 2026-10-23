@@ -3,6 +3,7 @@
 #include "Framework/Data/ConnectIt_WorldSettings.h"
 #include "Framework/Data/ConnectIt_LevelConfigDataAsset.h"
 #include "Framework/Data/ConnectIt_MatchPreset.h"
+#include "Board/Powers/ConnectIt_TileCatalog.h"
 #include "Engine/Engine.h"
 #include "Engine/World.h"
 #include "Misc/DataValidation.h"
@@ -56,6 +57,14 @@ EDataValidationResult AConnectIt_WorldSettings::IsDataValid(FDataValidationConte
     {
         Context.AddWarning(FText::FromString(TEXT(
             "ConnectIt_WorldSettings: No Level Config -- this map has no board (fine for a menu map, not for a match).")));
+    }
+
+    // Not invalid: the project default stands in
+    if (IsValid(LevelConfig) && !IsValid(TileCatalog))
+    {
+        Context.AddWarning(FText::FromString(TEXT(
+            "ConnectIt_WorldSettings: No Tile Catalog -- this map uses the project default (Project Settings > "
+            "ConnectIt).")));
     }
 
     // Not invalid: the main menu can choose a preset (a menu-only map)

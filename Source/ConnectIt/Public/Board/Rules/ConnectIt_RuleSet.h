@@ -167,11 +167,20 @@ struct CONNECTIT_API FConnectItRuleSet
         const FConnectItBoardChanges& Changes,
         FConnectItBoardChangeEvent* OutEvents = nullptr) const;
 
+    // Whether Operation may be carried out on Board: its own CanApply, and
+    // no locked tile among its targets unless it may act on locked tiles
+    // (FConnectItBoardOperation::CanOperateOnLockedTiles). Everything that
+    // carries out an operation asks this first: the Mediator (players and the
+    // Level director), Simulate Operation, tile powers' effects. OutWhyNot,
+    // if given, gets the reason (e.g. "tile (3,2) is locked").
+    bool CanCarryOut(const FConnectItBoardOperation& Operation, const FConnectItBoardState& Board,
+        FString* OutWhyNot = nullptr) const;
+
     // An operation carried out on Board under these rules: the operation
     // changes the board (FConnectItBoardOperation::Apply, its faction stamped
     // on the change record), then ResolveBoardChange resolves what it did. Returns the points scored;
     // OutEvents, if given, gets the operation's event followed by any Scored
-    // events. Only call when Operation.CanApply(Board). Does not check for a
+    // events. Only call when CanCarryOut(Operation, Board). Does not check for a
     // win (StampWinState). The server's Mediator and the Blueprint
     // "Simulate Operation" both go through here, so a simulated move is by
     // construction what the real one would do.

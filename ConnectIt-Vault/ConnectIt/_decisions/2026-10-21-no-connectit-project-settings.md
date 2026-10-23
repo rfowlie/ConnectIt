@@ -1,7 +1,7 @@
 ---
 Date: 2026-10-21
-status: Active
-superseded by:
+status: Partly superseded
+superseded by: "[2026-10-22-tile-catalog-and-builder-tiles](2026-10-22-tile-catalog-and-builder-tiles.md) (a ConnectIt project settings class returns for the default tile catalog and the builder tile class; maps still name their board, preset and catalog in World Settings)"
 tags:
   - architecture
   - data

@@ -6,6 +6,10 @@ Vault-wide passes go in `_core/_logs/`.
 
 Newest first:
 
+- [2026-10-22-2350](2026-10-22-2350.md) — session — tile lock plan, Stage 1: the lock (`bIsLocked`, per-operation
+  rule, `CanCarryOut`, Set Tile Locked / Tile Lock Changed, Get Placement Blocker, AI). 57/57 tests.
+- [2026-10-22-2310](2026-10-22-2310.md) — session — the tile catalog moves to World Settings (project settings kept for
+  defaults); the tile lock plan revised for the catalog and builder tiles (awaiting approval). 56/56 tests.
 - [2026-10-22-2250](2026-10-22-2250.md) — session — tile powers, Stage 6 (vault): two decisions, question closed, recipe
   "add a tile power", flow "tile power chain", level recipes and status lines updated; plan complete; misdated logs fixed.
 - [2026-10-22-1745](2026-10-22-1745.md) — session — tile powers, Stage 4: powers fire in the chain (settle, Sync,

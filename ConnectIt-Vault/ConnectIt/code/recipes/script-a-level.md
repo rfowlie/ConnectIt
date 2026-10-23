@@ -5,7 +5,7 @@ touches:
   - a Blueprint subclass of UConnectIt_LevelDirector (named by the match preset's Level Director Class -- required)
   - condition assets for its goals and triggers
   - (board changes) board operation structs; (rule changes) scoring rule structs
-  - (tiles) builder tiles placed in the level, the level config's tile catalog; (level-wide powers) Level Wide Powers
+  - (tiles) builder tiles placed in the level, the map's tile catalog (World Settings); (level-wide powers) Level Wide Powers
 reconciled: 2026-10-22
 commit: f6d511d
 ---
@@ -59,7 +59,7 @@ layout and goals as it goes is a phased level: [[script-a-phased-level]].
    when the next turn begins: they join the same line, before the directors hear the turn started. The player can't act,
    and the AI doesn't decide, until they have all played out.
 8. **The level's tiles:** block the board out with **builder tiles** (`ConnectIt_BuilderTile` Blueprints). Each has its
-   per-tile settings and, for a powered tile, a **Tile Power Tag**. The level config's **Tile Catalog** (else the project
+   per-tile settings and, for a powered tile, a **Tile Power Tag**. The map's World Settings **Tile Catalog** (else the project
    default) decides which tile actor shows each tag. Builders become those actors when the match starts. In the editor, the
    layout tool's **Preview Tile Catalog** shows them (never saved). Powers that apply to every tile: the tags in this
    director's **Level Wide Powers**. Making a power: [[add-a-tile-power]].

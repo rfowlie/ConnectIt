@@ -20,6 +20,7 @@ UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_Game_RemovePiece);
 UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_Game_SwapPieces);
 UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_Game_ForcePlacePiece);
 UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_Game_ToggleTileActive);
+UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_Game_SetTileLocked);
 UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_Game_CapturePiece);
 UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_Game_Shift);
 // Level only (FConnectItBoardOperation_ChangeGoals): no action produces it
@@ -74,5 +75,7 @@ UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_Event_TileMultiplierDestroyed);
 UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_Event_PieceRemoved);
 UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_Event_PiecesSwapped);
 UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_Event_TileActiveToggled);
+// A tile was locked or unlocked (see FConnectItBoardEvent_TileLockChanged)
+UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_Event_TileLockChanged);
 UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_Event_PieceCaptured);
 UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_Event_BoardShifted);

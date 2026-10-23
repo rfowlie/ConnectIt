@@ -220,6 +220,26 @@ float FConnectItRuleSet::ResolveBoardChange(
     return TotalPoints;
 }
 
+bool FConnectItRuleSet::CanCarryOut(const FConnectItBoardOperation& Operation, const FConnectItBoardState& Board,
+    FString* OutWhyNot) const
+{
+    if (!Operation.CanApply(Board, OutWhyNot)) return false;
+    if (Operation.CanOperateOnLockedTiles()) return true;
+
+    TArray<FGridPosition> Targets;
+    Operation.GetTargetPositions(Targets);
+    for (const FGridPosition& Target : Targets)
+    {
+        const FConnectItTileData* Tile = Board.GetTileData(Target);
+        if (Tile && Tile->bIsLocked)
+        {
+            if (OutWhyNot) *OutWhyNot = FString::Printf(TEXT("tile (%d,%d) is locked"), Target.X, Target.Y);
+            return false;
+        }
+    }
+    return true;
+}
+
 float FConnectItRuleSet::CarryOutOperation(
     const FConnectItBoardOperation& Operation,
     FConnectItBoardState& Board,

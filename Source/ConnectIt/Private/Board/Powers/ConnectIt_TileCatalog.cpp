@@ -1,10 +1,11 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 #include "Board/Powers/ConnectIt_TileCatalog.h"
-#include "Framework/Data/ConnectIt_LevelConfigDataAsset.h"
 #include "Framework/Data/ConnectIt_ProjectSettings.h"
 #include "Framework/Data/ConnectIt_WorldSettings.h"
 #include "Tile/GridTileBase.h"
+#include "Engine/Engine.h"
+#include "Engine/World.h"
 
 #if WITH_EDITOR
 #include "Misc/DataValidation.h"
@@ -39,17 +40,20 @@ const UConnectIt_TileCatalog* UConnectIt_TileCatalog::GetProjectDefault()
 
 const UConnectIt_TileCatalog* UConnectIt_TileCatalog::FindFor(const UObject* WorldContextObject)
 {
-    const UConnectIt_LevelConfigDataAsset* LevelConfig = AConnectIt_WorldSettings::FindLevelConfig(WorldContextObject);
-    if (LevelConfig && IsValid(LevelConfig->TileCatalog))
+    const UWorld* World = GEngine && IsValid(WorldContextObject)
+        ? GEngine->GetWorldFromContextObject(WorldContextObject, EGetWorldErrorMode::ReturnNull)
+        : nullptr;
+    const AConnectIt_WorldSettings* WorldSettings = World ? Cast<AConnectIt_WorldSettings>(World->GetWorldSettings()) : nullptr;
+    if (WorldSettings && IsValid(WorldSettings->TileCatalog))
     {
-        return LevelConfig->TileCatalog;
+        return WorldSettings->TileCatalog;
     }
 
     const UConnectIt_TileCatalog* Default = GetProjectDefault();
     if (!Default)
     {
         UE_LOG(LogTemp, Warning,
-            TEXT("ConnectIt_TileCatalog: no tile catalog -- the level config names none and Project Settings > "
+            TEXT("ConnectIt_TileCatalog: no tile catalog -- the map's World Settings name none and Project Settings > "
                  "ConnectIt has no Default Tile Catalog. Tiles have no powers and builder tiles aren't swapped."));
     }
     return Default;
