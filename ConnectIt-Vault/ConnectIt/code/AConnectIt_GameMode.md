@@ -5,8 +5,8 @@ role: primary
 source:
   - Source/ConnectIt/Public/Framework/GameMode/ConnectIt_GameMode.h
   - Source/ConnectIt/Private/Framework/GameMode/ConnectIt_GameMode.cpp
-reconciled: 2026-10-22
-commit: 1e0d5cf
+reconciled: 2026-10-23
+commit: 54c1284
 ---
 
 # AConnectIt_GameMode
@@ -50,17 +50,22 @@ every director the same events, carries out the level's changes, and enforces **
 
 - **Setup** (`EnsureMatchSetupResolved`, once): the preset from the main menu (`UConnectIt_MatchSetupSubsystem`), else
   the map's `AConnectIt_WorldSettings::FindDefaultMatchPreset`; copies its rules and director classes; resolves both
-  sides' goals from the **Level director's class defaults** (`ResolveConditionGroups`); applies the menu's tweaks;
-  publishes to the GameState (`PublishMatchSetup`).
+  sides' goals from the **Level director's class defaults** (`ResolveConditionGroups`); copies every tile power the
+  level's tile catalog defines (`UConnectIt_TileCatalog::FindFor` → `MakePowers`) and the Level director's
+  `LevelWidePowers` into the rules (`SetTilePowers`); applies the menu's tweaks; publishes to the GameState
+  (`PublishMatchSetup`).
 - **Directors:** makes the Level director and one Player director per human (`FindOrCreatePlayerDirector`); the AI
   director belongs to the AI controller. `ForEachDirector` sends events in dispatch order (Level, Players by slot, AI).
 - **Board:** `InitialiseBoard` -> [[UConnectIt_BoardStateComponent]]`::InitialiseBoardState` with registries from
-  [[UConnectIt_BoardRegistrySubsystem]]. Binds `OnBoardStateChanged` (directors) and `OnBoardChangeCommitted` (lock).
+  [[UConnectIt_BoardRegistrySubsystem]] and `&Rules` (the seeded board's one Sync pass, so chained tiles start
+  right). Binds `OnBoardStateChanged` (directors) and `OnBoardChangeCommitted` (lock).
 - **Mediator:** made in `HandleMatchHasStarted`, given `&Rules`. Requests go through `ProcessRequest`; level changes
   through `ProcessLevelOperation`.
 - **Level-change queue** (`FConnectItLevelChangeQueue`): changes asked for while the board is busy wait in order;
   `DrainLevelChanges` applies them one board change at a time as each change plays out; turn-start changes join the same
-  line. Goals changes (`ApplyGoalsChange`: rules, then a Change Goals operation) and layout changes
+  line. At turn start, if `Rules.HasTurnStartPowerReady(board, turn)`, a **Turn Start** operation for the active
+  faction goes first (`AddFirst`): its chain fires the Turn Start tile powers (e.g. Repel's countdown)
+  ([[tile-power-chain]]). Goals changes (`ApplyGoalsChange`: rules, then a Change Goals operation) and layout changes
   (`ApplyLayoutChange`: the layout's Change Layout, made against the board at apply time) are board changes too.
 - **Seeding:** `PostLogin` seeds each human's PlayerState action state from their Player director's `StartingLoadout`.
 - Flows: [[place-piece-request]], [[ai-turn]], [[board-state-single-source-of-truth]].
@@ -91,6 +96,11 @@ every director the same events, carries out the level's changes, and enforces **
 
 ## Changes
 
+- 2026-10-23 — tile powers: the rules get the tile catalog's powers and the level-wide ones at setup; the board build
+  gets the rules (seed Sync pass); a Turn Start change goes first at turn start when a countdown is ready. See
+  [the first tile powers](../_decisions/2026-10-23-the-first-tile-powers.md),
+  [tile catalog and builder tiles](../_decisions/2026-10-22-tile-catalog-and-builder-tiles.md). (`process-code` sweep —
+  commit `54c1284`.)
 - 2026-10-22 — page rewritten against a month of changes: owns the rule set (`UConnectIt_BoardRules` retired) and the
   live match setup (presets, World Settings, no project settings); the three directors and their event hub; level
   changes with timing and the level-change queue; one board change at a time (lock, timeout, settled delegate, GameState

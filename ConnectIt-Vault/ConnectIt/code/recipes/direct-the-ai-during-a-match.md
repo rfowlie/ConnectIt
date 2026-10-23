@@ -2,11 +2,11 @@
 schema: recipes
 task: Change what the AI opponent can do, or how it thinks, as a match goes on -- every turn, when either side reaches a goal checkpoint, or on anything else in the level -- including "tells" the player can read.
 touches:
-  - a Blueprint subclass of UConnectIt_AIDirector (named by the match preset's AI Director Class)
-  - the action loadouts / strategies / selectors the director switches between
-  - (for tells) a visual manager Blueprint listening to the AI PlayerState's On Loadout Changed
-reconciled: 2026-10-21
-commit: bbf8daf
+  - Source/ConnectIt/Public/AI/ConnectIt_AIDirector.h (a Blueprint subclass, named by the match preset's AI Director Class)
+  - Plugins/UnrealTurnBasedMechanics/Source/UnrealTurnBasedMechanics/Public/Action/ActionLoadoutDataAsset.h (the action loadouts the director switches between; also its strategies / selectors)
+  - Plugins/UnrealTurnBasedMechanics/Source/UnrealTurnBasedMechanics/Public/Framework/PlayerState/TurnBasedPlayerState.h (for tells: a visual manager Blueprint listening to the AI PlayerState's On Loadout Changed)
+reconciled: 2026-10-23
+commit: dc7c2b3
 ---
 
 # Recipe: direct the AI during a match
@@ -16,7 +16,7 @@ commit: bbf8daf
 An AI that changes during a match: an alternating loadout every turn, new moves or a smarter strategy after a checkpoint, a
 harsher selector when the player is winning, or a "tell" that shows the player what the AI will be able to do next turn. This
 is the job of the **AI director**: a Blueprint whose Class Defaults are the AI's setup -- its **loadout**, **strategies**,
-**selector**, think times and goals -- and whose events change that setup as the match goes on. It never picks a move itself
+**selector** and think times (its goals are the Level director's) -- and whose events change that setup as the match goes on. It never picks a move itself
 (strategies propose, the selector picks).
 
 It is one of three directors (Level, Player, AI -- see [three-directors](../../design/three-directors.md)): all get the same

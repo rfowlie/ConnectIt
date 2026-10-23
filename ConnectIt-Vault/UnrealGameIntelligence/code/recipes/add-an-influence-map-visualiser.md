@@ -2,10 +2,10 @@
 schema: recipes
 task: Add a debug overlay that renders a per-cell float score (threat, reachability, etc.) selectable from the influence-map debug UI.
 touches:
-  - a new influence-map class implementing IGI_FloatGridDataProviderInterface
-  - a new visualiser class implementing IGI_InfluenceMapVisualiser (+ a project data-provider setter)
-  - a UGI_InfluenceMapWidget subclass (once, if not already present)
-  - project setup code that constructs + wires + registers
+  - Plugins/UnrealGameIntelligence/Source/UnrealGameIntelligence/Public/InfluenceMap/GI_FloatGridDataProviderInterface.h (a new influence-map class implementing IGI_FloatGridDataProviderInterface)
+  - Plugins/UnrealGameIntelligence/Source/UnrealGameIntelligence/Public/InfluenceMap/GI_InfluenceMapVisualiserInterface.h (a new visualiser class implementing IGI_InfluenceMapVisualiser, + a project data-provider setter)
+  - Plugins/UnrealGameIntelligence/Source/UnrealGameIntelligence/Public/InfluenceMap/GI_InfluenceMapWidget.h (a UGI_InfluenceMapWidget subclass, once, if not already present)
+  - Plugins/UnrealGameIntelligence/Source/UnrealGameIntelligence/Public/InfluenceMap/GI_InfluenceMapSubsystem.h (project setup code that constructs + wires + registers: RegisterVisualiser)
 reconciled: 2026-09-10
 commit: 94b135f
 ---

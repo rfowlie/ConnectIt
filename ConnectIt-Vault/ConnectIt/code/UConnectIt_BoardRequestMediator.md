@@ -5,8 +5,8 @@ role: primary
 source:
   - Source/ConnectIt/Public/Board/ConnectIt_BoardRequestMediator.h
   - Source/ConnectIt/Private/Board/ConnectIt_BoardRequestMediator.cpp
-reconciled: 2026-10-22
-commit: 27b1807
+reconciled: 2026-10-23
+commit: 2f74abd
 ---
 
 # UConnectIt_BoardRequestMediator
@@ -18,7 +18,8 @@ board changes and knows nothing about any particular kind: a request's payload *
 ## When you touch this
 
 - The gate a player's (or the AI's) request passes: loadout, action, uses.
-- The common carry-out path: `CanApply`, the rule set's `CarryOutOperation`, the win stamp, the commit.
+- The common carry-out path: the rule set's `CanCarryOut` (the operation's `CanApply` and the tile lock), its
+  `CarryOutOperation`, the win stamp, the commit.
 - Level changes (the Level director's operations, outside any move).
 
 ## Entry points
@@ -33,9 +34,11 @@ board changes and knows nothing about any particular kind: a request's payload *
 - `ProcessLevelOperation(const FInstancedStruct& Operation, int32 AsFaction) → bool` — the Level director's path: no
   loadout gate, no use; straight to `DispatchRequest`. The GameMode calls it when the board is free.
 - `IsDispatching()` — true for the synchronous carry-out (the GameMode's board-busy check includes it).
-- **`DispatchRequest`** (private): game over? → stamp the server-known faction on a copy of the operation → `CanApply`
-  on the current board → `FConnectItRuleSet::CarryOutOperation` on a copy (the operation's `Apply`, then
-  `ResolveBoardChange` scoring) → `StampWinState` (checkpoints, lose conditions, the win) → `Game Won` on the transition
+- **`DispatchRequest`** (private): game over? → stamp the server-known faction on a copy of the operation →
+  `FConnectItRuleSet::CanCarryOut` on the current board (its `CanApply`, and no locked tile unless the operation may;
+  a refusal logs the reason) → `CarryOutOperation` on a copy whose `TurnNumber` is the GameState's active turn (tile
+  power cooldowns count against it) (the operation's `Apply`, then `ResolveBoardChange`: the power chain and scoring)
+  → `StampWinState` (checkpoints, lose conditions, the win) → `Game Won` on the transition
   → `SetBoardState(NewState, ChangeEvent)`.
 
 ## Collaborators
@@ -66,6 +69,9 @@ needs `ProducesRequestType` ([[add-a-board-request-type]]). A request field the 
 
 ## Changes
 
+- 2026-10-23 — `DispatchRequest` checks `FConnectItRuleSet::CanCarryOut` instead of `CanApply` (the tile lock:
+  [tile lock per-operation rule](../_decisions/2026-10-23-tile-lock-per-operation-rule.md)), and resolves the change at
+  the active turn so tile power cooldowns count. (`process-code` sweep — commit `2f74abd`.)
 - 2026-10-22 — page rewritten: operations are the requests (the per-type `HandleXRequest` handlers and `FConnectItRequest*`
   payloads are gone -- one `DispatchRequest` path); `Initialise` takes the GameMode's `FConnectItRuleSet`
   (`UConnectIt_BoardRules` retired); `RequestingFaction` supplied by the server; Shift's `Steps` checked against the

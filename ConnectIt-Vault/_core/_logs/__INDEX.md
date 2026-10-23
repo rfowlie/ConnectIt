@@ -8,6 +8,12 @@ in `<domain>/_logs/`, not here.
 
 Newest first:
 
+- [2026-10-23-1221](2026-10-23-1221.md) — session — process-code flags resolved: `retired` code status (schema +
+  skill), recipe `touches:` lead with paths (6 recipes refreshed), `add-a-scoring-rule` rewritten, `UGridDefinition`
+  page, tile power inventory rows, ConnectIt index intro.
+- [2026-10-23-1131](2026-10-23-1131.md) — process-code — 61 code pages checked: 11 drifted ConnectIt pages refreshed
+  (tile powers, tile lock), 41 current, 2 stale (`UConnectIt_BoardRules`, `add-a-scoring-rule`), 8 recipes with no
+  checkable paths.
 - [2026-10-22-1032](2026-10-22-1032.md) — process-code — 59 code pages checked: 21 drifted pages refreshed, 27
   current, `UConnectIt_BoardRules` stale (sources retired), 10 recipes with no checkable paths; ConnectIt inventory gaps flagged.
 

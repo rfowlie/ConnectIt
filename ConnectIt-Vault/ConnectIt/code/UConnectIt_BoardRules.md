@@ -116,6 +116,8 @@ A new strategy is self-contained: implement the interface, assign it on `UConnec
 
 ## Changes
 
+- 2026-10-06 — **removed** from the code: replaced by the plain struct `FConnectItRuleSet`. This page is kept as
+  history (index status `retired`, 2026-10-23); it is no longer refreshed.
 - 2026-09-14 — added the third pluggable strategy, `IConnectIt_TilePlaceableRule` /
   `UConnectIt_UnoccupiedTilePlaceableRule`, closing the mediator's long-standing TODO
   ("make `IsTileValidForPlacement()` a BoardRule function"). Corrected all three strategy

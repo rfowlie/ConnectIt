@@ -54,3 +54,9 @@ Maybe were thinking of it wrong. Perhaps we have two distinct moments, actions a
 - So should the setup and best practice be the BP actor is just for visual handling. Any actual logic for resolving board stuff is handled in C++. But the BP's should implement a tile power handler interface so that we can align when things happen?
 	- Can we afford to make it that generic? Or should we have an interface for each operation/tile power? HandleChainedTilePower() the actor would implement various visual effects/changes only when that tile power fires?
 	- Could it be HandleTilePower(FGameplayTag) then just query for the correct one for that BP setup?
+
+
+## UnrealUnsorted Plugin
+
+- A new plugin where we can through bits and pieces of code in from other plugins or projects for later digestion and integration
+- Nothing in any other plugin or project should depend on anything in here

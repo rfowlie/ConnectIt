@@ -7,8 +7,8 @@ source:
   - Source/ConnectIt/Private/Framework/Subsystem/ConnectIt_BoardRegistrySubsystem.cpp
   - Source/ConnectIt/Public/Board/ConnectIt_TileRegistry.h
   - Source/ConnectIt/Public/Board/ConnectIt_PieceRegistry.h
-reconciled: 2026-10-22
-commit: 1d514b1
+reconciled: 2026-10-23
+commit: 56d6946
 ---
 
 # UConnectIt_BoardRegistrySubsystem (+ UConnectIt_TileRegistry / UConnectIt_PieceRegistry)
@@ -39,8 +39,9 @@ data. Replaces the previous home of these registries: per-machine properties on
   reference to the duplicated `GridDefinition` before its own `InitialiseRegistry()` runs
   (`DiscoverExisting` needs it already assigned). Also binds **both** `TileRegistry` and `PieceRegistry` to
   [[UnrealGameMechanics/code/UGameEventTaskSubsystem\|UGameEventTaskSubsystem]]`::OnAnyTagComplete`
-  here, once. No board on the map → a warning ("fine for a menu map") and no registries; missing template → logged
-  error per registry.
+  here, once. Then creates the **`UConnectIt_TileVisualizer`** (`Initialise(TileRegistry)`), which calls the tile
+  actors' hooks as board events play, on every machine ([[tile-power-chain]]). No board on the map → a warning ("fine
+  for a menu map") and no registries; missing template → logged error per registry.
 - `Deinitialize()` — unbinds both registries from `OnAnyTagComplete`, then calls
   `ShutdownRegistry()` on both.
 - `GetTileRegistry()` / `GetPieceRegistry()` / `GetGridDefinition()` (`BlueprintPure`) —
@@ -57,10 +58,18 @@ data. Replaces the previous home of these registries: per-machine properties on
   convention; `PieceRegistry` keeps protected C++ `HandleBoardShifted`/`HandleBoardPiecesSwapped`/
   `HandleBoardPieceRemoved` stubs (marked TODO — undecided whether they're useful).
 - **A phased level's tiles** (`UConnectIt_TileRegistry`, BlueprintCallable, called from the Tiles Added / Tiles Removed
-  handlers on every machine): `SpawnLayoutTiles(Cells)` spawns each cell's tile class (else the level config's
-  `DefaultTileClass`) at its grid position -- each registers itself; tiles implementing the tile data interface get
-  `ApplyLayoutCell` -- and returns them in cell order; `UnregisterTilesAt(Positions)` stops tracking those tiles and
-  returns their actors to animate out and destroy.
+  handlers on every machine): `SpawnLayoutTiles(Cells)` spawns the tile catalog's class for each cell's power tag
+  (`UConnectIt_TileCatalog::FindFor`; the level config's `DefaultTileClass` only when there is no catalog) at its grid
+  position -- each registers itself; tiles implementing the tile data interface get `ApplyLayoutCell` -- and returns
+  them in cell order; `UnregisterTilesAt(Positions)` stops tracking those tiles and returns their actors to animate
+  out and destroy.
+- **Builder tiles** (`UConnectIt_TileRegistry::SwapBuilderTiles`, C++): replaces every `AConnectIt_BuilderTile` with
+  its catalog class, given the builder's values and look; the builder is destroyed. The board state component calls it
+  once the board is known (seeded on the server, first arrival on a client). Returns how many were swapped.
+- **Actors following the board** (BlueprintCallable, from the event handlers on every machine):
+  `UConnectIt_TileRegistry::ShiftTiles(Start, End)` (Board Shifted: each tile actor becomes the one at its end
+  position, a rotation; returns them to animate) and `UConnectIt_PieceRegistry::MovePieceActor(From, To)` (Piece Moved:
+  re-keys the piece actor and returns it to slide).
 
 ## Collaborators
 
@@ -121,6 +130,11 @@ Adding a new registry field: the `Instanced` template property on
 
 ## Changes
 
+- 2026-10-23 — tile powers: the subsystem creates the tile visualizer; `UConnectIt_TileRegistry` spawns layout tiles
+  from the tile catalog and gained `SwapBuilderTiles` and `ShiftTiles`; `UConnectIt_PieceRegistry` gained
+  `MovePieceActor`. See [tile catalog and builder tiles](../_decisions/2026-10-22-tile-catalog-and-builder-tiles.md),
+  [the first tile powers](../_decisions/2026-10-23-the-first-tile-powers.md). (`process-code` sweep — commit
+  `56d6946`.)
 - 2026-10-22 — the board comes from the map's World Settings (`AConnectIt_WorldSettings::FindLevelConfig`; no board =
   a warning, fine for a menu map); `UConnectIt_TileRegistry` gained `SpawnLayoutTiles` / `UnregisterTilesAt` (phased
   levels). The 2026-09-18 change below has since been committed.

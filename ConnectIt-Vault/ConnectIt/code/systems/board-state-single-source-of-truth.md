@@ -7,8 +7,8 @@ spans:
   - Source/ConnectIt/Public/Board/Events/ConnectIt_BoardEvents.h
   - Source/ConnectIt/Public/Framework/GameState/ConnectIt_GameState.h
   - Source/ConnectIt/Public/Framework/GameMode/ConnectIt_GameMode.h
-reconciled: 2026-10-22
-commit: 1e0d5cf
+reconciled: 2026-10-23
+commit: 4c9625c
 ---
 
 # Board state — single source of truth
@@ -20,13 +20,21 @@ The entire board is one replicated property: `FConnectItBoardStateSnapshot Board
 change:
 
 - **Previous state:** the board before the change.
-- **Current state:** the board after it, including everything that followed from it (scoring, the win stamp).
+- **Current state:** the board after it, including everything that followed from it (tile powers, scoring, the win
+  stamp -- [[tile-power-chain]]).
 - **The change event:** an ordered list of board-event structs saying what happened, in order (`ConnectIt_BoardEvents.h`).
+  Each event **applies itself** (`FConnectItBoardEvent::ApplyTo`) and names the event that caused it (`CauseIndex`), so
+  previous + events = current, chains included (tested).
 
 The server writes only through `SetBoardState`; clients receive `OnRep_BoardSnapshot`. Both paths then call
 `BroadcastChange()` (the zero-param `OnBoardStateChanged`) and `EnqueueBoardEventTags()`, which queues **one entry per
 event, with the event itself as payload**, on the game event queue. The visuals play them one at a time, the same way on
 every machine.
+
+**The display board.** Visuals read `GetDisplayBoard()`, not Current: the board as the player has seen it so far. As
+each event's queue entry completes, the event applies itself to it (`OnDisplayBoardChanged`), so a handler playing an
+event sees the board before it, plus the event. When the queue drains it copies Current, warning if the tiles or
+scores differ (a missed snapshot). Game logic (directors, Mediator, AI) reads Current.
 
 **One board change at a time.** The snapshot is a property, not a queue. Unreal sends whatever it holds at the
 GameState's next network update, so two changes made between updates would reach a client as one: the first change's
@@ -59,18 +67,21 @@ flowchart TD
     EQ2 --> TAGS
     MK --> TAGS
     TAGS --> VIS[visuals per event tag, one at a time]
+    VIS -->|entry completes| DB[event.ApplyTo display board]
     TAGS -->|marker completes, server| REL[lock lifts -> waiting level changes -> settled]
 ```
 
 ## Steps
 
-1. The Mediator builds the new board on a copy (the operation, then the rule set's scoring and win stamp), with the
-   ordered `FConnectItBoardChangeEvent`.
+1. The Mediator builds the new board on a copy (the operation, then the rule set's power chain and scoring, then the
+   win stamp), with the ordered `FConnectItBoardChangeEvent`. (The seed is the same shape: `InitialiseBoardState`
+   writes the snapshot directly, Previous = the board as built, Current = it settled once under the rules.)
 2. `SetBoardState(NewState, ChangeEvent)`: current -> `PreviousState`, `NewState` applied, `ChangeEvent` stored in the
    one snapshot.
 3. The server broadcasts at once; clients get the snapshot and broadcast from `OnRep_BoardSnapshot`.
 4. Both machines: `EnqueueBoardEventTags()` queues each event (its tag, the event as payload). A listener reads the
-   event that is playing through `UConnectIt_BoardEventLibrary`, even if a newer snapshot has arrived.
+   event that is playing through `UConnectIt_BoardEventLibrary`, even if a newer snapshot has arrived. When the entry
+   completes, the event applies itself to the display board.
 5. Server only: `OnBoardChangeCommitted`, then the completion marker. The GameMode lifts the lock when it completes
    (or after `BoardChangeTimeoutSeconds`), and mirrors "busy" on the GameState (`IsBoardChangeResolving`) for UI.
 
@@ -79,7 +90,10 @@ flowchart TD
 - **Never write `CurrentState` directly** -- only `SetBoardState`.
 - **The set of tiles can change mid-match** (a phased level's Change Layout: Tiles Removed / Tiles Added;
   `FConnectItBoardState::RemoveTileData`). Indices into `TilePositions` / `TileDataArray` are only good for one board --
-  look tiles up by position. The board also carries the level's `CurrentPhase`.
+  look tiles up by position, or by `TileId` (given when a tile joins, travels with it through shifts). The board also
+  carries the level's `CurrentPhase`, its `TurnNumber` and `RandomSeed` (tile powers).
+- **Visuals read the display board, not Current**: Current is already past the whole chain while its first event is
+  still playing.
 - `OnBoardStateChanged` carries **no parameters** by design: data comes from `GetCurrentState()` / `GetChangeEvent()`.
   That list is the latest change's, not necessarily the one playing.
 - `EnqueueBoardEventTags` runs on clients too: anything it triggers must be safe without authority.

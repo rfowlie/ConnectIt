@@ -2,12 +2,11 @@
 schema: recipes
 task: Make a gameplay event (e.g. a turn advance) wait until a visual/async reaction has finished, by gating it on a gameplay tag.
 touches:
-  - a new UGameEventTask_Async instance (owned by your reacting system)
-  - your reacting system's setup code (RegisterAsyncTask)
-  - the firing system's code (QueueTagContainer) — often already exists
+  - Plugins/UnrealGameMechanics/Source/UnrealGameMechanics/Public/GameEvent/GameEventTask_Async.h (a new UGameEventTask_Async instance, owned by your reacting system)
+  - Plugins/UnrealGameMechanics/Source/UnrealGameMechanics/Public/GameEvent/GameEventTaskSubsystem.h (your reacting system's setup code: RegisterAsyncTask; the firing system's QueueTagContainer -- often already exists)
   - a project gameplay tag for the event
-reconciled: 2026-09-10
-commit: ec992a2
+reconciled: 2026-10-23
+commit: faab026
 ---
 
 # Recipe: gate a response on a tag
@@ -35,12 +34,18 @@ reaction reports done.
    reaction. It must be bound **before** step 3.
 3. **Register.** `Subsystem->RegisterAsyncTask(EventTag, Task, Phase)`. Use `Phase` to
    order against other reactions (all phase 0 finish before phase 1 starts).
-4. **Signal completion.** When your reaction finishes — including on failure/abort — call
+4. **Read the event's data (optional).** If the firing side queued it with a payload
+   (`QueueTagContainerWithPayload`), read it in your execute function with
+   `Subsystem->GetActivePayload()` -- it is that entry's own data, however many entries are
+   waiting.
+5. **Signal completion.** When your reaction finishes — including on failure/abort — call
    `Task->CallOnComplete()`. For a one-shot reaction, leave `bIsPersistentTask = false`;
    for a permanent reaction that should run every time the tag fires, set it true.
-5. **(firing side, if not already done)** `Subsystem->QueueTagContainer(
-   FGameplayTagContainer(EventTag));` and, if you need to know when the whole sequence is
-   done, `Subsystem->BindOnTagComplete(EventTag, this, FName("OnEventResolved"))`.
+6. **(firing side, if not already done)** `Subsystem->QueueTagContainer(
+   FGameplayTagContainer(EventTag));` (or `QueueTagContainerWithPayload(Tags, Payload)` to
+   send data with it) and, if you need to know when the whole sequence is done,
+   `Subsystem->BindOnTagComplete(EventTag, this, FName("OnEventResolved"))` -- or
+   `OnAnyTagComplete` to hear every tag finish with one bind.
 
 ## Verify
 
@@ -60,6 +65,12 @@ reaction reports done.
 - **Never calling `CallOnComplete()`** → permanent stall, no timeout.
 - Setting `bIsPersistentTask` when you meant a one-shot → the reaction re-fires forever.
 - Assuming a frame of delay when no tasks are registered — the tag completes synchronously.
+- **Calling `CallOnComplete()` from inside your execute function** (a reaction with nothing
+  to wait for): the queue calls each phase's tasks from a loop over the very array that
+  completing removes from. Defer the completion to the next tick (ConnectIt's
+  `UConnectIt_TileVisualizer` does).
+- **The payload is only readable while its entry is active** -- copy what you need in the
+  execute function, not when the reaction finishes.
 
 ## See also
 

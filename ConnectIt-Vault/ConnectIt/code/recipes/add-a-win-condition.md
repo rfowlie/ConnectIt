@@ -2,13 +2,13 @@
 schema: recipes
 task: Set up a match's conditions -- each side's goals (in order) and ways to lose, plus the level's triggers -- as condition assets on the directors, react when one is met, and (C++) add a new kind of condition or make a kind of move answer "any legal move?".
 touches:
-  - a UConnectIt_MatchConditionAsset per condition (Content Browser)
-  - the Level director Blueprint (Player / AI Win and Lose Conditions, Triggers; Set Win / Lose Conditions mid-match)
-  - (reacting) the directors' events
-  - (new condition type, C++) a struct deriving FConnectItMatchCondition, in Source/ConnectIt/Public/Board/Rules/Conditions/ConnectIt_MatchConditions.h
-  - (legal-move support, C++) FConnectItBoardOperation::HasAnyLegalInstance on an operation type
+  - Source/ConnectIt/Public/Board/Rules/Conditions/ConnectIt_MatchConditionAsset.h (a condition asset per condition, Content Browser)
+  - Source/ConnectIt/Public/AI/ConnectIt_LevelDirector.h (the Level director Blueprint: Player / AI Win and Lose Conditions, Triggers; Set Win / Lose Conditions mid-match)
+  - Source/ConnectIt/Public/AI/ConnectIt_Director.h (reacting: the directors' events)
+  - Source/ConnectIt/Public/Board/Rules/Conditions/ConnectIt_MatchConditions.h (new condition type, C++: a struct deriving FConnectItMatchCondition)
+  - Source/ConnectIt/Public/Board/Operations/ConnectIt_BoardOperation.h (legal-move support, C++: FConnectItBoardOperation::HasAnyLegalInstance on an operation type)
 reconciled: 2026-10-23
-commit: 56d6946
+commit: 54c1284
 ---
 
 # Recipe: set up match conditions

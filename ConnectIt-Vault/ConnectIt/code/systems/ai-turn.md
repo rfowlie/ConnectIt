@@ -15,8 +15,8 @@ spans:
   - Source/ConnectIt/Public/Board/ConnectIt_BoardRequestMediator.h
   - Plugins/UnrealTurnBasedMechanics/Source/UnrealTurnBasedMechanics/Public/Framework/Controller/TurnBasedAIController.h
   - Plugins/UnrealGameIntelligence/Source/UnrealGameIntelligence/Public/Search/MinMax/GI_MinMaxAlphaBeta.h
-reconciled: 2026-10-22
-commit: 1e0d5cf
+reconciled: 2026-10-23
+commit: 0dc7767
 ---
 
 # AI turn: who the opponent is, and how it takes a move
@@ -102,8 +102,9 @@ sequenceDiagram
    ([one board change at a time](../../_decisions/2026-10-21-one-board-change-at-a-time.md)). Pause, game over, turn end,
    timeout or skip cancel it, waiting included (a pause resumes it if it is still this AI's turn).
 4. **Context.** `BeginDecision` first applies the director's pending strategy / selector changes, then copies, on the game
-   thread: `Board`, `OwnSlot`, `Rules` (plain thread-safe data), `OwnLoadout`/`OpponentLoadout` (assets: game thread only),
-   `TurnNumber`, `DecisionIndexThisTurn`, `AvailableRequestTypes` (produced by its loadout, usable now, and with at least one
+   thread: `Board` (its `TurnNumber` set to the decision's turn -- the search's root, so tile power cooldowns count
+   against it; each ply adds one), `OwnSlot`, `Rules` (plain thread-safe data), `OwnLoadout`/`OpponentLoadout` (assets:
+   game thread only), `TurnNumber`, `DecisionIndexThisTurn`, `AvailableRequestTypes` (produced by its loadout, usable now, and with at least one
    legal instance on the board -- `FConnectItBoardOperation::GetLegality`; a kind of move that can't tell stays in).
    **Nothing available = the AI passes**: it logs `no legal move -- passing` and ends its turn without asking a strategy.
 5. **Decide.** The coordinator starts every strategy (`StartDecision` -> `BeginDecision`, C++ or Blueprint), each with

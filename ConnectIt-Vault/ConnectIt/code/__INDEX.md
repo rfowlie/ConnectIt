@@ -1,7 +1,5 @@
 ---
 schema: code
-reconciled: 2026-09-14
-commit: efc8052
 ---
 
 # ConnectIt (game module) — code index
@@ -11,16 +9,25 @@ Per-type help pages for the `ConnectIt` game module (`Source/ConnectIt/`). Gover
 why / what changed" notes over the code. The exhaustive per-member reference is the
 code itself (`../../Source/ConnectIt/`).
 
-Source root: `Source/ConnectIt/`. Anchor commit `efc8052` = *Implement SWAP*, the last
-commit to touch this module (`/process-code` re-ran 2026-09-14 — 4 pages refreshed, see
-their own `## Changes`; the SWAP action work is a newer phase layered on top of the
-board-architecture work below, not yet folded into this paragraph's own framing). The
-game is mid–**board-architecture overhaul**:
-the `AConnectIt_BoardManager` actor is retired, replaced by server-only UObjects on
-[[AConnectIt_GameMode|AConnectIt_GameMode]]; the tile/piece registries have moved again,
-onto [[UConnectIt_BoardRegistrySubsystem|UConnectIt_BoardRegistrySubsystem]]; several
-game-event bodies are commented out pending rewiring. `status`: **current** = written &
-reconciled · **stub** = listed, no page yet.
+Source root: `Source/ConnectIt/`. Each page carries its own `commit:` anchor; this index
+has none of its own (`/process-code` checks the pages).
+
+**The shape today (2026-10-23):**
+
+- **Server authority:** [[AConnectIt_GameMode|AConnectIt_GameMode]] owns the match's
+  rule set (`FConnectItRuleSet`: plain, thread-safe structs) and the
+  [[UConnectIt_BoardRequestMediator|board request mediator]].
+- **Operations are the requests:** a board change is a board operation struct. A player
+  action, the Level director or a tile power sends it; the server checks and applies it.
+- **Every change resolves in one chain** (tile powers, then scoring, until quiet) and is
+  committed as one replicated snapshot: [[UConnectIt_BoardStateComponent|UConnectIt_BoardStateComponent]].
+- **Visuals play the change's self-applying events** one at a time, and read a display
+  board.
+- **Three directors** (Level, Player, AI) script the match and hold its goals.
+- **Tiles carry powers** defined once per tag in a tile catalog ([[tile-power-chain]]).
+
+`status`: **current** = written & reconciled · **stub** = listed, no page yet · **stale**
+= a source path is gone · **retired** = the type was removed, page kept as history.
 
 ## Inventory
 
@@ -30,26 +37,33 @@ reconciled · **stub** = listed, no page yet.
 | [[AConnectIt_GameState\|AConnectIt_GameState]] (`FConnectItMatchResult`, `EMatchEndReason`) | UCLASS (AGameState) | Framework/GameState | primary | `Framework/GameState/ConnectIt_GameState.{h,cpp}` | current |
 | [[UConnectIt_BoardStateComponent\|UConnectIt_BoardStateComponent]] | UCLASS (component) | Board | primary (single source of truth) | `Board/ConnectIt_BoardStateComponent.{h,cpp}` | current |
 | [[UConnectIt_BoardRequestMediator\|UConnectIt_BoardRequestMediator]] | UCLASS (UObject) | Board | primary (server-only) | `Board/ConnectIt_BoardRequestMediator.{h,cpp}` | current |
-| [[UConnectIt_BoardRules\|UConnectIt_BoardRules]] (`IConnectIt_ScoringRule`, `IConnectIt_WinCondition`, `UConnectIt_LineScoringRule`, `UConnectIt_ScoreThresholdWinCondition`) | UCLASS / UINTERFACE | Board/Rules | primary (pluggable strategies) | `Board/Rules/*.{h,cpp}` | stale |
+| [[UConnectIt_BoardRules\|UConnectIt_BoardRules]] (`IConnectIt_ScoringRule`, `IConnectIt_WinCondition`, `UConnectIt_LineScoringRule`, `UConnectIt_ScoreThresholdWinCondition`) | UCLASS / UINTERFACE | Board/Rules | primary (pluggable strategies) | `Board/Rules/*.{h,cpp}` | retired |
 | [[UConnectIt_BoardRegistrySubsystem\|UConnectIt_BoardRegistrySubsystem]] (`UConnectIt_TileRegistry`, `UConnectIt_PieceRegistry`) | UCLASS (UWorldSubsystem) | Framework/Subsystem, Board | primary (per-world registry owner) | `Framework/Subsystem/ConnectIt_BoardRegistrySubsystem.{h,cpp}`, `Board/ConnectIt_TileRegistry.{h,cpp}`, `Board/ConnectIt_PieceRegistry.{h,cpp}` | current |
 | [[ConnectItStructs\|ConnectItStructs]] (`FConnectItBoardState`, `FConnectItTileData`, `FConnectItBoardChangeEvent`, `FConnectItBoardStateSnapshot`, `FConnectItRequest*` payloads) | USTRUCT ×~12 | Top-level | primary (data) | `ConnectIt_Structs.h` | current |
-| [[UConnectIt_State_Game\|UConnectIt_State_Game]] (`UConnectIt_State_Base`, `…_SelectTile`, `…_PlacePiece`, `…_UpdateGameBoard`) | UCLASS | Framework/Game State Machine | **retired legacy** — do not build on | `Framework/Game State Machine/*.{h,cpp}` | current (documented as legacy) |
-| [[UConnectIt_GameFacade\|UConnectIt_GameFacade]] (`UConnectIt_GameViewModel`) | UCLASS (UObject) | Framework/Data | **retired legacy** — superseded by `UConnectIt_GameUtilityLibrary` | `Framework/Data/ConnectIt_GameFacade.{h,cpp}`, `.../ConnectIt_GameViewModel.{h,cpp}` | current (documented as legacy) |
+| [[UConnectIt_State_Game\|UConnectIt_State_Game]] (`UConnectIt_State_Base`, `…_SelectTile`, `…_PlacePiece`, `…_UpdateGameBoard`) | UCLASS | Framework/Game State Machine | **deprecated** — remove in a dead-code pass | `Framework/Game State Machine/*.{h,cpp}` | current (documented as legacy) |
+| [[UConnectIt_GameFacade\|UConnectIt_GameFacade]] (`UConnectIt_GameViewModel`) | UCLASS (UObject) | Framework/Data | **deprecated** — superseded by `UConnectIt_GameUtilityLibrary`; remove in a dead-code pass | `Framework/Data/ConnectIt_GameFacade.{h,cpp}`, `.../ConnectIt_GameViewModel.{h,cpp}` | current (documented as legacy) |
 | AConnectIt_PlayerController | UCLASS (APlayerController) | Framework/Controller | primary | `Framework/Controller/ConnectIt_PlayerController.{h,cpp}` | stub — covered in systems/place-piece-request |
 | AConnectIt_AIController | UCLASS (AAIController) | Framework/Controller | primary | `Framework/Controller/ConnectIt_AIController.{h,cpp}` | stub |
-| AConnectIt_GameMode_Play | UCLASS (AGameModeBase) | Framework/GameMode | **retired legacy** — empty body, implements the two dead facade interfaces | `Framework/GameMode/ConnectIt_GameMode_Play.h` | stub |
+| AConnectIt_GameMode_Play | UCLASS (AGameModeBase) | Framework/GameMode | **deprecated** — empty body, implements the two dead facade interfaces; remove in a dead-code pass | `Framework/GameMode/ConnectIt_GameMode_Play.h` | stub |
 | AConnectIt_PlayerState | UCLASS | Framework/PlayerState | primary | `Framework/PlayerState/ConnectIt_PlayerState.h` | stub |
 | UConnectIt_PlacePieceAction / UConnectIt_DefaultViewerAction | UCLASS (`UTurnBasedAction` / `…SpectatorAction`) | Action | primary | `Action/ConnectIt_PlacePieceAction.{h,cpp}`, `Action/ConnectIt_DefaultViewerAction.h` | stub — covered in systems/place-piece-request |
 | UConnectIt_PlacePieceGameEvent / UConnectIt_LineScoreGameEvent | UCLASS (`UTurnBasedGameEvent`) | GameEvent | primary (mid-rewrite — bodies stubbed) | `GameEvent/ConnectIt_*GameEvent.{h,cpp}` | stub |
 | UConnectIt_PieceRegistryComponent | UCLASS (component) | Board | primary | `Board/ConnectIt_PieceRegistryComponent.{h,cpp}` | stub |
 | UConnectIt_BlackboardSubsystem | UCLASS (UWorldSubsystem) | Framework/Subsystem | primary (turn modifiers) | `Framework/Subsystem/ConnectIt_BlackboardSubsystem.{h,cpp}` | stub |
-| UConnectIt_LevelConfigDataAsset / UConnectIt_LevelConfigSettings / UConnectIt_PlayerData | UCLASS (UDataAsset / config / UObject) | Framework/Data | primary (config); `UConnectIt_PlayerData` is **retired legacy** | `Framework/Data/ConnectIt_LevelConfig*.h`, `.../ConnectIt_PlayerData.h` | stub |
+| UConnectIt_LevelConfigDataAsset / UConnectIt_LevelConfigSettings / UConnectIt_PlayerData | UCLASS (UDataAsset / config / UObject) | Framework/Data | primary (config); `UConnectIt_PlayerData` is **deprecated** | `Framework/Data/ConnectIt_LevelConfig*.h`, `.../ConnectIt_PlayerData.h` | stub |
 | Libraries (`UConnectIt_BoardStateLibrary`, `…_GameRulesLibrary`, `…_GameUtilityLibrary`, `…_GridFloodLibrary`, `…_GridRulesLibrary`) | UCLASS (UBlueprintFunctionLibrary) | Framework/Library | primary | `Framework/Library/ConnectIt_*Library.{h,cpp}` | stub |
-| AConnectIt_GridPiece | UCLASS (`AGridPieceBase`) | Grid | primary | `Grid/ConnectIt_GridPiece.{h,cpp}` | stub |
-| Influence map (`UPieceControlInfluenceMap`, `UPieceControlMapVisualizer`) | UCLASS | GameIntelligence/InfluenceMap | primary | `GameIntelligence/InfluenceMap/*.{h,cpp}` | stub |
+| AConnectIt_PieceBase (was `AConnectIt_GridPiece`) | UCLASS (`AGridPieceBase`) | Board/Actor | primary | `Board/Actor/ConnectIt_PieceBase.{h,cpp}` | stub |
+| AConnectIt_TileBase | UCLASS (`AGridTileBase`) | Board/Actor | primary (every ConnectIt tile; the tile hooks) | `Board/Actor/ConnectIt_TileBase.{h,cpp}` | stub — covered in recipes/add-a-tile-power |
+| AConnectIt_BuilderTile | UCLASS (`AConnectIt_TileBase`, `IConnectIt_TileDataProvider`) | Board/Actor | primary (level blockout; swapped for catalog tiles) | `Board/Actor/ConnectIt_BuilderTile.{h,cpp}` | stub — covered in recipes/add-a-tile-power, recipes/lock-a-tile-or-chain-tiles |
+| Tile power (`FConnectItTilePower`, `FConnectItTilePowerEffect`, `FConnectItTilePowerContext`, `EConnectItPowerTrigger`) | USTRUCT / UENUM | Board/Powers | primary (data) | `Board/Powers/ConnectIt_TilePower.h` | stub — covered in systems/tile-power-chain |
+| Tile power effects (`…_Push`, `…_Vacuum`, `…_Repel`, `…_Chained`) | USTRUCT ×4 | Board/Powers | primary | `Board/Powers/ConnectIt_TilePowerEffects.h` | stub — covered in recipes/add-a-tile-power |
+| UConnectIt_TileCatalog (`FConnectItTileCatalogEntry`) | UCLASS (UDataAsset) | Board/Powers | primary (config) | `Board/Powers/ConnectIt_TileCatalog.h` | stub — covered in recipes/add-a-tile-power |
+| FConnectItPowerChain | class (plain C++) | Board/Powers | internal (`Private/`) | `Private/Board/Powers/ConnectIt_PowerChain.h` | stub — covered in systems/tile-power-chain |
+| UConnectIt_TileVisualizer / UConnectIt_TileReaction | UCLASS (UObject) | Board | primary (tile hooks, every machine) | `Board/ConnectIt_TileVisualizer.h`, `Board/ConnectIt_TileReaction.h` | stub — covered in systems/tile-power-chain |
+| Influence map (`UPieceControlInfluenceMap`, `UPieceControlMapVisualizer`) | UCLASS | GameIntelligence/InfluenceMap | **deprecated** — unused; remove in a dead-code pass | `GameIntelligence/InfluenceMap/*.{h,cpp}` | stub |
 | MinMax (`UConnectIt_MinMaxManager`, `UConnectIt_MinMaxTreeBuilder`, `ConcreteMinMaxExample`) | UCLASS / templates | MinMax | primary (game's own AI search) | `MinMax/*.{h,cpp}` | stub |
 | UI (`UConnectIt_DebugStateWidget`, `UDWidget_ConnectIt_BoardStateComponent`, `UDWidget_ConnectIt_GameState`) | UCLASS (UUserWidget / `UDWidgetBase`) | UI | internal (tooling) | `UI/*.{h,cpp}` | stub |
-| Interfaces (`IConnectIt_FacadeHandlerInterface`, `IConnectIt_GameStateHandlerInterface`) | UINTERFACE | Framework/Interface | **retired legacy** — only `AConnectIt_GameMode_Play` implements them | `Framework/Interface/*.h` | stub |
+| Interfaces (`IConnectIt_FacadeHandlerInterface`, `IConnectIt_GameStateHandlerInterface`) | UINTERFACE | Framework/Interface | **deprecated** — only `AConnectIt_GameMode_Play` implements them | `Framework/Interface/*.h` | stub |
 | GameplayTags (`ConnectIt_GameplayTags.h`) | native tag decls | Top-level | primary | `ConnectIt_GameplayTags.h` | stub |
 
 ## Map
@@ -102,9 +116,11 @@ AdvancedSessions-5-5 — vendored third-party, not integrated
 ### Where to start reading
 
 1. **Board authority** — [[AConnectIt_GameMode|AConnectIt_GameMode]] owns
-   [[UConnectIt_BoardRequestMediator|UConnectIt_BoardRequestMediator]] +
-   [[UConnectIt_BoardRules|UConnectIt_BoardRules]] (server-only). All board mutation
-   enters through `AConnectIt_GameMode::ProcessBoardRequest`.
+   [[UConnectIt_BoardRequestMediator|UConnectIt_BoardRequestMediator]] + the rule set
+   (`FConnectItRuleSet`, server-only; it replaced the retired
+   [[UConnectIt_BoardRules|UConnectIt_BoardRules]]). Players' changes enter through
+   `AConnectIt_GameMode::ProcessBoardRequest`, the level's through its level changes; what
+   follows each change is [[tile-power-chain]].
 2. **Board truth** — [[UConnectIt_BoardStateComponent|UConnectIt_BoardStateComponent]] on
    the GameState holds one replicated snapshot (prev + current + change event) that every
    visual system converges on: [[board-state-single-source-of-truth|systems/board-state-single-source-of-truth]].
@@ -120,65 +136,58 @@ AdvancedSessions-5-5 — vendored third-party, not integrated
    `Source/ConnectIt` — every "tell everyone" need is a replicated-property change
    instead. See [[ConnectIt/_decisions/2026-09-06-suite-conventions|decisions/2026-09-06-suite-conventions]].
 
-### Do not document as live
+### Deprecated -- remove in a dead-code pass
 
-The **legacy MVVM pipeline** — [[UConnectIt_State_Game|UConnectIt_State_Game]] + its four
-sub-states, [[UConnectIt_GameFacade|UConnectIt_GameFacade]] / `UConnectIt_GameViewModel`,
-`UConnectIt_PlayerData`, `AConnectIt_GameMode_Play`, and the two `IConnectIt_*Handler`
-interfaces — is **unreferenced dead code**, superseded by the replicated board pipeline.
-Kept in the tree, not built on. See
-[[ConnectIt/_decisions/2026-09-08-retire-legacy-mvvm-pipeline|decisions/2026-09-08-retire-legacy-mvvm-pipeline]].
-Also retired: `AConnectIt_BoardManager` and its subsystem, the whole ConnectIt shift
-pipeline, the tag-reactive interpreter (its game-event-queue replacement on the mediator
-is an empty stub).
+Unreferenced code kept in the tree for now; don't build on it or document it as live
+(owner, 2026-10-23):
+
+- **The legacy MVVM pipeline:** [[UConnectIt_State_Game|UConnectIt_State_Game]] and its
+  four sub-states, [[UConnectIt_GameFacade|UConnectIt_GameFacade]] /
+  `UConnectIt_GameViewModel`, `UConnectIt_PlayerData`, `AConnectIt_GameMode_Play`, and
+  the two `IConnectIt_*Handler` interfaces. Superseded by the replicated board pipeline;
+  see [[ConnectIt/_decisions/2026-09-08-retire-legacy-mvvm-pipeline|decisions/2026-09-08-retire-legacy-mvvm-pipeline]].
+- **The influence map:** `UPieceControlInfluenceMap` / `UPieceControlMapVisualizer`
+  (`GameIntelligence/InfluenceMap/`). Nothing creates them, and the map compares tiles
+  against `FConnectItBoardState::FactionTurn`, which nothing sets (always -1). The field
+  goes with them: every AI search node copies it for nothing.
+
+Already removed: `AConnectIt_BoardManager` and its subsystem, the old ConnectIt shift
+pipeline, the tag-reactive interpreter, `UConnectIt_BoardRules`
+([[UConnectIt_BoardRules|retired page]]), and the two old MinMax implementations.
 
 ## Known issues
 
-Structural overlap and confirmed defects surfaced while writing the in-repo docs (now
-folded here). Full evidence/hypothesis/recommendation for the structural set lived in
-`Source/ConnectIt/Docs/Duplication.md`.
+Reviewed against the code 2026-10-23. Fixed items stay listed briefly so they aren't
+re-reported.
 
-### Confirmed correctness bugs
+### Open
 
-- **FactionID spoof** — `AConnectIt_PlayerController::ServerRouteBoardChangeRequest_Implementation`
-  only stamps the server-authoritative `FactionID` when the client-sent value is
-  negative/unset. Every current action sends a valid `FactionID`, so the server today
-  trusts whatever a client sends as long as it's `>= 0`, checking only that it's *that
-  participant's turn* — not that the `FactionID` belongs to them. A modified client could
-  submit another faction's ID. Fix: stamp `FactionID` from the server-side participant
-  unconditionally.
-- **Influence map reads a never-populated field** —
-  `PieceControlInfluenceMap::Update()` scores neighbouring tiles by comparing against
-  `Snapshot.FactionTurn`. `FConnectItBoardState::FactionTurn` defaults to `-1` and is set
-  only in MinMax/AI hypothetical-state code, never on the live board — where `-1` is also
-  the empty-tile sentinel. Net effect: every empty tile scores as the active faction's,
-  every occupied tile as opposing. Needs `FactionTurn` populated from the real active
-  participant before the comparison means anything.
-
-### Structural overlap / unfinished refactors
-
-- **Two parallel MinMax implementations** — `UConnectIt_MinMaxManager` (namespaced
-  `ConnectIt::FMinMaxNode`, synchronous) vs the more complete `UConnectIt_MinMaxTreeBuilder`
-  (global `FConnectItMinMaxNode`, async build/solve, `FCriticalSection`), no shared base;
-  plus a fully commented-out `ConcreteMinMaxExample.h` that tried to route through
-  UnrealGameIntelligence's template solvers. Neither is called by `AConnectIt_AIController`
-  (its `BeginMakeDecision()` is a Blueprint stub). Pick one, delete the other.
-- **`AConnectIt_GridPiece` dead replication setup** — replicates `FactionID` /
-  `OccupiedPosition` and sets `bReplicates = true`, but nothing spawns it server-side any
-  more (the tag-reactive interpreter that did is removed; its replacement doesn't spawn
-  pieces yet). Re-confirm which side spawns it once the replacement pipeline works, then
-  strip or justify the scaffolding.
-- **Parked scaffolds** — `AConnectIt_GameMode_Play` (empty `AGameModeBase`, implements the
-  two dead facade interfaces; the live `CI_GameMode_Play` Blueprint reparents to
-  `AConnectIt_GameMode`, not this) and the whole `UnrealUIMechanics` plugin (zero classes,
-  not enabled). Owner decision: delete or keep parked with a stated reason.
-- Unprefixed classes: `UPieceControlInfluenceMap` / `UPieceControlMapVisualizer` carry
-  only the `U` prefix, no `ConnectIt_` — the only two live ConnectIt classes without it.
+- **`UConnectIt_GameRulesLibrary` is unused:** its `ConnectIt_Score_Max` and
+  `IsGameOver` served the removed MinMax implementations, and nothing calls them (C++ or,
+  by asset search, Blueprint). Its header comment still names the deleted classes. A
+  dead-code candidate.
+- **Parked plugin:** `UnrealUIMechanics` has no classes and isn't in `ConnectIt.uproject`.
+  Kept on purpose as the future home for UI (owner, 2026-10-23).
 - See also [[UnrealGridMechanics/CLAUDE|UnrealGridMechanics]] /
   [[UnrealGameMechanics/CLAUDE|UnrealGameMechanics]] rough edges for the plugin-side
   overlap entries (`UGridTrackerSubsystem` vs `UGridHoverSubsystem`;
   `UGameMechanicsStateBase` vs `…Simple`; `IGridTileSelector` deprecating
   `UGridTileSelectorComponent`; dead commented-out blocks).
+
+### Fixed
+
+- **FactionID spoof** -- the server takes the requester's faction from its own
+  PlayerState slot; a request carries no faction
+  ([payload is the request, server supplies faction](../_decisions/2026-10-07-payload-is-the-request-server-supplies-faction.md)).
+- **Two parallel MinMax implementations** -- both removed; the AI decides through its
+  strategies, MinMax being one (`MinMax/ConnectIt_MinMaxRules`).
+- **Piece actors replicating** (2026-10-23) -- `AConnectIt_PieceBase` (was
+  `AConnectIt_GridPiece`) is local to each machine, like tile actors: every machine takes
+  its pieces from its own pool as board events play. It replicated `FactionID` /
+  `OccupiedPosition`, so a piece the server pooled could show up on clients beside their
+  own.
+- **Unprefixed classes** -- the influence-map classes were the only two without
+  `ConnectIt_`; they are deprecated above.
 
 ## Related
 

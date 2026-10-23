@@ -100,6 +100,8 @@ Claude's notes (to discuss):
 
 ## Progression and gating
 
+> Hub look and feel, currencies and regions (2026-10-23): [adventure-hub](adventure-hub.md).
+
 - The first module is mandatory up to a certain point before other levels can be tried.
 - Place piece is permanently unlocked and usable everywhere, unless a level prohibits it (e.g. swap-teaching levels).
 - **Open:** gate levels (block them until prerequisites are met), or let them be played even if nearly impossible without the

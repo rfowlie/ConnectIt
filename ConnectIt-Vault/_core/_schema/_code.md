@@ -47,7 +47,10 @@ what's stale.
 Two jobs in one file:
 
 1. **Inventory** — a row for **every** public type: `type | kind | role | source |
-   status` (`current` / `stub` / `stale`), including types with no page yet.
+   status` (`current` / `stub` / `stale` / `retired`), including types with no page yet.
+   **`retired`** = the type was removed from the code and its page is kept as history: the
+   page's title says "(removed <date>)", its `source:` paths no longer exist, and the drift
+   check skips it. A retired page is never refreshed; its `## Changes` ends with the removal.
 2. **Map** — a short guided tour of the codebase: the core directories, the plugins /
    modules, the major systems, and where a new developer should start reading. This is
    the architecture MOC (it absorbs what a separate "frameworks" note used to do).
@@ -92,7 +95,10 @@ Link to `code/` pages; don't re-describe types. `systems/__INDEX.md` is one row 
 ## `recipes/<task-slug>.md` — per-task page
 
 Frontmatter: `schema: recipes`, `task:` (one-line goal), `touches:` (files/types a correct
-implementation edits — also the cross-impact list), `reconciled:`, `commit:`. Body, fixed
+implementation edits — also the cross-impact list), `reconciled:`, `commit:`. Each
+`touches:` entry **leads with a repo path** where one exists, any description after it in
+parentheses (`Source/.../Foo.h (subclass FFoo)`), so the drift check can read it; an entry
+with no source file (an asset, a Blueprint) is plain text and isn't checked. Body, fixed
 order:
 
 1. **Goal** — what you'll have when done.

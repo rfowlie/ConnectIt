@@ -12,6 +12,11 @@
 
 /*
  * base class for blueprints to ensure we are adding all necessary interfaces
+ *
+ * A piece actor is presentation, local to each machine, like a tile actor:
+ * every machine takes its own from its actor pool when a board event plays
+ * (the piece registry's Spawn Piece At). It doesn't replicate -- a replicated
+ * piece the server pooled would show up on clients beside their own.
  */
 UCLASS(BlueprintType, Blueprintable)
 class CONNECTIT_API AConnectIt_PieceBase : public AGridPieceBase,
@@ -32,7 +37,7 @@ public:
 	
 
 	// Grid position this piece occupies
-	UPROPERTY(BlueprintReadOnly, Replicated, Category = "ConnectIt|Piece")
+	UPROPERTY(BlueprintReadOnly, Category = "ConnectIt|Piece")
 	FGridPosition OccupiedPosition;
 
 	// IActorPoolInterface
@@ -43,25 +48,17 @@ public:
 	UFUNCTION(BlueprintImplementableEvent, BlueprintCallable)
 	void DeactivatePoolObject();
 
-	virtual void GetLifetimeReplicatedProps(
-		TArray<FLifetimeProperty>& OutLifetimeProps) const override;
-
 protected:
 
 	// Faction this piece belongs to
-	UPROPERTY(BlueprintReadWrite, ReplicatedUsing = OnRep_FactionID, Category = "ConnectIt|Piece")
+	UPROPERTY(BlueprintReadWrite, Category = "ConnectIt|Piece")
 	int32 FactionID = -1;
 
 	// TODO: rename to Initialize_Internal as this fires during the initialize function
-	// Called when FactionID replicates to clients
+	// Called by InitialisePiece
 	// Blueprint override to update mesh, material, particle etc.
 	UFUNCTION(BlueprintNativeEvent, Category = "ConnectIt|Piece")
 	void OnFactionVisualUpdate(int32 InFactionID);
 	virtual void OnFactionVisualUpdate_Implementation(int32 InFactionID);
 
-private:
-
-	UFUNCTION()
-	void OnRep_FactionID();
-	
 };

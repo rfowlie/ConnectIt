@@ -2,13 +2,14 @@
 schema: recipes
 task: Script a phased level -- a level that, when something happens (a checkpoint, a trigger), moves to its next phase and changes any of its board layout, goals, scoring rule and loadouts mid-match -- with board layout assets, the layout tool and the Level director.
 touches:
-  - the Level director Blueprint (Begin Phase, Set Win / Lose Conditions, Set Layout, On Phase Changed)
-  - UConnectIt_BoardLayout data assets (one per layout), made with the layout tool in a sandbox level
-  - the map's tile catalog, in World Settings (which tile actor shows each power tag; its Default Tile Class for none)
-  - builder tiles (what the layout tool places and captures) and the catalog's tile Blueprints (Apply Layout Cell)
-  - the visual handlers for Tiles Removed / Tiles Added / Layout Changed / Phase Changed (once per project)
-reconciled: 2026-10-22
-commit: f6d511d
+  - Source/ConnectIt/Public/AI/ConnectIt_LevelDirector.h (the Level director Blueprint: Begin Phase, Set Win / Lose Conditions, Set Layout, On Phase Changed)
+  - Source/ConnectIt/Public/Framework/Data/ConnectIt_BoardLayout.h (UConnectIt_BoardLayout data assets, one per layout, made with the layout tool in a sandbox level)
+  - Source/ConnectIt/Public/Board/Powers/ConnectIt_TileCatalog.h (the map's tile catalog, in World Settings: which tile actor shows each power tag; its Default Tile Class for none)
+  - Source/ConnectIt/Public/Board/Actor/ConnectIt_BuilderTile.h (builder tiles: what the layout tool places and captures)
+  - Source/ConnectIt/Public/Board/ConnectIt_TileDataProvider.h (the catalog's tile Blueprints: Apply Layout Cell)
+  - Source/ConnectIt/Public/Framework/Library/ConnectIt_BoardEventLibrary.h (the visual handlers for Tiles Removed / Tiles Added / Layout Changed / Phase Changed, once per project)
+reconciled: 2026-10-23
+commit: 54c1284
 ---
 
 # Recipe: script a phased level
@@ -41,7 +42,8 @@ Design: [phased-levels](../../design/phased-levels.md); decision:
     - **Phase Changed** (optional): a banner.
   - **The layout tool:** an editor utility widget over `Capture Layout From Level` / `Load Layout Into Level` / `Set Layout
     Camera` / `Preview Tile Catalog` / `Clear Tile Catalog Preview`, plus `Save Loaded Asset`; and a **sandbox map** whose
-    World Settings name the board's level config.
+    World Settings name the board's level config. A captured cell keeps its builder tile's **Is Locked** and **Chain
+    Partner** (as a position in the layout; loading it back restores the picker) -- [[lock-a-tile-or-chain-tiles]].
 
 ## Steps
 

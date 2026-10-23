@@ -2,11 +2,11 @@
 schema: recipes
 task: Choose an AI's strategies and selector -- several strategies proposing moves at once (e.g. MinMax plus a quick Blueprint fallback) and a selector picking among them, including writing your own selector.
 touches:
-  - the AI director Blueprint's Strategies and Selector (its Class Defaults)
-  - the strategies (any UConnectIt_AIStrategy: MinMax, Blueprint strategies)
-  - a Blueprint subclass of UConnectIt_AISelector (only for your own way of picking)
-reconciled: 2026-10-21
-commit: fd369a4
+  - Source/ConnectIt/Public/AI/ConnectIt_AIDirector.h (the AI director Blueprint's Strategies and Selector, in its Class Defaults)
+  - Source/ConnectIt/Public/AI/ConnectIt_AIStrategy.h (the strategies: MinMax, Blueprint strategies)
+  - Source/ConnectIt/Public/AI/ConnectIt_AISelector.h (a Blueprint subclass, only for your own way of picking)
+reconciled: 2026-10-23
+commit: dc7c2b3
 ---
 
 # Recipe: choose strategies and a selector

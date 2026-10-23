@@ -2,12 +2,14 @@
 schema: recipes
 task: Give a match an AI opponent that plays the way you designed -- a tuned built-in one, a Blueprint-made strategy, several strategies with a selector, or a Blueprint AI controller -- through an AI director Blueprint named by the match preset.
 touches:
-  - a Blueprint subclass of UConnectIt_AIDirector (its Class Defaults are the AI's setup)
-  - the match preset (AI Director Class, Player Director Class), the map's World Settings (Level Config, Default Match Preset), the level's GameMode (Match Type, AI Controller Class)
-  - a Blueprint subclass of UConnectIt_AIStrategy (only for a bespoke strategy)
-  - a Blueprint subclass of AConnectIt_AIController (only if you need one; see C)
-reconciled: 2026-10-21
-commit: bbf8daf
+  - Source/ConnectIt/Public/AI/ConnectIt_AIDirector.h (a Blueprint subclass: its Class Defaults are the AI's setup)
+  - Source/ConnectIt/Public/Framework/Data/ConnectIt_MatchPreset.h (the match preset: AI Director Class, Player Director Class)
+  - Source/ConnectIt/Public/Framework/Data/ConnectIt_WorldSettings.h (the map's World Settings: Level Config, Default Match Preset)
+  - Source/ConnectIt/Public/Framework/GameMode/ConnectIt_GameMode.h (the level's GameMode: Match Type, AI Controller Class)
+  - Source/ConnectIt/Public/AI/ConnectIt_AIStrategy.h (a Blueprint subclass, only for a bespoke strategy)
+  - Source/ConnectIt/Public/Framework/Controller/ConnectIt_AIController.h (a Blueprint subclass, only if you need one; see C)
+reconciled: 2026-10-23
+commit: 2f74abd
 ---
 
 # Recipe: set up a custom AI opponent
@@ -16,7 +18,7 @@ commit: bbf8daf
 
 A match whose opponent behaves the way you designed, for designers working in the editor. Read [[ai-turn]] first if you want
 the flow behind it; the short version is: **an AI director Blueprint says who the opponent is (its loadout, its strategies,
-its selector, its goals), the match preset names it, the strategies propose moves, the selector picks one, the controller
+its selector; its goals are the Level director's), the match preset names it, the strategies propose moves, the selector picks one, the controller
 only does the timing and submitting.**
 
 ## First, which of these do you actually need?
@@ -44,7 +46,8 @@ director, not from the controller class.
   holds it to that exactly like a human. A Place Piece action to place, a Swap action to swap, and so on, with the per-turn
   limits and turn-end requirements you want.
 - **Condition assets** for the AI's goals ([[add-a-win-condition]]).
-- A **Player director** Blueprint for the human side (its `Starting Loadout`, goals) -- the preset needs both.
+- A **Player director** Blueprint for the human side (its `Starting Loadout`; its goals are the Level director's
+  Player Win / Lose Conditions) -- the preset needs both.
 
 ## Steps
 

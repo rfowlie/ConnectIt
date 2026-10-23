@@ -10,8 +10,8 @@ spans:
   - Source/ConnectIt/Public/Board/ConnectIt_BoardRequestMediator.h
   - Source/ConnectIt/Public/Board/Rules/ConnectIt_RuleSet.h
   - Source/ConnectIt/Public/Board/ConnectIt_BoardStateComponent.h
-reconciled: 2026-10-22
-commit: 1e0d5cf
+reconciled: 2026-10-23
+commit: 54c1284
 ---
 
 # Board-change request (server-authoritative)
@@ -38,8 +38,9 @@ loadout, and `DispatchRequest` applies it:
 - **Apply:**
   - game over?
   - stamp the faction;
-  - `CanApply`;
-  - `FConnectItRuleSet::CarryOutOperation` (the operation's `Apply`, then `ResolveBoardChange` scoring);
+  - `FConnectItRuleSet::CanCarryOut` (the operation's `CanApply`, and no locked tile unless the operation may);
+  - `CarryOutOperation` at the active turn (the operation's `Apply`, then `ResolveBoardChange`: tile powers and
+    scoring -- [[tile-power-chain]]);
   - `StampWinState`;
   - `GameWon` on the transition;
   - commit with `SetBoardState`.
@@ -72,7 +73,7 @@ sequenceDiagram
         PC->>GM: ServerRouteBoardChangeRequest -> turn check, faction -> ProcessBoardRequest
         GM->>GM: board settled? (else refused)
         GM->>M: ProcessRequest (loadout gate) -> DispatchRequest
-        M->>M: CanApply; CarryOutOperation; StampWinState
+        M->>M: CanCarryOut; CarryOutOperation (powers, scoring); StampWinState
         M->>BSC: SetBoardState(NewState, ChangeEvent)
         BSC->>BSC: BroadcastChange (directors react -- level changes wait)
         BSC->>TS: one queue entry per event (server + every client)
@@ -130,8 +131,13 @@ loadout could grant one, but none does):
 - **Begin Phase** -- `CurrentPhase` on the board, `Phase Changed`; directors then hear On Phase Changed.
 - **Remove Tiles / Add Tiles / Change Layout** -- the board's set of tiles (`Set Layout` queues one Change Layout):
   `Tiles Removed`, `Tiles Added`, `Layout Changed`.
+- **Set Tile Locked / Set Chain Partner** -- `Tile Lock Changed`, `Chain Partner Changed`
+  ([[lock-a-tile-or-chain-tiles]]).
+- **Turn Start** -- not the Level director's: the GameMode puts it first in the turn-start line when a Turn Start tile
+  power is ready; its chain fires the countdowns ([[tile-power-chain]]).
 
-Recipe: [[script-a-phased-level]].
+Move Piece and Adjust Multiplier are used by tile powers (no action produces them yet). Recipes:
+[[script-a-phased-level]], [[add-a-tile-power]].
 
 ## Cross-impact
 

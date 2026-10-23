@@ -50,9 +50,12 @@ For each `code/` folder found:
    only the sections that no longer match it (per `_schema/_code.md`'s body order for that
    page kind), then set `commit:` to the new `git log -1 --format=%h -- <paths>` result and
    `reconciled:` to today. Set the `__INDEX.md` row to `current`.
-4. **A `source:`/`spans:`/`touches:` path that no longer exists in the repo** — don't
+4. **A `source:`/`spans:`/`touches:` path that no longer exists in the repo** (on a page
+   not `retired`) — don't
    guess a replacement. Leave the page, set `__INDEX.md` status to `stale`, and flag it.
-5. **`status: stub` rows** — skip. A stub means no page has been authored yet; writing
+5. **`status: stub` and `status: retired` rows** — skip. A retired page documents a type
+   removed from the code, kept as history (`_schema/_code.md`); its missing source paths are
+   expected, so it is neither refreshed nor flagged. A stub means no page has been authored yet; writing
    one requires reading and understanding a type this skill hasn't been told to look at.
    Never author a new page or add a new inventory row on your own initiative.
 6. Leave `code/__README.md` and any deviation notes untouched.

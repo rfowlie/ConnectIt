@@ -7,8 +7,8 @@ source:
   - Source/ConnectIt/Public/Board/ConnectIt_BoardStateComponent.h
   - Source/ConnectIt/Public/Framework/GameState/ConnectIt_GameState.h
   - Source/ConnectIt/Public/ConnectIt_Structs.h
-reconciled: 2026-10-22
-commit: 1e0d5cf
+reconciled: 2026-10-23
+commit: 07ce342
 ---
 
 # Runtime state access — which accessor to call
@@ -27,6 +27,9 @@ convenience wrappers over reaching into a manager directly.
 | What just changed (latest change's event list) | `GetChangeEvent()` → `const FConnectItBoardChangeEvent&` | same | Pure |
 | The board event playing right now (in a tag listener) | `UConnectIt_BoardEventLibrary::GetActive...Event` (typed) / `GetActiveBoardEventAs<T>` (C++) | the event queue's payload | Callable |
 | Both states + change event | `GetBoardSnapshot()` → `const FConnectItBoardStateSnapshot*` | same | — |
+| **The board as the player has seen it** (for visuals: steps along one event at a time) | `GetDisplayBoard()` (+ `OnDisplayBoardChanged`) | same, every machine | Pure |
+| Tile lock, power and chain (pass the display board in visuals) | `UConnectIt_BoardStateLibrary::GetPlacementBlocker / GetPowerTurnsLeft(State, Position, CurrentTurn) / GetChainPartner / GetChainedTilesFor`; fields `bIsLocked`, `TilePowerTag`, `PowerReadyTurn`, `TileId`, `ChainPartnerId` on `FConnectItTileData` | static library over a board | Pure |
+| The turn a board is at (tile power cooldowns) | `FConnectItBoardState::TurnNumber` | on the struct | ReadOnly |
 | Per-tile queries | `FConnectItBoardState::IsTileOccupied / IsTileActive / GetScore` (placeable: `FConnectItBoardOperation_PlacePiece::IsTilePlaceableAt`) | inline on the struct | — |
 | A phased level's phase | `AConnectIt_GameState::GetCurrentPhase()` / `FConnectItBoardState::CurrentPhase` | replicated with the board | Pure |
 | High-level board queries (all/empty/by-faction tiles, random empty, board full, faction won) | `UConnectIt_GameUtilityLibrary::Get*GridTiles* / IsTileEmpty / GetTileAtPosition / GetRandomEmptyGridTile / IsGameBoardFull / HasFactionWon` | `ConnectIt_GameUtilityLibrary` (static, `WorldContextObject`) | Pure |
@@ -86,6 +89,9 @@ convenience wrappers over reaching into a manager directly.
 
 ## Changes
 
+- 2026-10-23 — rows for the display board, the tile lock / power / chain getters and the board's `TurnNumber`
+  (was `LastModifiedTurn`); `GetPieceActorClass` returns `AConnectIt_PieceBase` (the owner's rename of
+  `AConnectIt_GridPiece`). (`process-code` sweep — commit `07ce342`.)
 - 2026-10-22 — rows updated for a month of changes: the board event list and its per-event getters; the rule set
   replaced `UConnectIt_BoardRules` (read through the replicated rules mirror); the level config is reached through the
   map's World Settings (`GetLevelConfig` removed); action state lives on the PlayerState (`CompletionsThisTurn`,

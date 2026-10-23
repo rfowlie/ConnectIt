@@ -2,12 +2,14 @@
 schema: recipes
 task: Script an adventure level -- set both sides' goals, react to the match (turns, checkpoints, triggers you define), change the board, the scoring rule or a side's goals on the level's behalf, and work with the Player and AI directors -- through a Level director Blueprint.
 touches:
-  - a Blueprint subclass of UConnectIt_LevelDirector (named by the match preset's Level Director Class -- required)
-  - condition assets for its goals and triggers
-  - (board changes) board operation structs; (rule changes) scoring rule structs
-  - (tiles) builder tiles placed in the level, the map's tile catalog (World Settings); (level-wide powers) Level Wide Powers
-reconciled: 2026-10-22
-commit: f6d511d
+  - Source/ConnectIt/Public/AI/ConnectIt_LevelDirector.h (a Blueprint subclass, named by the match preset's Level Director Class -- required)
+  - Source/ConnectIt/Public/Board/Rules/Conditions/ConnectIt_MatchConditionAsset.h (condition assets for its goals and triggers)
+  - Source/ConnectIt/Public/Board/Operations/ConnectIt_BoardOperations.h (board changes: board operation structs)
+  - Source/ConnectIt/Public/Board/Rules/Scoring/ConnectIt_ScoringRule.h (rule changes: scoring rule structs)
+  - Source/ConnectIt/Public/Board/Actor/ConnectIt_BuilderTile.h (tiles: builder tiles placed in the level)
+  - Source/ConnectIt/Public/Board/Powers/ConnectIt_TileCatalog.h (the map's tile catalog, in World Settings; level-wide powers: Level Wide Powers)
+reconciled: 2026-10-23
+commit: 54c1284
 ---
 
 # Recipe: script a level
@@ -41,12 +43,14 @@ layout and goals as it goes is a phased level: [[script-a-phased-level]].
    Won**, **On Phase Changed** (a phased level).
 5. Change the board: **Apply Board Operation (Operation, As Faction, Timing)**:
    - **Operation**: **Make Instanced Struct** of a board operation -- **Force Place Piece** (a piece anywhere, even on an
-     occupied tile), **Toggle Tile Active**, **Destroy Tile Multiplier**, **Remove Piece**, **Capture Piece**... with its
-     fields set.
+     occupied tile), **Toggle Tile Active**, **Destroy Tile Multiplier**, **Remove Piece**, **Capture Piece**, **Move
+     Piece**, **Adjust Multiplier**, **Set Tile Locked**, **Set Chain Partner** ([[lock-a-tile-or-chain-tiles]])... with
+     its fields set.
    - **As Faction**: who it is made by (the piece's owner for a placement); **-1** for one that belongs to nobody (toggling a
      tile).
-   - It is checked, scores and can win like a move -- but needs no loadout and spends no action. A refused operation (e.g. a
-     tile that doesn't exist) is logged and nothing changes.
+   - It is checked, scores and can win like a move -- but needs no loadout and spends no action. Its tile powers fire as
+     after any move ([[tile-power-chain]]). A refused operation (e.g. a tile that doesn't exist, or a locked tile it may
+     not act on) is logged with the reason and nothing changes.
 6. Change the scoring rule: **Set Scoring Rule (Scoring Rule, Timing)** -- **Make Instanced Struct** of a scoring rule (e.g.
    **Lines** with `Connect Length` / `Scoring Directions` set). Clients see it through the replicated rules (**On Match Rules
    Changed** on the GameState) -- that's where UI showing "only vertical lines score" listens. The AI uses it from its next

@@ -10,7 +10,7 @@ Step-by-step task procedures. Governed by [[_core/_schema/_code|_core/_schema/_c
 
 | Task | When you'd do it | Status |
 |---|---|---|
-| [[add-a-scoring-rule\|add-a-scoring-rule]] | Change how a placement scores (a new `IConnectIt_ScoringRule`) | current |
+| [[add-a-scoring-rule\|add-a-scoring-rule]] | Change what scores: a new `FConnectItScoringRule` struct (`ScorePass`: find all, then apply; report scored-through tiles; clamp multipliers), set on a match preset or by the Level director | current |
 | [[set-up-a-custom-ai-opponent\|set-up-a-custom-ai-opponent]] | Designer-facing: the AI opponent as an AI director Blueprint named by the match preset -- tune the built-in one, make a Blueprint strategy, or a Blueprint AI controller | current |
 | [[combine-ai-strategies\|combine-ai-strategies]] | Choose an AI's strategies and selector: several strategies at once, the stock selectors (First Available, Top N, Greedy Scorer, Weighted by Confidence), your own selector | current |
 | [[direct-the-ai-during-a-match\|direct-the-ai-during-a-match]] | Change the AI's loadout / strategies / selector during a match from the AI director's events (turns, checkpoints, anything), incl. the tell flow | current |
@@ -19,7 +19,7 @@ Step-by-step task procedures. Governed by [[_core/_schema/_code|_core/_schema/_c
 | [[script-a-phased-level\|script-a-phased-level]] | A level in phases: layouts made with the layout tool, Begin Phase / Set Win Conditions / Set Layout at a checkpoint (in that order), other directors on On Phase Changed, the pitfalls | current |
 | [[add-a-tile-power\|add-a-tile-power]] | A kind of tile with a power: an effect struct (C++), a `ConnectIt.TilePower.*` tag, a tile catalog entry (tile class + power: trigger set, Turn Start countdown, multiplier floor and ceiling), tile hooks that call Finish, builder tiles in the level; level-wide on the Level director | current |
 | [[lock-a-tile-or-chain-tiles\|lock-a-tile-or-chain-tiles]] | Lock a tile (in play, no placing) from a builder tile, a layout or the Level director; chain a tile to a partner (a Sync power); which operations reach locked tiles (Move Piece and Adjust Multiplier don't) | current |
-| [[add-a-board-request-type\|add-a-board-request-type]] | Add a new server-validated board mutation (destroy multiplier, swap, capture, …) | current |
+| [[add-a-board-request-type\|add-a-board-request-type]] | Add a new kind of board change: the operation struct that is the request, its self-applying event, tags, a Blueprint getter, the tile lock, and who makes it (an action, the Level director, a tile power) | current |
 
 Candidate recipes not yet written (`stub`): add a game state-machine phase, wire a new
 debug widget, add an influence map for the AI, finish the

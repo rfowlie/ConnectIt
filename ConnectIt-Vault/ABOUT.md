@@ -118,6 +118,9 @@ Full rulebook per section: `_core/_schema/_<section>.md`.
 
 ## Changelog
 
+- **2026-10-23** — `_schema/_code.md`: a fourth inventory status, **`retired`** (a removed type's page kept as
+  history; `/process-code` skips it), and recipes' `touches:` entries lead with a repo path so the drift check can read
+  them. `/process-code` (authored copy and mirror) skips retired rows. Log: `_core/_logs/2026-10-23-1221.md`.
 - **2026-10-07** — `Portfolio` gained `_discussions/` and its first note (advertising-strategy interview), plus
   `advertising-strategy.md` (platform roles, media matrix, weekly devlog loop, rollout) and 5 new tasks.
   Logs: `_core/_logs/2026-10-07-1200.md`, `2026-10-07-1330.md`.
