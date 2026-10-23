@@ -91,7 +91,7 @@ float FConnectItScoringRule_Lines::ScorePass(
     {
         TArray<FGridPosition> ClearedPositions;
         const float LinePoints = ApplyScoringLine(
-            MutableState, Line.Positions, Kept, OutEvents ? &ClearedPositions : nullptr);
+            MutableState, Line.Positions, Kept, OutEvents ? &ClearedPositions : nullptr, OutChanges);
         TotalPoints += LinePoints;
 
         if (MutableState.ScoreBoard.IsValidIndex(Line.Faction))
@@ -183,7 +183,8 @@ float FConnectItScoringRule_Lines::ApplyScoringLine(
     FConnectItBoardState& MutableState,
     const TArray<FGridPosition>& Line,
     TConstArrayView<FGridPosition> KeptPositions,
-    TArray<FGridPosition>* OutClearedPositions)
+    TArray<FGridPosition>* OutClearedPositions,
+    const FConnectItBoardChanges& Changes)
 {
     float PointsScored = 0.f;
 
@@ -194,7 +195,7 @@ float FConnectItScoringRule_Lines::ApplyScoringLine(
 
         // Every tile of the line scores and gains multiplier...
         PointsScored += TileData->Multiplier;
-        TileData->Multiplier += 1.0f;
+        TileData->Multiplier = Changes.ClampMultiplier(*TileData, TileData->Multiplier + 1.0f);
 
         // ...and loses its piece, except a kept piece
         if (KeptPositions.Contains(Position)) continue;

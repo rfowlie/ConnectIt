@@ -9,7 +9,7 @@
 #include "Framework/Data/ConnectIt_LevelConfigDataAsset.h"
 #include "Action/ActionLoadoutDataAsset.h"
 #include "Board/Rules/ConnectIt_RuleSet.h"
-#include "Grid/ConnectIt_GridPiece.h"
+#include "Board/ConnectIt_PieceBase.h"
 #include "Framework/Subsystem/ConnectIt_BlackboardSubsystem.h"
 #include "Framework/Subsystem/ConnectIt_BoardRegistrySubsystem.h"
 #include "Framework/GameState/ConnectIt_GameState.h"
@@ -206,7 +206,7 @@ UActionLoadoutDataAsset* UConnectIt_GameUtilityLibrary::GetLocalPlayerLoadout(co
     return IsValid(PlayerState) ? PlayerState->GetLoadout() : nullptr;
 }
 
-TSubclassOf<AConnectIt_GridPiece> UConnectIt_GameUtilityLibrary::GetPieceActorClass(
+TSubclassOf<AConnectIt_PieceBase> UConnectIt_GameUtilityLibrary::GetPieceActorClass(
     const UObject* WorldContextObject)
 {
     const UConnectIt_LevelConfigDataAsset* LevelConfig =

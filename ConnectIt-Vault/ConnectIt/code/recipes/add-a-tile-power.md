@@ -7,8 +7,8 @@ touches:
   - a UConnectIt_TileCatalog data asset (the entry -- tile class + power) named by the map's World Settings or Project Settings
   - a tile Blueprint (the catalog's tile class) and builder tiles placed in the level
   - (level-wide) the Level director's Level Wide Powers
-reconciled: 2026-10-22
-commit: f6d511d
+reconciled: 2026-10-23
+commit: 2226fcf
 ---
 
 # Recipe: add a tile power
@@ -25,7 +25,7 @@ values. Placed tiles only name the tag. Decision:
 ## Prerequisites
 
 - A tile catalog (`ConnectIt Tile Catalog` data asset) set in the map's World Settings (**Tile Catalog**) or as Project Settings >
-  Game > ConnectIt > **Default Tile Catalog**, with a **Plain Tile Class**.
+  Game > ConnectIt > **Default Tile Catalog**, with a **Default Tile Class**.
 - A builder tile Blueprint (parent `ConnectIt_BuilderTile`) with a blockout look, set as **Builder Tile Class** in the same
   settings.
 
@@ -46,7 +46,8 @@ values. Placed tiles only name the tag. Decision:
    };
    ```
    - Add board operation structs (`FInstancedStruct::Make(Operation)`) -- the same operations player actions send.
-   - The chain stamps each operation's Faction and applies it only if it `CanApply`. It applies them with `Apply`, never
+   - The chain stamps each operation's Faction and applies it only if the rules allow it (`CanCarryOut`: its
+     `CanApply`, and no locked tile unless the operation may -- [[lock-a-tile-or-chain-tiles]]). It applies them with `Apply`, never
      `CarryOutOperation`, so returning one that can't happen is fine.
    - Plain data only: it runs in the AI's search on a worker thread (no actors, no UObjects).
 2. **The tag:** `ConnectIt.TilePower.<Name>` (Project Settings > Gameplay Tags, under `ConnectIt.TilePower`). No level

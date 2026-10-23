@@ -206,6 +206,10 @@ struct CONNECTIT_API FConnectItBoardEvent_TileMultiplierDestroyed : public FConn
     UPROPERTY(BlueprintReadOnly, Category = "Event")
     float PreviousMultiplier = 1.f;
 
+    // What it is now: 1, within the tile type's limits
+    UPROPERTY(BlueprintReadOnly, Category = "Event")
+    float NewMultiplier = 1.f;
+
     virtual FGameplayTag GetEventTag() const override;
     virtual void ApplyTo(FConnectItBoardState& Board) const override;
 };
@@ -325,6 +329,46 @@ struct CONNECTIT_API FConnectItBoardEvent_LayoutChanged : public FConnectItBoard
 
     UPROPERTY(BlueprintReadOnly, Category = "Event")
     FTransform CameraTransform;
+
+    virtual FGameplayTag GetEventTag() const override;
+    virtual void ApplyTo(FConnectItBoardState& Board) const override;
+};
+
+// A piece moved from one tile to another, keeping its owner (Move Piece --
+// e.g. a Push or Vacuum tile). Visuals slide the piece.
+USTRUCT(BlueprintType, meta = (DisplayName = "Piece Moved"))
+struct CONNECTIT_API FConnectItBoardEvent_PieceMoved : public FConnectItBoardOperationEvent
+{
+    GENERATED_BODY()
+
+    UPROPERTY(BlueprintReadOnly, Category = "Event")
+    FGridPosition From;
+
+    UPROPERTY(BlueprintReadOnly, Category = "Event")
+    FGridPosition To;
+
+    // The piece's owner
+    UPROPERTY(BlueprintReadOnly, Category = "Event")
+    int32 Faction = -1;
+
+    virtual FGameplayTag GetEventTag() const override;
+    virtual void ApplyTo(FConnectItBoardState& Board) const override;
+};
+
+// A tile's multiplier was changed by an amount (Adjust Multiplier)
+USTRUCT(BlueprintType, meta = (DisplayName = "Multiplier Changed"))
+struct CONNECTIT_API FConnectItBoardEvent_MultiplierChanged : public FConnectItBoardOperationEvent
+{
+    GENERATED_BODY()
+
+    UPROPERTY(BlueprintReadOnly, Category = "Event")
+    FGridPosition Position;
+
+    UPROPERTY(BlueprintReadOnly, Category = "Event")
+    float PreviousMultiplier = 1.f;
+
+    UPROPERTY(BlueprintReadOnly, Category = "Event")
+    float NewMultiplier = 1.f;
 
     virtual FGameplayTag GetEventTag() const override;
     virtual void ApplyTo(FConnectItBoardState& Board) const override;

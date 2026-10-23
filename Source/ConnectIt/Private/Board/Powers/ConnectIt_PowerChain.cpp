@@ -31,7 +31,7 @@ FConnectItPowerChain::FConnectItPowerChain(
     bHasPowers = !Rules.TilePowers.IsEmpty();
     bHasSyncPowers = Rules.TilePowers.ContainsByPredicate([](const FConnectItTilePower& Power)
     {
-        return Power.Trigger == EConnectItPowerTrigger::Sync;
+        return Power.HasTrigger(EConnectItPowerTrigger::Sync);
     });
     for (const FGameplayTag& Name : Rules.LevelWidePowers)
     {
@@ -116,13 +116,13 @@ bool FConnectItPowerChain::FireAt(const FGridPosition& Position, EConnectItPower
     const FConnectItTilePower* Own = Rules.FindTilePower(Tile->TilePowerTag);
 
     bool bFired = false;
-    if (Own && Own->Trigger == Trigger)
+    if (Own && Own->HasTrigger(Trigger))
     {
         bFired |= TryFire(Position, *Own, INDEX_NONE, Faction, Cause, OutChanges);
     }
     for (int32 Index = 0; Index < LevelWide.Num(); Index++)
     {
-        if (LevelWide[Index] && LevelWide[Index]->Trigger == Trigger)
+        if (LevelWide[Index] && LevelWide[Index]->HasTrigger(Trigger))
         {
             bFired |= TryFire(Position, *LevelWide[Index], Index, Faction, Cause, OutChanges);
         }
@@ -144,13 +144,13 @@ bool FConnectItPowerChain::RunSyncPowers(int32 Faction, FConnectItBoardChanges& 
         if (!Tile) continue;
 
         const FConnectItTilePower* Own = Rules.FindTilePower(Tile->TilePowerTag);
-        if (Own && Own->Trigger == EConnectItPowerTrigger::Sync)
+        if (Own && Own->HasTrigger(EConnectItPowerTrigger::Sync))
         {
             bChanged |= TryFire(Position, *Own, INDEX_NONE, Faction, INDEX_NONE, OutChanges);
         }
         for (int32 Index = 0; Index < LevelWide.Num(); Index++)
         {
-            if (LevelWide[Index] && LevelWide[Index]->Trigger == EConnectItPowerTrigger::Sync)
+            if (LevelWide[Index] && LevelWide[Index]->HasTrigger(EConnectItPowerTrigger::Sync))
             {
                 bChanged |= TryFire(Position, *LevelWide[Index], Index, Faction, INDEX_NONE, OutChanges);
             }
@@ -166,9 +166,9 @@ bool FConnectItPowerChain::TryFire(const FGridPosition& Position, const FConnect
     if (!Tile) return false;
 
     // The gate
-    if (Power.MinMultiplier > 0.f && Tile->Multiplier < Power.MinMultiplier) return false;
+    if (Power.FireAtMultiplier > 0.f && Tile->Multiplier < Power.FireAtMultiplier) return false;
 
-    const bool bSync = Power.Trigger == EConnectItPowerTrigger::Sync;
+    const bool bSync = Power.HasTrigger(EConnectItPowerTrigger::Sync);
     int32 ReadyTurn = Tile->PowerReadyTurn;
     if (LevelWideIndex != INDEX_NONE)
     {
@@ -202,7 +202,7 @@ bool FConnectItPowerChain::TryFire(const FGridPosition& Position, const FConnect
     if (const FConnectItTilePowerEffect* Effect = Power.Effect.GetPtr())
     {
         FRandomStream Random(Board.RandomSeed);
-        Effect->MakeOperations(FConnectItTilePowerContext{ Board, Position, Faction, Random }, Operations);
+        Effect->MakeOperations(FConnectItTilePowerContext{ Board, Position, Faction, Random, &Rules }, Operations);
         Board.RandomSeed = Random.GetCurrentSeed();
     }
 
@@ -239,6 +239,7 @@ bool FConnectItPowerChain::TryFire(const FGridPosition& Position, const FConnect
         const int32 FirstEvent = Events ? Events->Events.Num() : INDEX_NONE;
         FConnectItBoardChanges Changed;
         Changed.Faction = Faction;
+        Changed.Rules = &Rules;
         Operation->Apply(Board, Changed, Events);
         Applied++;
 

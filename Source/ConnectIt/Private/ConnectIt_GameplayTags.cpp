@@ -16,7 +16,11 @@ UE_DEFINE_GAMEPLAY_TAG_COMMENT(ConnectIt_Game_SwapPieces, "ConnectIt.Game.State.
 UE_DEFINE_GAMEPLAY_TAG_COMMENT(ConnectIt_Game_ForcePlacePiece, "ConnectIt.Game.State.ForcePlacePiece", "");
 UE_DEFINE_GAMEPLAY_TAG_COMMENT(ConnectIt_Game_ToggleTileActive, "ConnectIt.Game.State.ToggleTileActive", "");
 UE_DEFINE_GAMEPLAY_TAG_COMMENT(ConnectIt_Game_SetTileLocked, "ConnectIt.Game.State.SetTileLocked", "Lock or unlock a tile (FConnectItBoardOperation_SetTileLocked)");
+UE_DEFINE_GAMEPLAY_TAG_COMMENT(ConnectIt_Game_MovePiece, "ConnectIt.Game.State.MovePiece", "Move a piece to an empty tile, keeping its owner (FConnectItBoardOperation_MovePiece)");
+UE_DEFINE_GAMEPLAY_TAG_COMMENT(ConnectIt_Game_AdjustMultiplier, "ConnectIt.Game.State.AdjustMultiplier", "Change a tile's multiplier by an amount (FConnectItBoardOperation_AdjustMultiplier)");
 UE_DEFINE_GAMEPLAY_TAG_COMMENT(ConnectIt_Game_SetChainPartner, "ConnectIt.Game.State.SetChainPartner", "Set or clear a Chained tile's partner (FConnectItBoardOperation_SetChainPartner)");
+UE_DEFINE_GAMEPLAY_TAG_COMMENT(ConnectIt_TilePower_Push, "ConnectIt.TilePower.Push", "Push tile: pushes a neighbouring piece one tile away (FConnectItTilePowerEffect_Push)");
+UE_DEFINE_GAMEPLAY_TAG_COMMENT(ConnectIt_TilePower_Vacuum, "ConnectIt.TilePower.Vacuum", "Vacuum tile: pulls the nearest piece in some direction onto its empty tile (FConnectItTilePowerEffect_Vacuum)");
 UE_DEFINE_GAMEPLAY_TAG_COMMENT(ConnectIt_TilePower_Chained, "ConnectIt.TilePower.Chained", "Chained tile: locked while its partner has no piece (FConnectItTilePowerEffect_Chained, a Sync power)");
 UE_DEFINE_GAMEPLAY_TAG_COMMENT(ConnectIt_Game_CapturePiece, "ConnectIt.Game.State.CapturePiece", "");
 UE_DEFINE_GAMEPLAY_TAG_COMMENT(ConnectIt_Game_Shift, "ConnectIt.Game.State.Shift", "");
@@ -51,6 +55,8 @@ UE_DEFINE_GAMEPLAY_TAG_COMMENT(ConnectIt_Event_PieceRemoved, "ConnectIt.Event.Pi
 UE_DEFINE_GAMEPLAY_TAG_COMMENT(ConnectIt_Event_PiecesSwapped, "ConnectIt.Event.PiecesSwapped", "");
 UE_DEFINE_GAMEPLAY_TAG_COMMENT(ConnectIt_Event_TileActiveToggled, "ConnectIt.Event.TileActiveToggled", "");
 UE_DEFINE_GAMEPLAY_TAG_COMMENT(ConnectIt_Event_TileLockChanged, "ConnectIt.Event.TileLockChanged", "A tile was locked or unlocked (see FConnectItBoardEvent_TileLockChanged)");
+UE_DEFINE_GAMEPLAY_TAG_COMMENT(ConnectIt_Event_PieceMoved, "ConnectIt.Event.PieceMoved", "A piece moved to another tile, keeping its owner (see FConnectItBoardEvent_PieceMoved)");
+UE_DEFINE_GAMEPLAY_TAG_COMMENT(ConnectIt_Event_MultiplierChanged, "ConnectIt.Event.MultiplierChanged", "A tile's multiplier changed by an amount (see FConnectItBoardEvent_MultiplierChanged)");
 UE_DEFINE_GAMEPLAY_TAG_COMMENT(ConnectIt_Event_ChainPartnerChanged, "ConnectIt.Event.ChainPartnerChanged", "A Chained tile's partner was set or cleared (see FConnectItBoardEvent_ChainPartnerChanged)");
 UE_DEFINE_GAMEPLAY_TAG_COMMENT(ConnectIt_Event_PieceCaptured, "ConnectIt.Event.PieceCaptured", "");
 UE_DEFINE_GAMEPLAY_TAG_COMMENT(ConnectIt_Event_BoardShifted, "ConnectIt.Event.BoardShifted", "");

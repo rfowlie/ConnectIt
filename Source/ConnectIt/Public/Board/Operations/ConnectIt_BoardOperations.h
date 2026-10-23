@@ -442,3 +442,52 @@ struct CONNECTIT_API FConnectItBoardOperation_SetChainPartner : public FConnectI
     virtual FString Describe() const override;
     virtual bool CanOperateOnLockedTiles() const override { return true; }
 };
+
+// Move a piece from one tile to an empty, active one, keeping its owner: a
+// Piece Exit at From and a Piece Enter at To (the moved piece can score where
+// it lands, and stays if it does). Neither tile may be locked. For tile powers
+// (Push, Repel, Vacuum) and the Level director.
+USTRUCT(BlueprintType, meta = (DisplayName = "Move Piece"))
+struct CONNECTIT_API FConnectItBoardOperation_MovePiece : public FConnectItBoardOperation
+{
+    GENERATED_BODY()
+
+    UPROPERTY(BlueprintReadWrite, Category = "Operation")
+    FGridPosition From;
+
+    UPROPERTY(BlueprintReadWrite, Category = "Operation")
+    FGridPosition To;
+
+    virtual FGameplayTag GetRequestType() const override;
+    virtual bool CanApply(const FConnectItBoardState& Board, FString* OutWhyNot = nullptr) const override;
+    virtual void Apply(
+        FConnectItBoardState& Board,
+        FConnectItBoardChanges& OutChanges,
+        FConnectItBoardChangeEvent* OutEvents) const override;
+    virtual FString Describe() const override;
+    virtual void GetTargetPositions(TArray<FGridPosition>& OutPositions) const override { OutPositions.Add(From); OutPositions.Add(To); }
+};
+
+// Change a tile's multiplier by Delta (either way), within its tile type's
+// limits (FConnectItTilePower::MultiplierFloor / MultiplierCeiling). Not on a
+// locked tile. Scores nothing.
+USTRUCT(BlueprintType, meta = (DisplayName = "Adjust Multiplier"))
+struct CONNECTIT_API FConnectItBoardOperation_AdjustMultiplier : public FConnectItBoardOperation
+{
+    GENERATED_BODY()
+
+    UPROPERTY(BlueprintReadWrite, Category = "Operation")
+    FGridPosition Position;
+
+    UPROPERTY(BlueprintReadWrite, Category = "Operation")
+    float Delta = 1.f;
+
+    virtual FGameplayTag GetRequestType() const override;
+    virtual bool CanApply(const FConnectItBoardState& Board, FString* OutWhyNot = nullptr) const override;
+    virtual void Apply(
+        FConnectItBoardState& Board,
+        FConnectItBoardChanges& OutChanges,
+        FConnectItBoardChangeEvent* OutEvents) const override;
+    virtual FString Describe() const override;
+    virtual void GetTargetPositions(TArray<FGridPosition>& OutPositions) const override { OutPositions.Add(Position); }
+};

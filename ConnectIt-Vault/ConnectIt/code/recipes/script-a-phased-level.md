@@ -4,7 +4,7 @@ task: Script a phased level -- a level that, when something happens (a checkpoin
 touches:
   - the Level director Blueprint (Begin Phase, Set Win / Lose Conditions, Set Layout, On Phase Changed)
   - UConnectIt_BoardLayout data assets (one per layout), made with the layout tool in a sandbox level
-  - the map's tile catalog, in World Settings (which tile actor shows each power tag; its Plain Tile Class for none)
+  - the map's tile catalog, in World Settings (which tile actor shows each power tag; its Default Tile Class for none)
   - builder tiles (what the layout tool places and captures) and the catalog's tile Blueprints (Apply Layout Cell)
   - the visual handlers for Tiles Removed / Tiles Added / Layout Changed / Phase Changed (once per project)
 reconciled: 2026-10-22
@@ -27,8 +27,8 @@ Design: [phased-levels](../../design/phased-levels.md); decision:
 
 - A level scripted with a Level director ([[script-a-level]]): both sides' starting goals are its Player / AI Win / Lose
   Conditions ([[add-a-win-condition]]). The starting layout is the tiles placed in the map, as for any level.
-- A **tile catalog** in the map's World Settings (or the project default): the tile actor for each power tag, and a **Plain Tile
-  Class** for cells with none. (Without any catalog, the level config's old **Default Tile Class** is used.)
+- A **tile catalog** in the map's World Settings (or the project default): the tile actor for each power tag, and its
+  **Default Tile Class** for cells with none. (Without any catalog, the level config's old Default Tile Class is used.)
 - **Once per project** (Blueprint):
   - **The catalog's tile Blueprints:** implement the tile data interface's **Apply Layout Cell** (take the starting values
     and the Visual Variant's look).

@@ -549,10 +549,12 @@ void FConnectItBoardOperation_DestroyTileMultiplier::Apply(
     FConnectItBoardChangeEvent* OutEvents) const
 {
     float PreviousMultiplier = 1.0f;
+    float NewMultiplier = 1.0f;
     if (FConnectItTileData* Tile = Board.GetTileDataMutable(Position))
     {
         PreviousMultiplier = Tile->Multiplier;
-        Tile->Multiplier = 1.0f;
+        NewMultiplier = OutChanges.ClampMultiplier(*Tile, 1.0f);
+        Tile->Multiplier = NewMultiplier;
         OutChanges.AddTileChanged(Position, EConnectItTileChange::Multiplier, Faction);
     }
 
@@ -561,6 +563,7 @@ void FConnectItBoardOperation_DestroyTileMultiplier::Apply(
         FConnectItBoardEvent_TileMultiplierDestroyed Event;
         Event.Position           = Position;
         Event.PreviousMultiplier = PreviousMultiplier;
+        Event.NewMultiplier      = NewMultiplier;
         OutEvents->Add(Event);
     }
 }
@@ -836,7 +839,14 @@ namespace
         {
             if (Board.GetTileData(Cell.Position)) continue;
 
-            const int32 TileId = Board.AddTile(Cell.Position, Cell.TileData.ToTileData(NumFactions));
+            // Its starting multiplier within its type's limits -- and the event
+            // carries the clamped value, so replaying it adds the same tile
+            FConnectItBoardLayoutCell Added = Cell;
+            FConnectItTileData TileData = Cell.TileData.ToTileData(NumFactions);
+            TileData.Multiplier = OutChanges.ClampMultiplier(TileData, TileData.Multiplier);
+            Added.TileData.Multiplier = TileData.Multiplier;
+
+            const int32 TileId = Board.AddTile(Cell.Position, TileData);
             if (Cell.TileData.HasStartingPiece(NumFactions))
             {
                 OutChanges.AddMoved(Cell.Position, Cell.TileData.StartingFactionPiece, true);
@@ -845,7 +855,7 @@ namespace
                     Board.StartingPieces[Cell.TileData.StartingFactionPiece]++;
                 }
             }
-            OutEvent.Cells.Add(Cell);
+            OutEvent.Cells.Add(Added);
             OutEvent.TileIds.Add(TileId);
         }
 
@@ -1085,4 +1095,116 @@ FString FConnectItBoardOperation_SetChainPartner::Describe() const
     return bHasPartner
         ? FString::Printf(TEXT("%s -> %s"), *PositionText(Position), *PositionText(PartnerPosition))
         : FString::Printf(TEXT("%s -> no partner"), *PositionText(Position));
+}
+
+// ---------------------------------------------------------------------------
+// Move Piece
+// ---------------------------------------------------------------------------
+
+FGameplayTag FConnectItBoardOperation_MovePiece::GetRequestType() const
+{
+    return ConnectIt_Game_MovePiece;
+}
+
+bool FConnectItBoardOperation_MovePiece::CanApply(const FConnectItBoardState& Board, FString* OutWhyNot) const
+{
+    const FConnectItTileData* FromTile = Board.GetTileData(From);
+    if (!FromTile || !FromTile->bIsOccupied)
+    {
+        SetWhyNot(OutWhyNot, FString::Printf(TEXT("%s has no piece to move"), *PositionText(From)));
+        return false;
+    }
+    const FConnectItTileData* ToTile = Board.GetTileData(To);
+    if (!ToTile || From == To || !ToTile->bIsActive || ToTile->bIsOccupied)
+    {
+        SetWhyNot(OutWhyNot, FString::Printf(TEXT("%s isn't an empty, active tile to move to"), *PositionText(To)));
+        return false;
+    }
+    return true;
+}
+
+void FConnectItBoardOperation_MovePiece::Apply(
+    FConnectItBoardState& Board,
+    FConnectItBoardChanges& OutChanges,
+    FConnectItBoardChangeEvent* OutEvents) const
+{
+    FConnectItTileData* FromTile = Board.GetTileDataMutable(From);
+    FConnectItTileData* ToTile = Board.GetTileDataMutable(To);
+    if (!FromTile || !ToTile) return;
+
+    // The piece keeps its owner
+    const int32 PieceFaction = FromTile->FactionPiece;
+    FromTile->SetFactionPiece(-1);
+    ToTile->SetFactionPiece(PieceFaction);
+    OutChanges.AddExited(From, PieceFaction);
+    OutChanges.AddEntered(To, PieceFaction, ArrivingPiecesSurviveScoring());
+
+    if (OutEvents)
+    {
+        FConnectItBoardEvent_PieceMoved Event;
+        Event.From    = From;
+        Event.To      = To;
+        Event.Faction = PieceFaction;
+        OutEvents->Add(Event);
+    }
+}
+
+FString FConnectItBoardOperation_MovePiece::Describe() const
+{
+    return FString::Printf(TEXT("%s -> %s"), *PositionText(From), *PositionText(To));
+}
+
+// ---------------------------------------------------------------------------
+// Adjust Multiplier
+// ---------------------------------------------------------------------------
+
+FGameplayTag FConnectItBoardOperation_AdjustMultiplier::GetRequestType() const
+{
+    return ConnectIt_Game_AdjustMultiplier;
+}
+
+bool FConnectItBoardOperation_AdjustMultiplier::CanApply(const FConnectItBoardState& Board, FString* OutWhyNot) const
+{
+    if (!Board.GetTileData(Position))
+    {
+        SetWhyNot(OutWhyNot, FString::Printf(TEXT("position %s not registered"), *PositionText(Position)));
+        return false;
+    }
+    if (FMath::IsNearlyZero(Delta))
+    {
+        SetWhyNot(OutWhyNot, TEXT("a change of 0"));
+        return false;
+    }
+    return true;
+}
+
+void FConnectItBoardOperation_AdjustMultiplier::Apply(
+    FConnectItBoardState& Board,
+    FConnectItBoardChanges& OutChanges,
+    FConnectItBoardChangeEvent* OutEvents) const
+{
+    FConnectItTileData* Tile = Board.GetTileDataMutable(Position);
+    if (!Tile) return;
+
+    // Within the tile type's limits (it may end up unchanged)
+    const float Previous = Tile->Multiplier;
+    Tile->Multiplier = OutChanges.ClampMultiplier(*Tile, Previous + Delta);
+    if (Tile->Multiplier != Previous)
+    {
+        OutChanges.AddTileChanged(Position, EConnectItTileChange::Multiplier, Faction);
+    }
+
+    if (OutEvents)
+    {
+        FConnectItBoardEvent_MultiplierChanged Event;
+        Event.Position           = Position;
+        Event.PreviousMultiplier = Previous;
+        Event.NewMultiplier      = Tile->Multiplier;
+        OutEvents->Add(Event);
+    }
+}
+
+FString FConnectItBoardOperation_AdjustMultiplier::Describe() const
+{
+    return FString::Printf(TEXT("%s %+.1f"), *PositionText(Position), Delta);
 }

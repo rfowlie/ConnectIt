@@ -18,7 +18,7 @@ class UGridHoverSubsystem;
 class UGridTileRegistryBase;
 class UGridPieceRegistryBase;
 class UActionLoadoutDataAsset;
-class AConnectIt_GridPiece;
+class AConnectIt_PieceBase;
 struct FConnectItRuleSet;
 
 UCLASS()
@@ -144,7 +144,7 @@ public:
 
     UFUNCTION(BlueprintPure, Category = "ConnectIt|Level",
         meta = (WorldContext = "WorldContextObject"))
-    static TSubclassOf<AConnectIt_GridPiece> GetPieceActorClass(const UObject* WorldContextObject);
+    static TSubclassOf<AConnectIt_PieceBase> GetPieceActorClass(const UObject* WorldContextObject);
 
     UFUNCTION(BlueprintPure, Category = "ConnectIt|Level",
         meta = (WorldContext = "WorldContextObject"))

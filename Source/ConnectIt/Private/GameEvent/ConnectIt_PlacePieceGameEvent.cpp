@@ -5,7 +5,7 @@
 #include "Tile/GridTileBase.h"
 #include "Piece/GridPieceBase.h"
 #include "Piece/GridPieceRegistryComponent.h"
-#include "Grid/ConnectIt_GridPiece.h"
+#include "Board/ConnectIt_PieceBase.h"
 
 
 void UConnectIt_PlacePieceGameEvent::Initialise(

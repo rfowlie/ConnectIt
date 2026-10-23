@@ -9,7 +9,7 @@
 #include "Board/Powers/ConnectIt_TilePower.h"
 #include "ConnectIt_TileCatalog.generated.h"
 
-class AGridTileBase;
+class AConnectIt_TileBase;
 
 
 // One kind of tile in a catalog: the actor that shows it and what its power does
@@ -18,9 +18,10 @@ struct CONNECTIT_API FConnectItTileCatalogEntry
 {
     GENERATED_BODY()
 
-    // The tile actor that shows this kind of tile
+    // The tile actor that shows this kind of tile (a ConnectIt tile: it has
+    // the tile hooks visuals call)
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Tile")
-    TSubclassOf<AGridTileBase> TileClass;
+    TSubclassOf<AConnectIt_TileBase> TileClass;
 
     // Trigger, gate, cooldown, effect and its values. Its Name is the entry's
     // key (leave it empty, or the same).
@@ -49,12 +50,12 @@ public:
 
     // The tile actor for a tile with no power tag
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Catalog")
-    TSubclassOf<AGridTileBase> PlainTileClass;
+    TSubclassOf<AConnectIt_TileBase> DefaultTileClass;
 
     // The tile actor for a tile with this power tag: its entry's class, or
-    // the plain one for no tag. Null for a tag the catalog doesn't define.
+    // the default one for no tag. Null for a tag the catalog doesn't define.
     UFUNCTION(BlueprintPure, Category = "ConnectIt|Tile Catalog")
-    TSubclassOf<AGridTileBase> GetTileClassFor(FGameplayTag TilePowerTag) const;
+    TSubclassOf<AConnectIt_TileBase> GetTileClassFor(FGameplayTag TilePowerTag) const;
 
     // Whether the catalog defines this power tag
     UFUNCTION(BlueprintPure, Category = "ConnectIt|Tile Catalog")

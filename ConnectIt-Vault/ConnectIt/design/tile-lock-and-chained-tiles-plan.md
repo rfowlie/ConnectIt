@@ -1,13 +1,13 @@
 ---
 type: plan
-status: in-progress
+status: complete
 approved: true
 approved-on: 2026-10-22
-completed-on:
+completed-on: 2026-10-23
 playtested: false
 design: "[tile-lock](tile-lock.md)"
 question:
-decision:
+decision: "[tile lock per-operation rule](../_decisions/2026-10-23-tile-lock-per-operation-rule.md); [chained tiles as a Sync power](../_decisions/2026-10-23-chained-tiles-as-a-sync-power.md)"
 requires: "[tile-powers-plan](tile-powers-plan.md)"
 ---
 
@@ -17,7 +17,8 @@ Design: [tile-lock](tile-lock.md), [chained-tiles](chained-tiles.md). First use:
 pieces" ([adventure-modules-and-progression](adventure-modules-and-progression.md), Level 1 draft). Written 2026-10-22
 in a design-only session; **approved by the owner 2026-10-22**. **Revised 2026-10-22 (evening) for the tile catalog and
 builder tiles** -- **re-approved by the owner the same evening**, including the Sync pass on the seeded board; what changed is listed
-under "Revision for the tile catalog" at the end. Building in progress.
+under "Revision for the tile catalog" at the end. **Complete 2026-10-23** (Stages 1, 2, 4); Stage 3 (editor) left to the
+owner, by the owner's call.
 
 > **Prerequisite met:** the [tile-powers-plan](tile-powers-plan.md) is complete (its settle step and Sync powers are
 > built). This plan comes **before** the first real powers (tile-powers Stage 5, its own plan), because every power and
@@ -219,6 +220,9 @@ catalog and builder tiles.*
 
 ## Stage 3: visuals and the tutorial (owner, editor)
 
+*Left to the owner (2026-10-23): not tracked by this plan any more; the recipe `code/recipes/lock-a-tile-or-chain-tiles.md`
+lists what the editor side needs.*
+
 - The catalog entry for `ConnectIt.TilePower.Chained` (the Chained tile class, the power with the Chained effect).
 - Tile visuals: a locked look; a chained look (chains) that snaps on Tile Lock Changed; a "no partner" icon; the
   partner's look (from `GetChainedTilesFor`).
@@ -231,6 +235,15 @@ catalog and builder tiles.*
 Decision notes (the tile lock with per-operation rules; chained tiles as a Sync tile power with a per-tile link);
 `code/` recipe "lock a tile / chain two tiles"; the tile-powers recipe and flow (the lock-aware check); status lines in
 `tile-lock.md`, `chained-tiles.md`; plan properties; log.
+
+- *As built (2026-10-23):*
+  - **Decisions:** [tile lock per-operation rule](../_decisions/2026-10-23-tile-lock-per-operation-rule.md) and
+    [chained tiles as a Sync power](../_decisions/2026-10-23-chained-tiles-as-a-sync-power.md), both indexed.
+  - **New recipe:** `code/recipes/lock-a-tile-or-chain-tiles.md`, indexed.
+  - **Tile-power pages:** `add-a-tile-power.md` and the `tile-power-chain.md` flow now name the lock-aware check;
+    anchored at `2226fcf`.
+  - **Status lines** in `tile-lock.md` and `chained-tiles.md`.
+  - **Plan:** complete.
 
 ## Not in this plan
 

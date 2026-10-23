@@ -1,6 +1,7 @@
 # Tile lock: the "not placeable" state
 
-Design note (2026-10-22). **Nothing built.** Plan: [tile-lock-and-chained-tiles-plan](tile-lock-and-chained-tiles-plan.md) (approved 2026-10-22, not built). Needed by [chained tiles](chained-tiles.md) and by the
+Design note (2026-10-22). **Built 2026-10-23** ([decision](../_decisions/2026-10-23-tile-lock-per-operation-rule.md); recipe
+`code/recipes/lock-a-tile-or-chain-tiles.md`). Plan: [tile-lock-and-chained-tiles-plan](tile-lock-and-chained-tiles-plan.md) (complete). Needed by [chained tiles](chained-tiles.md) and by the
 tutorial ([adventure-modules-and-progression](adventure-modules-and-progression.md): guided placement in the 4x4 steps,
 "some tiles aren't placeable" in the Level 1 draft).
 

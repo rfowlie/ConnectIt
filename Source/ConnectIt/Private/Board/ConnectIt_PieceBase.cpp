@@ -1,25 +1,25 @@
 ﻿// Fill out your copyright notice in the Description page of Project Settings.
 
 
-#include "Grid/ConnectIt_GridPiece.h"
+#include "Board/ConnectIt_PieceBase.h"
 #include "Net/UnrealNetwork.h"
 
 
-AConnectIt_GridPiece::AConnectIt_GridPiece()
+AConnectIt_PieceBase::AConnectIt_PieceBase()
 {
 	bReplicates = true;
 	PrimaryActorTick.bCanEverTick = false;
 }
 
-void AConnectIt_GridPiece::GetLifetimeReplicatedProps(
+void AConnectIt_PieceBase::GetLifetimeReplicatedProps(
 	TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
-	DOREPLIFETIME(AConnectIt_GridPiece, FactionID);
-	DOREPLIFETIME(AConnectIt_GridPiece, OccupiedPosition);
+	DOREPLIFETIME(AConnectIt_PieceBase, FactionID);
+	DOREPLIFETIME(AConnectIt_PieceBase, OccupiedPosition);
 }
 
-void AConnectIt_GridPiece::InitialisePiece(
+void AConnectIt_PieceBase::InitialisePiece(
 	int32 InFactionID,
 	FGridPosition InGridPosition)
 {
@@ -32,12 +32,12 @@ void AConnectIt_GridPiece::InitialisePiece(
 	OnFactionVisualUpdate(FactionID);
 }
 
-void AConnectIt_GridPiece::OnRep_FactionID()
+void AConnectIt_PieceBase::OnRep_FactionID()
 {
 	OnFactionVisualUpdate(FactionID);
 }
 
-void AConnectIt_GridPiece::OnFactionVisualUpdate_Implementation(int32 InFactionID)
+void AConnectIt_PieceBase::OnFactionVisualUpdate_Implementation(int32 InFactionID)
 {
 	// Base does nothing
 	// Blueprint subclass sets mesh, material, VFX based on FactionID

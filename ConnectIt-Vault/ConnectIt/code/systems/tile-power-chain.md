@@ -11,8 +11,8 @@ spans:
   - Source/ConnectIt/Private/Board/Rules/ConnectIt_LineScoringRule.cpp
   - Source/ConnectIt/Public/Board/Events/ConnectIt_BoardEvents.h
   - Source/ConnectIt/Public/Board/ConnectIt_BoardStateComponent.h
-reconciled: 2026-10-22
-commit: f6d511d
+reconciled: 2026-10-23
+commit: 2226fcf
 ---
 
 # Tile power chain -- what follows a board change
@@ -53,7 +53,8 @@ start) or a level-wide one (`LevelWidePowers`).
 - **When it fires:**
   - It appends **Power Triggered**, whose cause is the event that set it off, and sets its ready turn.
   - The effect picks operations, rolling from the board's `RandomSeed`, which moves on.
-  - Each operation is stamped with the faction that set the power off and applied if it can. Its events name Power
+  - Each operation is stamped with the faction that set the power off and applied if the rules allow it
+    (`FConnectItRuleSet::CanCarryOut`: its own `CanApply`, and no locked tile unless the operation may). Its events name Power
     Triggered as their cause.
   - Nothing applied: `bNoEffect` (it still cools down), or, for Sync, no event at all.
 
@@ -81,7 +82,7 @@ flowchart TD
     subgraph Fire["firing one power (TryFire)"]
         Gate{"gate / cooldown /<br/>once per action?"} -- allowed --> PT["Power Triggered + ready turn"]
         PT --> Effect["effect.MakeOperations<br/>(board, tile, faction, seeded random)"]
-        Effect --> Apply["each op: CanApply? -> Apply<br/>(events caused by Power Triggered)"]
+        Effect --> Apply["each op: CanCarryOut? (CanApply + locked tiles) -> Apply<br/>(events caused by Power Triggered)"]
     end
 ```
 

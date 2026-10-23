@@ -81,13 +81,14 @@ private:
         FGridPosition Position,
         int32 FactionSlot) const;
 
-    // Clears the line's pieces, raises its tiles' multipliers, returns the
-    // points. A piece on a position in KeptPositions is left standing.
-    // OutClearedPositions, if not null, gets every position a piece was
-    // actually removed from.
+    // Clears the line's pieces, raises its tiles' multipliers (within each
+    // tile type's limits, from Changes' rules), returns the points. A piece
+    // on a position in KeptPositions is left standing. OutClearedPositions,
+    // if not null, gets every position a piece was actually removed from.
     static float ApplyScoringLine(
         FConnectItBoardState& MutableState,
         const TArray<FGridPosition>& Line,
         TConstArrayView<FGridPosition> KeptPositions,
-        TArray<FGridPosition>* OutClearedPositions);
+        TArray<FGridPosition>* OutClearedPositions,
+        const FConnectItBoardChanges& Changes);
 };

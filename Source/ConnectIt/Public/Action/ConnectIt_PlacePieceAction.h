@@ -9,7 +9,7 @@
 
 class UTurnBasedParticipantComponent;
 class UConnectIt_BoardStateComponent;
-class AConnectIt_GridPiece;
+class AConnectIt_PieceBase;
 class UGridTileRegistryBase;
 
 // ConnectIt concrete action -- places a piece on the board

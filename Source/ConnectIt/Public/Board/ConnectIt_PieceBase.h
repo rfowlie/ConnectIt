@@ -8,13 +8,13 @@
 #include "Interface/GridTileHandler.h"
 #include "Piece/GridPieceBase.h"
 #include "Pooling/ActorPoolInterface.h"
-#include "ConnectIt_GridPiece.generated.h"
+#include "ConnectIt_PieceBase.generated.h"
 
 /*
  * base class for blueprints to ensure we are adding all necessary interfaces
  */
 UCLASS(BlueprintType, Blueprintable)
-class CONNECTIT_API AConnectIt_GridPiece : public AGridPieceBase,
+class CONNECTIT_API AConnectIt_PieceBase : public AGridPieceBase,
 	public IGridFactionInterface,
 	public IGridLevelInterface,
 	public IGridTileHandler
@@ -22,7 +22,7 @@ class CONNECTIT_API AConnectIt_GridPiece : public AGridPieceBase,
 	GENERATED_BODY()
 
 public:
-	AConnectIt_GridPiece();
+	AConnectIt_PieceBase();
 
 	// Set faction and trigger visual update
 	// Called immediately after retrieval from pool

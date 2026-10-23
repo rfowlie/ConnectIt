@@ -9,6 +9,7 @@
 #include "ConnectIt_TilePower.generated.h"
 
 struct FConnectItBoardState;
+struct FConnectItRuleSet;
 
 
 // When a tile power fires. The first four react to the board change that
@@ -19,7 +20,7 @@ struct FConnectItBoardState;
 UENUM(BlueprintType)
 enum class EConnectItPowerTrigger : uint8
 {
-    // A piece arrived on the tile (placed, swapped in)
+    // A piece arrived at the tile (placed, swapped in)
     PieceEnter,
     // A piece left the tile (removed, swapped away) -- not a piece cleared by scoring
     PieceExit,
@@ -48,6 +49,11 @@ struct FConnectItTilePowerContext
 
     // The board's seeded random stream: every copy of the board rolls the same
     FRandomStream& Random;
+
+    // The rules the chain runs under -- e.g. to ask whether an operation could
+    // be carried out (FConnectItRuleSet::CanCarryOut: locked tiles included)
+    // before choosing it as a target
+    const FConnectItRuleSet* Rules = nullptr;
 };
 
 // What a power does: picks its targets and returns the board operations to
@@ -78,18 +84,33 @@ struct CONNECTIT_API FConnectItTilePower
 {
     GENERATED_BODY()
 
-    // The power's identity (ConnectIt.TilePower.*; a level is part of the
-    // tag, e.g. ConnectIt.TilePower.Poison.2). In a catalog it is the entry's
-    // key. Empty = no power.
+    // The power's identity (ConnectIt.TilePower.*, e.g.
+    // ConnectIt.TilePower.Push). In a catalog it is the entry's key. Empty =
+    // no power.
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Power", meta = (Categories = "ConnectIt.TilePower"))
     FGameplayTag Name;
 
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Power")
-    EConnectItPowerTrigger Trigger = EConnectItPowerTrigger::PieceEnter;
+    // What sets it off: one or more triggers (a Vacuum tile: Piece Exit and
+    // Scoring). Sync stays on its own -- a Sync power has no other trigger.
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Power", meta = (Bitmask, BitmaskEnum = "/Script/ConnectIt.EConnectItPowerTrigger"))
+    int32 Triggers = 1 << static_cast<int32>(EConnectItPowerTrigger::PieceEnter);
 
-    // The gate: the tile's multiplier must be at least this. 0 = no gate.
+    // The gate: the tile's multiplier must be at least this for the power to
+    // fire. 0 = no gate.
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Power", meta = (ClampMin = 0))
-    float MinMultiplier = 0.f;
+    float FireAtMultiplier = 0.f;
+
+    // --- This kind of tile's multiplier (it is the tile type's, not the
+    // power's: a tile type is its power tag) ---
+
+    // The lowest it can go (a reset, Adjust Multiplier)
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Tile Multiplier", meta = (ClampMin = 0))
+    float MultiplierFloor = 1.f;
+
+    // The highest it can go (scoring raises it); -1 = no ceiling. 0 = this
+    // tile never adds to a score (it still forms lines).
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Tile Multiplier", meta = (ClampMin = -1))
+    float MultiplierCeiling = -1.f;
 
     // Turns (all turns, both sides') before it can fire again. 0 = every time.
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Power", meta = (ClampMin = 0))
@@ -100,4 +121,24 @@ struct CONNECTIT_API FConnectItTilePower
     TInstancedStruct<FConnectItTilePowerEffect> Effect;
 
     bool IsSet() const { return Name.IsValid(); }
+
+    bool HasTrigger(EConnectItPowerTrigger Trigger) const
+    {
+        return (Triggers & (1 << static_cast<int32>(Trigger))) != 0;
+    }
+
+    // Only Trigger (replacing any others)
+    void SetTrigger(EConnectItPowerTrigger Trigger) { Triggers = 1 << static_cast<int32>(Trigger); }
+
+    void AddTrigger(EConnectItPowerTrigger Trigger) { Triggers |= 1 << static_cast<int32>(Trigger); }
+
+    // Value within a tile type's multiplier limits: Power's, or a plain
+    // tile's (null: floor 1, no ceiling)
+    static float ClampMultiplier(const FConnectItTilePower* Power, float Value)
+    {
+        const float Floor = Power ? Power->MultiplierFloor : 1.f;
+        const float Ceiling = Power ? Power->MultiplierCeiling : -1.f;
+        Value = FMath::Max(Value, Floor);
+        return Ceiling >= 0.f ? FMath::Min(Value, Ceiling) : Value;
+    }
 };

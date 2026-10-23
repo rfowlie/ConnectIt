@@ -46,6 +46,12 @@ FConnectItTileData UConnectIt_BoardStateComponent::MakeTileData(
         }
     }
 
+    // Its starting multiplier within its type's limits (its catalog entry's; a plain tile's)
+    {
+        const FConnectItTileCatalogEntry* Entry = Catalog ? Catalog->Tiles.Find(TileData.TilePowerTag) : nullptr;
+        TileData.Multiplier = FConnectItTilePower::ClampMultiplier(Entry ? &Entry->Power : nullptr, TileData.Multiplier);
+    }
+
     if (Catalog && TileData.TilePowerTag.IsValid() && !Catalog->Defines(TileData.TilePowerTag))
     {
         UE_LOG(LogTemp, Warning,

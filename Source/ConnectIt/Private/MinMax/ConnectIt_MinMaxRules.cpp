@@ -173,6 +173,7 @@ FConnectItMinMaxRules::FState FConnectItMinMaxRules::ApplyMove(
     // 1. The move: the operation changes the board, and only that, reporting
     //    what it did
     FConnectItBoardChanges Changes;
+    Changes.Rules = &Rules;
     Visit([&Child, &Changes](const auto& Operation)
     {
         Changes.Faction = Operation.Faction;

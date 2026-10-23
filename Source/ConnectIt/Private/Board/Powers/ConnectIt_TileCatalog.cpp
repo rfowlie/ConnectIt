@@ -3,7 +3,7 @@
 #include "Board/Powers/ConnectIt_TileCatalog.h"
 #include "Framework/Data/ConnectIt_ProjectSettings.h"
 #include "Framework/Data/ConnectIt_WorldSettings.h"
-#include "Tile/GridTileBase.h"
+#include "Board/ConnectIt_TileBase.h"
 #include "Engine/Engine.h"
 #include "Engine/World.h"
 
@@ -12,9 +12,9 @@
 #endif
 
 
-TSubclassOf<AGridTileBase> UConnectIt_TileCatalog::GetTileClassFor(FGameplayTag TilePowerTag) const
+TSubclassOf<AConnectIt_TileBase> UConnectIt_TileCatalog::GetTileClassFor(FGameplayTag TilePowerTag) const
 {
-    if (!TilePowerTag.IsValid()) return PlainTileClass;
+    if (!TilePowerTag.IsValid()) return DefaultTileClass;
     const FConnectItTileCatalogEntry* Entry = Tiles.Find(TilePowerTag);
     return Entry ? Entry->TileClass : nullptr;
 }
@@ -64,10 +64,10 @@ EDataValidationResult UConnectIt_TileCatalog::IsDataValid(FDataValidationContext
 {
     EDataValidationResult Result = Super::IsDataValid(Context);
 
-    if (!PlainTileClass)
+    if (!DefaultTileClass)
     {
         Context.AddWarning(FText::FromString(TEXT(
-            "ConnectIt_TileCatalog: no Plain Tile Class -- tiles with no power have no actor to show them.")));
+            "ConnectIt_TileCatalog: no Default Tile Class -- tiles with no power have no actor to show them.")));
     }
 
     for (const TPair<FGameplayTag, FConnectItTileCatalogEntry>& Pair : Tiles)
@@ -89,6 +89,19 @@ EDataValidationResult UConnectIt_TileCatalog::IsDataValid(FDataValidationContext
         {
             Context.AddError(FText::FromString(FString::Printf(TEXT(
                 "ConnectIt_TileCatalog: %s's power has no Effect."), *Key)));
+            Result = EDataValidationResult::Invalid;
+        }
+        const FConnectItTilePower& Power = Pair.Value.Power;
+        if (Power.HasTrigger(EConnectItPowerTrigger::Sync) && Power.Triggers != (1 << static_cast<int32>(EConnectItPowerTrigger::Sync)))
+        {
+            Context.AddError(FText::FromString(FString::Printf(TEXT(
+                "ConnectIt_TileCatalog: %s is Sync and has other triggers -- a Sync power has only Sync."), *Key)));
+            Result = EDataValidationResult::Invalid;
+        }
+        if (Power.Triggers == 0)
+        {
+            Context.AddError(FText::FromString(FString::Printf(TEXT(
+                "ConnectIt_TileCatalog: %s has no trigger -- it never fires."), *Key)));
             Result = EDataValidationResult::Invalid;
         }
         if (Pair.Value.Power.Name.IsValid() && Pair.Value.Power.Name != Pair.Key)

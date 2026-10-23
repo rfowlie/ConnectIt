@@ -6,6 +6,12 @@ Vault-wide passes go in `_core/_logs/`.
 
 Newest first:
 
+- [2026-10-23-0140](2026-10-23-0140.md) — session — tile catalog takes ConnectIt tiles only (Default Tile Class rename
+  finished); first tile powers Stage 2: trigger sets, Push, Vacuum. 60/60 tests; Throughput unchanged.
+- [2026-10-23-0100](2026-10-23-0100.md) — session — first tile powers, Stage 1: Move Piece, Adjust Multiplier, multiplier
+  floor / ceiling per tile type, gate renamed. 59/59 tests; Throughput unchanged.
+- [2026-10-23-0035](2026-10-23-0035.md) — session — tile lock plan Stage 4 (vault: two decisions, recipe, status lines;
+  plan complete); new first-tile-powers-plan (Move Piece, limits, Push, Vacuum, Repel, tile hooks) awaiting approval.
 - [2026-10-23-0015](2026-10-23-0015.md) — session — tile lock plan, Stage 2: chained tiles (Sync effect, partner link by
   tile id, seed pass, Set Chain Partner, Blueprint queries, validation). 58/58 tests; Throughput unmeasured (CPU capped).
 - [2026-10-22-2350](2026-10-22-2350.md) — session — tile lock plan, Stage 1: the lock (`bIsLocked`, per-operation

@@ -74,6 +74,16 @@ FGameplayTag FConnectItBoardEvent_Scored::GetEventTag() const
     return ConnectIt_Event_Scored;
 }
 
+FGameplayTag FConnectItBoardEvent_PieceMoved::GetEventTag() const
+{
+    return ConnectIt_Event_PieceMoved;
+}
+
+FGameplayTag FConnectItBoardEvent_MultiplierChanged::GetEventTag() const
+{
+    return ConnectIt_Event_MultiplierChanged;
+}
+
 FGameplayTag FConnectItBoardEvent_TileLockChanged::GetEventTag() const
 {
     return ConnectIt_Event_TileLockChanged;
@@ -180,7 +190,7 @@ void FConnectItBoardEvent_TileMultiplierDestroyed::ApplyTo(FConnectItBoardState&
 {
     if (FConnectItTileData* Tile = Board.GetTileDataMutable(Position))
     {
-        Tile->Multiplier = 1.f;
+        Tile->Multiplier = NewMultiplier;
     }
 }
 
@@ -280,6 +290,25 @@ void FConnectItBoardEvent_Scored::ApplyTo(FConnectItBoardState& Board) const
         {
             Tile->SetFactionPiece(-1);
         }
+    }
+}
+
+void FConnectItBoardEvent_PieceMoved::ApplyTo(FConnectItBoardState& Board) const
+{
+    FConnectItTileData* FromTile = Board.GetTileDataMutable(From);
+    FConnectItTileData* ToTile = Board.GetTileDataMutable(To);
+    if (FromTile && ToTile)
+    {
+        ToTile->SetFactionPiece(Faction);
+        FromTile->SetFactionPiece(-1);
+    }
+}
+
+void FConnectItBoardEvent_MultiplierChanged::ApplyTo(FConnectItBoardState& Board) const
+{
+    if (FConnectItTileData* Tile = Board.GetTileDataMutable(Position))
+    {
+        Tile->Multiplier = NewMultiplier;
     }
 }
 

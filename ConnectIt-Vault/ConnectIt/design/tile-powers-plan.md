@@ -190,7 +190,7 @@ values on every board tile, and measured ~17% slower AI search even with no powe
 - **Tile catalog** -- `UConnectIt_TileCatalog` (new data asset):
   - `Tiles`: a **map from power tag to an entry** (one entry per tag, by construction): the **tile class** that shows it
     and the **power** (trigger, gate, cooldown, effect and its values; its `Name` is the key).
-  - `PlainTileClass`: the "no power" entry -- the tile class for a tile with no tag. Replaces the level config's
+  - `DefaultTileClass` (named `DefaultTileClass` at first; renamed by the owner 2026-10-23): the "no power" entry -- the tile class for a tile with no tag. Replaces the level config's
     `DefaultTileClass` (kept as the fallback while levels have no catalog; removed once they do -- owner, editor).
   - **Chosen on the level config** (`TileCatalog`), with a project default in a new ConnectIt project settings
     (`UDeveloperSettings`, "Default Tile Catalog"). Trying another skin or look = a copy of the catalog with other
@@ -255,7 +255,7 @@ values on every board tile, and measured ~17% slower AI search even with no powe
   cell's class and captured power, and the Level director's power definitions go.
 - *As built (rework, 2026-10-22; 55/55 tests; Throughput 392,028 nodes/s against 366k-379k -- back to normal):*
   - **Catalog:** `UConnectIt_TileCatalog` (`Public/Board/Powers/`) has `Tiles` (tag -> {`TileClass`, `Power`}),
-    `PlainTileClass`, `GetTileClassFor`, `Defines`, `MakePowers` (each power named by its key), and `FindFor(world)`
+    `DefaultTileClass`, `GetTileClassFor`, `Defines`, `MakePowers` (each power named by its key), and `FindFor(world)`
     (the level config's catalog, else the project default).
   - **Settings:** `UConnectIt_ProjectSettings` (Project Settings > Game > ConnectIt) holds `DefaultTileCatalog` and
     `BuilderTileClass`. The second wasn't in the plan: Load Layout Into Level needs to know which builder Blueprint to
@@ -303,7 +303,7 @@ values on every board tile, and measured ~17% slower AI search even with no powe
     settings. 56/56 tests.
   - **Owner, editor:**
     - a builder tile Blueprint with a blockout look (set it as Builder Tile Class);
-    - a tile catalog (Plain Tile Class plus entries), set in maps' World Settings and as Default Tile Catalog;
+    - a tile catalog (Default Tile Class plus entries), set in maps' World Settings and as Default Tile Catalog;
     - replace placed tiles with builder tiles and capture layouts again;
     - Preview / Clear buttons on the layout tool widget;
     - clear `DefaultTileClass` on level configs once they have a catalog.
@@ -386,6 +386,8 @@ values on every board tile, and measured ~17% slower AI search even with no powe
     - before + events = after on the chains.
 
 ## Stage 5: new operations and the first powers -- deferred (moved to its own plan)
+
+*Now [first-tile-powers-plan](first-tile-powers-plan.md) (written 2026-10-23 from the question's Stage 5 rounds).*
 
 **Deferred (owner, 2026-10-22): to be designed another time**, in its own plan. Kept here as the starting point:
 `_MovePiece` / `_AdjustMultiplier` operations with their events (`_SetTilePower` **dropped**, owner 2026-10-22: a tile

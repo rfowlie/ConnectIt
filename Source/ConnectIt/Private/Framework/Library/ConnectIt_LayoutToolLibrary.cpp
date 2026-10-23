@@ -187,7 +187,7 @@ int32 UConnectIt_LayoutToolLibrary::PreviewTileCatalog(const UObject* WorldConte
         AConnectIt_BuilderTile* Builder = *It;
         if (!IsValid(Builder)) continue;
 
-        const TSubclassOf<AGridTileBase> TileClass = Catalog->GetTileClassFor(Builder->TileData.TilePowerTag);
+        const TSubclassOf<AConnectIt_TileBase> TileClass = Catalog->GetTileClassFor(Builder->TileData.TilePowerTag);
         if (!TileClass)
         {
             UE_LOG(LogTemp, Warning,

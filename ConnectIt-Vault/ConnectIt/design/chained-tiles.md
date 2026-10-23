@@ -1,6 +1,8 @@
 # Chained tiles
 
-Design note (2026-10-22), owner's idea; **nothing built**. Plan: [tile-lock-and-chained-tiles-plan](tile-lock-and-chained-tiles-plan.md) (approved 2026-10-22, not built). First use: teaching "some
+Design note (2026-10-22), owner's idea. **Built 2026-10-23** as the one-sided model below: a Sync tile power, the partner
+picked on the builder tile and linked by tile id ([decision](../_decisions/2026-10-23-chained-tiles-as-a-sync-power.md);
+recipe `code/recipes/lock-a-tile-or-chain-tiles.md`). Plan: [tile-lock-and-chained-tiles-plan](tile-lock-and-chained-tiles-plan.md) (complete). First use: teaching "some
 tiles aren't placeable" in the first adventure level
 ([adventure-modules-and-progression](adventure-modules-and-progression.md), Level 1 draft).
 

@@ -18,6 +18,7 @@ Step-by-step task procedures. Governed by [[_core/_schema/_code|_core/_schema/_c
 | [[script-a-level\|script-a-level]] | The Level director: both sides' goals, triggers, board operations, scoring-rule and goal changes on the level's behalf (with timing), working with the other directors | current |
 | [[script-a-phased-level\|script-a-phased-level]] | A level in phases: layouts made with the layout tool, Begin Phase / Set Win Conditions / Set Layout at a checkpoint (in that order), other directors on On Phase Changed, the pitfalls | current |
 | [[add-a-tile-power\|add-a-tile-power]] | A kind of tile with a power: an effect struct (C++), a `ConnectIt.TilePower.*` tag, a tile catalog entry (tile class + power), builder tiles in the level; level-wide on the Level director | current |
+| [[lock-a-tile-or-chain-tiles\|lock-a-tile-or-chain-tiles]] | Lock a tile (in play, no placing) from a builder tile, a layout or the Level director; chain a tile to a partner (a Sync power); which operations reach locked tiles | current |
 | [[add-a-board-request-type\|add-a-board-request-type]] | Add a new server-validated board mutation (destroy multiplier, swap, capture, …) | current |
 
 Candidate recipes not yet written (`stub`): add a game state-machine phase, wire a new

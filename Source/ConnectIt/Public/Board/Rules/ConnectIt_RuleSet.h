@@ -105,6 +105,10 @@ struct CONNECTIT_API FConnectItRuleSet
     // The power named Name, or null
     const FConnectItTilePower* FindTilePower(const FGameplayTag& Name) const;
 
+    // Value within the multiplier limits of Tile's type (its power tag's
+    // floor and ceiling; a plain tile: floor 1, no ceiling)
+    float ClampMultiplier(const FConnectItTileData& Tile, float Value) const;
+
     // Replaces one side's win goals (bWinGoals) or lose conditions with
     // Conditions, resolved the same way. Game thread. The progress the board
     // keeps for them is the caller's to restart (the GameMode commits a

@@ -16,6 +16,15 @@ UConnectIt_BoardStateComponent* UConnectIt_PieceRegistry::GetBoardState() const
     return UConnectIt_GameUtilityLibrary::GetBoardStateComponent(this);
 }
 
+AGridPieceBase* UConnectIt_PieceRegistry::MovePieceActor(FGridPosition From, FGridPosition To)
+{
+    TObjectPtr<AGridPieceBase> Piece;
+    if (!PieceMap.RemoveAndCopyValue(From, Piece) || !Piece) return nullptr;
+
+    PieceMap.Add(To, Piece);
+    return Piece;
+}
+
 void UConnectIt_PieceRegistry::HandleBoardShifted()
 {
     const FConnectItBoardEvent_BoardShifted* Shift =

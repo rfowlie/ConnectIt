@@ -95,6 +95,16 @@ void FConnectItRuleSet::SetTilePowers(const TArray<FConnectItTilePower>& Powers,
     }
 }
 
+float FConnectItRuleSet::ClampMultiplier(const FConnectItTileData& Tile, float Value) const
+{
+    return FConnectItTilePower::ClampMultiplier(FindTilePower(Tile.TilePowerTag), Value);
+}
+
+float FConnectItBoardChanges::ClampMultiplier(const FConnectItTileData& Tile, float Value) const
+{
+    return Rules ? Rules->ClampMultiplier(Tile, Value) : FConnectItTilePower::ClampMultiplier(nullptr, Value);
+}
+
 const FConnectItTilePower* FConnectItRuleSet::FindTilePower(const FGameplayTag& Name) const
 {
     return Name.IsValid()
@@ -200,6 +210,7 @@ float FConnectItRuleSet::ResolveBoardChange(
 
         FConnectItBoardChanges Scored;
         Scored.Faction = Step->Faction;
+        Scored.Rules = this;
         TotalPoints += Rule->ScorePass(Board, Arrivals, Scored, OutEvents);
 
         // The chain ends at the first pass that scores nothing
@@ -249,6 +260,7 @@ float FConnectItRuleSet::CarryOutOperation(
     // what it did (and appending the event saying so)...
     FConnectItBoardChanges Changes;
     Changes.Faction = Operation.Faction;
+    Changes.Rules = this;
     Operation.Apply(Board, Changes, OutEvents);
 
     // ...what follows from the change is a separate step: scoring where
@@ -268,6 +280,7 @@ float FConnectItRuleSet::ApplyScoring(
 
     const FConnectItPieceArrival Arrival{ Position, Tile->FactionPiece, bArrivingPieceSurvives };
     FConnectItBoardChanges Scored;
+    Scored.Rules = this;
     return Rule->ScorePass(Board, MakeArrayView(&Arrival, 1), Scored, OutEvents);
 }
 

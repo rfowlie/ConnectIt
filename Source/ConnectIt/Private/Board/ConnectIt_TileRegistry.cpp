@@ -39,7 +39,7 @@ TArray<AGridTileBase*> UConnectIt_TileRegistry::SpawnLayoutTiles(const TArray<FC
     {
         const FConnectItBoardLayoutCell& Cell = Cells[Index];
         const TSubclassOf<AGridTileBase> TileClass = Catalog
-            ? Catalog->GetTileClassFor(Cell.TileData.TilePowerTag)
+            ? TSubclassOf<AGridTileBase>(Catalog->GetTileClassFor(Cell.TileData.TilePowerTag))
             : DefaultClass;
         if (!TileClass)
         {
@@ -116,7 +116,7 @@ int32 UConnectIt_TileRegistry::SwapBuilderTiles()
     int32 Swapped = 0;
     for (AConnectIt_BuilderTile* Builder : Builders)
     {
-        const TSubclassOf<AGridTileBase> TileClass = Catalog->GetTileClassFor(Builder->TileData.TilePowerTag);
+        const TSubclassOf<AConnectIt_TileBase> TileClass = Catalog->GetTileClassFor(Builder->TileData.TilePowerTag);
         if (!TileClass)
         {
             UE_LOG(LogTemp, Warning,

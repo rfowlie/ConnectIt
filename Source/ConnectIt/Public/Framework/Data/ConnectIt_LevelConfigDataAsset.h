@@ -6,7 +6,7 @@
 #include "Engine/DataAsset.h"
 #include "ConnectIt_LevelConfigDataAsset.generated.h"
 
-class AConnectIt_GridPiece;
+class AConnectIt_PieceBase;
 class AGridTileBase;
 class UConnectIt_TileRegistry;
 class UConnectIt_PieceRegistry;
@@ -30,7 +30,7 @@ public:
     // --- Piece Pool ---
 
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "ConnectIt|Config")
-    TSubclassOf<AConnectIt_GridPiece> PieceActorClass = nullptr;
+    TSubclassOf<AConnectIt_PieceBase> PieceActorClass = nullptr;
 
     // Per-client pool size -- each client manages its own pool
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "ConnectIt|Config",

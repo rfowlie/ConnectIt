@@ -83,6 +83,18 @@ bool UConnectIt_BoardEventLibrary::GetActiveScoredEvent(
     return TryGetActiveBoardEvent(WorldContextObject, OutEvent, TEXT("GetActiveScoredEvent"));
 }
 
+bool UConnectIt_BoardEventLibrary::GetActivePieceMovedEvent(
+    const UObject* WorldContextObject, FConnectItBoardEvent_PieceMoved& OutEvent)
+{
+    return TryGetActiveBoardEvent(WorldContextObject, OutEvent, TEXT("GetActivePieceMovedEvent"));
+}
+
+bool UConnectIt_BoardEventLibrary::GetActiveMultiplierChangedEvent(
+    const UObject* WorldContextObject, FConnectItBoardEvent_MultiplierChanged& OutEvent)
+{
+    return TryGetActiveBoardEvent(WorldContextObject, OutEvent, TEXT("GetActiveMultiplierChangedEvent"));
+}
+
 bool UConnectIt_BoardEventLibrary::GetActiveTileLockChangedEvent(
     const UObject* WorldContextObject, FConnectItBoardEvent_TileLockChanged& OutEvent)
 {

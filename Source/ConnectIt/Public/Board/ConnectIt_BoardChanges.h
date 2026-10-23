@@ -5,6 +5,9 @@
 #include "CoreMinimal.h"
 #include "GridMechanicsBaseStructs.h"
 
+struct FConnectItRuleSet;
+struct FConnectItTileData;
+
 
 // --- What one step of a board change did ---------------------------------
 // FConnectItBoardOperation::Apply reports what it really did here; the rule
@@ -114,6 +117,16 @@ struct FConnectItBoardChanges
     // Whose change this step is (the operation's faction); INDEX_NONE for
     // nobody
     int32 Faction = INDEX_NONE;
+
+    // The rules the change is carried out under, set by whoever carries it out
+    // (CarryOutOperation, the scoring pass, the power chain, the AI's
+    // ApplyMove), so an operation or the scoring rule can ask them -- e.g. a
+    // tile type's multiplier limits (ClampMultiplier). Null: defaults.
+    const FConnectItRuleSet* Rules = nullptr;
+
+    // Value within the multiplier limits of Tile's type, from Rules (no
+    // rules: a plain tile's -- floor 1, no ceiling)
+    float ClampMultiplier(const FConnectItTileData& Tile, float Value) const;
 
     void AddEntered(const FGridPosition& Position, int32 PieceFaction, bool bSurvivesScoring)
     {

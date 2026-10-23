@@ -10,6 +10,33 @@
 // The tile power effects ConnectIt ships (each a catalog entry's Effect).
 // Test-only effects live with the tests.
 
+// Push (Scoring, ConnectIt.TilePower.Push): pushes one neighbouring piece one
+// tile directly away. The candidates are the orthogonal neighbours holding a
+// piece whose next tile beyond is one it may move to (Move Piece: empty,
+// active, neither end locked); it picks one at random (the board's seed). A
+// single candidate is always the one pushed, so a player can see it coming.
+// Never its own tile's piece. No candidate: no effect.
+USTRUCT(BlueprintType, meta = (DisplayName = "Push"))
+struct CONNECTIT_API FConnectItTilePowerEffect_Push : public FConnectItTilePowerEffect
+{
+    GENERATED_BODY()
+
+    virtual void MakeOperations(const FConnectItTilePowerContext& Context, TArray<FInstancedStruct>& OutOperations) const override;
+};
+
+// Vacuum (Piece Exit + Scoring, ConnectIt.TilePower.Vacuum): when its own tile
+// is empty, pulls a piece onto it -- the nearest piece along one of the 8
+// directions, picked at random. A look along a direction passes over empty
+// tiles and stops at the edge (or a missing tile) or an inactive tile; a piece
+// that can't be moved (a locked tile) isn't a candidate.
+USTRUCT(BlueprintType, meta = (DisplayName = "Vacuum"))
+struct CONNECTIT_API FConnectItTilePowerEffect_Vacuum : public FConnectItTilePowerEffect
+{
+    GENERATED_BODY()
+
+    virtual void MakeOperations(const FConnectItTilePowerContext& Context, TArray<FInstancedStruct>& OutOperations) const override;
+};
+
 // Chained (a Sync power, ConnectIt.TilePower.Chained): the tile is locked
 // exactly while its partner (FConnectItTileData::ChainPartnerId) has no piece.
 // Partner has a piece and the tile is locked: unlock it. No partner, or an

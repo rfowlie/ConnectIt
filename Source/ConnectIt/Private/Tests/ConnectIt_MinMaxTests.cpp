@@ -53,13 +53,13 @@ namespace ConnectItMinMaxTests
     // A test power: Name, Trigger and Effect (a test effect struct)
     template<typename TEffect>
     FConnectItTilePower MakeTestPower(FGameplayTag Name, EConnectItPowerTrigger Trigger, const TEffect& Effect,
-        int32 CooldownTurns = 0, float MinMultiplier = 0.f)
+        int32 CooldownTurns = 0, float FireAtMultiplier = 0.f)
     {
         FConnectItTilePower Power;
         Power.Name = Name;
-        Power.Trigger = Trigger;
+        Power.SetTrigger(Trigger);
         Power.CooldownTurns = CooldownTurns;
-        Power.MinMultiplier = MinMultiplier;
+        Power.FireAtMultiplier = FireAtMultiplier;
         Power.Effect = TInstancedStruct<FConnectItTilePowerEffect>::Make<TEffect>(Effect);
         return Power;
     }
@@ -1836,9 +1836,9 @@ bool FConnectItAICandidatesTest::RunTest(const FString& Parameters)
         && AllTypes.Contains(FGameplayTag(ConnectIt_Game_SwapPieces))
         && AllTypes.Contains(FGameplayTag(ConnectIt_Game_Shift)));
     // The eight player-facing ones and the level's Change Goals, Begin
-    // Phase, Remove Tiles, Add Tiles, Change Layout, Set Tile Locked and Set
-    // Chain Partner
-    TestEqual(TEXT("one per kind of operation"), AllTypes.Num(), 15);
+    // Phase, Remove Tiles, Add Tiles, Change Layout, Set Tile Locked, Set
+    // Chain Partner, Move Piece and Adjust Multiplier
+    TestEqual(TEXT("one per kind of operation"), AllTypes.Num(), 17);
     return true;
 }
 
@@ -3455,7 +3455,7 @@ bool FConnectItTilePowerDataTest::RunTest(const FString& Parameters)
 
     // A catalog defining two powers
     UConnectIt_TileCatalog* Catalog = NewObject<UConnectIt_TileCatalog>();
-    Catalog->PlainTileClass = AConnectIt_BuilderTile::StaticClass();
+    Catalog->DefaultTileClass = AConnectIt_BuilderTile::StaticClass();
     Catalog->Tiles.Add(PowerTag, MakeEntry(5));
     Catalog->Tiles.Add(OtherTag, MakeEntry(9));
 
@@ -3474,7 +3474,7 @@ bool FConnectItTilePowerDataTest::RunTest(const FString& Parameters)
     // --- The catalog: one entry per tag, a class for each, powers named by their tag ---
     {
         TestTrue(TEXT("catalog: a tag's class"), Catalog->GetTileClassFor(PowerTag) == AConnectIt_TileBase::StaticClass());
-        TestTrue(TEXT("catalog: no tag is the plain class"), Catalog->GetTileClassFor(FGameplayTag()) == AConnectIt_BuilderTile::StaticClass());
+        TestTrue(TEXT("catalog: no tag is the default class"), Catalog->GetTileClassFor(FGameplayTag()) == AConnectIt_BuilderTile::StaticClass());
         TestTrue(TEXT("catalog: an undefined tag has none"), Catalog->GetTileClassFor(UndefinedTag) == nullptr);
 
         const TArray<FConnectItTilePower> Powers = Catalog->MakePowers();
@@ -4257,6 +4257,334 @@ bool FConnectItChainedTilesTest::RunTest(const FString& Parameters)
         const FConnectItMinMaxRules MinMax(Board, Rules, DefaultEvaluationWeights(), DefaultOrderingWeights(), PlaceOnly(), PlaceOnly());
         const auto Child = MinMax.ApplyMove(MinMax.MakeRoot(Board, 0), PlaceMove(0, 0, 0));
         TestFalse(TEXT("ai: its search opens the chain too"), TileAt(Child.Board, 4, 4).bIsLocked);
+    }
+    return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FConnectItMoveAndMultiplierTest,
+    "ConnectIt.Board.MoveAndMultiplier", TestFlags)
+
+bool FConnectItMoveAndMultiplierTest::RunTest(const FString& Parameters)
+{
+    // First tile powers plan, Stage 1: Move Piece, Adjust Multiplier, and each
+    // tile type's multiplier floor and ceiling
+    const auto CarryOut = [](const FConnectItRuleSet& Rules, const FConnectItBoardOperation& Operation, FConnectItBoardState& Board)
+    {
+        FConnectItBoardChangeEvent Events;
+        if (Rules.CanCarryOut(Operation, Board)) Rules.CarryOutOperation(Operation, Board, &Events);
+        return Events;
+    };
+    const auto ReplaysTo = [](const FConnectItBoardState& Before, const FConnectItBoardChangeEvent& Events, const FConnectItBoardState& After)
+    {
+        FConnectItBoardState Replayed = Before;
+        FConnectItBoardEvent::ApplyAll(Events, Replayed);
+        return Replayed.HasSameTilesAndScores(After);
+    };
+    const auto Move = [](int32 FromX, int32 FromY, int32 ToX, int32 ToY)
+    {
+        FConnectItBoardOperation_MovePiece Operation;
+        Operation.Faction = 0;
+        Operation.From = FGridPosition(FromX, FromY);
+        Operation.To = FGridPosition(ToX, ToY);
+        return Operation;
+    };
+    const auto Adjust = [](int32 X, int32 Y, float Delta)
+    {
+        FConnectItBoardOperation_AdjustMultiplier Operation;
+        Operation.Position = FGridPosition(X, Y);
+        Operation.Delta = Delta;
+        return Operation;
+    };
+    // A tile type with limits: TestPower1, floor 0, ceiling 2; TestPower2, floor 2
+    FConnectItRuleSet Rules;
+    {
+        FConnectItTilePower Capped = MakeTestPower(TestPower1, EConnectItPowerTrigger::PieceEnter, FConnectItTilePowerEffect_Test());
+        Capped.MultiplierFloor = 0.f;
+        Capped.MultiplierCeiling = 2.f;
+        FConnectItTilePower Floored = MakeTestPower(TestPower2, EConnectItPowerTrigger::PieceEnter, FConnectItTilePowerEffect_Test());
+        Floored.MultiplierFloor = 2.f;
+        FConnectItTilePower Silent = MakeTestPower(TestPower3, EConnectItPowerTrigger::PieceEnter, FConnectItTilePowerEffect_Test());
+        Silent.MultiplierFloor = 0.f;
+        Silent.MultiplierCeiling = 0.f;
+        Rules.SetTilePowers({ Capped, Floored, Silent }, {});
+    }
+
+    // --- Move Piece ---
+    {
+        FConnectItBoardState Board = MakeBoard(4);
+        Place(Board, 1, 1, 1);
+        const FConnectItBoardState Before = Board;
+        const FConnectItBoardChangeEvent Events = CarryOut(Rules, Move(1, 1, 2, 1), Board);
+        TestTrue(TEXT("move: the piece moved, keeping its owner (not the mover's)"),
+            !Board.IsTileOccupied(FGridPosition(1, 1)) && TileAt(Board, 2, 1).FactionPiece == 1);
+        const auto* Moved = OnlyEvent<FConnectItBoardEvent_PieceMoved>(Events);
+        TestTrue(TEXT("move: one Piece Moved"), Moved && Moved->From == FGridPosition(1, 1) && Moved->To == FGridPosition(2, 1) && Moved->Faction == 1);
+        TestTrue(TEXT("move: before + events = after"), ReplaysTo(Before, Events, Board));
+
+        FConnectItBoardChanges Changes;
+        FConnectItBoardState Again = Before;
+        Move(1, 1, 2, 1).Apply(Again, Changes, nullptr);
+        TestTrue(TEXT("move: an exit from, an enter to"),
+            Changes.Exited.Num() == 1 && Changes.Exited[0].Position == FGridPosition(1, 1) && Changes.Exited[0].Faction == 1
+            && Changes.Entered.Num() == 1 && Changes.Entered[0].Position == FGridPosition(2, 1));
+
+        FConnectItBoardState Blocked = Before;
+        Place(Blocked, 2, 1, 0);
+        TestFalse(TEXT("move: not onto a piece"), Rules.CanCarryOut(Move(1, 1, 2, 1), Blocked));
+        Blocked = Before;
+        Blocked.GetTileDataMutable(FGridPosition(2, 1))->bIsActive = false;
+        TestFalse(TEXT("move: not onto an inactive tile"), Rules.CanCarryOut(Move(1, 1, 2, 1), Blocked));
+        Blocked = Before;
+        Blocked.GetTileDataMutable(FGridPosition(2, 1))->bIsLocked = true;
+        TestFalse(TEXT("move: not onto a locked tile"), Rules.CanCarryOut(Move(1, 1, 2, 1), Blocked));
+        Blocked = Before;
+        Blocked.GetTileDataMutable(FGridPosition(1, 1))->bIsLocked = true;
+        TestFalse(TEXT("move: not off a locked tile"), Rules.CanCarryOut(Move(1, 1, 2, 1), Blocked));
+        TestFalse(TEXT("move: nothing to move"), Rules.CanCarryOut(Move(0, 0, 2, 1), Before));
+    }
+
+    // --- Adjust Multiplier, within limits ---
+    {
+        FConnectItBoardState Board = MakeBoard(3);
+        const FConnectItBoardState Before = Board;
+        const FConnectItBoardChangeEvent Events = CarryOut(Rules, Adjust(0, 0, 2.f), Board);
+        TestEqual(TEXT("adjust: a plain tile +2"), TileAt(Board, 0, 0).Multiplier, 3.f);
+        const auto* Changed = OnlyEvent<FConnectItBoardEvent_MultiplierChanged>(Events);
+        TestTrue(TEXT("adjust: Multiplier Changed 1 -> 3"), Changed && Changed->PreviousMultiplier == 1.f && Changed->NewMultiplier == 3.f);
+        TestTrue(TEXT("adjust: before + events = after"), ReplaysTo(Before, Events, Board));
+
+        CarryOut(Rules, Adjust(0, 0, -5.f), Board);
+        TestEqual(TEXT("adjust: a plain tile's floor is 1"), TileAt(Board, 0, 0).Multiplier, 1.f);
+
+        Board.GetTileDataMutable(FGridPosition(1, 1))->TilePowerTag = TestPower1;
+        CarryOut(Rules, Adjust(1, 1, 5.f), Board);
+        TestEqual(TEXT("adjust: a capped tile stops at its ceiling (2)"), TileAt(Board, 1, 1).Multiplier, 2.f);
+        CarryOut(Rules, Adjust(1, 1, -5.f), Board);
+        TestEqual(TEXT("adjust: and goes down to its floor (0)"), TileAt(Board, 1, 1).Multiplier, 0.f);
+
+        TestFalse(TEXT("adjust: a change of 0 is refused"), Rules.CanCarryOut(Adjust(0, 0, 0.f), Board));
+        Board.GetTileDataMutable(FGridPosition(2, 2))->bIsLocked = true;
+        TestFalse(TEXT("adjust: not on a locked tile"), Rules.CanCarryOut(Adjust(2, 2, 1.f), Board));
+    }
+
+    // --- Limits through scoring: a ceiling-0 tile forms the line but adds nothing ---
+    {
+        FConnectItBoardState Board = MakeBoard(4);
+        Place(Board, 0, 0, 0);
+        Place(Board, 1, 0, 0);
+        Place(Board, 2, 0, 0);
+        FConnectItTileData* Silent = Board.GetTileDataMutable(FGridPosition(1, 0));
+        Silent->TilePowerTag = TestPower3;
+        Silent->Multiplier = 0.f;
+        FConnectItTileData* Capped = Board.GetTileDataMutable(FGridPosition(2, 0));
+        Capped->TilePowerTag = TestPower1;
+        Capped->Multiplier = 2.f;
+
+        const FConnectItBoardState Before = Board;
+        FConnectItBoardChangeEvent Events;
+        const float Points = Rules.CarryOutOperation(MakeAt<FConnectItBoardOperation_PlacePiece>(0, 3, 0), Board, &Events);
+        TestEqual(TEXT("scoring: 1 + 0 + 2 + 1"), Points, 4.f);
+        TestTrue(TEXT("scoring: the silent tile stays at 0, the capped one at 2, a plain one rises"),
+            TileAt(Board, 1, 0).Multiplier == 0.f && TileAt(Board, 2, 0).Multiplier == 2.f && TileAt(Board, 0, 0).Multiplier == 2.f);
+        TestTrue(TEXT("scoring: before + events = after (Scored carries the clamped values)"), ReplaysTo(Before, Events, Board));
+    }
+
+    // --- Destroy Multiplier resets within limits ---
+    {
+        FConnectItBoardState Board = MakeBoard(3);
+        FConnectItTileData* Floored = Board.GetTileDataMutable(FGridPosition(1, 1));
+        Floored->TilePowerTag = TestPower2;
+        Floored->Multiplier = 3.f;
+        const FConnectItBoardState Before = Board;
+        const FConnectItBoardChangeEvent Events = CarryOut(Rules, MakeAt<FConnectItBoardOperation_DestroyTileMultiplier>(0, 1, 1), Board);
+        TestEqual(TEXT("destroy: back to its floor (2), not 1"), TileAt(Board, 1, 1).Multiplier, 2.f);
+        const auto* Destroyed = OnlyEvent<FConnectItBoardEvent_TileMultiplierDestroyed>(Events);
+        TestTrue(TEXT("destroy: the event says 3 -> 2"), Destroyed && Destroyed->PreviousMultiplier == 3.f && Destroyed->NewMultiplier == 2.f);
+        TestTrue(TEXT("destroy: before + events = after"), ReplaysTo(Before, Events, Board));
+    }
+
+    // --- Tiles joining the board start within limits ---
+    {
+        FConnectItBoardState Board = MakeBoard(3);
+        FConnectItBoardOperation_AddTiles Add;
+        Add.Faction = INDEX_NONE;
+        FConnectItBoardLayoutCell& Cell = Add.Cells.AddDefaulted_GetRef();
+        Cell.Position = FGridPosition(3, 0);
+        Cell.TileData.TilePowerTag = TestPower1;
+        Cell.TileData.Multiplier = 5.f;
+        const FConnectItBoardState Before = Board;
+        const FConnectItBoardChangeEvent Events = CarryOut(Rules, Add, Board);
+        TestEqual(TEXT("add: a capped tile starts at its ceiling"), TileAt(Board, 3, 0).Multiplier, 2.f);
+        TestTrue(TEXT("add: before + events = after"), ReplaysTo(Before, Events, Board));
+
+        UConnectIt_TileCatalog* Catalog = NewObject<UConnectIt_TileCatalog>();
+        FConnectItTileCatalogEntry Entry;
+        Entry.Power.MultiplierCeiling = 2.f;
+        Catalog->Tiles.Add(TestPower1, Entry);
+        AConnectIt_BuilderTile* Builder = GetMutableDefault<AConnectIt_BuilderTile>();
+        const FConnectItTileInitialData Saved = Builder->TileData;
+        ON_SCOPE_EXIT { Builder->TileData = Saved; };
+        Builder->TileData.TilePowerTag = TestPower1;
+        Builder->TileData.Multiplier = 5.f;
+        TestEqual(TEXT("build: a capped builder tile starts at its ceiling"),
+            UConnectIt_BoardStateComponent::MakeTileData(Builder, 2, 1.f, Catalog).Multiplier, 2.f);
+        Builder->TileData.TilePowerTag = FGameplayTag();
+        Builder->TileData.Multiplier = 0.5f;
+        TestEqual(TEXT("build: a plain tile starts at least at 1"),
+            UConnectIt_BoardStateComponent::MakeTileData(Builder, 2, 1.f, Catalog).Multiplier, 1.f);
+    }
+    return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FConnectItPushAndVacuumTest,
+    "ConnectIt.Board.PushAndVacuum", TestFlags)
+
+bool FConnectItPushAndVacuumTest::RunTest(const FString& Parameters)
+{
+    // First tile powers plan, Stage 2: trigger sets, Push and Vacuum
+    using EPower = EConnectItPowerTrigger;
+    FConnectItTilePower Push = MakeTestPower(ConnectIt_TilePower_Push, EPower::Scoring, FConnectItTilePowerEffect_Push());
+    FConnectItTilePower Vacuum = MakeTestPower(ConnectIt_TilePower_Vacuum, EPower::PieceExit, FConnectItTilePowerEffect_Vacuum());
+    Vacuum.AddTrigger(EPower::Scoring);
+    FConnectItRuleSet Rules;
+    Rules.SetTilePowers({ Push, Vacuum }, {});
+
+    // The operations an effect wants on Board at Position (seed Seed)
+    const auto MovesFrom = [&Rules](const FConnectItTilePowerEffect& Effect, const FConnectItBoardState& Board, FGridPosition Position, int32 Seed)
+    {
+        FRandomStream Random(Seed);
+        TArray<FInstancedStruct> Operations;
+        Effect.MakeOperations(FConnectItTilePowerContext{ Board, Position, 0, Random, &Rules }, Operations);
+        TArray<FConnectItBoardOperation_MovePiece> Moves;
+        for (const FInstancedStruct& Entry : Operations)
+        {
+            if (const auto* Move = Entry.GetPtr<FConnectItBoardOperation_MovePiece>()) Moves.Add(*Move);
+        }
+        return Moves;
+    };
+    const auto ReplaysTo = [](const FConnectItBoardState& Before, const FConnectItBoardChangeEvent& Events, const FConnectItBoardState& After)
+    {
+        FConnectItBoardState Replayed = Before;
+        FConnectItBoardEvent::ApplyAll(Events, Replayed);
+        return Replayed.HasSameTilesAndScores(After);
+    };
+
+    // --- Trigger sets ---
+    TestTrue(TEXT("triggers: Vacuum has Exit and Scoring, not Enter"),
+        Vacuum.HasTrigger(EPower::PieceExit) && Vacuum.HasTrigger(EPower::Scoring) && !Vacuum.HasTrigger(EPower::PieceEnter));
+    {
+        UConnectIt_TileCatalog* Catalog = NewObject<UConnectIt_TileCatalog>();
+        FConnectItTileCatalogEntry Entry;
+        Entry.TileClass = AConnectIt_TileBase::StaticClass();
+        Entry.Power = MakeTestPower(TestPower1, EPower::Sync, FConnectItTilePowerEffect_Test());
+        Entry.Power.Name = FGameplayTag();
+        Entry.Power.AddTrigger(EPower::PieceEnter);
+        Catalog->Tiles.Add(TestPower1, Entry);
+        FDataValidationContext Context;
+        TestEqual(TEXT("triggers: Sync with another trigger fails validation"), Catalog->IsDataValid(Context), EDataValidationResult::Invalid);
+    }
+
+    // --- Push: only valid pushes; a single one is always the one ---
+    {
+        const FConnectItTilePowerEffect_Push Effect;
+        FConnectItBoardState Board = MakeBoard(5);
+        Place(Board, 2, 2, 0);   // its own piece: never pushed
+        Place(Board, 2, 3, 1);   // (2,4) behind it is free: valid
+        Place(Board, 1, 2, 0);   // (0,2) behind it is taken: not
+        Place(Board, 0, 2, 1);
+        Place(Board, 3, 2, 1);   // (4,2) behind it is locked: not
+        Board.GetTileDataMutable(FGridPosition(4, 2))->bIsLocked = true;
+        bool bAlwaysTheOne = true;
+        for (int32 Seed = 1; Seed <= 8; Seed++)
+        {
+            const TArray<FConnectItBoardOperation_MovePiece> Moves = MovesFrom(Effect, Board, FGridPosition(2, 2), Seed);
+            bAlwaysTheOne &= Moves.Num() == 1 && Moves[0].From == FGridPosition(2, 3) && Moves[0].To == FGridPosition(2, 4);
+        }
+        TestTrue(TEXT("push: the only valid push, every time, and never its own piece"), bAlwaysTheOne);
+
+        Board.GetTileDataMutable(FGridPosition(2, 4))->bIsActive = false;
+        TestEqual(TEXT("push: nothing valid -- nothing to do"), MovesFrom(Effect, Board, FGridPosition(2, 2), 1).Num(), 0);
+
+        FConnectItBoardState Two = MakeBoard(5);
+        Place(Two, 2, 3, 1);
+        Place(Two, 3, 2, 1);
+        const TArray<FConnectItBoardOperation_MovePiece> First = MovesFrom(Effect, Two, FGridPosition(2, 2), 7);
+        const TArray<FConnectItBoardOperation_MovePiece> Second = MovesFrom(Effect, Two, FGridPosition(2, 2), 7);
+        TestTrue(TEXT("push: two options, the same seed picks the same"),
+            First.Num() == 1 && Second.Num() == 1 && First[0].From == Second[0].From);
+    }
+
+    // --- Push in the chain: the pushed piece completes a line ---
+    {
+        FConnectItBoardState Board = MakeBoard(6);
+        Place(Board, 0, 0, 0);
+        Place(Board, 1, 0, 0);
+        Place(Board, 2, 0, 0);
+        Board.GetTileDataMutable(FGridPosition(1, 0))->TilePowerTag = ConnectIt_TilePower_Push;
+        Place(Board, 1, 1, 1);   // pushed down to (1,2)...
+        Place(Board, 0, 2, 1);   // ...completing (0..3, 2) for faction 1
+        Place(Board, 2, 2, 1);
+        Place(Board, 3, 2, 1);
+
+        const FConnectItBoardState Before = Board;
+        FConnectItBoardChangeEvent Events;
+        Rules.CarryOutOperation(MakeAt<FConnectItBoardOperation_PlacePiece>(0, 3, 0), Board, &Events);
+        TestTrue(TEXT("push chain: both lines scored"), Board.GetScore(0) == 4.f && Board.GetScore(1) == 4.f);
+        TestTrue(TEXT("push chain: Power Triggered, then Piece Moved"), PowersTriggered(Events).Num() == 1
+            && Events.Events.ContainsByPredicate([](const FInstancedStruct& Entry) { return Entry.GetPtr<FConnectItBoardEvent_PieceMoved>() != nullptr; }));
+        TestTrue(TEXT("push chain: before + events = after"), ReplaysTo(Before, Events, Board));
+    }
+
+    // --- Vacuum: the nearest piece per direction, into its empty tile ---
+    {
+        const FConnectItTilePowerEffect_Vacuum Effect;
+        FConnectItBoardState Board = MakeBoard(5);
+        Place(Board, 2, 4, 0);                                         // down, over the empty (2,3): candidate
+        Board.GetTileDataMutable(FGridPosition(3, 2))->bIsActive = false;
+        Place(Board, 4, 2, 1);                                         // right, behind an inactive tile: no
+        Place(Board, 1, 1, 1);                                         // up-left, locked: no
+        Board.GetTileDataMutable(FGridPosition(1, 1))->bIsLocked = true;
+        bool bAlwaysTheOne = true;
+        for (int32 Seed = 1; Seed <= 8; Seed++)
+        {
+            const TArray<FConnectItBoardOperation_MovePiece> Moves = MovesFrom(Effect, Board, FGridPosition(2, 2), Seed);
+            bAlwaysTheOne &= Moves.Num() == 1 && Moves[0].From == FGridPosition(2, 4) && Moves[0].To == FGridPosition(2, 2);
+        }
+        TestTrue(TEXT("vacuum: the nearest movable piece, past empty tiles, stopped by inactive ones"), bAlwaysTheOne);
+
+        Place(Board, 2, 2, 1);
+        TestEqual(TEXT("vacuum: not into an occupied tile"), MovesFrom(Effect, Board, FGridPosition(2, 2), 1).Num(), 0);
+    }
+
+    // --- Vacuum fires on a Piece Exit... ---
+    {
+        FConnectItBoardState Board = MakeBoard(5);
+        Board.GetTileDataMutable(FGridPosition(2, 2))->TilePowerTag = ConnectIt_TilePower_Vacuum;
+        Place(Board, 2, 2, 1);
+        Place(Board, 4, 4, 0);
+        const FConnectItBoardState Before = Board;
+        FConnectItBoardChangeEvent Events;
+        Rules.CarryOutOperation(MakeAt<FConnectItBoardOperation_RemovePiece>(0, 2, 2), Board, &Events);
+        TestTrue(TEXT("vacuum exit: the piece left, another was pulled in"),
+            TileAt(Board, 2, 2).FactionPiece == 0 && !Board.IsTileOccupied(FGridPosition(4, 4)));
+        TestTrue(TEXT("vacuum exit: before + events = after"), ReplaysTo(Before, Events, Board));
+    }
+
+    // --- ...and on Scoring, when the line cleared its piece ---
+    {
+        FConnectItBoardState Board = MakeBoard(6);
+        Board.GetTileDataMutable(FGridPosition(1, 0))->TilePowerTag = ConnectIt_TilePower_Vacuum;
+        Place(Board, 0, 0, 0);
+        Place(Board, 1, 0, 0);
+        Place(Board, 2, 0, 0);
+        Place(Board, 1, 5, 1);   // straight down the column, over empty tiles
+        FConnectItBoardChangeEvent Events;
+        Rules.CarryOutOperation(MakeAt<FConnectItBoardOperation_PlacePiece>(0, 3, 0), Board, &Events);
+        // Two candidates: (1,5) down the column, and the line's kept piece at (3,0) along the row
+        TestTrue(TEXT("vacuum scoring: its piece cleared by the line, a piece pulled in from a candidate"),
+            Board.IsTileOccupied(FGridPosition(1, 0))
+            && (!Board.IsTileOccupied(FGridPosition(1, 5)) || !Board.IsTileOccupied(FGridPosition(3, 0))));
+        TestEqual(TEXT("vacuum scoring: fired once (Scoring), not again for the Exit it caused"), PowersTriggered(Events).Num(), 1);
     }
     return true;
 }
