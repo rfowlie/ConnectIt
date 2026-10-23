@@ -4,6 +4,7 @@
 #include "ConnectIt_Structs.h"
 #include "Misc/DataValidation.h"
 #include "Board/Powers/ConnectIt_TileCatalog.h"
+#include "ConnectIt_GameplayTags.h"
 
 
 const FConnectItBoardLayoutCell* UConnectIt_BoardLayout::FindCell(const FGridPosition& Position) const
@@ -78,6 +79,31 @@ EDataValidationResult UConnectIt_BoardLayout::IsDataValid(FDataValidationContext
                 "ConnectIt_BoardLayout: cell (%d,%d) names power %s, which tile catalog '%s' doesn't define."),
                 Cell.Position.X, Cell.Position.Y, *Cell.TileData.TilePowerTag.ToString(), *Catalog->GetName())));
             Result = EDataValidationResult::Invalid;
+        }
+
+        // A chain partner: on a Chained cell, naming another cell of this layout
+        if (Cell.TileData.bHasChainPartner)
+        {
+            const FConnectItBoardLayoutCell* Partner = FindCell(Cell.TileData.ChainPartner);
+            if (Cell.TileData.TilePowerTag != ConnectIt_TilePower_Chained)
+            {
+                Context.AddWarning(FText::FromString(FString::Printf(TEXT(
+                    "ConnectIt_BoardLayout: cell (%d,%d) has a chain partner but isn't Chained -- it is ignored."),
+                    Cell.Position.X, Cell.Position.Y)));
+            }
+            else if (!Partner || Partner == &Cell)
+            {
+                Context.AddWarning(FText::FromString(FString::Printf(TEXT(
+                    "ConnectIt_BoardLayout: cell (%d,%d)'s chain partner (%d,%d) isn't another cell of this layout -- it "
+                    "will have no partner."),
+                    Cell.Position.X, Cell.Position.Y, Cell.TileData.ChainPartner.X, Cell.TileData.ChainPartner.Y)));
+            }
+            else if (Partner->TileData.TilePowerTag == ConnectIt_TilePower_Chained)
+            {
+                Context.AddWarning(FText::FromString(FString::Printf(TEXT(
+                    "ConnectIt_BoardLayout: cell (%d,%d)'s chain partner is Chained too -- a chain of chains isn't "
+                    "tested yet."), Cell.Position.X, Cell.Position.Y)));
+            }
         }
 
         if (Cell.TileData.StartingFactionPiece >= MatchFactions)

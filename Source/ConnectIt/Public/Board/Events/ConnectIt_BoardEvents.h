@@ -347,6 +347,32 @@ struct CONNECTIT_API FConnectItBoardEvent_TileLockChanged : public FConnectItBoa
     virtual void ApplyTo(FConnectItBoardState& Board) const override;
 };
 
+// A Chained tile's partner was set or cleared (Set Chain Partner). The
+// partner's look can update (UConnectIt_BoardStateLibrary::GetChainedTilesFor).
+USTRUCT(BlueprintType, meta = (DisplayName = "Chain Partner Changed"))
+struct CONNECTIT_API FConnectItBoardEvent_ChainPartnerChanged : public FConnectItBoardOperationEvent
+{
+    GENERATED_BODY()
+
+    // The Chained tile
+    UPROPERTY(BlueprintReadOnly, Category = "Event")
+    FGridPosition Position;
+
+    UPROPERTY(BlueprintReadOnly, Category = "Event")
+    bool bHasPartner = false;
+
+    // The partner tile, when it has one
+    UPROPERTY(BlueprintReadOnly, Category = "Event")
+    FGridPosition PartnerPosition;
+
+    // The partner's tile id (FConnectItTileData::ChainPartnerId), or -1
+    UPROPERTY(BlueprintReadOnly, Category = "Event")
+    int32 PartnerId = INDEX_NONE;
+
+    virtual FGameplayTag GetEventTag() const override;
+    virtual void ApplyTo(FConnectItBoardState& Board) const override;
+};
+
 // ---------------------------------------------------------------------------
 // Result events
 // ---------------------------------------------------------------------------

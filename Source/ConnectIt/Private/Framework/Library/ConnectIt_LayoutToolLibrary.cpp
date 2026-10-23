@@ -141,6 +141,7 @@ int32 UConnectIt_LayoutToolLibrary::LoadLayoutIntoLevel(
     }
 
     int32 Placed = 0;
+    TMap<FGridPosition, AConnectIt_BuilderTile*> PlacedAt;
     for (const FConnectItBoardLayoutCell& Cell : Layout->Cells)
     {
         FActorSpawnParameters Params;
@@ -151,7 +152,21 @@ int32 UConnectIt_LayoutToolLibrary::LoadLayoutIntoLevel(
 
         Tile->SetActorLabel(FString::Printf(TEXT("%s_%d_%d"), *Layout->GetName(), Cell.Position.X, Cell.Position.Y));
         IConnectIt_TileDataProvider::Execute_ApplyLayoutCell(Tile, Cell.TileData, Cell.VisualVariant);
+        PlacedAt.Add(Cell.Position, Tile);
         Placed++;
+    }
+
+    // Chain partners back as pickers, once every tile is placed
+    for (const TPair<FGridPosition, AConnectIt_BuilderTile*>& Pair : PlacedAt)
+    {
+        AConnectIt_BuilderTile* Tile = Pair.Value;
+        if (Tile->TileData.bHasChainPartner)
+        {
+            if (AConnectIt_BuilderTile* const* Partner = PlacedAt.Find(Tile->TileData.ChainPartner))
+            {
+                Tile->ChainPartnerTile = *Partner;
+            }
+        }
     }
 
     UE_LOG(LogTemp, Log, TEXT("ConnectIt_LayoutTool: placed %d of %d tile(s) from '%s'"),

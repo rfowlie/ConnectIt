@@ -27,6 +27,7 @@
 #include "Board/ConnectIt_BoardStateComponent.h"
 #include "Board/ConnectIt_BuilderTile.h"
 #include "Board/Powers/ConnectIt_TileCatalog.h"
+#include "Board/Powers/ConnectIt_TilePowerEffects.h"
 #include "AI/ConnectIt_LevelDirector.h"
 #include "NativeGameplayTags.h"
 
@@ -1835,8 +1836,9 @@ bool FConnectItAICandidatesTest::RunTest(const FString& Parameters)
         && AllTypes.Contains(FGameplayTag(ConnectIt_Game_SwapPieces))
         && AllTypes.Contains(FGameplayTag(ConnectIt_Game_Shift)));
     // The eight player-facing ones and the level's Change Goals, Begin
-    // Phase, Remove Tiles, Add Tiles, Change Layout and Set Tile Locked
-    TestEqual(TEXT("one per kind of operation"), AllTypes.Num(), 14);
+    // Phase, Remove Tiles, Add Tiles, Change Layout, Set Tile Locked and Set
+    // Chain Partner
+    TestEqual(TEXT("one per kind of operation"), AllTypes.Num(), 15);
     return true;
 }
 
@@ -4029,6 +4031,232 @@ bool FConnectItTileLockTest::RunTest(const FString& Parameters)
         const auto Triggered = PowersTriggered(Events);
         TestTrue(TEXT("powers: the power fired but couldn't take the locked tile's piece"),
             Triggered.Num() == 1 && Triggered[0]->bNoEffect == false && TileAt(Board, 1, 1).FactionPiece == 1);
+    }
+    return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FConnectItChainedTilesTest,
+    "ConnectIt.Board.ChainedTiles", TestFlags)
+
+bool FConnectItChainedTilesTest::RunTest(const FString& Parameters)
+{
+    // Tile lock plan, Stage 2: a Chained tile (a Sync power) is locked exactly
+    // while its partner has no piece; the partner is a per-tile link (tile id)
+    FConnectItRuleSet Rules;
+    Rules.SetTilePowers({ MakeTestPower(ConnectIt_TilePower_Chained, EConnectItPowerTrigger::Sync, FConnectItTilePowerEffect_Chained()) }, {});
+
+    // A 5x5 board with tile ids; Chained tiles at Chains, all naming the partner at (0,0)
+    const auto MakeChainBoard = [](std::initializer_list<FGridPosition> Chains)
+    {
+        FConnectItBoardState Board = MakeBoard(5);
+        for (int32 Index = 0; Index < Board.NumTiles(); Index++)
+        {
+            Board.TileDataArray[Index].TileId = Index;
+        }
+        Board.NextTileId = Board.NumTiles();
+        for (const FGridPosition& Chain : Chains)
+        {
+            Board.GetTileDataMutable(Chain)->TilePowerTag = ConnectIt_TilePower_Chained;
+            Board.LinkChainPartner(Chain, true, FGridPosition(0, 0));
+        }
+        return Board;
+    };
+    const auto Settle = [&Rules](FConnectItBoardState& Board)
+    {
+        FConnectItBoardChangeEvent Events;
+        Rules.ResolveBoardChange(Board, FConnectItBoardChanges(), &Events);
+        return Events;
+    };
+    const auto CarryOut = [&Rules](const FConnectItBoardOperation& Operation, FConnectItBoardState& Board)
+    {
+        FConnectItBoardChangeEvent Events;
+        if (Rules.CanCarryOut(Operation, Board)) Rules.CarryOutOperation(Operation, Board, &Events);
+        return Events;
+    };
+    const auto ReplaysTo = [](const FConnectItBoardState& Before, const FConnectItBoardChangeEvent& Events, const FConnectItBoardState& After)
+    {
+        FConnectItBoardState Replayed = Before;
+        FConnectItBoardEvent::ApplyAll(Events, Replayed);
+        return Replayed.HasSameTilesAndScores(After);
+    };
+    const FGridPosition C(4, 4);
+    using FPlace = FConnectItBoardOperation_PlacePiece;
+
+    // --- The seeded board settles: locked while the partner is empty ---
+    {
+        const FConnectItBoardState Built = MakeChainBoard({ C });
+        FConnectItBoardState Seeded = Built;
+        const FConnectItBoardChangeEvent Events = Settle(Seeded);
+        TestTrue(TEXT("seed: the chained tile starts locked"), TileAt(Seeded, 4, 4).bIsLocked);
+        TestTrue(TEXT("seed: Power Triggered, then Tile Lock Changed"), Events.Events.Num() == 2
+            && EventAt<FConnectItBoardEvent_PowerTriggered>(Events, 0) && EventAt<FConnectItBoardEvent_TileLockChanged>(Events, 1));
+        TestTrue(TEXT("seed: before + events = after"), ReplaysTo(Built, Events, Seeded));
+
+        FConnectItBoardState WithPiece = MakeChainBoard({ C });
+        Place(WithPiece, 0, 0, 0);
+        TestEqual(TEXT("seed: a partner with a piece -- unlocked, nothing to say"), Settle(WithPiece).Events.Num(), 0);
+        TestFalse(TEXT("seed: and it stays unlocked"), TileAt(WithPiece, 4, 4).bIsLocked);
+    }
+
+    // --- Place on the partner unlocks; emptying it destroys the piece, then locks ---
+    {
+        FConnectItBoardState Board = MakeChainBoard({ C });
+        Settle(Board);
+        TestFalse(TEXT("chain: can't place on the locked chained tile"), Rules.CanCarryOut(MakeAt<FPlace>(1, 4, 4), Board));
+
+        CarryOut(MakeAt<FPlace>(0, 0, 0), Board);
+        TestFalse(TEXT("chain: a piece on the partner unlocks it"), TileAt(Board, 4, 4).bIsLocked);
+        CarryOut(MakeAt<FPlace>(1, 4, 4), Board);
+        TestEqual(TEXT("chain: now it takes a piece"), TileAt(Board, 4, 4).FactionPiece, 1);
+
+        const FConnectItBoardState Before = Board;
+        const FConnectItBoardChangeEvent Events = CarryOut(MakeAt<FConnectItBoardOperation_RemovePiece>(1, 0, 0), Board);
+        TestTrue(TEXT("chain: the partner emptied -- the piece goes, then the lock"),
+            !Board.IsTileOccupied(C) && TileAt(Board, 4, 4).bIsLocked);
+        TestTrue(TEXT("chain: removed, power, removed, locked"), Events.Events.Num() == 4
+            && EventAt<FConnectItBoardEvent_PieceRemoved>(Events, 0) && EventAt<FConnectItBoardEvent_PowerTriggered>(Events, 1)
+            && EventAt<FConnectItBoardEvent_PieceRemoved>(Events, 2) && EventAt<FConnectItBoardEvent_TileLockChanged>(Events, 3));
+        TestTrue(TEXT("chain: before + events = after"), ReplaysTo(Before, Events, Board));
+    }
+
+    // --- Scoring clears the partner: the chain closes after scoring ---
+    {
+        FConnectItBoardState Board = MakeChainBoard({ C });
+        Place(Board, 0, 0, 0);
+        Place(Board, 1, 0, 0);
+        Place(Board, 2, 0, 0);
+        Place(Board, 4, 4, 1);
+        Settle(Board);
+        TestFalse(TEXT("scoring: unlocked to start"), TileAt(Board, 4, 4).bIsLocked);
+
+        CarryOut(MakeAt<FPlace>(0, 3, 0), Board);
+        TestTrue(TEXT("scoring: the partner was cleared by the line"), !Board.IsTileOccupied(FGridPosition(0, 0)));
+        TestTrue(TEXT("scoring: so the chained tile lost its piece and locked"),
+            !Board.IsTileOccupied(C) && TileAt(Board, 4, 4).bIsLocked);
+    }
+
+    // --- A capture on the partner changes nothing ---
+    {
+        FConnectItBoardState Board = MakeChainBoard({ C });
+        Place(Board, 0, 0, 1);
+        Settle(Board);
+        const FConnectItBoardChangeEvent Events = CarryOut(MakeAt<FConnectItBoardOperation_CapturePiece>(0, 0, 0), Board);
+        TestTrue(TEXT("capture: still unlocked, no power fired"),
+            !TileAt(Board, 4, 4).bIsLocked && PowersTriggered(Events).IsEmpty());
+    }
+
+    // --- No partner: stays locked ---
+    {
+        FConnectItBoardState Board = MakeChainBoard({ C });
+        Board.LinkChainPartner(C, false, FGridPosition());
+        Settle(Board);
+        CarryOut(MakeAt<FPlace>(0, 0, 0), Board);
+        TestTrue(TEXT("no partner: locked, whatever is placed"), TileAt(Board, 4, 4).bIsLocked);
+        FGridPosition Partner;
+        TestFalse(TEXT("no partner: Get Chain Partner says none"), UConnectIt_BoardStateLibrary::GetChainPartner(Board, C, Partner));
+    }
+
+    // --- Two chained tiles on one partner open and close together ---
+    {
+        FConnectItBoardState Board = MakeChainBoard({ C, FGridPosition(4, 2) });
+        Settle(Board);
+        const TArray<FGridPosition> Chained = UConnectIt_BoardStateLibrary::GetChainedTilesFor(Board, FGridPosition(0, 0));
+        TestTrue(TEXT("two: the partner knows both"), Chained.Num() == 2 && Chained.Contains(C) && Chained.Contains(FGridPosition(4, 2)));
+
+        CarryOut(MakeAt<FPlace>(0, 0, 0), Board);
+        TestTrue(TEXT("two: both open"), !TileAt(Board, 4, 4).bIsLocked && !TileAt(Board, 4, 2).bIsLocked);
+        CarryOut(MakeAt<FConnectItBoardOperation_RemovePiece>(1, 0, 0), Board);
+        TestTrue(TEXT("two: both close"), TileAt(Board, 4, 4).bIsLocked && TileAt(Board, 4, 2).bIsLocked);
+    }
+
+    // --- Set Chain Partner, mid-match ---
+    {
+        FConnectItBoardState Board = MakeChainBoard({ C });
+        Board.LinkChainPartner(C, false, FGridPosition());
+        Place(Board, 2, 2, 0);
+        Settle(Board);
+
+        FConnectItBoardOperation_SetChainPartner Link;
+        Link.Position = C;
+        Link.PartnerPosition = FGridPosition(2, 2);
+        TestTrue(TEXT("set partner: allowed on the locked chained tile"), Rules.CanCarryOut(Link, Board));
+        const FConnectItBoardState Before = Board;
+        const FConnectItBoardChangeEvent Events = CarryOut(Link, Board);
+        TestFalse(TEXT("set partner: linked to a tile with a piece -- open in the same change"), TileAt(Board, 4, 4).bIsLocked);
+        const auto* Changed = EventAt<FConnectItBoardEvent_ChainPartnerChanged>(Events, 0);
+        TestTrue(TEXT("set partner: Chain Partner Changed first"), Changed && Changed->bHasPartner && Changed->PartnerPosition == FGridPosition(2, 2));
+        TestTrue(TEXT("set partner: before + events = after"), ReplaysTo(Before, Events, Board));
+
+        Link.bHasPartner = false;
+        CarryOut(Link, Board);
+        TestTrue(TEXT("set partner: unlinked -- locked again"), TileAt(Board, 4, 4).bIsLocked);
+
+        FConnectItBoardOperation_SetChainPartner NotChained;
+        NotChained.Position = FGridPosition(1, 1);
+        NotChained.PartnerPosition = FGridPosition(2, 2);
+        TestFalse(TEXT("set partner: refused on a tile that isn't Chained"), Rules.CanCarryOut(NotChained, Board));
+    }
+
+    // --- A shift keeps the link; removing the partner's tile unlinks ---
+    {
+        FConnectItBoardState Board = MakeChainBoard({ C });
+        Place(Board, 0, 0, 0);
+        Settle(Board);
+        FConnectItBoardOperation_Shift Shift;
+        Shift.Faction = 0;
+        Shift.Direction = EGridDirection::Right;
+        for (int32 X = 0; X < 5; X++)
+        {
+            Shift.Positions.Add(FGridPosition(X, 0));
+        }
+        CarryOut(Shift, Board);
+        FGridPosition Partner;
+        TestTrue(TEXT("shift: the partner moved and is still the partner"),
+            UConnectIt_BoardStateLibrary::GetChainPartner(Board, C, Partner) && Partner == FGridPosition(1, 0));
+        TestFalse(TEXT("shift: still open"), TileAt(Board, 4, 4).bIsLocked);
+
+        FConnectItBoardOperation_RemoveTiles Remove;
+        Remove.Positions = { FGridPosition(1, 0) };
+        CarryOut(Remove, Board);
+        TestTrue(TEXT("remove tiles: the partner is gone -- unpartnered and locked"),
+            !UConnectIt_BoardStateLibrary::GetChainPartner(Board, C, Partner) && TileAt(Board, 4, 4).bIsLocked);
+    }
+
+    // --- Add Tiles links a cell's partner (one added alongside), replayed the same ---
+    {
+        FConnectItBoardState Board = MakeChainBoard({});
+        FConnectItBoardOperation_AddTiles Add;
+        Add.Faction = INDEX_NONE;
+        FConnectItBoardLayoutCell& Chain = Add.Cells.AddDefaulted_GetRef();
+        Chain.Position = FGridPosition(5, 0);
+        Chain.TileData.TilePowerTag = ConnectIt_TilePower_Chained;
+        Chain.TileData.bHasChainPartner = true;
+        Chain.TileData.ChainPartner = FGridPosition(5, 1);
+        FConnectItBoardLayoutCell& Partner = Add.Cells.AddDefaulted_GetRef();
+        Partner.Position = FGridPosition(5, 1);
+
+        const FConnectItBoardState Before = Board;
+        const FConnectItBoardChangeEvent Events = CarryOut(Add, Board);
+        TestEqual(TEXT("add tiles: the partner's id"), TileAt(Board, 5, 0).ChainPartnerId, TileAt(Board, 5, 1).TileId);
+        TestTrue(TEXT("add tiles: the empty partner locks it in the same change"), TileAt(Board, 5, 0).bIsLocked);
+        TestTrue(TEXT("add tiles: before + events = after"), ReplaysTo(Before, Events, Board));
+    }
+
+    // --- Simulate Operation and the AI see the same ---
+    {
+        FConnectItBoardState Board = MakeChainBoard({ C });
+        Settle(Board);
+        FConnectItBoardState Simulated;
+        float Points = 0.f;
+        int32 NumScored = 0;
+        FConnectItBoardChangeEvent Events;
+        UConnectIt_BoardStateLibrary::SimulateOperation(Board, Rules, FInstancedStruct::Make(MakeAt<FPlace>(0, 0, 0)), 0, -1,
+            Simulated, Points, NumScored, Events);
+        TestFalse(TEXT("simulate: the chain opens"), TileAt(Simulated, 4, 4).bIsLocked);
+
+        const FConnectItMinMaxRules MinMax(Board, Rules, DefaultEvaluationWeights(), DefaultOrderingWeights(), PlaceOnly(), PlaceOnly());
+        const auto Child = MinMax.ApplyMove(MinMax.MakeRoot(Board, 0), PlaceMove(0, 0, 0));
+        TestFalse(TEXT("ai: its search opens the chain too"), TileAt(Child.Board, 4, 4).bIsLocked);
     }
     return true;
 }

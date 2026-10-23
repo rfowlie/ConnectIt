@@ -34,7 +34,15 @@ public:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Builder Tile")
     FGameplayTag VisualVariant;
 
-    virtual FConnectItTileInitialData GetInitialTileData_Implementation() const override { return TileData; }
+    // A Chained tile's partner (its tag ConnectIt.TilePower.Chained): click
+    // the partner builder tile. Empty = no partner (or the settings' own
+    // partner position, as a loaded layout left it). Fills the settings'
+    // partner when the board is built.
+    UPROPERTY(EditInstanceOnly, BlueprintReadWrite, Category = "Builder Tile|Chain")
+    TObjectPtr<AConnectIt_BuilderTile> ChainPartnerTile;
+
+    // TileData, with the Chain Partner Tile picker's grid position as its partner
+    virtual FConnectItTileInitialData GetInitialTileData_Implementation() const override;
     virtual void ApplyLayoutCell_Implementation(const FConnectItTileInitialData& Data, FGameplayTag InVisualVariant) override;
 
 #if WITH_EDITOR

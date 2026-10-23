@@ -11,6 +11,7 @@ class UGridPieceRegistryBase;
 class UGridTileRegistryBase;
 class AGridTileBase;
 class UConnectIt_TileCatalog;
+struct FConnectItRuleSet;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnConnectItDisplayBoardChanged);
 
@@ -52,12 +53,17 @@ public:
     // InTargetScore stamps FConnectItBoardState::TargetScore up front (see
     // its own comment) -- CheckWinCondition only runs after a placement, so
     // without this the pre-first-move board would read TargetScore == 0.
+    // Rules (the match's): the seeded board is settled once under them -- its
+    // Sync tile powers run (e.g. a Chained tile locks while its partner is
+    // empty) -- so it starts in the state they keep. The settle's events
+    // follow Board Seeded, played from the board as built.
     void InitialiseBoardState(
         UGridTileRegistryBase* TileRegistry,
         UGridPieceRegistryBase* PieceRegistry,
         int32 NumFactions,
         float InitialMultiplier = 1.0f,
-        float InTargetScore = 0.f);
+        float InTargetScore = 0.f,
+        const FConnectItRuleSet* Rules = nullptr);
 
     // The board tile a tile actor starts as (its id is the board's to give):
     // the designer's values -- power tag included -- if it implements

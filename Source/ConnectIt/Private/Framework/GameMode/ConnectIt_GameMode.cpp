@@ -925,7 +925,7 @@ void AConnectIt_GameMode::InitialiseBoard()
     // so this stops being an actively misleading "always null" call.
     BoardState->InitialiseBoardState(
         TileRegistry, UConnectIt_GameUtilityLibrary::GetPieceRegistry(this), NumFactions,
-        /*InitialMultiplier=*/1.0f, InitialTargetScore);
+        /*InitialMultiplier=*/1.0f, InitialTargetScore, &Rules);
 
     UE_LOG(LogTemp, Log,
         TEXT("ConnectIt_GameMode: Board initialised — %d factions"),

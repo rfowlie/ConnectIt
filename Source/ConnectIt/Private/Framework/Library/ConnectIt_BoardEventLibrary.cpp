@@ -89,6 +89,12 @@ bool UConnectIt_BoardEventLibrary::GetActiveTileLockChangedEvent(
     return TryGetActiveBoardEvent(WorldContextObject, OutEvent, TEXT("GetActiveTileLockChangedEvent"));
 }
 
+bool UConnectIt_BoardEventLibrary::GetActiveChainPartnerChangedEvent(
+    const UObject* WorldContextObject, FConnectItBoardEvent_ChainPartnerChanged& OutEvent)
+{
+    return TryGetActiveBoardEvent(WorldContextObject, OutEvent, TEXT("GetActiveChainPartnerChangedEvent"));
+}
+
 bool UConnectIt_BoardEventLibrary::GetActivePowerTriggeredEvent(
     const UObject* WorldContextObject, FConnectItBoardEvent_PowerTriggered& OutEvent)
 {

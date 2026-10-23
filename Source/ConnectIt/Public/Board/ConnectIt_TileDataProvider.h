@@ -43,6 +43,16 @@ struct CONNECTIT_API FConnectItTileInitialData
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Tile", meta = (Categories = "ConnectIt.TilePower"))
     FGameplayTag TilePowerTag;
 
+    // A Chained tile's partner (ConnectIt.TilePower.Chained), by grid
+    // position: resolved to the partner's tile id when the tile joins the
+    // board. A builder tile sets these from its Chain Partner Tile picker; a
+    // layout cell carries them as captured. Ignored on other tiles.
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Tile|Chain")
+    bool bHasChainPartner = false;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Tile|Chain", meta = (EditCondition = "bHasChainPartner"))
+    FGridPosition ChainPartner;
+
     // Whether StartingFactionPiece is a piece a board with NumFactions can hold
     bool HasStartingPiece(int32 NumFactions) const
     {

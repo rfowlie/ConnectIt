@@ -10,6 +10,7 @@
 #include "Board/ConnectIt_TileDataProvider.h"
 #include "Board/ConnectIt_TileRegistry.h"
 #include "Board/Powers/ConnectIt_TileCatalog.h"
+#include "Board/Rules/ConnectIt_RuleSet.h"
 #include "Tile/GridTileBase.h"
 #include "Tile/GridTileRegistryBase.h"
 
@@ -62,7 +63,7 @@ FConnectItTileData UConnectIt_BoardStateComponent::MakeTileData(
 void UConnectIt_BoardStateComponent::InitialiseBoardState(
     UGridTileRegistryBase* TileRegistry,
     UGridPieceRegistryBase* PieceRegistry,
-    int32 NumFactions, float InitialMultiplier, float InTargetScore)
+    int32 NumFactions, float InitialMultiplier, float InTargetScore, const FConnectItRuleSet* Rules)
 {
     check(UCodingUtilsLibrary::IsAuthoritativeComponent(this));
     check(NumFactions > 0);
@@ -77,13 +78,23 @@ void UConnectIt_BoardStateComponent::InitialiseBoardState(
 
     const UConnectIt_TileCatalog* Catalog = UConnectIt_TileCatalog::FindFor(this);
     int32 PoweredTiles = 0;
+
+    // Chain partners by position, linked once every tile has its id
+    TArray<TPair<FGridPosition, FGridPosition>> ChainLinks;
+
     for (AGridTileBase* Tile : TileRegistry->GetAllTiles())
     {
         const FConnectItTileData TileData = MakeTileData(Tile, NumFactions, InitialMultiplier, Catalog);
+        const FGridPosition Position = TileRegistry->GetPositionOfTile(Tile);
 
         if (IsValid(Tile) && Tile->Implements<UConnectIt_TileDataProvider>())
         {
             TilesWithDesignerData++;
+            const FConnectItTileInitialData Designer = IConnectIt_TileDataProvider::Execute_GetInitialTileData(Tile);
+            if (Designer.bHasChainPartner)
+            {
+                ChainLinks.Emplace(Position, Designer.ChainPartner);
+            }
         }
         if (StartingPiecesPerFaction.IsValidIndex(TileData.FactionPiece))
         {
@@ -95,7 +106,18 @@ void UConnectIt_BoardStateComponent::InitialiseBoardState(
             PoweredTiles++;
         }
 
-        InitialState.AddTile(TileRegistry->GetPositionOfTile(Tile), TileData);
+        InitialState.AddTile(Position, TileData);
+    }
+
+    for (const TPair<FGridPosition, FGridPosition>& Link : ChainLinks)
+    {
+        if (!InitialState.LinkChainPartner(Link.Key, true, Link.Value))
+        {
+            UE_LOG(LogTemp, Warning,
+                TEXT("ConnectIt_BoardStateComponent: tile (%d,%d) names chain partner (%d,%d), which isn't a tile -- "
+                     "it starts with no partner"),
+                Link.Key.X, Link.Key.Y, Link.Value.X, Link.Value.Y);
+        }
     }
 
     FString PerFactionSummary;
@@ -119,9 +141,24 @@ void UConnectIt_BoardStateComponent::InitialiseBoardState(
     InitialState.StartingPieces   = StartingPiecesPerFaction;
     InitialState.GroupsCompleted.Init(0, NumFactions);
 
-    // Apply without capturing snapshot -- no previous state yet
+    // Mark this snapshot as the seed so visuals for any starting pieces get
+    // created. It replicates with the snapshot, so clients see the same events
+    // and enqueue them from OnRep_BoardSnapshot. BroadcastChange() stays off:
+    // only the game-event tags are needed.
+    FConnectItBoardChangeEvent SeedEvents;
+    SeedEvents.Add(FConnectItBoardEvent_BoardSeeded());
+
+    // The board as built is Previous; Current is it settled once under the
+    // rules (Sync powers set up what they keep true), its events after the seed
+    FConnectItBoardState Settled = InitialState;
+    if (Rules)
+    {
+        Rules->ResolveBoardChange(Settled, FConnectItBoardChanges(), &SeedEvents);
+    }
+
     BoardSnapshot.PreviousState = InitialState;
-    BoardSnapshot.CurrentState  = InitialState;
+    BoardSnapshot.CurrentState  = Settled;
+    BoardSnapshot.ChangeEvent   = MoveTemp(SeedEvents);
 
     DisplayBoard = InitialState;
     bDisplayBoardStarted = true;
@@ -133,13 +170,6 @@ void UConnectIt_BoardStateComponent::InitialiseBoardState(
         ConnectItTiles->SwapBuilderTiles();
     }
 
-    // Mark this initial snapshot as the seed so visuals for any starting
-    // pieces get created. It replicates with the snapshot, so clients see the
-    // same flag and enqueue the same tag from OnRep_BoardSnapshot.
-    // BroadcastChange() stays off: nothing changed relative to a previous
-    // state, only the game-event tag is needed.
-    BoardSnapshot.ChangeEvent = FConnectItBoardChangeEvent();
-    BoardSnapshot.ChangeEvent.Add(FConnectItBoardEvent_BoardSeeded());
     EnqueueBoardEventTags();
 }
 

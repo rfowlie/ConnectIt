@@ -410,3 +410,35 @@ struct CONNECTIT_API FConnectItBoardOperation_SetTileLocked : public FConnectItB
     virtual FString Describe() const override;
     virtual bool CanOperateOnLockedTiles() const override { return true; }
 };
+
+// Set or clear a Chained tile's partner (FConnectItTileData::ChainPartnerId).
+// Refused if the tile isn't Chained (ConnectIt.TilePower.Chained) or the
+// partner isn't another tile. Works on locked tiles (it's the chain's own
+// setup). Scores nothing; the chain follows the new partner in the same
+// change's settle. For the Level director, e.g. after Change Layout brings
+// the partners in.
+USTRUCT(BlueprintType, meta = (DisplayName = "Set Chain Partner"))
+struct CONNECTIT_API FConnectItBoardOperation_SetChainPartner : public FConnectItBoardOperation
+{
+    GENERATED_BODY()
+
+    // The Chained tile
+    UPROPERTY(BlueprintReadWrite, Category = "Operation")
+    FGridPosition Position;
+
+    // False: unlink it (no partner)
+    UPROPERTY(BlueprintReadWrite, Category = "Operation")
+    bool bHasPartner = true;
+
+    UPROPERTY(BlueprintReadWrite, Category = "Operation")
+    FGridPosition PartnerPosition;
+
+    virtual FGameplayTag GetRequestType() const override;
+    virtual bool CanApply(const FConnectItBoardState& Board, FString* OutWhyNot = nullptr) const override;
+    virtual void Apply(
+        FConnectItBoardState& Board,
+        FConnectItBoardChanges& OutChanges,
+        FConnectItBoardChangeEvent* OutEvents) const override;
+    virtual FString Describe() const override;
+    virtual bool CanOperateOnLockedTiles() const override { return true; }
+};

@@ -75,6 +75,21 @@ public:
         meta = (DisplayName = "Get Placement Blocker (Board State)"))
     static EConnectItPlacementBlocker GetPlacementBlocker(const FConnectItBoardState& State, FGridPosition Position);
 
+    // --- Chained tiles ---
+
+    // The Chained tiles whose partner is the tile at Position -- e.g. to give
+    // a partner its look when the board is seeded, tiles are added, or Chain
+    // Partner Changed plays. Empty if none.
+    UFUNCTION(BlueprintPure, Category = "ConnectIt|Board State",
+        meta = (DisplayName = "Get Chained Tiles For (Board State)"))
+    static TArray<FGridPosition> GetChainedTilesFor(const FConnectItBoardState& State, FGridPosition Position);
+
+    // The Chained tile at Position's partner, if it has one still on the
+    // board (false: no partner -- e.g. for its "no partner" icon)
+    UFUNCTION(BlueprintPure, Category = "ConnectIt|Board State",
+        meta = (DisplayName = "Get Chain Partner (Board State)"))
+    static bool GetChainPartner(const FConnectItBoardState& State, FGridPosition Position, FGridPosition& OutPartner);
+
     // -1 when the position is empty or isn't on this board
     UFUNCTION(BlueprintPure, Category = "ConnectIt|Board State")
     static int32 GetTileFaction(const FConnectItBoardState& State, FGridPosition Position);

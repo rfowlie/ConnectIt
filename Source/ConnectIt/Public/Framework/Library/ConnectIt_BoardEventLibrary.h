@@ -102,6 +102,11 @@ public:
         meta = (WorldContext = "WorldContextObject", ExpandBoolAsExecs = "ReturnValue"))
     static bool GetActiveTileLockChangedEvent(const UObject* WorldContextObject, FConnectItBoardEvent_TileLockChanged& OutEvent);
 
+    // For listeners of ConnectIt.Event.ChainPartnerChanged
+    UFUNCTION(BlueprintCallable, Category = "ConnectIt|Board Events",
+        meta = (WorldContext = "WorldContextObject", ExpandBoolAsExecs = "ReturnValue"))
+    static bool GetActiveChainPartnerChangedEvent(const UObject* WorldContextObject, FConnectItBoardEvent_ChainPartnerChanged& OutEvent);
+
     // For listeners of ConnectIt.Event.PowerTriggered
     UFUNCTION(BlueprintCallable, Category = "ConnectIt|Board Events",
         meta = (WorldContext = "WorldContextObject", ExpandBoolAsExecs = "ReturnValue"))

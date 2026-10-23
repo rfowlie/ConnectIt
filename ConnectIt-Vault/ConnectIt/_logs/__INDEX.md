@@ -6,6 +6,8 @@ Vault-wide passes go in `_core/_logs/`.
 
 Newest first:
 
+- [2026-10-23-0015](2026-10-23-0015.md) — session — tile lock plan, Stage 2: chained tiles (Sync effect, partner link by
+  tile id, seed pass, Set Chain Partner, Blueprint queries, validation). 58/58 tests; Throughput unmeasured (CPU capped).
 - [2026-10-22-2350](2026-10-22-2350.md) — session — tile lock plan, Stage 1: the lock (`bIsLocked`, per-operation
   rule, `CanCarryOut`, Set Tile Locked / Tile Lock Changed, Get Placement Blocker, AI). 57/57 tests.
 - [2026-10-22-2310](2026-10-22-2310.md) — session — the tile catalog moves to World Settings (project settings kept for

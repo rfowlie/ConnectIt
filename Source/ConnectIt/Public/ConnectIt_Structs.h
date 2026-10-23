@@ -73,6 +73,14 @@ struct FConnectItTileData
     UPROPERTY(BlueprintReadOnly)
     int32 PowerReadyTurn = 0;
 
+    // A Chained tile's partner: the partner tile's TileId, or INDEX_NONE for
+    // none. A per-tile link, set when the tile joins the board (from its
+    // settings' partner position) or by Set Chain Partner; it travels with
+    // the tile. An id no tile has any more (the partner was removed) reads as
+    // none. Meaningless on a tile that isn't Chained.
+    UPROPERTY(BlueprintReadOnly)
+    int32 ChainPartnerId = INDEX_NONE;
+
     void SetFactionPiece(const int32 InFactionPiece)
     {
         FactionPiece = InFactionPiece;
@@ -218,6 +226,27 @@ struct FConnectItBoardState
         }
     }
 
+    // The index (into TilePositions / TileDataArray) of the tile with this
+    // id, or INDEX_NONE
+    int32 FindTileIndexById(int32 TileId) const
+    {
+        if (TileId == INDEX_NONE) return INDEX_NONE;
+        return TileDataArray.IndexOfByPredicate([TileId](const FConnectItTileData& Tile) { return Tile.TileId == TileId; });
+    }
+
+    // Links the tile at Position to the tile at PartnerPosition as its chain
+    // partner (bHasPartner false: unlinks). False, and the tile unlinked, if
+    // PartnerPosition isn't a tile with an id.
+    bool LinkChainPartner(const FGridPosition& Position, bool bHasPartner, const FGridPosition& PartnerPosition)
+    {
+        FConnectItTileData* Tile = GetTileDataMutable(Position);
+        if (!Tile) return false;
+
+        const FConnectItTileData* Partner = bHasPartner ? GetTileData(PartnerPosition) : nullptr;
+        Tile->ChainPartnerId = Partner ? Partner->TileId : INDEX_NONE;
+        return !bHasPartner || (Partner && Partner->TileId != INDEX_NONE);
+    }
+
     // A new tile joins the board at Position: Data, given the board's next
     // tile id. Returns the id.
     int32 AddTile(const FGridPosition& Position, FConnectItTileData Data)
@@ -303,7 +332,8 @@ struct FConnectItBoardState
                 || Ours.bIsLocked != Theirs->bIsLocked
                 || Ours.TileId != Theirs->TileId
                 || Ours.TilePowerTag != Theirs->TilePowerTag
-                || Ours.PowerReadyTurn != Theirs->PowerReadyTurn)
+                || Ours.PowerReadyTurn != Theirs->PowerReadyTurn
+                || Ours.ChainPartnerId != Theirs->ChainPartnerId)
             {
                 return false;
             }

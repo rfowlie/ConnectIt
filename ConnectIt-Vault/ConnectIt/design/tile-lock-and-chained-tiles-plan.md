@@ -172,6 +172,50 @@ catalog and builder tiles.*
   - the seeded board settles: locked, or unlocked when the partner starts with a piece;
   - before + events = after;
   - Simulate Operation and the AI see the same.
+- *As built (2026-10-23; 58/58 tests; Throughput not measured -- the CPU was capped at 30% of its maximum frequency
+  throughout, ~68k nodes/s; no search hot-path code changed, one int32 per tile):*
+  - **The power:** `FConnectItTilePowerEffect_Chained` (new `Public/Board/Powers/ConnectIt_TilePowerEffects.h`, for the
+    effects ConnectIt ships) and native tag `ConnectIt.TilePower.Chained`.
+    - The effect returns Set Tile Locked (false) when the partner has a piece, or Remove Piece (if occupied) then Set
+      Tile Locked (true) when it doesn't.
+    - Set Tile Locked refusing a no-op keeps it quiet when the board already agrees.
+  - **The link:**
+    - **Settings:** `bHasChainPartner` + `ChainPartner` on `FConnectItTileInitialData`.
+    - **Board:** `ChainPartnerId` on `FConnectItTileData` (compared, travels with shifts).
+    - **Helpers:** `FConnectItBoardState::LinkChainPartner` and `FindTileIndexById`.
+    - **Resolved:** in `InitialiseBoardState` once every tile has its id (unresolved: warning), and in Add Tiles after
+      all cells are added; Tiles Added's `ApplyTo` does the same.
+  - **Builder tile:**
+    - `Chain Partner Tile` picker (`EditInstanceOnly`); `GetInitialTileData` turns it into the partner's grid
+      position through the level config's grid definition.
+    - Load Layout Into Level sets the pickers back from the cells' partner positions.
+    - Validation: a partner on a non-Chained tile (warning: ignored), itself (error), a Chained partner (warning).
+  - **Seed pass:** `InitialiseBoardState` takes the match's rules (the GameMode passes them). Previous = the board as
+    built; Current = it after one `ResolveBoardChange` with an empty change. The settle's events follow Board Seeded
+    in the seed's list, and the display board starts from Previous.
+  - **Set Chain Partner** (`ConnectIt.Game.State.SetChainPartner`; the operation catalog is now 15):
+    - may act on locked tiles;
+    - refused if the tile isn't Chained or the partner isn't another tile;
+    - reports a Power tile change.
+    - Event **Chain Partner Changed** (`ConnectIt.Event.ChainPartnerChanged`, applies itself; Blueprint getter).
+  - **Blueprint:** `Get Chained Tiles For` and `Get Chain Partner` (not in the plan -- the "no partner" icon needs
+    it).
+  - **Layout validation:** a partner on a non-Chained cell, a partner position that isn't another cell of the layout
+    (it will have no partner), a Chained partner -- all warnings.
+  - **Not done:** the plan's "informational" message for a partner that isn't on the board is a warning instead, kept
+    simple; and "swapped away" isn't tested, since a swap always leaves both tiles occupied.
+  - **Tests:** new `ConnectIt.Board.ChainedTiles`:
+    - the seed pass, both ways;
+    - place on the partner opens it; emptying the partner destroys the piece then locks (event order checked);
+    - scoring clears the partner;
+    - a capture does nothing;
+    - no partner;
+    - two chained tiles on one partner;
+    - Set Chain Partner, linking, unlinking and refused;
+    - a shift keeps the link, removing the partner's tile unlinks;
+    - Add Tiles with a partner added alongside;
+    - Simulate Operation and the AI's ApplyMove;
+    - replay checks throughout.
 
 ## Stage 3: visuals and the tutorial (owner, editor)
 

@@ -848,6 +848,15 @@ namespace
             OutEvent.Cells.Add(Cell);
             OutEvent.TileIds.Add(TileId);
         }
+
+        // Partners once every cell is a tile (a partner can be one added alongside)
+        for (const FConnectItBoardLayoutCell& Cell : OutEvent.Cells)
+        {
+            if (Cell.TileData.bHasChainPartner)
+            {
+                Board.LinkChainPartner(Cell.Position, true, Cell.TileData.ChainPartner);
+            }
+        }
     }
 
     FString PositionsText(TConstArrayView<FGridPosition> Positions)
@@ -1024,4 +1033,56 @@ void FConnectItBoardOperation_SetTileLocked::Apply(
 FString FConnectItBoardOperation_SetTileLocked::Describe() const
 {
     return FString::Printf(TEXT("%s %s"), *PositionText(Position), bLocked ? TEXT("locked") : TEXT("unlocked"));
+}
+
+// ---------------------------------------------------------------------------
+// Set Chain Partner
+// ---------------------------------------------------------------------------
+
+FGameplayTag FConnectItBoardOperation_SetChainPartner::GetRequestType() const
+{
+    return ConnectIt_Game_SetChainPartner;
+}
+
+bool FConnectItBoardOperation_SetChainPartner::CanApply(const FConnectItBoardState& Board, FString* OutWhyNot) const
+{
+    const FConnectItTileData* Tile = Board.GetTileData(Position);
+    if (!Tile || Tile->TilePowerTag != ConnectIt_TilePower_Chained)
+    {
+        SetWhyNot(OutWhyNot, FString::Printf(TEXT("%s is not a Chained tile"), *PositionText(Position)));
+        return false;
+    }
+    if (bHasPartner && (PartnerPosition == Position || !Board.GetTileData(PartnerPosition)))
+    {
+        SetWhyNot(OutWhyNot, FString::Printf(TEXT("partner %s is not another tile"), *PositionText(PartnerPosition)));
+        return false;
+    }
+    return true;
+}
+
+void FConnectItBoardOperation_SetChainPartner::Apply(
+    FConnectItBoardState& Board,
+    FConnectItBoardChanges& OutChanges,
+    FConnectItBoardChangeEvent* OutEvents) const
+{
+    Board.LinkChainPartner(Position, bHasPartner, PartnerPosition);
+    const FConnectItTileData* Tile = Board.GetTileData(Position);
+    OutChanges.AddTileChanged(Position, EConnectItTileChange::Power, Faction);
+
+    if (OutEvents)
+    {
+        FConnectItBoardEvent_ChainPartnerChanged Event;
+        Event.Position        = Position;
+        Event.bHasPartner     = bHasPartner;
+        Event.PartnerPosition = PartnerPosition;
+        Event.PartnerId       = Tile ? Tile->ChainPartnerId : INDEX_NONE;
+        OutEvents->Add(Event);
+    }
+}
+
+FString FConnectItBoardOperation_SetChainPartner::Describe() const
+{
+    return bHasPartner
+        ? FString::Printf(TEXT("%s -> %s"), *PositionText(Position), *PositionText(PartnerPosition))
+        : FString::Printf(TEXT("%s -> no partner"), *PositionText(Position));
 }

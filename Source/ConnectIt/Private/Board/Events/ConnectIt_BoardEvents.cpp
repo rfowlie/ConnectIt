@@ -79,6 +79,11 @@ FGameplayTag FConnectItBoardEvent_TileLockChanged::GetEventTag() const
     return ConnectIt_Event_TileLockChanged;
 }
 
+FGameplayTag FConnectItBoardEvent_ChainPartnerChanged::GetEventTag() const
+{
+    return ConnectIt_Event_ChainPartnerChanged;
+}
+
 FGameplayTag FConnectItBoardEvent_PowerTriggered::GetEventTag() const
 {
     return ConnectIt_Event_PowerTriggered;
@@ -235,6 +240,15 @@ void FConnectItBoardEvent_TilesAdded::ApplyTo(FConnectItBoardState& Board) const
             Board.StartingPieces[Cell.TileData.StartingFactionPiece]++;
         }
     }
+
+    // Partners once every cell is a tile (a partner can be one added alongside)
+    for (const FConnectItBoardLayoutCell& Cell : Cells)
+    {
+        if (Cell.TileData.bHasChainPartner)
+        {
+            Board.LinkChainPartner(Cell.Position, true, Cell.TileData.ChainPartner);
+        }
+    }
 }
 
 void FConnectItBoardEvent_PhaseChanged::ApplyTo(FConnectItBoardState& Board) const
@@ -274,6 +288,14 @@ void FConnectItBoardEvent_TileLockChanged::ApplyTo(FConnectItBoardState& Board) 
     if (FConnectItTileData* Tile = Board.GetTileDataMutable(Position))
     {
         Tile->bIsLocked = bLocked;
+    }
+}
+
+void FConnectItBoardEvent_ChainPartnerChanged::ApplyTo(FConnectItBoardState& Board) const
+{
+    if (FConnectItTileData* Tile = Board.GetTileDataMutable(Position))
+    {
+        Tile->ChainPartnerId = bHasPartner ? PartnerId : INDEX_NONE;
     }
 }
 
