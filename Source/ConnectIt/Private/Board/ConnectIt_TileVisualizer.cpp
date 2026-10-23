@@ -1,7 +1,7 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 #include "Board/ConnectIt_TileVisualizer.h"
-#include "Board/ConnectIt_TileBase.h"
+#include "Board/Actor/ConnectIt_TileBase.h"
 #include "Board/ConnectIt_TileReaction.h"
 #include "Board/ConnectIt_TileRegistry.h"
 #include "Board/ConnectIt_BoardStateComponent.h"

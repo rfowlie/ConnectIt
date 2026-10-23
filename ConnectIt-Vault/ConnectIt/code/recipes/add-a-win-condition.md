@@ -5,10 +5,10 @@ touches:
   - a UConnectIt_MatchConditionAsset per condition (Content Browser)
   - the Level director Blueprint (Player / AI Win and Lose Conditions, Triggers; Set Win / Lose Conditions mid-match)
   - (reacting) the directors' events
-  - (new condition type, C++) a struct deriving FConnectItMatchCondition, Source/ConnectIt/Public/Board/Rules/
+  - (new condition type, C++) a struct deriving FConnectItMatchCondition, in Source/ConnectIt/Public/Board/Rules/Conditions/ConnectIt_MatchConditions.h
   - (legal-move support, C++) FConnectItBoardOperation::HasAnyLegalInstance on an operation type
-reconciled: 2026-10-21
-commit: bbf8daf
+reconciled: 2026-10-23
+commit: 56d6946
 ---
 
 # Recipe: set up match conditions
@@ -69,8 +69,8 @@ directors stay reusable loadout and AI setup ([conditions on the Level director]
 
 ### A new kind of condition (C++)
 
-7. A `USTRUCT(BlueprintType, meta = (DisplayName = "..."))` deriving `FConnectItMatchCondition`, next to
-   `ConnectIt_ScoreThresholdCondition.h`. Override `IsMetFor(Context, Faction)` -- `Context` has the `Board` and the match's
+7. A `USTRUCT(BlueprintType, meta = (DisplayName = "..."))` deriving `FConnectItMatchCondition`, added to the family file
+   `Board/Rules/Conditions/ConnectIt_MatchConditions.h` with the others (Score Threshold, Piece Count...). Override `IsMetFor(Context, Faction)` -- `Context` has the `Board` and the match's
    `Rules` (e.g. `Rules.GetScoringRule()->GetMinPiecesToScore()`) -- `GetProgress(Context, Faction)` (0..1, feeds progress
    bars), only if score-based `GetTargetScore` / `SetTargetScore`, and optionally `GetValidationWarnings(Rules, Out)` (Rules
    is null when the asset is validated on its own).

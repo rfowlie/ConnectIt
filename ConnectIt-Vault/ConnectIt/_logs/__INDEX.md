@@ -6,6 +6,11 @@ Vault-wide passes go in `_core/_logs/`.
 
 Newest first:
 
+- [2026-10-23-0227](2026-10-23-0227.md) — session — broken includes fixed after the owner's moves to `Board/Actor/`
+  and `Board/Rules/Scoring/` (19 includes in 18 files). 62/62 tests.
+- [2026-10-23-0220](2026-10-23-0220.md) — session — file organisation: the four match condition headers merged into
+  `Rules/Conditions/ConnectIt_MatchConditions.h` with the base / group / asset; decision "family files for small types".
+  62/62 tests.
 - [2026-10-23-0205](2026-10-23-0205.md) — session — first tile powers, Stage 4: tile hooks on `AConnectIt_TileBase`,
   reaction handles, the tile visualizer (gated tasks per event tag). 62/62 tests; Throughput unchanged.
 - [2026-10-23-0155](2026-10-23-0155.md) — session — first tile powers, Stage 3: Turn Start trigger (a countdown),

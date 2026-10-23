@@ -90,14 +90,14 @@ struct FConnectItScoredTile
 
 struct FConnectItBoardChanges
 {
-    // A piece arrived on a tile: placed, swapped in. Scored; sets off Piece
+    // A piece arrived at a tile: placed, swapped in. Scored; sets off Piece
     // Enter powers.
     TArray<FConnectItPieceArrival, TInlineAllocator<4>> Entered;
 
     // A piece left a tile: removed, swapped out. Sets off Piece Exit powers.
     TArray<FConnectItPieceExit, TInlineAllocator<4>> Exited;
 
-    // A tile got a piece without one arriving on it: a shift (the tile and its
+    // A tile got a piece without one arriving at it: a shift (the tile and its
     // piece moved together), a tile added with its starting piece. Scored;
     // sets off nothing.
     TArray<FConnectItPieceArrival, TInlineAllocator<8>> Moved;

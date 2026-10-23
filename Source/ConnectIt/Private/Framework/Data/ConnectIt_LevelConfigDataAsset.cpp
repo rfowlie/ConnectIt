@@ -2,7 +2,7 @@
 
 #include "Framework/Data/ConnectIt_LevelConfigDataAsset.h"
 #include "Board/ConnectIt_TileRegistry.h"
-#include "Board/ConnectIt_PieceBase.h"
+#include "Board/Actor/ConnectIt_PieceBase.h"
 #include "Misc/DataValidation.h"
 #include "Registry/GridDefinition.h"
 

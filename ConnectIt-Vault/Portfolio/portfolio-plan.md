@@ -126,7 +126,7 @@ debug visualization, editor validator, tag-driven Enhanced Input binder.
 ## Critical files / sources
 - Case-study raw material: `ConnectIt-Vault/ConnectIt/_decisions/*.md`, `ConnectIt-Vault/ConnectIt/design/*.md`,
   `ConnectIt-Vault/ConnectIt/code/systems/*.md`
-- Code excerpt sources: `Source/ConnectIt/Private/Board/Rules/ConnectIt_LineScoringRule.cpp`,
+- Code excerpt sources: `Source/ConnectIt/Private/Board/Rules/Scoring/ConnectIt_LineScoringRule.cpp`,
   `Source/ConnectIt/Private/MinMax/ConnectIt_MinMaxTreeBuilder.cpp`, board mediator/state in
   `Plugins/UnrealGridMechanics/`, turn-end requirement nodes in `Plugins/UnrealTurnBasedMechanics/`
 - Must fix/remove before public: `ConnectIt-Vault/Development/**`, `FIXES.txt`, `steam_appid.txt.txt`

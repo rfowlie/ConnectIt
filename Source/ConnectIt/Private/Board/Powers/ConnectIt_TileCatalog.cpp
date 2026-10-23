@@ -3,7 +3,7 @@
 #include "Board/Powers/ConnectIt_TileCatalog.h"
 #include "Framework/Data/ConnectIt_ProjectSettings.h"
 #include "Framework/Data/ConnectIt_WorldSettings.h"
-#include "Board/ConnectIt_TileBase.h"
+#include "Board/Actor/ConnectIt_TileBase.h"
 #include "Engine/Engine.h"
 #include "Engine/World.h"
 

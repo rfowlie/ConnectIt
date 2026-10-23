@@ -3,13 +3,13 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "Board/Rules/ConnectIt_MatchCondition.h"
+#include "Board/Rules/Conditions/ConnectIt_MatchCondition.h"
 #include "AI/ConnectIt_AIStrategy.h"
 #include "AI/ConnectIt_AIDirector.h"
 #include "AI/ConnectIt_PlayerDirector.h"
 #include "AI/ConnectIt_LevelDirector.h"
 #include "AI/ConnectIt_AISelector.h"
-#include "Board/Rules/ConnectIt_MatchConditionAsset.h"
+#include "Board/Rules/Conditions/ConnectIt_MatchConditionAsset.h"
 #include "Board/Operations/ConnectIt_BoardOperations.h"
 #include "Board/Powers/ConnectIt_TilePower.h"
 #include "ConnectIt_MinMaxTestTerms.generated.h"

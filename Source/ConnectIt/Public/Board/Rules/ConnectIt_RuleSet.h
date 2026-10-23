@@ -4,9 +4,9 @@
 
 #include "CoreMinimal.h"
 #include "StructUtils/InstancedStruct.h"
-#include "Board/Rules/ConnectIt_ScoringRule.h"
-#include "Board/Rules/ConnectIt_MatchCondition.h"
-#include "Board/Rules/ConnectIt_MatchConditionGroup.h"
+#include "Board/Rules/Scoring/ConnectIt_ScoringRule.h"
+#include "Board/Rules/Conditions/ConnectIt_MatchCondition.h"
+#include "Board/Rules/Conditions/ConnectIt_MatchConditionGroup.h"
 #include "Board/Powers/ConnectIt_TilePower.h"
 #include "ConnectIt_RuleSet.generated.h"
 

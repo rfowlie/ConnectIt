@@ -7,7 +7,7 @@
 #include "Framework/Data/ConnectIt_LevelConfigDataAsset.h"
 #include "Framework/Data/ConnectIt_WorldSettings.h"
 #include "Board/ConnectIt_TileDataProvider.h"
-#include "Board/ConnectIt_BuilderTile.h"
+#include "Board/Actor/ConnectIt_BuilderTile.h"
 #include "Board/Powers/ConnectIt_TileCatalog.h"
 #include "Framework/Data/ConnectIt_ProjectSettings.h"
 #include "Registry/GridDefinition.h"

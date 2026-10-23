@@ -4,7 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "StructUtils/InstancedStruct.h"
-#include "Board/Rules/ConnectIt_MatchCondition.h"
+#include "Board/Rules/Conditions/ConnectIt_MatchCondition.h"
 #include "ConnectIt_MatchConditionGroup.generated.h"
 
 class UConnectIt_MatchConditionAsset;

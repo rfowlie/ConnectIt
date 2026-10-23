@@ -1,7 +1,7 @@
 ﻿// Fill out your copyright notice in the Description page of Project Settings.
 
 
-#include "Board/ConnectIt_PieceBase.h"
+#include "Board/Actor/ConnectIt_PieceBase.h"
 #include "Net/UnrealNetwork.h"
 
 

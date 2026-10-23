@@ -1,6 +1,6 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
-#include "Board/Rules/ConnectIt_MatchConditionAsset.h"
+#include "Board/Rules/Conditions/ConnectIt_MatchConditionAsset.h"
 #include "Misc/DataValidation.h"
 
 

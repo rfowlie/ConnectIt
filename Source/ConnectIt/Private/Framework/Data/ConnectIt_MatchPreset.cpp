@@ -5,7 +5,7 @@
 #include "AI/ConnectIt_AIDirector.h"
 #include "AI/ConnectIt_PlayerDirector.h"
 #include "AI/ConnectIt_LevelDirector.h"
-#include "Board/Rules/ConnectIt_MatchConditionAsset.h"
+#include "Board/Rules/Conditions/ConnectIt_MatchConditionAsset.h"
 #include "Misc/DataValidation.h"
 
 

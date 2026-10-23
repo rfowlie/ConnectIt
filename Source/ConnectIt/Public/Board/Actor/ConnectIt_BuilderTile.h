@@ -4,7 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "GameplayTagContainer.h"
-#include "Board/ConnectIt_TileBase.h"
+#include "Board/Actor/ConnectIt_TileBase.h"
 #include "Board/ConnectIt_TileDataProvider.h"
 #include "ConnectIt_BuilderTile.generated.h"
 

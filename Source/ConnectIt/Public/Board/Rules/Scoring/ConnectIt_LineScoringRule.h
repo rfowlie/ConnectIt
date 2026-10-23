@@ -3,7 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "Board/Rules/ConnectIt_ScoringRule.h"
+#include "Board/Rules/Scoring/ConnectIt_ScoringRule.h"
 #include "ConnectIt_LineScoringRule.generated.h"
 
 

@@ -8,7 +8,7 @@
 #include "Registry/GridDefinition.h"
 #include "Tile/GridTileBase.h"
 #include "Board/ConnectIt_TileDataProvider.h"
-#include "Board/ConnectIt_BuilderTile.h"
+#include "Board/Actor/ConnectIt_BuilderTile.h"
 #include "Board/Powers/ConnectIt_TileCatalog.h"
 #include "Engine/World.h"
 

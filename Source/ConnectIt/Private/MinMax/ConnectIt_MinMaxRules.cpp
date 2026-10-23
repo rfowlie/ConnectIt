@@ -1,7 +1,7 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 #include "MinMax/ConnectIt_MinMaxRules.h"
-#include "Board/Rules/ConnectIt_LineScoringRule.h"
+#include "Board/Rules/Scoring/ConnectIt_LineScoringRule.h"
 #include "ConnectIt_GameplayTags.h"
 
 

@@ -28,7 +28,7 @@
 #include "Board/Events/ConnectIt_BoardEvents.h"
 #include "Board/Operations/ConnectIt_BoardOperation.h"
 #include "Board/Operations/ConnectIt_BoardOperations.h"
-#include "Board/Rules/ConnectIt_MatchConditionAsset.h"
+#include "Board/Rules/Conditions/ConnectIt_MatchConditionAsset.h"
 #include "Framework/Data/ConnectIt_BoardLayout.h"
 #include "TimerManager.h"
 

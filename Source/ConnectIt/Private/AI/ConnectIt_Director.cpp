@@ -7,7 +7,7 @@
 #include "Algo/StableSort.h"
 #include "Engine/World.h"
 #include "Framework/GameMode/ConnectIt_GameMode.h"
-#include "Board/Rules/ConnectIt_MatchConditionAsset.h"
+#include "Board/Rules/Conditions/ConnectIt_MatchConditionAsset.h"
 #include "Board/Rules/ConnectIt_RuleSet.h"
 #include "Misc/DataValidation.h"
 

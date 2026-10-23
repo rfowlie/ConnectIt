@@ -8,7 +8,7 @@ spans:
   - Source/ConnectIt/Public/Board/Powers/ConnectIt_TilePower.h
   - Source/ConnectIt/Public/Board/Powers/ConnectIt_TileCatalog.h
   - Source/ConnectIt/Public/Board/ConnectIt_BoardChanges.h
-  - Source/ConnectIt/Private/Board/Rules/ConnectIt_LineScoringRule.cpp
+  - Source/ConnectIt/Private/Board/Rules/Scoring/ConnectIt_LineScoringRule.cpp
   - Source/ConnectIt/Public/Board/Events/ConnectIt_BoardEvents.h
   - Source/ConnectIt/Public/Board/ConnectIt_BoardStateComponent.h
 reconciled: 2026-10-23

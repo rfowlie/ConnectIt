@@ -5,7 +5,7 @@
 #include "CoreMinimal.h"
 #include "Engine/DataAsset.h"
 #include "StructUtils/InstancedStruct.h"
-#include "Board/Rules/ConnectIt_MatchCondition.h"
+#include "Board/Rules/Conditions/ConnectIt_MatchCondition.h"
 #include "ConnectIt_MatchConditionAsset.generated.h"
 
 

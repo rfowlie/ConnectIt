@@ -9,7 +9,7 @@
 #include "Framework/Data/ConnectIt_LevelConfigDataAsset.h"
 #include "Action/ActionLoadoutDataAsset.h"
 #include "Board/Rules/ConnectIt_RuleSet.h"
-#include "Board/ConnectIt_PieceBase.h"
+#include "Board/Actor/ConnectIt_PieceBase.h"
 #include "Framework/Subsystem/ConnectIt_BlackboardSubsystem.h"
 #include "Framework/Subsystem/ConnectIt_BoardRegistrySubsystem.h"
 #include "Framework/GameState/ConnectIt_GameState.h"

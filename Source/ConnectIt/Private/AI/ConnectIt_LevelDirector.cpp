@@ -1,7 +1,7 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 #include "AI/ConnectIt_LevelDirector.h"
-#include "Board/Rules/ConnectIt_MatchConditionAsset.h"
+#include "Board/Rules/Conditions/ConnectIt_MatchConditionAsset.h"
 #include "Board/Rules/ConnectIt_RuleSet.h"
 #include "Misc/DataValidation.h"
 #include "Board/Powers/ConnectIt_TileCatalog.h"
