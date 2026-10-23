@@ -1,7 +1,7 @@
 # Adventure hub: the node map, currencies and regions
 
-Design note (2026-10-23), the owner's look-and-feel ideas for Adventure mode. **Nothing decided beyond the owner's
-direction; nothing built.** Builds on [adventure-modules-and-progression](adventure-modules-and-progression.md) (level
+Design note (2026-10-23), the owner's look-and-feel ideas for Adventure mode. **Settled over five rounds the same day;
+nothing built.** Plan: [adventure-hub-plan](adventure-hub-plan.md) (**approved 2026-10-23**, not built). Builds on [adventure-modules-and-progression](adventure-modules-and-progression.md) (level
 types, the tutorial module, gating, the shard economy) and [adventure-mode](adventure-mode.md) (what a level can do).
 
 ## Owner's direction
@@ -154,8 +154,9 @@ intro region as the place the base skills are taught.
 - **Seals are earned at region capstones** (a biome's final / "boss" node -- usually **specific** seals for a known
   gate) **and from optional hard / puzzle levels** (closed-design challenges off the main path -- **general** seals).
   **Bonus goals** inside levels giving seals are a **wishlist** item (in `_tasks/active.md`, alongside secret links).
-- *Claude's lean, to confirm in the plan:* a skill's teaching level rewards at least that skill's first threshold of
-  shards, so finishing it gives the first numbered use without a detour.
+- **A teaching level doesn't grant a use by default** (owner; replaces Claude's lean). How many shards it gives is up
+  to the designer; the owner's default: **the first shard** (not enough for a permanent use), with the nearby levels
+  giving enough for the first use.
 
 ### Notes on round 3 (Claude)
 

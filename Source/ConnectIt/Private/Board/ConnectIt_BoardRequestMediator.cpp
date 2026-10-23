@@ -16,47 +16,11 @@
 #include "Framework/GameState/ConnectIt_GameState.h"
 #include "Framework/Library/ConnectIt_GameUtilityLibrary.h"
 #include "Framework/PlayerState/ConnectIt_PlayerState.h"
-#include "GameEvent/ConnectIt_PlacePieceGameEvent.h"
 
 
 void UConnectIt_BoardRequestMediator::Initialise(const FConnectItRuleSet* InRules)
 {
     Rules = InRules;
-}
-
-// UConnectIt_BoardStateComponent* UConnectIt_BoardRequestMediator::GetBoardState() const
-// {
-//     const AConnectIt_GameState* GS = GetWorld() ? GetWorld()->GetGameState<AConnectIt_GameState>() : nullptr;
-//     return IsValid(GS) ? GS->GetBoardStateComponent() : nullptr;
-// }
-
-void UConnectIt_BoardRequestMediator::CreateGameEventsFromBoardUpdate_Implementation()
-{
-    // UConnectIt_BoardStateComponent* BoardState = GetBoardState();
-    const UConnectIt_BoardStateComponent* BoardState = UConnectIt_GameUtilityLibrary::GetBoardStateComponent(this);
-    if (!IsValid(BoardState))
-    {
-        UE_LOG(LogTemp, Error, TEXT(
-            "UConnectIt_BoardRequestMediator::CreateGameEventsFromBoardUpdate — BoardStateComponent is null"));
-        return;
-    }
-
-    const FConnectItBoardChangeEvent& ChangeEvent = BoardState->GetChangeEvent();
-    if (ChangeEvent.FindFirst<FConnectItBoardEvent_PiecePlaced>())
-    {
-        // create place piece game event
-        // or initialize reusable game event and add to queue
-        TurnBasedGameEventQueue.Enqueue(GameEventPlacePiece);
-    }
-
-    ExecuteGameEvents();
-}
-
-void UConnectIt_BoardRequestMediator::ExecuteGameEvents()
-{
-    // TODO queue wait system to run each game event waiting for it's OnComplete To Fire
-    // this is an alternative to the GameEventSubsystem but this will allow us to more clearly
-    // group and sequence the visual effects we want from each game event
 }
 
 // --- Request Processing ---

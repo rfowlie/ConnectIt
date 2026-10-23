@@ -8,6 +8,7 @@ Newest first:
 
 | Date | Decision | Status |
 |---|---|---|
+| [2026-10-23-tile-visuals-use-per-event-hooks](2026-10-23-tile-visuals-use-per-event-hooks.md) | Tile Blueprints react through one hook per event kind (typed, reaction handle), not a generic HandleTilePower(tag); logic stays in C++ in the rules | Active |
 | [2026-10-23-the-first-tile-powers](2026-10-23-the-first-tile-powers.md) | The first powers: Move Piece and Adjust Multiplier operations; multiplier floor and ceiling per tile type (gate renamed `FireAtMultiplier`); trigger sets; a Turn Start countdown trigger committed as its own change at turn start; Push, Vacuum, Repel pick at random among moves the rules allow; tile hooks with reaction handles the visualizer waits on (no wrapper) | Active |
 | [2026-10-23-family-files-for-small-types](2026-10-23-family-files-for-small-types.md) | Small same-shaped struct families (operations, events, power effects, match conditions) live one family per file beside a separate base header; systems with real logic keep their own files; a family with several files gets a subfolder (`Board/Rules/Conditions/`) | Active |
 | [2026-10-23-chained-tiles-as-a-sync-power](2026-10-23-chained-tiles-as-a-sync-power.md) | A Chained tile is locked exactly while its partner has no piece: a Sync tile power (catalog entry), one-sided, linked by the partner's tile id; partner picked on the builder tile, Set Chain Partner mid-match; the seeded board is settled once so chains start right | Active |

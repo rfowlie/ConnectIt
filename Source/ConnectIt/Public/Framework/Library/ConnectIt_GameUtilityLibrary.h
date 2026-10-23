@@ -12,7 +12,6 @@ class AGridTileBase;
 class AConnectIt_GameState;
 class UConnectIt_BoardStateComponent;
 class UConnectIt_BoardManagerComponent;
-class UConnectIt_BlackboardSubsystem;
 class UTurnBasedParticipantManagerComponent;
 class UGridHoverSubsystem;
 class UGridTileRegistryBase;
@@ -54,10 +53,8 @@ public:
 
 
     // --- Game Board ---
-    // Read-only queries over the replicated board state
-    // Replaces UConnectIt_GameFacade for the networked game -- one
-    // static, stateless place for UI/AI to query the board instead of
-    // an object bound to the old non-networked state machine
+    // Read-only queries over the replicated board state -- one static,
+    // stateless place for UI/AI to query the board
 
     UFUNCTION(BlueprintPure, Category = "ConnectIt|Utility",
     meta = (WorldContext = "WorldContextObject"))
@@ -213,13 +210,6 @@ public:
         const UObject* WorldContextObject);
 
     // --- Subsystems ---
-
-    // Returns the ConnectIt blackboard subsystem
-    // Use this in shard actions instead of raw GetSubsystem call
-    UFUNCTION(BlueprintPure, Category = "ConnectIt|Utility",
-        meta = (WorldContext = "WorldContextObject"))
-    static UConnectIt_BlackboardSubsystem* GetBlackboardSubsystem(
-        const UObject* WorldContextObject);
 
     // Returns the grid hover subsystem
     UFUNCTION(BlueprintPure, Category = "ConnectIt|Utility",

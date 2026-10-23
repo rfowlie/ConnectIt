@@ -1,0 +1,25 @@
+{
+	"FileVersion": 3,
+	"Version": 1,
+	"VersionName": "1.0",
+	"FriendlyName": "UnrealUnsorted",
+	"Description": "Holding area for code migrated from other plugins or projects, waiting to be digested and moved to its real home. Nothing may depend on this plugin.",
+	"Category": "Other",
+	"CreatedBy": "Robert A Fowlie",
+	"CreatedByURL": "",
+	"DocsURL": "",
+	"MarketplaceURL": "",
+	"SupportURL": "",
+	"CanContainContent": false,
+	"IsBetaVersion": false,
+	"IsExperimentalVersion": true,
+	"Installed": false,
+	"EnabledByDefault": false,
+	"Modules": [
+		{
+			"Name": "UnrealUnsorted",
+			"Type": "Runtime",
+			"LoadingPhase": "Default"
+		}
+	]
+}

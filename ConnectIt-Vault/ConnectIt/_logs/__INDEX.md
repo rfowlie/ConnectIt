@@ -6,6 +6,13 @@ Vault-wide passes go in `_core/_logs/`.
 
 Newest first:
 
+- [2026-10-23-1339](2026-10-23-1339.md) — session — dead gameplay tag table line removed; the old main-menu path in
+  `CIL_OnlineMultiplayer` is the level's saved URL from a Save As, not a node.
+- [2026-10-23-1500](2026-10-23-1500.md) — session — BRAIN DUMP reviewed against the plans; empty UnrealUnsorted plugin + vault domain note; Level director turn kept as a question; per-event tile hooks recorded as a decision.
+
+- [2026-10-23-1320](2026-10-23-1320.md) — session — dead code pass: 46 files deleted (legacy MVVM, influence map +
+  `FactionTurn`, unused libraries / mediator / component / blackboard, old game events), Mediator's game-event queue,
+  a dead redirect. 62/62 tests; vault index and retired pages updated.
 - [2026-10-23-1303](2026-10-23-1303.md) — session — Known issues reviewed and rewritten; legacy MVVM and influence map
   marked deprecated; piece actors made local (no replication); dead code survey: Blueprint assets for the owner to
   delete, then the C++ list for the next pass.

@@ -41,8 +41,8 @@ registration, and the `IActorPoolInterface` activate/deactivate calls all live h
   (register/unregister — pooled inactive pieces are **not** hover-registered),
   [[UnrealGridMechanics/code/UGridTileRegistryComponent|UGridTileRegistryComponent]]
   (`ResolveTileRegistry`).
-- Reference callers: `UConnectIt_PlacePieceGameEvent`, `UConnectIt_ScoreGameEvent`
-  (game module) — **both currently stubbed pending rewiring**.
+- Reference callers: none in ConnectIt now (its old game events, `UConnectIt_PlacePieceGameEvent` /
+  `UConnectIt_ScoreGameEvent`, were deleted 2026-10-23; ConnectIt's piece registry is the subsystem's)
 
 ## Gotchas
 

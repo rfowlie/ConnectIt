@@ -8,8 +8,6 @@
 #include "UObject/Object.h"
 #include "ConnectIt_BoardRequestMediator.generated.h"
 
-class UConnectIt_PlacePieceGameEvent;
-class UTurnBasedGameEvent;
 struct FConnectItRuleSet;
 class UConnectIt_BoardStateComponent;
 
@@ -35,13 +33,8 @@ class UConnectIt_BoardStateComponent;
 //      resolves what follows (scoring, then win state), and the new board is
 //      committed with a change event describing what happened.
 // The AI's search runs the same operations and the same resolve step.
-//
-// NOTE/OneVerified: the tag-reactive interpreter pipeline that used to turn
-// board-change tags into piece spawn/despawn calls has been removed
-// project-wide. TurnBasedGameEventQueue/CreateGameEventsFromBoardUpdate/
-// ExecuteGameEvents below are its still-in-progress replacement, ported
-// verbatim from AConnectIt_BoardManager -- ExecuteGameEvents has no body
-// yet, so nothing is reactively driven from board-state changes today.
+// Visuals don't come from here: the committed change's board events play on
+// every machine through the board state component's event queue.
 UCLASS(Blueprintable, BlueprintType)
 class CONNECTIT_API UConnectIt_BoardRequestMediator : public UObject
 {
@@ -82,20 +75,6 @@ public:
     bool ProcessLevelOperation(const FInstancedStruct& Operation, int32 AsFaction);
 
 protected:
-
-    // --- Game Events ---
-    TQueue<UTurnBasedGameEvent*> TurnBasedGameEventQueue;
-
-    // read the board state and determine what events need to occur and in what order
-    UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "ConnectIt|Game Board")
-    void CreateGameEventsFromBoardUpdate();
-    void ExecuteGameEvents();
-
-    UPROPERTY(Instanced, EditDefaultsOnly, BlueprintReadOnly, Category = "ConnectIt|Game Board")
-    UTurnBasedGameEvent* GameEventTest = nullptr;
-
-    UPROPERTY(Instanced, EditDefaultsOnly, BlueprintReadOnly, Category = "ConnectIt|Game Board")
-    UConnectIt_PlacePieceGameEvent* GameEventPlacePiece = nullptr;
 
 private:
 

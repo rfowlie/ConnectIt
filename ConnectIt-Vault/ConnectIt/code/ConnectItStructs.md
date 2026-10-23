@@ -20,7 +20,7 @@ The game's board data model, in `ConnectIt_Structs.h`.
 
 ### `FConnectItBoardState` — the authoritative board
 
-Parallel arrays (`TMap` can't replicate): `TilePositions` + `TileDataArray`. Also `FactionTurn`, `ScoreBoard` (index =
+Parallel arrays (`TMap` can't replicate): `TilePositions` + `TileDataArray`. Also `ScoreBoard` (index =
 faction slot), `TurnNumber` (the turn the board is at, stamped by whoever resolves a change on it -- the Mediator,
 Simulate Operation's caller, the AI's search root, +1 per ply; tile power cooldowns count against it; was
 `LastModifiedTurn`, with a CoreRedirect), `RandomSeed` (the board's random stream: powers that roll advance it, so every
@@ -78,6 +78,8 @@ of change is a new board event struct, not a field here ([[add-a-board-request-t
 
 ## Changes
 
+- 2026-10-23 — `FConnectItBoardState::FactionTurn` removed (dead code pass): nothing set it, and the only reader was the
+  deleted influence map.
 - 2026-10-23 — tile powers and the tile lock: tile data gained `bIsLocked`, `TileId`, `TilePowerTag`, `PowerReadyTurn`,
   `ChainPartnerId`; board state gained `TurnNumber` (replaces `LastModifiedTurn`), `RandomSeed`, `NextTileId`,
   `LevelWideReadyTurns`, and `AddTile`, `FindTileIndexById`, `LinkChainPartner`, `HasSameTilesAndScores`. See

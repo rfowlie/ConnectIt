@@ -58,8 +58,7 @@ board changes and knows nothing about any particular kind: a request's payload *
 - The operation is copied before the faction is stamped: the client-sent one is never trusted or mutated.
 - Level-only operations (Change Goals, Begin Phase, Remove / Add Tiles, Change Layout) are in the operation catalog
   like any other; only the loadout gate keeps players from sending them (no action produces them).
-- `CreateGameEventsFromBoardUpdate` / `ExecuteGameEvents` are leftovers of a removed interpreter pipeline (no body);
-  visuals come from the board state component's event queue, not from here.
+- Visuals don't come from here: the committed change's events play through the board state component's event queue.
 
 ## Cross-impact
 
@@ -69,6 +68,8 @@ needs `ProducesRequestType` ([[add-a-board-request-type]]). A request field the 
 
 ## Changes
 
+- 2026-10-23 — the unfinished game-event queue removed (dead code pass): `TurnBasedGameEventQueue`,
+  `CreateGameEventsFromBoardUpdate`, `ExecuteGameEvents`, `GameEventTest`, `GameEventPlacePiece`.
 - 2026-10-23 — `DispatchRequest` checks `FConnectItRuleSet::CanCarryOut` instead of `CanApply` (the tile lock:
   [tile lock per-operation rule](../_decisions/2026-10-23-tile-lock-per-operation-rule.md)), and resolves the change at
   the active turn so tile power cooldowns count. (`process-code` sweep — commit `2f74abd`.)

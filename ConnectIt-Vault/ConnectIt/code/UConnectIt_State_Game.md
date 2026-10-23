@@ -10,7 +10,7 @@ reconciled: 2026-09-10
 commit: eddd631
 ---
 
-# UConnectIt_State_Game (retired legacy)
+# UConnectIt_State_Game (removed 2026-10-23)
 
 > **Dead code.** This is ConnectIt's original **non-networked** turn-flow state machine.
 > Nothing in the live pipeline (`Board/`, `Action/`, `Framework/Controller/`,
@@ -70,6 +70,7 @@ Removing this pipeline also removes: `UConnectIt_State_*` (5 classes),
 
 ## Changes
 
+- 2026-10-23 — **removed** from the code in the dead code pass, with the rest of the legacy MVVM pipeline. This page is kept as history (index status `retired`); it is no longer refreshed.
 - 2026-09-10 — reframed as **retired legacy / dead code** (was documented as the game's
   "local phase model"). `LegacyPipeline.md` from the in-repo docs proves the whole
   pipeline is unreferenced; captured the legacy→replacement mapping here and the

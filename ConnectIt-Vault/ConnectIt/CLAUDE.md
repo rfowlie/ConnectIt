@@ -9,10 +9,10 @@ logic — everything reusable lives in a plugin.
 ## Domain
 
 - **Source:** `../Source/ConnectIt/` — one game module (not a plugin). Sub-areas:
-  `Framework/` (Controller / Data / Game State Machine / GameMode / GameState / Interface
-  / PlayerState / Subsystem), `Board/` (+ `Board/Rules/`), `Action/`, `GameEvent/`,
-  `GameIntelligence/InfluenceMap/`, `Grid/`, `Library/`, `MinMax/`, `UI/`.
-- **Status:** active — the shipping target. Branch `0.3.3-Action-Config-Redesign`.
+  `Framework/` (Controller / Data / GameMode / GameState / Library / PlayerState /
+  Subsystem), `Board/` (Actor / Events / Operations / Powers / Rules), `AI/`, `Action/`,
+  `MinMax/`, `UI/`.
+- **Status:** active — the shipping target. Branch `0.4.0-Remove-Lecagy-ConnectIt`.
 - **Content:** `../Content/_ConnectIt/`, `../Content/_ConnectItNetworked/`.
 - **Config:** `../Config/` — `DefaultGameplayTags.ini` is the tag vocabulary the
   phase-barrier and turn systems key off.

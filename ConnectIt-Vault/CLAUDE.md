@@ -33,6 +33,7 @@ portfolio evidence), also unrelated to the game's code.
 | [UnrealCodingUtils](UnrealCodingUtils/CLAUDE.md) | Tiny dependency-free helper library — component-level authority checks. |
 | [UnrealAIMechanics](UnrealAIMechanics/CLAUDE.md) | Weighted-scoring "Utility AI" action picker. **Dormant** — not enabled, core selection method stubbed. |
 | [UnrealUIMechanics](UnrealUIMechanics/CLAUDE.md) | UI widgets plugin. **Stub** — empty module skeleton, not enabled. |
+| [UnrealUnsorted](UnrealUnsorted/CLAUDE.md) | Holding area for code migrated from other plugins/projects, waiting to be digested. **Empty on purpose; nothing may depend on it.** |
 | [UnrealSkinMechanics](UnrealSkinMechanics/CLAUDE.md) | Player-selectable skin system: tag categories, DataTable skin/preset catalogs, `UDeveloperSettings` entry point. **Slice 1** — scaffold + settings + data types; subsystem/save not built yet. |
 | [Development](Development/CLAUDE.md) | The owner's personal knowledge vault: the virtual advisory board, career/owner knowledge, and the game-projects group (its own nested `CLAUDE.md` tree, self-contained). |
 | [Portfolio](Portfolio/CLAUDE.md) | Career-presentation work: the plan and tasks for showcasing ConnectIt (case studies, footage, public showcase repo, write-ups, outreach) for the technical-artist → gameplay-programmer pivot. **Active** — plan approved 2026-09-30. |

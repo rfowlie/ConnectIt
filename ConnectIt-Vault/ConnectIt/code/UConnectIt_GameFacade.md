@@ -11,7 +11,7 @@ reconciled: 2026-09-10
 commit: eddd631
 ---
 
-# UConnectIt_GameFacade (+ UConnectIt_GameViewModel) — retired legacy
+# UConnectIt_GameFacade (+ UConnectIt_GameViewModel) (removed 2026-10-23)
 
 > **Dead code.** The read/write split for the retired, non-networked MVVM pipeline (see
 > [[UConnectIt_State_Game|UConnectIt_State_Game]]). Unreferenced by any live class.
@@ -60,6 +60,7 @@ for the full removal list.
 
 ## Changes
 
+- 2026-10-23 — **removed** from the code in the dead code pass, with the rest of the legacy MVVM pipeline. This page is kept as history (index status `retired`); it is no longer refreshed.
 - 2026-09-10 — reframed as **retired legacy / dead code** (was documented as a live
   "read / write split for game logic and UI"). Captured the legacy→replacement mapping
   and rationale in a decision note. Provenance re-anchored (`eddd631`).

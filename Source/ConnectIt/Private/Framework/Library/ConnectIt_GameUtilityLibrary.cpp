@@ -10,7 +10,6 @@
 #include "Action/ActionLoadoutDataAsset.h"
 #include "Board/Rules/ConnectIt_RuleSet.h"
 #include "Board/Actor/ConnectIt_PieceBase.h"
-#include "Framework/Subsystem/ConnectIt_BlackboardSubsystem.h"
 #include "Framework/Subsystem/ConnectIt_BoardRegistrySubsystem.h"
 #include "Framework/GameState/ConnectIt_GameState.h"
 #include "Board/ConnectIt_BoardStateComponent.h"
@@ -338,18 +337,6 @@ bool UConnectIt_GameUtilityLibrary::IsLocalPlayerTurn(
         return false;
 
     return Participants[PM->ActiveParticipantIndex].SlotIndex == LocalSlot;
-}
-
-UConnectIt_BlackboardSubsystem* UConnectIt_GameUtilityLibrary::GetBlackboardSubsystem(
-    const UObject* WorldContextObject)
-{
-    if (!IsValid(WorldContextObject)) return nullptr;
-
-    const UWorld* World = WorldContextObject->GetWorld();
-    if (!IsValid(World)) return nullptr;
-
-    UConnectIt_BlackboardSubsystem* Subsystem = World->GetSubsystem<UConnectIt_BlackboardSubsystem>();
-    return Subsystem;
 }
 
 UGridHoverSubsystem* UConnectIt_GameUtilityLibrary::GetGridSubsystem(

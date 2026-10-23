@@ -14,7 +14,7 @@ Per-flow narrative pages, each with a Mermaid diagram. Governed by [[_core/_sche
 | [[board-state-single-source-of-truth\|board-state-single-source-of-truth]] | One replicated snapshot (prev + current + change event) drives every visual system on server and client | current |
 | [[tile-power-chain\|tile-power-chain]] | What follows a board change: settle (Turn Start powers on a turn start, Sync, then Enter / Exit / Changed / Tile Changed powers until quiet) → score (find all lines, then apply) → Scoring powers → back to settle, until a pass finds no lines; firing one power (trigger set, gate, cooldown, once per action, effects as operations); the GameMode's Turn Start change; tile hooks waiting on reaction handles | current |
 | [[ai-turn\|ai-turn]] | How the AI opponent is assembled (AI director: loadout, strategies, selector) and takes a turn: waits for a settled board → coordinator → selector → Mediator gate → end turn | current |
-| [[game-state-machine\|game-state-machine]] | **Retired legacy** — the old non-networked per-turn phase machine; documented for contrast, not live | legacy |
+| [[game-state-machine\|game-state-machine]] | **Removed 2026-10-23** — the old non-networked per-turn phase machine; kept as history | retired |
 
 Candidate flows not yet written (`stub`): match start / board initialisation, game-over lockout, the (in-progress) game-event queue.
 

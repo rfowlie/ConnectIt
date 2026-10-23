@@ -11,7 +11,10 @@ reconciled: 2026-09-10
 commit: eddd631
 ---
 
-# Game state machine (retired legacy flow)
+# Game state machine (removed 2026-10-23)
+
+> **Removed** in the 2026-10-23 dead code pass, with the rest of the legacy MVVM pipeline and its Blueprints. Kept as
+> history; no longer refreshed.
 
 ## What happens
 
