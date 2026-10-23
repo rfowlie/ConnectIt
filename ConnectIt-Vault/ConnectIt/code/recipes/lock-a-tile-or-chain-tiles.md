@@ -7,7 +7,7 @@ touches:
   - the Level director (Set Tile Locked, Set Chain Partner)
   - Source/ConnectIt/Public/Board/Operations/ConnectIt_BoardOperation.h (CanOperateOnLockedTiles, GetTargetPositions)
 reconciled: 2026-10-23
-commit: 2226fcf
+commit: 54c1284
 ---
 
 # Recipe: lock a tile, or chain tiles
@@ -43,8 +43,9 @@ Decisions: [the tile lock](../../_decisions/2026-10-23-tile-lock-per-operation-r
    - **Mid-match:** **Set Chain Partner** (Position, Has Partner, Partner Position) links or unlinks. A phase can bring
      the partners in with Change Layout, then link them.
 4. **Visuals** (the tile class Blueprints):
-   - **Locked look:** the tile's `bIsLocked` (display board), and **Tile Lock Changed** (`Get Active Tile Lock Changed
-     Event`).
+   - **Locked look:** the tile's `bIsLocked` (display board), and the tile hook **On Lock Changed** (call Reaction >
+     Finish when its animation ends -- [[add-a-tile-power]] step 3).
+   - **A chain linked or unlinked:** the hook **On Chain Partner Changed**, on the chained tile and its new partner.
    - **A chained tile's partner:** **Get Chain Partner** (false = no partner).
    - **A partner's look:** **Get Chained Tiles For** (its position) on board seed, Tiles Added and **Chain Partner
      Changed**.
@@ -58,15 +59,22 @@ Decisions: [the tile lock](../../_decisions/2026-10-23-tile-lock-per-operation-r
 - Output Log: a refused request names the tile -- `... rejected -- tile (3,2) is locked`.
 - Chaining: place on the partner; the chain opens (Power Triggered, then Tile Lock Changed). Remove the partner's
   piece: the chained tile's piece goes, then it locks.
-- Tests: `ConnectIt.Board.TileLock`, `ConnectIt.Board.ChainedTiles`.
+- Tests: `ConnectIt.Board.TileLock`, `ConnectIt.Board.ChainedTiles`. Locked tiles refusing Move Piece and Adjust
+  Multiplier: `ConnectIt.Board.MoveAndMultiplier`; powers skipping them: `ConnectIt.Board.PushAndVacuum`,
+  `ConnectIt.Board.TurnStartPowers`.
 
 ## Pitfalls
 
 - **Locked is not inactive:** a locked tile is in play -- its piece scores and can be cleared by scoring; Force Place and
   Shift still reach it. Inactive is out of play.
-- **Which operations reach locked tiles:** Shift, Force Place, Remove Tiles, Change Layout, Set Tile Locked, Set Chain
-  Partner. Place, Swap, Capture, Remove, Destroy Multiplier and Toggle Active don't, and neither do tile powers' effects
-  built from them.
+- **Which operations reach locked tiles:**
+
+  | Reach locked tiles | Don't |
+  | --- | --- |
+  | Shift, Force Place, Remove Tiles, Change Layout, Set Tile Locked, Set Chain Partner | Place, Swap, Capture, Remove, Destroy Multiplier, Toggle Active, **Move Piece** (neither From nor To may be locked), **Adjust Multiplier** |
+
+  Tile powers' effects built from the right-hand ones can't touch a locked tile either: Push, Vacuum and Repel leave
+  locked pieces where they are and never move a piece onto a locked tile. Turn Start targets no tile.
 - **Setting a chained tile's lock by hand fights the chain:** its Sync power puts the lock back to match the partner on
   the next settle. Change the partner instead.
 - **Chain partner on a tile that isn't Chained:** ignored (validation warns). A chain of chains (a Chained partner)

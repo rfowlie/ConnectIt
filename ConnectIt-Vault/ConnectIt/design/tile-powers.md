@@ -5,15 +5,25 @@ alongside) just scoring points, a tile can trigger an effect on the board once i
 scored on enough. The multiplier already tracks "how many times has a line been completed
 through this tile" for free; a power just gives that number a second job.
 
-> **Status: the system is built (2026-10-22); no power ships yet.** Powers run in the rules' after-move step as one chain
-> per action ([decision](../_decisions/2026-10-22-tile-powers-in-the-after-move-chain.md)), and each is defined once per
-> tag in a tile catalog ([decision](../_decisions/2026-10-22-tile-catalog-and-builder-tiles.md)). Triggers:
-> [tile-power-triggers](tile-power-triggers.md); plan: [tile-powers-plan](tile-powers-plan.md); how to make one:
-> `code/recipes/add-a-tile-power.md`. The first real powers (Push, Repel as a turn-start countdown, Vacuum) are being
-> designed for their own plan -- see the question's Stage 5 rounds
-> ([tile-powers-in-the-board-pipeline](../_questions/tile-powers-in-the-board-pipeline.md)). Crumble is set aside as a
-> board power. The sketches below predate all of this: thresholds are now gates, and Poison / Overgrowth need the planned
-> Adjust Multiplier operation.
+> **Status: the system is built (2026-10-22), and so are the first powers (2026-10-23).**
+>
+> - **How powers run:** in the rules' after-move step, as one chain per action
+>   ([decision](../_decisions/2026-10-22-tile-powers-in-the-after-move-chain.md)).
+> - **Where they're defined:** once per tag, in a tile catalog
+>   ([decision](../_decisions/2026-10-22-tile-catalog-and-builder-tiles.md)).
+> - **Triggers:** [tile-power-triggers](tile-power-triggers.md).
+> - **The first powers are built** ([first-tile-powers-plan](first-tile-powers-plan.md);
+>   [decision](../_decisions/2026-10-23-the-first-tile-powers.md)):
+>   - Push (Scoring), Vacuum (Piece Exit and Scoring), and Repel as a turn-start countdown;
+>   - the Chained tile, from the lock plan;
+>   - Move Piece and Adjust Multiplier operations;
+>   - a multiplier floor and ceiling per tile type;
+>   - tile hooks for their visuals.
+> - **How to make one:** `code/recipes/add-a-tile-power.md`.
+> - **Not in a level yet:** catalog entries, tile classes and the sandbox level are the owner's, in the editor.
+> - **Crumble** is set aside as a board power.
+> - **These sketches predate all of this:** thresholds are now gates. Poison and Overgrowth can now be built from
+>   Adjust Multiplier, and the floor and ceiling answer "Floor/ceiling" below.
 
 ## Why this fits what already exists
 

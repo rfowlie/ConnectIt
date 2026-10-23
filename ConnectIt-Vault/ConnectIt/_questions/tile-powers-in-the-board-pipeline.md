@@ -2,7 +2,7 @@
 created: 2026-10-21
 question: "How should tile powers fit into the board pipeline?"
 status: answered
-closed-by: "[2026-10-22-tile-powers-in-the-after-move-chain](../_decisions/2026-10-22-tile-powers-in-the-after-move-chain.md); [2026-10-22-tile-catalog-and-builder-tiles](../_decisions/2026-10-22-tile-catalog-and-builder-tiles.md)"
+closed-by: "[2026-10-22-tile-powers-in-the-after-move-chain](../_decisions/2026-10-22-tile-powers-in-the-after-move-chain.md); [2026-10-22-tile-catalog-and-builder-tiles](../_decisions/2026-10-22-tile-catalog-and-builder-tiles.md); [2026-10-23-the-first-tile-powers](../_decisions/2026-10-23-the-first-tile-powers.md)"
 tags:
   - question
 ---
@@ -470,6 +470,22 @@ deferred to its own plan; this round starts its design.
   - returning a tile to the pool finishes any handle it still holds.
 - **The Stage 5 design is settled enough to plan** (after tile-powers Stage 6 and the lock plan).
 
+**2026-10-23: the Stage 5 rounds are built.**
+
+- **Plan:** [first-tile-powers-plan](../design/first-tile-powers-plan.md), approved 2026-10-23 and built in four stages.
+- **Decision:** [the first tile powers](../_decisions/2026-10-23-the-first-tile-powers.md).
+- **What the rounds left open, as built:**
+  - Move Piece;
+  - the floor and ceiling on the catalog entry (plain tiles 1 / none; the gate renamed `FireAtMultiplier`);
+  - trigger sets;
+  - Push, Vacuum, and Repel as a Turn Start countdown, committed by the GameMode as its own change;
+  - tile hooks with reaction handles, called by `UConnectIt_TileVisualizer`.
+- **Still open, for later plans:**
+  - the AI's search running Turn Start powers;
+  - Repel's faction (whose turn it is: "clunky", owner);
+  - Crumble as a board power;
+  - powers with levels.
+
 ## Resolution
 
 **Answered 2026-10-22**, with the tile-powers plan's Stages 1-4 built (Stage 6: vault):
@@ -483,3 +499,4 @@ deferred to its own plan; this round starts its design.
 - **Carried forward, not answered here:** the Stage 5 design rounds above (Move Piece, multiplier floor and ceiling per
   tile type, Push, Repel as a turn-start countdown, Vacuum on Exit and Scoring, tile hooks with a reaction handle).
   They become the Stage 5 plan, after the tile lock plan. Crumble is set aside as a board power for its own plan.
+  **Built 2026-10-23:** [the first tile powers](../_decisions/2026-10-23-the-first-tile-powers.md).

@@ -1,13 +1,13 @@
 ---
 type: plan
-status: in-progress
+status: complete
 approved: true
 approved-on: 2026-10-23
-completed-on:
+completed-on: 2026-10-23
 playtested: false
 design: "[tile-power-triggers](tile-power-triggers.md)"
 question: "[tile-powers-in-the-board-pipeline](../_questions/tile-powers-in-the-board-pipeline.md)"
-decision:
+decision: "[the first tile powers](../_decisions/2026-10-23-the-first-tile-powers.md)"
 requires:
   - "[tile-powers-plan](tile-powers-plan.md)"
   - "[tile-lock-and-chained-tiles-plan](tile-lock-and-chained-tiles-plan.md)"
@@ -284,6 +284,18 @@ stages.
 - Status lines in `tile-powers.md` and `tile-power-triggers.md`.
 - The question's Stage 5 rounds marked built.
 - Plan properties; log.
+- *As built (2026-10-23):*
+  - **Decision:** [the first tile powers](../_decisions/2026-10-23-the-first-tile-powers.md).
+  - **Recipes:**
+    - `add-a-tile-power`: the shipped effects, picking among allowed moves, the tile hooks and Finish, the catalog's
+      trigger set, Turn Start countdown and multiplier limits;
+    - `lock-a-tile-or-chain-tiles`: which operations reach locked tiles, as a table with Move Piece and Adjust
+      Multiplier; the hooks for its visuals.
+  - **The flow `tile-power-chain`:** the GameMode's Turn Start change, Turn Start powers in settle, trigger sets,
+    clamped multipliers, and tile hooks waiting on reactions.
+  - **Status lines:** `tile-powers.md`, and `tile-power-triggers.md` (with a Turn Start row; superseded calls struck).
+  - **The question:** its Stage 5 rounds marked built.
+  - **Left for the owner (editor):** the catalog entries, tile classes, hook animations and the sandbox level.
 
 ## Not in this plan
 

@@ -6,6 +6,9 @@ Vault-wide passes go in `_core/_logs/`.
 
 Newest first:
 
+- [2026-10-23-1119](2026-10-23-1119.md) — session — first tile powers, Stage 5 (vault): decision "the first tile
+  powers"; add-a-tile-power and lock recipes, the tile-power-chain flow, design status lines, the question; plan
+  complete.
 - [2026-10-23-0227](2026-10-23-0227.md) — session — broken includes fixed after the owner's moves to `Board/Actor/`
   and `Board/Rules/Scoring/` (19 includes in 18 files). 62/62 tests.
 - [2026-10-23-0220](2026-10-23-0220.md) — session — file organisation: the four match condition headers merged into

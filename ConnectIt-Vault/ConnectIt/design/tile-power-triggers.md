@@ -3,9 +3,17 @@
 Design note (2026-10-21), from the owner's idea that some tile powers fire **before** scoring. **Built 2026-10-22**
 (tile-powers plan Stages 1-4: every trigger in the table, including Sync, fires in the chain; flow:
 `code/systems/tile-power-chain.md`); decision:
-[tile powers in the after-move chain](../_decisions/2026-10-22-tile-powers-in-the-after-move-chain.md). Since then (Stage 5
-design, not built): Vacuum is to fire on Piece Exit **and** Scoring (one trigger per power relaxed to a set), Repel became a
-turn-start countdown, and Crumble is set aside as a board power. The wider discussion is
+[tile powers in the after-move chain](../_decisions/2026-10-22-tile-powers-in-the-after-move-chain.md).
+
+> **Built since (2026-10-23)** ([first-tile-powers-plan](first-tile-powers-plan.md);
+> [decision](../_decisions/2026-10-23-the-first-tile-powers.md)). Parts of the text below are superseded:
+>
+> - **A power has a set of triggers**, not one. Vacuum fires on Piece Exit **and** Scoring.
+> - **A new trigger, Turn Start:** a countdown. Repel moved from Piece Enter to Turn Start.
+> - **Crumble is set aside** as a board power.
+> - **A piece moved by a power** (Move Piece) is an Exit at From and an Enter at To.
+
+The wider discussion is
 [tile-powers-in-the-board-pipeline](../_questions/tile-powers-in-the-board-pipeline.md); the original power sketches are
 [tile-powers](tile-powers.md).
 
@@ -13,7 +21,7 @@ turn-start countdown, and Crumble is set aside as a board power. The wider discu
 > post-scoring reactions: they are almost indistinguishable from scoring reactions and make the chain much harder to
 > reason about. There are now **two phases, pre scoring and scoring**, and a power's phase follows from its trigger.
 
-A power has **one trigger** (what happened to its tile). It can also have a **gate** (a state check such as
+A power has **one trigger** (what happened to its tile; a **set** of triggers since 2026-10-23). It can also have a **gate** (a state check such as
 "multiplier ≥ 3") and a **cooldown** (turns until it can fire again; 0 = every time it is triggered, at most once per
 action).
 
@@ -27,6 +35,7 @@ action).
 | **Tile Changed** | Pre scoring | The tile itself changes: multiplier, active/inactive, power given or lost | **Crumble** (level-wide): multiplier reaches 5, the tile deactivates and its piece is removed. **Overflow**: multiplier past 4, each neighbour gets +1. **Fuse**: multiplier changed, the tile turns inactive |
 | **Scoring** | Scoring | A line scores through the tile (whether or not its piece is cleared) | **Push** (the owner's chain example), **Poison**, **Overgrowth**, **Siphon** |
 | **Sync** | Every settle pass (first) | Not an event: the power checks state each pass and changes the board only when state calls for it | **Chained**: locked while its partner has no piece; unlocks when it has one; re-locks (destroying its piece) when it empties -- for any reason, scoring included |
+| **Turn Start** (2026-10-23) | Its own board change, at turn start (first in settle, once) | A turn starts and the power's countdown (its cooldown, all turns) has run out; it resets even with nothing to do. Acts for the faction whose turn it is | **Repel**: the piece on it moves to a random open tile among the 8 around it |
 
 **Sync powers** (added 2026-10-22 with one-sided chained tiles) run first in every settle pass, are exempt from the
 once-per-action guard (they only follow state, so they can't loop) and have no cooldown.
@@ -72,7 +81,7 @@ time](../_decisions/2026-10-21-one-board-change-at-a-time.md)).
 - Pre-scoring powers settle until nothing more fires, then the wave scores.
 - What scoring and the scoring powers change goes back through settle before the next scoring pass; the chain ends at
   the first scoring pass that finds no lines.
-- One trigger per power.
+- ~~One trigger per power.~~ Replaced 2026-10-23: a **set** of triggers (Vacuum needs two); Sync stays alone.
 - ~~A capture counts as both Piece Exit and Piece Enter.~~ Replaced 2026-10-22: a capture is a **Piece Changed** (new
   trigger, pre scoring, acts for the new owner).
 - Director, checkpoint and win reactions happen after the chain, as new board requests.
@@ -80,5 +89,7 @@ time](../_decisions/2026-10-21-one-board-change-at-a-time.md)).
   for Enter, the leaving piece's owner for Exit, and the faction of the change that caused it for Change (-1 when
   nobody).
 - A shift is neither an Enter nor an Exit (the tile and its piece move together).
-- First powers, one per trigger: Push (Scoring), Repel (Enter), Vacuum (Exit), Crumble (Change, level-wide).
+- ~~First powers, one per trigger: Push (Scoring), Repel (Enter), Vacuum (Exit), Crumble (Change, level-wide).~~
+  Replaced 2026-10-23: Push (Scoring), Vacuum (Piece Exit and Scoring), Repel (Turn Start, a countdown); Crumble set
+  aside as a board power.
 - A power's effect is a board operation, the same kind a player action sends, so powers and actions can share them.
