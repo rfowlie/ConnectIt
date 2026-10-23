@@ -6,6 +6,17 @@ Vault-wide passes go in `_core/_logs/`.
 
 Newest first:
 
+- [2026-10-23-1507](2026-10-23-1507.md) — session — player actions and items plan approved: all "Power" names →
+  "TilePower"; the AI never uses items.
+- [2026-10-23-1501](2026-10-23-1501.md) — session — Player Action details settled (finite turn uses, item inventory
+  + per-level item budget, Item Used turn-end leaf, renames); refactor plan written, awaiting approval.
+- [2026-10-23-1438](2026-10-23-1438.md) — session — vocabulary decided: Player Action / Tile Power / Board Operation,
+  no "skill"; permanent / item uses with match and turn uses from configuration. Open details listed before a plan.
+- [2026-10-23-1417](2026-10-23-1417.md) — session — adventure hub Stage 1 review: shard table holds per-use costs,
+  `ItemUses`, soft preset and unlocks, tags under `ConnectIt.Adventure`. 65/65 tests.
+- [2026-10-23-1355](2026-10-23-1355.md) — session — adventure hub, Stage 1: map node data asset (GUID id, gate,
+  rewards, requirement check, validation), skill shard table (running totals), the progress value; Seal / Region /
+  Concept tags. 65/65 tests.
 - [2026-10-23-1339](2026-10-23-1339.md) — session — dead gameplay tag table line removed; the old main-menu path in
   `CIL_OnlineMultiplayer` is the level's saved URL from a Save As, not a node.
 - [2026-10-23-1500](2026-10-23-1500.md) — session — BRAIN DUMP reviewed against the plans; empty UnrealUnsorted plugin + vault domain note; Level director turn kept as a question; per-event tile hooks recorded as a decision.

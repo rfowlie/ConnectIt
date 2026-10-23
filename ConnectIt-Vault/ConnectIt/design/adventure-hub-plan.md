@@ -1,6 +1,6 @@
 ---
 type: plan
-status: not-started
+status: in-progress
 approved: true
 approved-on: 2026-10-23
 completed-on:
@@ -63,6 +63,42 @@ stages.
 - Validation on save: a node with neither a level nor a sub-map; a closed node with no loadout in its preset; unlocks
   pointing at itself; a skill's thresholds not rising (warning only).
 - Tests: shards → numbered uses through a table; a node's requirement check against a progress value.
+- *As built (2026-10-23; 65/65 tests; Throughput 360k nodes/s, unchanged):*
+  - **A skill is its action's tag** (`ConnectIt.Action.*`): the same key in the shard table, gates, rewards and the
+    progress. The action class a loadout needs comes in Stage 3.
+  - **The shard table holds each use's cost** (owner, revised the same day from running totals: a cumulative array
+    invites mistakes): 3, 5, 8 gives uses at 3, 8 and 16 shards.
+    - `UConnectIt_SkillShardTable` (`Skills`: tag → `FConnectItSkillShardCosts::ShardsPerUse`, each at least 1) and
+      `GetNumberedUses(Skill, Shards)`, which pays for each use in turn.
+    - Costs that fall are a warning.
+    - `Get()` reads Project Settings > ConnectIt > **Skill Shard Table**.
+  - **Soft references** (owner): the node's `MatchPreset` and `Unlocks` are `TSoftObjectPtr`, so loading a node loads
+    neither its preset nor the graph behind it. Validation loads the preset to check a closed node.
+  - **Item uses** (owner's rename from "itemed"): `ItemUses` on the progress and the rewards.
+  - **The progress value** `FConnectItAdventureProgress` (`Public/Adventure/ConnectIt_AdventureProgress.h`): the
+    save's fields from Stage 2, made here because the requirement check needs it.
+    - Completed nodes, broken seals, shards, itemed uses, specific seals, general seals, last-played node.
+    - `GetNumberedUses(Skill, Table)` derives uses from the shards.
+  - **`UConnectIt_MapNodeDataAsset`**:
+    - identity: `NodeId`, display name, description, thumbnail, `Region`;
+    - play: `Level` + `MatchPreset`, or `SubMap`; `SkillDesign`;
+    - map: `Unlocks`, `Gate` (`RequiredSkills`, `RequiredSeals`, `GeneralSeals`);
+    - information: `RecommendedSkills`, `TeachesConcepts` / `UsesConcepts`;
+    - `Rewards`: shards, itemed uses, seals, general seals.
+  - **`NodeId`**: a GUID set in `PostInitProperties` for a new asset and anew in `PostDuplicate` (a copy is another
+    node); read-only in the editor.
+  - **`CheckRequirements(Progress, Table)`** → `FConnectItNodeRequirementCheck`: missing skills, missing specific
+    seals, general seals short. Seals are skipped once the node's seal is broken; required skills always count, and
+    itemed uses never do.
+  - **Validation:**
+    - errors: no Node Id; neither a level nor a sub-map; both (not in the plan: a node is one or the other); unlocks
+      itself; a closed node whose preset's Player director gives no loadout;
+    - warnings: a closed node with no preset (its level's own preset isn't checked); an empty Unlocks entry; a table
+      that doesn't rise.
+  - **Tag roots, under `ConnectIt.Adventure`** (owner): `ConnectIt.Adventure.Seal`, plus `.Region` and `.Concept` for
+    the node's region and concepts.
+  - **Tests:** new `ConnectIt.Adventure.ShardTable`, `.NodeRequirements`, `.NodeData` (in
+    `Tests/ConnectIt_AdventureTests.cpp`).
 
 ## Stage 2: progress and the save
 

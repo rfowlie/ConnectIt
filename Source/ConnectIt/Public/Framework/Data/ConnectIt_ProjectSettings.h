@@ -8,6 +8,7 @@
 
 class UConnectIt_TileCatalog;
 class AConnectIt_BuilderTile;
+class UConnectIt_SkillShardTable;
 
 
 // Project-wide ConnectIt settings (Project Settings > Game > ConnectIt)
@@ -26,6 +27,10 @@ public:
     // level (a Blueprint of AConnectIt_BuilderTile with its blockout look)
     UPROPERTY(Config, EditAnywhere, Category = "Tiles")
     TSoftClassPtr<AConnectIt_BuilderTile> BuilderTileClass;
+
+    // How each skill's shards become numbered uses in Adventure mode
+    UPROPERTY(Config, EditAnywhere, Category = "Adventure")
+    TSoftObjectPtr<UConnectIt_SkillShardTable> SkillShardTable;
 
     virtual FName GetCategoryName() const override { return TEXT("Game"); }
 };

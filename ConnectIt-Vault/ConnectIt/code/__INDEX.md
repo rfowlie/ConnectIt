@@ -58,6 +58,9 @@ has none of its own (`/process-code` checks the pages).
 | UConnectIt_TileVisualizer / UConnectIt_TileReaction | UCLASS (UObject) | Board | primary (tile hooks, every machine) | `Board/ConnectIt_TileVisualizer.h`, `Board/ConnectIt_TileReaction.h` | stub — covered in systems/tile-power-chain |
 | MinMax (`FConnectItMinMaxRules`, `FConnectItMinMaxGeometry`, the evaluation / ordering weights) | class / USTRUCT | MinMax | primary (the game's rules for the AI search; the search itself is `AI/ConnectIt_MinMaxSearch.h`) | `MinMax/*.{h,cpp}` | stub — covered in systems/ai-turn |
 | UI (`UConnectIt_DebugStateWidget`, `UDWidget_ConnectIt_BoardStateComponent`, `UDWidget_ConnectIt_GameState`) | UCLASS (UUserWidget / `UDWidgetBase`) | UI | internal (tooling) | `UI/*.{h,cpp}` | stub |
+| UConnectIt_MapNodeDataAsset (`FConnectItNodeGate`, `FConnectItNodeRewards`, `EConnectItSkillDesign`) | UCLASS (UDataAsset) | Adventure | primary (an Adventure hub node) | `Adventure/ConnectIt_MapNodeDataAsset.{h,cpp}` | stub — see design/adventure-hub-plan |
+| UConnectIt_SkillShardTable (`FConnectItSkillShardThresholds`) | UCLASS (UDataAsset) | Adventure | primary (shards → numbered uses) | `Adventure/ConnectIt_SkillShardTable.{h,cpp}` | stub — see design/adventure-hub-plan |
+| FConnectItAdventureProgress / FConnectItNodeRequirementCheck | USTRUCT | Adventure | primary (data: what the save holds) | `Adventure/ConnectIt_AdventureProgress.{h,cpp}` | stub — see design/adventure-hub-plan |
 | GameplayTags (`ConnectIt_GameplayTags.h`) | native tag decls | Top-level | primary | `ConnectIt_GameplayTags.h` | stub |
 
 ## Map
