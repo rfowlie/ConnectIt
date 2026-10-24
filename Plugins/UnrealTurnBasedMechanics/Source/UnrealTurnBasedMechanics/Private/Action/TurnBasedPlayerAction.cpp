@@ -100,8 +100,8 @@ bool UTurnBasedPlayerAction::CanActivate() const
 {
     if (IsActive()) return false;
 
-    // The player's authoritative runtime state decides (uses left, per-turn
-    // cap, cooldown). If it isn't available yet (e.g. a client before the
+    // The player's authoritative runtime state decides (match uses left,
+    // per-turn cap, cooldown). If it isn't available yet (e.g. a client before the
     // PlayerState has replicated) don't block here -- this is only a
     // convenience; the server gate is the real check.
     if (const ATurnBasedPlayerState* PS = GetOwnerPlayerState())
@@ -127,12 +127,6 @@ bool UTurnBasedPlayerAction::GetPermanentRuntimeState(FPermanentActionRuntimeSta
     return IsValid(PS) && PS->GetPermanentRuntimeState(GetClass(), OutState);
 }
 
-bool UTurnBasedPlayerAction::GetNumberedRuntimeState(FNumberedActionRuntimeState& OutState) const
-{
-    const ATurnBasedPlayerState* PS = GetOwnerPlayerState();
-    return IsValid(PS) && PS->GetNumberedRuntimeState(GetClass(), OutState);
-}
-
 int32 UTurnBasedPlayerAction::GetUsesThisTurn() const
 {
     const ATurnBasedPlayerState* PS = GetOwnerPlayerState();
@@ -145,10 +139,10 @@ int32 UTurnBasedPlayerAction::GetMaxUsesPerTurn() const
     return IsValid(PS) ? PS->GetActionMaxUsesPerTurn(GetClass()) : 0;
 }
 
-int32 UTurnBasedPlayerAction::GetUsesRemaining() const
+int32 UTurnBasedPlayerAction::GetMatchUsesRemaining() const
 {
     const ATurnBasedPlayerState* PS = GetOwnerPlayerState();
-    return IsValid(PS) ? PS->GetNumberedActionUsesRemaining(GetClass()) : 0;
+    return IsValid(PS) ? PS->GetMatchUsesRemaining(GetClass()) : 0;
 }
 
 void UTurnBasedPlayerAction::RequestBoardChange(const FInstancedStruct& Payload)

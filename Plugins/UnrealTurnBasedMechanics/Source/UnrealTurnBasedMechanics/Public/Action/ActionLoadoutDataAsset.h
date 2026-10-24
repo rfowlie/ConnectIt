@@ -64,19 +64,15 @@ public:
     TSubclassOf<UTurnBasedSpectatorAction> AwaitingConfirmationActionClass = nullptr;
 
     // --- Turn Actions ---
-    // The turn actions this loadout offers, split by lifecycle. An action
-    // class belongs in exactly one of the two arrays. The actions component
-    // builds one instance per entry (NewObject from the class), and each
-    // player's PlayerState holds the live budget/cooldown state seeded from
-    // these entries.
+    // The permanent player actions this loadout offers, each once, with its
+    // match and turn uses. The participant's PlayerState is seeded from this
+    // list -- unless the game hands it its own (ATurnBasedPlayerState::
+    // InitialiseActionState) -- and the actions component builds one instance
+    // per action the PlayerState has.
 
     UPROPERTY(EditAnywhere, BlueprintReadOnly,
         Category = "Loadout|Turn Actions")
     TArray<FPermanentActionConfig> PermanentActions;
-
-    UPROPERTY(EditAnywhere, BlueprintReadOnly,
-        Category = "Loadout|Turn Actions")
-    TArray<FNumberedActionConfig> NumberedActions;
 
     // --- Turn End ---
     // Root of the requirement tree deciding when a turn can end (a Group or

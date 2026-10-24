@@ -10,9 +10,9 @@
 class UGridTileRegistryBase;
 
 // ConnectIt concrete action -- SWAP: trades one of the acting player's own
-// pieces for one of the opponent's. Its use budget and whether it ends the
-// turn (alone, or as an alternative to PlacePiece) are configured in the
-// loadout -- a NumberedActions entry and the TurnEndRequirements tree.
+// pieces for one of the opponent's. Its match and turn uses and whether it
+// ends the turn (alone, or as an alternative to PlacePiece) are configured in
+// the loadout -- a PermanentActions entry and the TurnEndRequirements tree.
 //
 // Needs two tiles, which UTurnBasedPlayerAction's selection hooks don't natively
 // support (built around one CurrentHoveredTile / one HandleValidSelection

@@ -413,8 +413,9 @@ private:
     void ExitStateSyncLimbo(bool bCheckTurnEnd);
     void HandleStateSyncTimeout();
 
-    // Bound permanently by EnsureBoundToPlayerState; does nothing unless
-    // limbo is active and the update has landed.
+    // Bound permanently by EnsureBoundToPlayerState: builds instances for any
+    // action the PlayerState gained (SyncRuntimeActions), then leaves limbo
+    // if it is active and the update has landed.
     UFUNCTION()
     void HandleActionRuntimeStateUpdated();
 
@@ -424,7 +425,13 @@ private:
 
     // --- Initialisation ---
 
-    void CloneActionsFromLoadout();
+    // Builds one instance per permanent action the owner's PlayerState has
+    // (its replicated state), or -- until that state is there -- per entry of
+    // the loadout's PermanentActions. Only adds: an instance already built is
+    // kept. Called on initialise and on every PlayerState action update, so a
+    // list the game seeded (not the loadout's) still gets its instances.
+    void SyncRuntimeActions();
+    void BuildRuntimeAction(TSubclassOf<UTurnBasedPlayerAction> ActionClass);
     void CreateSystemActions();
     void BindActionDelegates(UTurnBasedPlayerAction* Action);
     void HandleNextActionRequested(TSubclassOf<UTurnBasedPlayerAction> NextClass);

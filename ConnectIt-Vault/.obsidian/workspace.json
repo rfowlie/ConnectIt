@@ -51,12 +51,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "ConnectIt/design/top-down-camera.md",
+                "file": "ConnectIt/design/top-down-camera-plan.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "top-down-camera"
+              "title": "top-down-camera-plan"
             }
           }
         ]
@@ -93,7 +93,7 @@
             "state": {
               "type": "search",
               "state": {
-                "query": "top-down-camera",
+                "query": "top-down-camera-plan",
                 "matchingCase": false,
                 "explainSearch": false,
                 "collapseAll": false,
@@ -122,8 +122,7 @@
       }
     ],
     "direction": "horizontal",
-    "width": 300,
-    "collapsed": true
+    "width": 300
   },
   "right": {
     "id": "fc104e6a67b36917",
@@ -229,10 +228,13 @@
   "active": "d21229c17b1e2e8b",
   "lastOpenFiles": [
     "ConnectIt/_logs/2026-10-24-1259.md",
+    "ConnectIt/design/top-down-camera.md",
+    "ConnectIt/_logs/2026-10-24-1331.md",
+    "ConnectIt/_logs/2026-10-24-1331.md.tmp.16900.98a1017df2d0",
+    "ConnectIt/design/top-down-camera-plan.md",
     "ConnectIt/design/tile-powers-plan.md",
     "BRAIN DUMP.md",
     "ConnectIt/_tasks/active.md",
-    "ConnectIt/design/top-down-camera.md",
     "ConnectIt/_logs/2026-10-24-1256.md",
     "ConnectIt/_logs/2026-10-23-1507.md",
     "ConnectIt/_logs/2026-10-23-1501.md",
@@ -253,8 +255,6 @@
     "_core/_logs/2026-10-23-1221.md",
     "UnrealGridMechanics/code/UGridDefinition.md",
     "ConnectIt/_logs/2026-10-23-0227.md",
-    "ConnectIt/_logs/2026-10-23-0220.md",
-    "ConnectIt/_decisions/2026-10-23-family-files-for-small-types.md",
     "ConnectIt/_questions/tile-powers-in-the-board-pipeline.md.tmp.33392.4e6a2c82500f",
     "ConnectIt/design/tile-powers-plan.md.tmp.32036.653886de9551",
     "ConnectIt/design/tile-power-setup.md.tmp.23744.981cbff5cdd4",
@@ -263,7 +263,6 @@
     "ConnectIt/design/tile-powers-plan.md.tmp.15804.23692694f3f3",
     "ConnectIt/_logs/__INDEX.tmp",
     "ConnectIt/design/tile-powers-plan.md.tmp.16300.eb76b4dda452",
-    "ConnectIt/design/tile-powers-plan.md.tmp.16300.f65fa76d481a",
     "Untitled.canvas"
   ]
 }

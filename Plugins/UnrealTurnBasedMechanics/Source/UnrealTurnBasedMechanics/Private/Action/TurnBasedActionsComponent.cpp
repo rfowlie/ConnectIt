@@ -40,7 +40,8 @@ void UTurnBasedActionsComponent::InitialiseFromLoadout(UActionLoadoutDataAsset* 
     }
 
     Loadout = InLoadout;
-    CloneActionsFromLoadout();
+    RuntimeActions.Empty();
+    SyncRuntimeActions();
     CreateSystemActions();
     bIsInitialised = true;
 
@@ -71,11 +72,49 @@ void UTurnBasedActionsComponent::InitialiseFromLoadout(UActionLoadoutDataAsset* 
             ? *AwaitingConfirmationAction->GetActionTag().ToString() : TEXT("none"));
 }
 
-void UTurnBasedActionsComponent::CloneActionsFromLoadout()
+void UTurnBasedActionsComponent::SyncRuntimeActions()
 {
-    RuntimeActions.Empty();
     if (!IsValid(Loadout)) return;
 
+    // The PlayerState's actions once they're there; the loadout's before
+    TArray<TSubclassOf<UTurnBasedPlayerAction>> Classes;
+    const ATurnBasedPlayerState* PS = GetOwnerPlayerState();
+    if (IsValid(PS) && PS->HasActionConfig())
+    {
+        for (const FPermanentActionRuntimeEntry& Entry : PS->GetPermanentActionState())
+        {
+            Classes.Add(Entry.ActionClass);
+        }
+    }
+    else
+    {
+        for (const FPermanentActionConfig& Config : Loadout->PermanentActions)
+        {
+            if (!Config.ActionClass)
+            {
+                UE_LOG(LogTurnBasedMechanics, Warning,
+                    TEXT("TurnBasedActionsComponent: skipped a PermanentActions "
+                         "entry with no ActionClass on loadout '%s'"),
+                    *Loadout->LoadoutName);
+                continue;
+            }
+            Classes.Add(Config.ActionClass);
+        }
+    }
+
+    for (const TSubclassOf<UTurnBasedPlayerAction>& ActionClass : Classes)
+    {
+        const bool bBuilt = RuntimeActions.ContainsByPredicate(
+            [&ActionClass](const UTurnBasedPlayerAction* A) { return IsValid(A) && A->GetClass() == ActionClass; });
+        if (ActionClass && !bBuilt)
+        {
+            BuildRuntimeAction(ActionClass);
+        }
+    }
+}
+
+void UTurnBasedActionsComponent::BuildRuntimeAction(TSubclassOf<UTurnBasedPlayerAction> ActionClass)
+{
     AController* Controller = GetOwningController();
     UEnhancedInputComponent* EIC = IsValid(Controller)
         ? Cast<UEnhancedInputComponent>(Controller->InputComponent.Get())
@@ -91,59 +130,18 @@ void UTurnBasedActionsComponent::CloneActionsFromLoadout()
         ? ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(PC->GetLocalPlayer())
         : nullptr;
 
-    auto RegisterAction = [&](UTurnBasedPlayerAction* Action, const TCHAR* Origin)
-    {
-        Action->InitialiseAction(Controller, EIC, EILP);
-        BindActionDelegates(Action);
-        RuntimeActions.Add(Action);
+    // One instance per action, built from its class. Uses, per-turn caps and
+    // cooldowns are not copied onto the instance -- they live on the owner's
+    // PlayerState.
+    UTurnBasedPlayerAction* Action = NewObject<UTurnBasedPlayerAction>(this, ActionClass);
+    Action->InitialiseAction(Controller, EIC, EILP);
+    BindActionDelegates(Action);
+    RuntimeActions.Add(Action);
 
-        UE_LOG(LogTurnBasedMechanics, Log,
-            TEXT("TurnBasedActionsComponent: %s '%s' (Cancellable: %s)"),
-            Origin,
-            *Action->GetActionTag().ToString(),
-            Action->bIsCancellable ? TEXT("Yes") : TEXT("No"));
-    };
-
-    // One instance per config entry, built from its class. Budgets, per-turn
-    // caps and cooldowns are not copied onto the instance -- they live in the
-    // entry and on the owner's PlayerState.
-    for (const FPermanentActionConfig& Config : Loadout->PermanentActions)
-    {
-        if (!Config.ActionClass)
-        {
-            UE_LOG(LogTurnBasedMechanics, Warning,
-                TEXT("TurnBasedActionsComponent: skipped a PermanentActions "
-                     "entry with no ActionClass on loadout '%s'"),
-                *Loadout->LoadoutName);
-            continue;
-        }
-
-        RegisterAction(NewObject<UTurnBasedPlayerAction>(this, Config.ActionClass),
-            TEXT("Built permanent"));
-    }
-
-    for (const FNumberedActionConfig& Config : Loadout->NumberedActions)
-    {
-        if (!Config.ActionClass)
-        {
-            UE_LOG(LogTurnBasedMechanics, Warning,
-                TEXT("TurnBasedActionsComponent: skipped a NumberedActions "
-                     "entry with no ActionClass on loadout '%s'"),
-                *Loadout->LoadoutName);
-            continue;
-        }
-
-        RegisterAction(NewObject<UTurnBasedPlayerAction>(this, Config.ActionClass),
-            TEXT("Built numbered"));
-    }
-
-    if (RuntimeActions.IsEmpty())
-    {
-        UE_LOG(LogTurnBasedMechanics, Warning,
-            TEXT("TurnBasedActionsComponent: loadout '%s' has no PermanentActions "
-                 "or NumberedActions -- %s will have no turn actions"),
-            *Loadout->LoadoutName, *GetOwner()->GetName());
-    }
+    UE_LOG(LogTurnBasedMechanics, Log,
+        TEXT("TurnBasedActionsComponent: built '%s' (Cancellable: %s)"),
+        *Action->GetActionTag().ToString(),
+        Action->bIsCancellable ? TEXT("Yes") : TEXT("No"));
 }
 
 void UTurnBasedActionsComponent::CreateSystemActions()
@@ -942,6 +940,13 @@ void UTurnBasedActionsComponent::HandleStateSyncTimeout()
 
 void UTurnBasedActionsComponent::HandleActionRuntimeStateUpdated()
 {
+    // The PlayerState may have been seeded (or replicated) with actions this
+    // component hasn't built yet
+    if (bIsInitialised)
+    {
+        SyncRuntimeActions();
+    }
+
     if (!bAwaitingRuntimeState) return;
 
     const ATurnBasedPlayerState* PS = GetOwnerPlayerState();

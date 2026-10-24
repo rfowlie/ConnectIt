@@ -91,6 +91,41 @@ stages.
   - turn uses capping a turn;
   - cooldown;
   - seeding from an override list.
+- *As built (2026-10-24; 67/67 tests; Throughput 323k-340k nodes/s over three runs, the low edge of the usual range,
+  with nothing in the search path changed):*
+  - **`FPermanentActionConfig`:** `ActionClass`, `MatchUses` (-1), `TurnUses` (1, at least 1), `CooldownTurns`.
+    - The runtime state holds `MatchUsesRemaining` (-1 = unlimited), `MaxUsesThisTurn`, `UsesThisTurn`,
+      `CooldownTurnsRemaining`, and its `CooldownTurns`.
+    - The cooldown length moved onto the state, so a use needs no config lookup. That is what makes a game-built
+      list work like the loadout's.
+    - The numbered structs, `NumberedActions` and `GrantActionUses` are gone.
+  - **PlayerState:**
+    - `InitialiseActionState(Loadout)` and `InitialiseActionState(Loadout, PermanentActions)`: a later duplicate is
+      ignored, and turn uses below 1 are raised to 1;
+    - `GetMatchUsesRemaining` (was `GetNumberedActionUsesRemaining`);
+    - `CanUseAction` / `ConsumeActionUse` work from the runtime entry only;
+    - `HasActionConfig` = any action seeded.
+  - **The action:** `GetMatchUsesRemaining` (was `GetUsesRemaining`); `GetNumberedRuntimeState` is gone.
+  - **The actions component builds instances from the PlayerState** (not in the plan, needed for a game-built list):
+    `SyncRuntimeActions` builds one per action in the replicated state, falling back to the loadout's list until it
+    arrives. It runs on initialise and on every action-state update, and only adds instances.
+  - **Redirects** (plugin config):
+    - functions `GetUsesRemaining` → `GetMatchUsesRemaining` (action) and `GetNumberedActionUsesRemaining` →
+      `GetMatchUsesRemaining` (PlayerState);
+    - the property `MaxUsesPerTurn` → `TurnUses` (an old 0 = "unlimited" is now invalid: validation errors, seeding
+      raises it to 1).
+  - **Loadout validation:**
+    - errors: no class; a duplicate; turn uses below 1; a turn-end leaf needing more uses than the action's turn
+      uses;
+    - warning: match uses 0.
+  - **ConnectIt:** the AI strategy and controller and the GameMode read the one list; comments and logs updated.
+  - **Tests:** new `ConnectIt.PlayerActions.PermanentUses` and `.Loadout` (`Tests/ConnectIt_PlayerActionTests.cpp`),
+    spawning the PlayerState in a throwaway game world.
+  - **Breaks in content (owner, Stage 6):**
+    - `CIW_ActionElement` and `CIW_ActionMenu` read the numbered state (`GetNumberedActionState`,
+      `FNumberedActionRuntimeEntry`) and fail to compile; switch them to `GetPermanentActionState` /
+      `GetMatchUsesRemaining`;
+    - the loadouts' `NumberedActions` entries are dropped on load.
 
 ## Stage 3: item inventory and item budget (plugin)
 

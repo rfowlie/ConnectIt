@@ -21,13 +21,6 @@ namespace
         return Entries.FindByPredicate(
             [&ActionClass](const TEntry& E) { return E.ActionClass == ActionClass; });
     }
-
-    template <typename TConfig>
-    const TConfig* FindConfig(const TArray<TConfig>& Configs, const TSubclassOf<UTurnBasedPlayerAction>& ActionClass)
-    {
-        return Configs.FindByPredicate(
-            [&ActionClass](const TConfig& C) { return C.ActionClass == ActionClass; });
-    }
 }
 
 
@@ -48,7 +41,6 @@ void ATurnBasedPlayerState::GetLifetimeReplicatedProps(
 	DOREPLIFETIME(ATurnBasedPlayerState, bIsReady);
 	DOREPLIFETIME(ATurnBasedPlayerState, Loadout);
 	DOREPLIFETIME(ATurnBasedPlayerState, PermanentActionState);
-	DOREPLIFETIME(ATurnBasedPlayerState, NumberedActionState);
 	DOREPLIFETIME(ATurnBasedPlayerState, ActionStateRevision);
 }
 
@@ -56,28 +48,14 @@ void ATurnBasedPlayerState::GetLifetimeReplicatedProps(
 
 int32 ATurnBasedPlayerState::GetActionUsesThisTurn(TSubclassOf<UTurnBasedPlayerAction> ActionClass) const
 {
-	if (const FPermanentActionRuntimeEntry* P = FindEntry(PermanentActionState, ActionClass))
-	{
-		return P->State.UsesThisTurn;
-	}
-	if (const FNumberedActionRuntimeEntry* N = FindEntry(NumberedActionState, ActionClass))
-	{
-		return N->State.UsesThisTurn;
-	}
-	return 0;
+	const FPermanentActionRuntimeEntry* Entry = FindEntry(PermanentActionState, ActionClass);
+	return Entry ? Entry->State.UsesThisTurn : 0;
 }
 
 int32 ATurnBasedPlayerState::GetActionMaxUsesPerTurn(TSubclassOf<UTurnBasedPlayerAction> ActionClass) const
 {
-	if (const FPermanentActionRuntimeEntry* P = FindEntry(PermanentActionState, ActionClass))
-	{
-		return P->State.MaxUsesThisTurn;
-	}
-	if (const FNumberedActionRuntimeEntry* N = FindEntry(NumberedActionState, ActionClass))
-	{
-		return N->State.MaxUsesThisTurn;
-	}
-	return 0;
+	const FPermanentActionRuntimeEntry* Entry = FindEntry(PermanentActionState, ActionClass);
+	return Entry ? Entry->State.MaxUsesThisTurn : 0;
 }
 
 bool ATurnBasedPlayerState::AreTurnEndRequirementsMet(const UActionLoadoutDataAsset* InLoadout) const
@@ -98,109 +76,68 @@ bool ATurnBasedPlayerState::AreTurnEndRequirementsMet(const UActionLoadoutDataAs
 
 int32 ATurnBasedPlayerState::GetActionUsesThisTurnByTag(FGameplayTag ActionTag) const
 {
-	if (!ActionTag.IsValid()) return 0;
-
-	for (const FPermanentActionRuntimeEntry& E : PermanentActionState)
-	{
-		if (UTurnBasedPlayerAction::GetTagForClass(E.ActionClass) == ActionTag) return E.State.UsesThisTurn;
-	}
-	for (const FNumberedActionRuntimeEntry& E : NumberedActionState)
-	{
-		if (UTurnBasedPlayerAction::GetTagForClass(E.ActionClass) == ActionTag) return E.State.UsesThisTurn;
-	}
-	return 0;
+	return GetActionUsesThisTurn(FindActionClassByTag(ActionTag));
 }
 
 bool ATurnBasedPlayerState::GetPermanentRuntimeState(
 	TSubclassOf<UTurnBasedPlayerAction> ActionClass, FPermanentActionRuntimeState& OutState) const
 {
-	if (const FPermanentActionRuntimeEntry* P = FindEntry(PermanentActionState, ActionClass))
+	if (const FPermanentActionRuntimeEntry* Entry = FindEntry(PermanentActionState, ActionClass))
 	{
-		OutState = P->State;
+		OutState = Entry->State;
 		return true;
 	}
 	return false;
 }
 
-bool ATurnBasedPlayerState::GetNumberedRuntimeState(
-	TSubclassOf<UTurnBasedPlayerAction> ActionClass, FNumberedActionRuntimeState& OutState) const
+int32 ATurnBasedPlayerState::GetMatchUsesRemaining(TSubclassOf<UTurnBasedPlayerAction> ActionClass) const
 {
-	if (const FNumberedActionRuntimeEntry* N = FindEntry(NumberedActionState, ActionClass))
-	{
-		OutState = N->State;
-		return true;
-	}
-	return false;
-}
-
-int32 ATurnBasedPlayerState::GetNumberedActionUsesRemaining(TSubclassOf<UTurnBasedPlayerAction> ActionClass) const
-{
-	const FNumberedActionRuntimeEntry* N = FindEntry(NumberedActionState, ActionClass);
-	return N ? N->State.UsesRemaining : 0;
+	const FPermanentActionRuntimeEntry* Entry = FindEntry(PermanentActionState, ActionClass);
+	return Entry ? Entry->State.MatchUsesRemaining : 0;
 }
 
 bool ATurnBasedPlayerState::CanUseAction(TSubclassOf<UTurnBasedPlayerAction> ActionClass) const
 {
-	if (!IsValid(Loadout) || !ActionClass) return false;
+	if (!ActionClass) return false;
 
-	// The per-turn cap comes from the runtime entry (the current effective
-	// value), not the config, so temporary changes are honoured. The config
-	// lookup is only "is this action in the loadout at all".
-	if (FindConfig(Loadout->PermanentActions, ActionClass))
-	{
-		const FPermanentActionRuntimeEntry* Entry = FindEntry(PermanentActionState, ActionClass);
-		if (!Entry) return false;
-		if (Entry->State.CooldownTurnsRemaining > 0) return false;
-		if (Entry->State.MaxUsesThisTurn > 0 && Entry->State.UsesThisTurn >= Entry->State.MaxUsesThisTurn) return false;
-		return true;
-	}
+	// Everything comes from the runtime entry (the current effective values),
+	// not a config, so temporary changes are honoured and a list the game
+	// seeded works like the loadout's
+	const FPermanentActionRuntimeEntry* Entry = FindEntry(PermanentActionState, ActionClass);
+	if (!Entry) return false;
 
-	if (FindConfig(Loadout->NumberedActions, ActionClass))
-	{
-		const FNumberedActionRuntimeEntry* Entry = FindEntry(NumberedActionState, ActionClass);
-		if (!Entry) return false;
-		if (Entry->State.UsesRemaining <= 0) return false;
-		if (Entry->State.CooldownTurnsRemaining > 0) return false;
-		if (Entry->State.MaxUsesThisTurn > 0 && Entry->State.UsesThisTurn >= Entry->State.MaxUsesThisTurn) return false;
-		return true;
-	}
-
-	// Not in this loadout's config arrays
-	return false;
+	const FPermanentActionRuntimeState& State = Entry->State;
+	if (State.CooldownTurnsRemaining > 0) return false;
+	if (State.UsesThisTurn >= State.MaxUsesThisTurn) return false;
+	if (State.MatchUsesRemaining == 0) return false;
+	return true;
 }
 
 void ATurnBasedPlayerState::InitialiseActionState(UActionLoadoutDataAsset* InLoadout)
+{
+	static const TArray<FPermanentActionConfig> None;
+	InitialiseActionState(InLoadout, IsValid(InLoadout) ? InLoadout->PermanentActions : None);
+}
+
+void ATurnBasedPlayerState::InitialiseActionState(UActionLoadoutDataAsset* InLoadout,
+	const TArray<FPermanentActionConfig>& PermanentActions)
 {
 	if (!HasAuthority()) return;
 
 	Loadout = InLoadout;
 	PermanentActionState.Reset();
-	NumberedActionState.Reset();
 
-	if (IsValid(Loadout))
+	for (const FPermanentActionConfig& Config : PermanentActions)
 	{
-		for (const FPermanentActionConfig& Config : Loadout->PermanentActions)
-		{
-			if (!Config.ActionClass) continue;
+		if (!Config.ActionClass || FindEntry(PermanentActionState, Config.ActionClass)) continue;
 
-			FPermanentActionRuntimeEntry Entry;
-			Entry.ActionClass = Config.ActionClass;
-			Entry.State.MaxUsesThisTurn = Config.MaxUsesPerTurn;
-			PermanentActionState.Add(Entry);
-		}
-
-		for (const FNumberedActionConfig& Config : Loadout->NumberedActions)
-		{
-			if (!Config.ActionClass) continue;
-
-			FNumberedActionRuntimeEntry Entry;
-			Entry.ActionClass = Config.ActionClass;
-			Entry.State.MaxUsesThisTurn = Config.MaxUsesPerTurn;
-			Entry.State.UsesRemaining = Config.MaxHeldUses > 0
-				? FMath::Min(Config.StartingMatchUses, Config.MaxHeldUses)
-				: Config.StartingMatchUses;
-			NumberedActionState.Add(Entry);
-		}
+		FPermanentActionRuntimeEntry Entry;
+		Entry.ActionClass = Config.ActionClass;
+		Entry.State.MatchUsesRemaining = Config.HasUnlimitedMatchUses() ? -1 : Config.MatchUses;
+		// A turn always has a limit (see FPermanentActionConfig::TurnUses)
+		Entry.State.MaxUsesThisTurn = FMath::Max(Config.TurnUses, 1);
+		Entry.State.CooldownTurns = FMath::Max(Config.CooldownTurns, 0);
+		PermanentActionState.Add(Entry);
 	}
 
 	MarkActionStateChanged();
@@ -217,46 +154,16 @@ bool ATurnBasedPlayerState::ConsumeActionUse(TSubclassOf<UTurnBasedPlayerAction>
 	if (!HasAuthority()) return false;
 	if (!CanUseAction(ActionClass)) return false;
 
-	if (FPermanentActionRuntimeEntry* P = FindEntry(PermanentActionState, ActionClass))
-	{
-		const FPermanentActionConfig* Config = FindConfig(Loadout->PermanentActions, ActionClass);
-		P->State.UsesThisTurn++;
-		if (Config && Config->CooldownTurns > 0) P->State.CooldownTurnsRemaining = Config->CooldownTurns;
-	}
-	else if (FNumberedActionRuntimeEntry* N = FindEntry(NumberedActionState, ActionClass))
-	{
-		const FNumberedActionConfig* Config = FindConfig(Loadout->NumberedActions, ActionClass);
-		N->State.UsesThisTurn++;
-		N->State.UsesRemaining--;
-		if (Config && Config->CooldownTurns > 0) N->State.CooldownTurnsRemaining = Config->CooldownTurns;
-	}
-	else
-	{
-		return false;
-	}
+	FPermanentActionRuntimeEntry* Entry = FindEntry(PermanentActionState, ActionClass);
+	if (!Entry) return false;
+
+	FPermanentActionRuntimeState& State = Entry->State;
+	State.UsesThisTurn++;
+	if (State.MatchUsesRemaining > 0) State.MatchUsesRemaining--;
+	if (State.CooldownTurns > 0) State.CooldownTurnsRemaining = State.CooldownTurns;
 
 	MarkActionStateChanged();
 	return true;
-}
-
-int32 ATurnBasedPlayerState::GrantActionUses(TSubclassOf<UTurnBasedPlayerAction> ActionClass, int32 Amount)
-{
-	if (!HasAuthority() || Amount <= 0 || !IsValid(Loadout)) return 0;
-
-	FNumberedActionRuntimeEntry* Entry = FindEntry(NumberedActionState, ActionClass);
-	const FNumberedActionConfig* Config = FindConfig(Loadout->NumberedActions, ActionClass);
-	if (!Entry || !Config) return 0;
-
-	int32 ToAdd = Amount;
-	if (Config->MaxHeldUses > 0)
-	{
-		ToAdd = FMath::Clamp(Config->MaxHeldUses - Entry->State.UsesRemaining, 0, Amount);
-	}
-	if (ToAdd <= 0) return 0;
-
-	Entry->State.UsesRemaining += ToAdd;
-	MarkActionStateChanged();
-	return ToAdd;
 }
 
 void ATurnBasedPlayerState::ResetActionTurnCounters()
@@ -270,10 +177,6 @@ void ATurnBasedPlayerState::ResetActionTurnCounters()
 	{
 		E.State.UsesThisTurn = 0;
 	}
-	for (FNumberedActionRuntimeEntry& E : NumberedActionState)
-	{
-		E.State.UsesThisTurn = 0;
-	}
 
 	MarkActionStateChanged();
 }
@@ -283,10 +186,6 @@ void ATurnBasedPlayerState::TickActionCooldowns()
 	if (!HasAuthority()) return;
 
 	for (FPermanentActionRuntimeEntry& E : PermanentActionState)
-	{
-		if (E.State.CooldownTurnsRemaining > 0) E.State.CooldownTurnsRemaining--;
-	}
-	for (FNumberedActionRuntimeEntry& E : NumberedActionState)
 	{
 		if (E.State.CooldownTurnsRemaining > 0) E.State.CooldownTurnsRemaining--;
 	}
@@ -308,8 +207,7 @@ void ATurnBasedPlayerState::MarkActionStateChanged()
 
 bool ATurnBasedPlayerState::HasActionConfig() const
 {
-	return IsValid(Loadout)
-		&& (!Loadout->PermanentActions.IsEmpty() || !Loadout->NumberedActions.IsEmpty());
+	return !PermanentActionState.IsEmpty();
 }
 
 TSubclassOf<UTurnBasedPlayerAction> ATurnBasedPlayerState::FindActionClassByTag(FGameplayTag ActionTag) const
@@ -317,10 +215,6 @@ TSubclassOf<UTurnBasedPlayerAction> ATurnBasedPlayerState::FindActionClassByTag(
 	if (!ActionTag.IsValid()) return nullptr;
 
 	for (const FPermanentActionRuntimeEntry& E : PermanentActionState)
-	{
-		if (UTurnBasedPlayerAction::GetTagForClass(E.ActionClass) == ActionTag) return E.ActionClass;
-	}
-	for (const FNumberedActionRuntimeEntry& E : NumberedActionState)
 	{
 		if (UTurnBasedPlayerAction::GetTagForClass(E.ActionClass) == ActionTag) return E.ActionClass;
 	}

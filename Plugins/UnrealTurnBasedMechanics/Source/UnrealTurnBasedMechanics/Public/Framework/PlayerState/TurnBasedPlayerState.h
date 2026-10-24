@@ -52,16 +52,16 @@ public:
     EParticipantType GetParticipantType() const { return ParticipantType; }
 
     // --- Action State (authoritative) ---
-    // Per-action budgets/cooldowns for this player, seeded from the loadout's
-    // config arrays. Mutated only on the server; clients read the replicated
-    // copy. The one source of truth for uses -- see the 2026-09-18 decisions.
+    // Per-action uses and cooldowns for this player's permanent actions,
+    // seeded from a permanent action list (the loadout's, or one the game
+    // builds). Mutated only on the server; clients read the replicated copy.
+    // The one source of truth for uses -- see the 2026-09-18 decisions.
 
     UFUNCTION(BlueprintPure, Category = "Turn Based|Actions")
     UActionLoadoutDataAsset* GetLoadout() const { return Loadout; }
 
-    // True when the loadout uses the config arrays (the new action system).
-    // A loadout still on the legacy Instanced Actions array returns false,
-    // and every new-system code path stays out of its way.
+    // True once this player's action state has been seeded with at least one
+    // permanent action (on a client: once it has replicated)
     UFUNCTION(BlueprintPure, Category = "Turn Based|Actions")
     bool HasActionConfig() const;
 
@@ -78,36 +78,32 @@ public:
     UFUNCTION(BlueprintPure, Category = "Turn Based|Actions")
     TArray<FPermanentActionRuntimeEntry> GetPermanentActionState() const { return PermanentActionState; }
 
-    UFUNCTION(BlueprintPure, Category = "Turn Based|Actions")
-    TArray<FNumberedActionRuntimeEntry> GetNumberedActionState() const { return NumberedActionState; }
-
     // How many times this action has been used this turn (0 if unknown)
     UFUNCTION(BlueprintPure, Category = "Turn Based|Actions")
     int32 GetActionUsesThisTurn(TSubclassOf<UTurnBasedPlayerAction> ActionClass) const;
 
-    // The action's current effective per-turn cap (0 = unlimited, or unknown
-    // action) -- read from runtime state, so it reflects temporary changes.
+    // The action's current effective per-turn cap (at least 1; 0 for an
+    // action this player doesn't have) -- read from runtime state, so it
+    // reflects temporary changes.
     UFUNCTION(BlueprintPure, Category = "Turn Based|Actions")
     int32 GetActionMaxUsesPerTurn(TSubclassOf<UTurnBasedPlayerAction> ActionClass) const;
 
     UFUNCTION(BlueprintPure, Category = "Turn Based|Actions")
     int32 GetActionUsesThisTurnByTag(FGameplayTag ActionTag) const;
 
-    // Copies of one action's whole runtime state. Return false (and leave Out
-    // untouched) if the action has no entry of that kind on this player.
+    // A copy of one action's whole runtime state. Returns false (and leaves
+    // Out untouched) if this player doesn't have the action.
     UFUNCTION(BlueprintPure, Category = "Turn Based|Actions")
     bool GetPermanentRuntimeState(TSubclassOf<UTurnBasedPlayerAction> ActionClass,
         FPermanentActionRuntimeState& OutState) const;
 
+    // Uses left in the match: -1 = unlimited; 0 when none are left, or for an
+    // action this player doesn't have
     UFUNCTION(BlueprintPure, Category = "Turn Based|Actions")
-    bool GetNumberedRuntimeState(TSubclassOf<UTurnBasedPlayerAction> ActionClass,
-        FNumberedActionRuntimeState& OutState) const;
+    int32 GetMatchUsesRemaining(TSubclassOf<UTurnBasedPlayerAction> ActionClass) const;
 
-    // Uses left in the match for a numbered action (0 if unknown/permanent)
-    UFUNCTION(BlueprintPure, Category = "Turn Based|Actions")
-    int32 GetNumberedActionUsesRemaining(TSubclassOf<UTurnBasedPlayerAction> ActionClass) const;
-
-    // Cooldown clear, per-turn cap not reached, and (numbered) uses left
+    // The player has the action, its cooldown is clear, this turn's cap isn't
+    // reached and the match has uses left
     UFUNCTION(BlueprintPure, Category = "Turn Based|Actions")
     bool CanUseAction(TSubclassOf<UTurnBasedPlayerAction> ActionClass) const;
 
@@ -122,17 +118,21 @@ public:
     UFUNCTION(BlueprintPure, Category = "Turn Based|Actions")
     bool CanEndTurn() const { return AreTurnEndRequirementsMet(Loadout); }
 
-    // Server only. Sets the loadout and seeds every entry from its config
-    // arrays (numbered actions start at StartingMatchUses).
+    // Server only. Sets the loadout (its system actions and turn-end tree)
+    // and seeds the action state from its PermanentActions.
     void InitialiseActionState(UActionLoadoutDataAsset* InLoadout);
 
-    // Server only. Spends one use: per-turn count up, cooldown started,
-    // numbered uses down. False (and no change) if CanUseAction fails.
-    bool ConsumeActionUse(TSubclassOf<UTurnBasedPlayerAction> ActionClass);
+    // Server only. Sets the loadout and seeds the action state from
+    // PermanentActions instead of the loadout's own list -- for a game whose
+    // uses come from elsewhere (e.g. a save). An action appears once; a later
+    // entry for the same class is ignored.
+    void InitialiseActionState(UActionLoadoutDataAsset* InLoadout,
+        const TArray<FPermanentActionConfig>& PermanentActions);
 
-    // Server only. Adds uses to a numbered action, clamped to its
-    // MaxHeldUses. Returns how many were actually added.
-    int32 GrantActionUses(TSubclassOf<UTurnBasedPlayerAction> ActionClass, int32 Amount);
+    // Server only. Spends one use: this turn's count up, the match's down
+    // (unless unlimited), cooldown started. False (and no change) if
+    // CanUseAction fails.
+    bool ConsumeActionUse(TSubclassOf<UTurnBasedPlayerAction> ActionClass);
 
     // Server only. Turn boundary hooks.
     void ResetActionTurnCounters();
@@ -201,9 +201,6 @@ private:
 
     UPROPERTY(ReplicatedUsing = OnRep_ActionState)
     TArray<FPermanentActionRuntimeEntry> PermanentActionState;
-
-    UPROPERTY(ReplicatedUsing = OnRep_ActionState)
-    TArray<FNumberedActionRuntimeEntry> NumberedActionState;
 
     UPROPERTY(ReplicatedUsing = OnRep_ActionState)
     int32 ActionStateRevision = 0;

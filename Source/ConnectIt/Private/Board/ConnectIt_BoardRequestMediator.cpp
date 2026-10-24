@@ -55,7 +55,7 @@ bool UConnectIt_BoardRequestMediator::ProcessRequest(const FTurnActionRequest& R
         UE_LOG(LogTemp, Error,
             TEXT("ConnectIt_BoardRequestMediator: request '%s' rejected -- "
                  "faction %d has no action state (PlayerState missing, or not "
-                 "seeded from a loadout with PermanentActions/NumberedActions)"),
+                 "seeded with any permanent actions)"),
             *RequestType.ToString(), RequestingFaction);
         return false;
     }

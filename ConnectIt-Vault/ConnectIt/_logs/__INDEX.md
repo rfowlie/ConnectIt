@@ -6,6 +6,8 @@ Vault-wide passes go in `_core/_logs/`.
 
 Newest first:
 
+- [2026-10-24-1331](2026-10-24-1331.md) — session — player actions plan, Stage 2: one permanent action list (match uses
+  -1 = unlimited, turn uses at least 1), game-built lists, the component builds from the PlayerState. 67/67 tests.
 - [2026-10-24-1259](2026-10-24-1259.md) — session — top-down camera: review of the imported pawn, needs, a strategy-system proposal (new design note).
 
 - [2026-10-24-1256](2026-10-24-1256.md) — session — player actions plan, Stage 1: `UTurnBasedAction` →

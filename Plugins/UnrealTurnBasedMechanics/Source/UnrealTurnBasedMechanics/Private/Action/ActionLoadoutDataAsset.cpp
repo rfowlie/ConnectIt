@@ -37,10 +37,10 @@ UTurnBasedSpectatorAction* UActionLoadoutDataAsset::GetAwaitingConfirmationActio
 namespace
 {
     // Walks the turn-end tree checking each leaf against the loadout's config.
-    // MaxUsesPerTurnByClass maps a config class to its cap (0 = unlimited).
+    // TurnUsesByClass maps a config class to its per-turn cap.
     void ValidateTurnEndNode(
         const UTurnEndRequirementNode* Node,
-        const TMap<TSubclassOf<UTurnBasedPlayerAction>, int32>& MaxUsesPerTurnByClass,
+        const TMap<TSubclassOf<UTurnBasedPlayerAction>, int32>& TurnUsesByClass,
         const FString& LoadoutName,
         FDataValidationContext& Context,
         EDataValidationResult& InOutResult)
@@ -51,7 +51,7 @@ namespace
         {
             for (const UTurnEndRequirementNode* Child : Group->Children)
             {
-                ValidateTurnEndNode(Child, MaxUsesPerTurnByClass, LoadoutName, Context, InOutResult);
+                ValidateTurnEndNode(Child, TurnUsesByClass, LoadoutName, Context, InOutResult);
             }
             return;
         }
@@ -67,20 +67,20 @@ namespace
             return;
         }
 
-        const int32* Cap = MaxUsesPerTurnByClass.Find(Leaf->ActionClass);
+        const int32* Cap = TurnUsesByClass.Find(Leaf->ActionClass);
         if (!Cap)
         {
             Context.AddError(FText::FromString(FString::Printf(
-                TEXT("Loadout '%s': turn-end leaf references '%s', which is in "
-                     "neither PermanentActions nor NumberedActions."),
+                TEXT("Loadout '%s': turn-end leaf references '%s', which isn't "
+                     "in PermanentActions."),
                 *LoadoutName, *Leaf->ActionClass->GetName())));
             InOutResult = EDataValidationResult::Invalid;
         }
-        else if (*Cap > 0 && Leaf->RequiredUsesThisTurn > *Cap)
+        else if (Leaf->RequiredUsesThisTurn > *Cap)
         {
             Context.AddError(FText::FromString(FString::Printf(
                 TEXT("Loadout '%s': turn-end leaf needs %d uses of '%s' but its "
-                     "MaxUsesPerTurn is %d -- the leaf can never be satisfied."),
+                     "TurnUses is %d -- the leaf can never be satisfied."),
                 *LoadoutName, Leaf->RequiredUsesThisTurn,
                 *Leaf->ActionClass->GetName(), *Cap)));
             InOutResult = EDataValidationResult::Invalid;
@@ -93,75 +93,71 @@ EDataValidationResult UActionLoadoutDataAsset::IsDataValid(
 {
     EDataValidationResult Result = Super::IsDataValid(Context);
 
-    // --- Action config arrays ---
-    // A class may appear once, in exactly one of the two arrays.
-    TMap<TSubclassOf<UTurnBasedPlayerAction>, int32> MaxUsesPerTurnByClass;
-
-    auto NoteClass = [&](const TSubclassOf<UTurnBasedPlayerAction>& ActionClass,
-                         int32 MaxUsesPerTurn, const TCHAR* ArrayName)
-    {
-        if (!ActionClass)
-        {
-            Context.AddError(FText::FromString(FString::Printf(
-                TEXT("Loadout '%s': an entry in %s has no ActionClass."),
-                *LoadoutName, ArrayName)));
-            Result = EDataValidationResult::Invalid;
-            return;
-        }
-
-        if (MaxUsesPerTurnByClass.Contains(ActionClass))
-        {
-            Context.AddError(FText::FromString(FString::Printf(
-                TEXT("Loadout '%s': '%s' appears more than once across "
-                     "PermanentActions/NumberedActions."),
-                *LoadoutName, *ActionClass->GetName())));
-            Result = EDataValidationResult::Invalid;
-            return;
-        }
-
-        if (!UTurnBasedPlayerAction::GetTagForClass(ActionClass).IsValid())
-        {
-            Context.AddWarning(FText::FromString(FString::Printf(
-                TEXT("Loadout '%s': '%s' returns no ActionTag from GetActionTag."),
-                *LoadoutName, *ActionClass->GetName())));
-        }
-
-        MaxUsesPerTurnByClass.Add(ActionClass, MaxUsesPerTurn);
-    };
+    // --- Permanent actions ---
+    // A class may appear once
+    TMap<TSubclassOf<UTurnBasedPlayerAction>, int32> TurnUsesByClass;
 
     for (const FPermanentActionConfig& Config : PermanentActions)
     {
-        NoteClass(Config.ActionClass, Config.MaxUsesPerTurn, TEXT("PermanentActions"));
-    }
-
-    for (const FNumberedActionConfig& Config : NumberedActions)
-    {
-        NoteClass(Config.ActionClass, Config.MaxUsesPerTurn, TEXT("NumberedActions"));
-
-        if (Config.MaxHeldUses > 0 && Config.StartingMatchUses > Config.MaxHeldUses)
+        if (!Config.ActionClass)
         {
             Context.AddError(FText::FromString(FString::Printf(
-                TEXT("Loadout '%s': '%s' starts with %d uses but MaxHeldUses is %d."),
-                *LoadoutName,
-                Config.ActionClass ? *Config.ActionClass->GetName() : TEXT("(none)"),
-                Config.StartingMatchUses, Config.MaxHeldUses)));
+                TEXT("Loadout '%s': an entry in PermanentActions has no ActionClass."),
+                *LoadoutName)));
+            Result = EDataValidationResult::Invalid;
+            continue;
+        }
+
+        const FString ClassName = Config.ActionClass->GetName();
+        if (TurnUsesByClass.Contains(Config.ActionClass))
+        {
+            Context.AddError(FText::FromString(FString::Printf(
+                TEXT("Loadout '%s': '%s' appears more than once in PermanentActions."),
+                *LoadoutName, *ClassName)));
+            Result = EDataValidationResult::Invalid;
+            continue;
+        }
+
+        if (Config.TurnUses < 1)
+        {
+            Context.AddError(FText::FromString(FString::Printf(
+                TEXT("Loadout '%s': '%s' has TurnUses %d -- a turn always has a "
+                     "limit of at least 1."),
+                *LoadoutName, *ClassName, Config.TurnUses)));
             Result = EDataValidationResult::Invalid;
         }
+
+        if (Config.MatchUses == 0)
+        {
+            Context.AddWarning(FText::FromString(FString::Printf(
+                TEXT("Loadout '%s': '%s' has MatchUses 0 -- it can never be used "
+                     "(-1 = unlimited)."),
+                *LoadoutName, *ClassName)));
+        }
+
+        if (!UTurnBasedPlayerAction::GetTagForClass(Config.ActionClass).IsValid())
+        {
+            Context.AddWarning(FText::FromString(FString::Printf(
+                TEXT("Loadout '%s': '%s' returns no ActionTag from GetActionTag."),
+                *LoadoutName, *ClassName)));
+        }
+
+        TurnUsesByClass.Add(Config.ActionClass, Config.TurnUses);
     }
 
     // --- Turn-end tree ---
     if (IsValid(TurnEndRequirements))
     {
-        if (MaxUsesPerTurnByClass.IsEmpty())
+        if (TurnUsesByClass.IsEmpty())
         {
             Context.AddWarning(FText::FromString(FString::Printf(
                 TEXT("Loadout '%s': a TurnEndRequirements tree is set but no "
-                     "PermanentActions/NumberedActions are configured."),
+                     "PermanentActions are configured."),
                 *LoadoutName)));
         }
         else
         {
-            ValidateTurnEndNode(TurnEndRequirements, MaxUsesPerTurnByClass,
+            ValidateTurnEndNode(TurnEndRequirements, TurnUsesByClass,
                 LoadoutName, Context, Result);
         }
     }
@@ -176,18 +172,19 @@ EDataValidationResult UActionLoadoutDataAsset::IsDataValid(
             *LoadoutName)));
     }
 
-    // A loadout with no turn actions gives the player nothing to do
-    if (MaxUsesPerTurnByClass.IsEmpty())
+    // A loadout with no turn actions gives the player nothing to do (unless
+    // the game seeds its own list)
+    if (TurnUsesByClass.IsEmpty())
     {
         Context.AddWarning(FText::FromString(FString::Printf(
-            TEXT("ActionLoadoutDataAsset '%s': no PermanentActions or "
-                 "NumberedActions configured -- the player has no turn actions."),
+            TEXT("ActionLoadoutDataAsset '%s': no PermanentActions configured -- "
+                 "the player has no turn actions unless the game gives them some."),
             *LoadoutName)));
     }
 
     // Without a tree no action contributes to turn end, so a turn can be
     // ended at any time (and never ends automatically)
-    if (!IsValid(TurnEndRequirements) && !MaxUsesPerTurnByClass.IsEmpty())
+    if (!IsValid(TurnEndRequirements) && !TurnUsesByClass.IsEmpty())
     {
         Context.AddWarning(FText::FromString(FString::Printf(
             TEXT("ActionLoadoutDataAsset '%s': no TurnEndRequirements tree set -- "

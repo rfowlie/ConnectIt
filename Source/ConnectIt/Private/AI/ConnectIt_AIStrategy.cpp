@@ -29,10 +29,6 @@ bool UConnectIt_AIStrategy::LoadoutGrantsRequestType(
     {
         if (Grants(Config.ActionClass)) return true;
     }
-    for (const FNumberedActionConfig& Config : Loadout->NumberedActions)
-    {
-        if (Grants(Config.ActionClass)) return true;
-    }
     return false;
 }
 

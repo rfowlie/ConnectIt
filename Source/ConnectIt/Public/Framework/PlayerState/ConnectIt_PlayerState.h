@@ -8,9 +8,10 @@
 
 // ConnectIt-specific player state. It used to hold the SWAP use budget
 // (SwapUsesRemaining and its rep-notify/delegate); that is now a generic
-// NumberedActions entry in the loadout, with its live state on the base
-// ATurnBasedPlayerState (see GetNumberedActionState / CanUseAction /
-// OnActionRuntimeStateUpdated). Nothing game-specific lives here yet.
+// PermanentActions entry (its match uses) in the loadout, with its live state
+// on the base ATurnBasedPlayerState (see GetPermanentActionState /
+// CanUseAction / OnActionRuntimeStateUpdated). Nothing game-specific lives
+// here yet.
 //
 // Kept as the game's PlayerState class (AConnectIt_GameMode and Blueprints
 // reference it) so game-specific replicated state has somewhere to go.

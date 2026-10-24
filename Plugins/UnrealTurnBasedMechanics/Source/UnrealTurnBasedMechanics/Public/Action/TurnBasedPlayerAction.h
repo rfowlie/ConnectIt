@@ -47,9 +47,10 @@ public:
 
     // --- Designer Config ---
     // Budgets, per-turn caps, cooldowns and turn-end contribution are NOT
-    // configured here -- they live in the loadout's PermanentActions /
-    // NumberedActions (FPermanentActionConfig / FNumberedActionConfig) and its
-    // TurnEndRequirements tree, and their live state on ATurnBasedPlayerState.
+    // configured here -- they live in the permanent action list the player was
+    // seeded from (FPermanentActionConfig: the loadout's PermanentActions, or
+    // a list the game builds) and the loadout's TurnEndRequirements tree, and
+    // their live state on ATurnBasedPlayerState.
 
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Action|Config")
     bool bIsCancellable = true;
@@ -117,24 +118,20 @@ public:
     // it can never disagree with the authoritative copy. Each returns 0/false
     // if the owner has no PlayerState or no entry for this action's class.
 
-    // Copy of this action's state if it is a permanent action
+    // Copy of this action's state (false if the player doesn't have it)
     UFUNCTION(BlueprintPure, Category = "Action|State")
     bool GetPermanentRuntimeState(FPermanentActionRuntimeState& OutState) const;
-
-    // Copy of this action's state if it is a numbered action
-    UFUNCTION(BlueprintPure, Category = "Action|State")
-    bool GetNumberedRuntimeState(FNumberedActionRuntimeState& OutState) const;
 
     UFUNCTION(BlueprintPure, Category = "Action|State")
     int32 GetUsesThisTurn() const;
 
-    // Current effective per-turn cap (0 = unlimited or unknown)
+    // Current effective per-turn cap (at least 1; 0 if unknown)
     UFUNCTION(BlueprintPure, Category = "Action|State")
     int32 GetMaxUsesPerTurn() const;
 
-    // Uses left in the match -- numbered actions only (0 otherwise)
+    // Uses left in the match: -1 = unlimited, 0 = none left (or unknown)
     UFUNCTION(BlueprintPure, Category = "Action|State")
-    int32 GetUsesRemaining() const;
+    int32 GetMatchUsesRemaining() const;
 
     // --- Board Change ---
 

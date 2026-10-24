@@ -1,6 +1,6 @@
 # Top-down camera: needs and a movement-strategy system
 
-Design note (2026-10-24). **Under discussion; nothing built.** For the adventure hub map
+Design note (2026-10-24). **Settled the same day; nothing built.** Plan: [top-down-camera-plan](top-down-camera-plan.md) (**approved 2026-10-24**, not built). For the adventure hub map
 ([adventure-hub-plan](adventure-hub-plan.md), Stage 4 "camera") and ordinary gameplay. Starting point: the owner's old
 pawn, imported into `Plugins/UnrealUnsorted/` (a holding area: not enabled, nothing may depend on it).
 
@@ -100,14 +100,18 @@ playback (a power chain, a score) if the camera should draw attention.
 - **For ConnectIt either works:** no C++ code possesses a pawn today and possession has no gameplay meaning; input
   goes through the player controller. The decision that matters more is **putting the behaviour stack in a component**
   (a camera rig component) -- then it can sit on a pawn or any actor, and the choice stays reversible.
-- Lean, revised: **a camera pawn possessed by the player controller, with the stack in a rig component**, movement
-  replication off; `SetViewTargetWithBlend` stays available for special shots.
+- **Decided (owner, 2026-10-24): a camera pawn possessed by the player controller, the behaviour stack in a rig
+  component, movement replication off.** `SetViewTargetWithBlend` stays available for special shots.
 
 ## Open
 
-- Pawn (possessed) or a view-target actor the player controller looks through?
+- ~~Pawn or view-target actor?~~ Camera pawn + rig component (decided).
 - ~~Does the match camera move by itself?~~ Yes (decided).
-- Which inputs ship first (edge scroll, drag, wheel zoom, keyboard, gamepad)?
+- ~~Which inputs ship first?~~ **Edge scroll, drag to pan, wheel zoom (toward the cursor), keyboard pan**; gamepad
+  later (decided).
 - ~~Gameplay Cameras, Lyra's pattern, or a custom stack?~~ Custom stack (decided).
-- Does an event wait for the camera to arrive before it plays?
-- New plugin or a module in an existing one?
+- ~~Does an event wait for the camera?~~ **Yes**: an automatic focus becomes part of the event queue's wait, so the
+  move plays in view; focus times kept short (decided).
+- ~~New plugin or an existing one?~~ **`UnrealGameMechanics`** -- a camera area in the suite base plugin (decided).
+
+Nothing left open. Plan written: [top-down-camera-plan](top-down-camera-plan.md).

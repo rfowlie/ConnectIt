@@ -20,7 +20,7 @@ bool UConnectIt_SwapPieceAction::ProducesRequestType_Implementation(FGameplayTag
 
 UConnectIt_SwapPieceAction::UConnectIt_SwapPieceAction()
 {
-    // Its use budget (a NumberedActions entry) and whether completing it
+    // Its match and turn uses (a PermanentActions entry) and whether completing it
     // ends the turn (a leaf in the loadout's TurnEndRequirements tree, e.g.
     // an Any group with PlacePiece) are configured in the loadout, not here.
     bIsCancellable = true;

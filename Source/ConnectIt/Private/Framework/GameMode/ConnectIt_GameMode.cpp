@@ -112,10 +112,9 @@ void AConnectIt_GameMode::SeedActionStateForPlayer(APlayerController* NewPlayer)
 
     UE_LOG(LogTemp, Log,
         TEXT("ConnectIt_GameMode: seeded action state for %s from loadout "
-             "'%s' (%d permanent, %d numbered) (server, PostLogin)"),
+             "'%s' (%d permanent actions) (server, PostLogin)"),
         *PS->GetPlayerName(), *PlayerLoadout->LoadoutName,
-        PlayerLoadout->PermanentActions.Num(),
-        PlayerLoadout->NumberedActions.Num());
+        PlayerLoadout->PermanentActions.Num());
 }
 
 void AConnectIt_GameMode::EnsureMatchSetupResolved()

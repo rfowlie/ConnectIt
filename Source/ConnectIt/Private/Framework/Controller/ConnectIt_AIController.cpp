@@ -107,9 +107,8 @@ void AConnectIt_AIController::SeedActionState(UActionLoadoutDataAsset* Loadout)
 
     UE_LOG(LogTemp, Log,
         TEXT("ConnectIt_AIController: seeded action state from loadout '%s' "
-             "(%d permanent, %d numbered)"),
-        *Loadout->LoadoutName, Loadout->PermanentActions.Num(),
-        Loadout->NumberedActions.Num());
+             "(%d permanent actions)"),
+        *Loadout->LoadoutName, Loadout->PermanentActions.Num());
 }
 
 void AConnectIt_AIController::HandleTurnNotification(const FTurnNotification& Notification)
@@ -361,10 +360,6 @@ void AConnectIt_AIController::BeginDecision()
         {
             Consider(Config.ActionClass);
         }
-        for (const FNumberedActionConfig& Config : OwnLoadout->NumberedActions)
-        {
-            Consider(Config.ActionClass);
-        }
     }
 
     // ...and that can actually apply somewhere on this board (a kind of move
@@ -477,10 +472,6 @@ bool AConnectIt_AIController::SubmitCandidate(const FConnectItAICandidate& Candi
         }
     };
     for (const FPermanentActionConfig& Config : Loadout->PermanentActions)
-    {
-        ConsiderClass(Config.ActionClass);
-    }
-    for (const FNumberedActionConfig& Config : Loadout->NumberedActions)
     {
         ConsiderClass(Config.ActionClass);
     }
