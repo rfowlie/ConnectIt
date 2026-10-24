@@ -29,10 +29,13 @@ public class UnrealTurnBasedMechanics : ModuleRules
 				"InputCore",
 				"EnhancedInput",
 				"GameplayTags",
-				// SlateCore -- public because Action/TurnBasedAction.h (a
+				// SlateCore -- public because Action/TurnBasedPlayerAction.h (a
 				// public header) now carries an FSlateBrush property
 				// (display icon, see UIValueCatalogue.md Gap 7).
 				"SlateCore",
+				// DeveloperSettings -- public because the plugin's project
+				// settings (TurnBasedMechanicsSettings.h) are a public header
+				"DeveloperSettings",
 
 				// ... add other public dependencies that you statically link with here ...
 				"UnrealGameMechanics",

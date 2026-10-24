@@ -2,6 +2,8 @@
 
 #include "Framework/PlayerState/TurnBasedPlayerState.h"
 #include "Action/ActionLoadoutDataAsset.h"
+#include "Action/ItemActionInventoryDataAsset.h"
+#include "UnrealTurnBasedMechanics.h"
 #include "Action/TurnBasedPlayerAction.h"
 #include "Action/TurnEndRequirement.h"
 #include "Net/UnrealNetwork.h"
@@ -42,6 +44,10 @@ void ATurnBasedPlayerState::GetLifetimeReplicatedProps(
 	DOREPLIFETIME(ATurnBasedPlayerState, Loadout);
 	DOREPLIFETIME(ATurnBasedPlayerState, PermanentActionState);
 	DOREPLIFETIME(ATurnBasedPlayerState, ActionStateRevision);
+	DOREPLIFETIME(ATurnBasedPlayerState, Inventory);
+	DOREPLIFETIME(ATurnBasedPlayerState, ItemBudget);
+	DOREPLIFETIME(ATurnBasedPlayerState, ItemUsesThisMatch);
+	DOREPLIFETIME(ATurnBasedPlayerState, ItemUsesThisTurn);
 }
 
 // --- Action State ---
@@ -65,13 +71,15 @@ bool ATurnBasedPlayerState::AreTurnEndRequirementsMet(const UActionLoadoutDataAs
         return true;
     }
 
-    // Each leaf compares its action's uses this turn against its own
-    // required count.
-    return InLoadout->TurnEndRequirements->IsSatisfied(
+    // Each Action Used leaf compares its action's permanent uses this turn
+    // against its own required count; each Item Used leaf, the item uses
+    const FTurnEndUses Uses{
         [this](const FGameplayTag& ActionTag) -> int32
         {
             return GetActionUsesThisTurnByTag(ActionTag);
-        });
+        },
+        ItemUsesThisTurn };
+    return InLoadout->TurnEndRequirements->IsSatisfied(Uses);
 }
 
 int32 ATurnBasedPlayerState::GetActionUsesThisTurnByTag(FGameplayTag ActionTag) const
@@ -177,6 +185,11 @@ void ATurnBasedPlayerState::ResetActionTurnCounters()
 	{
 		E.State.UsesThisTurn = 0;
 	}
+	if (ItemUsesThisTurn != 0)
+	{
+		ItemUsesThisTurn = 0;
+		OnInventoryChanged.Broadcast();
+	}
 
 	MarkActionStateChanged();
 }
@@ -219,6 +232,134 @@ TSubclassOf<UTurnBasedPlayerAction> ATurnBasedPlayerState::FindActionClassByTag(
 		if (UTurnBasedPlayerAction::GetTagForClass(E.ActionClass) == ActionTag) return E.ActionClass;
 	}
 	return nullptr;
+}
+
+// --- Item actions ---
+
+int32 ATurnBasedPlayerState::GetItemCount(TSubclassOf<UTurnBasedPlayerAction> ActionClass) const
+{
+	const FItemActionEntry* Entry = FindEntry(Inventory, ActionClass);
+	return Entry ? Entry->Count : 0;
+}
+
+bool ATurnBasedPlayerState::HasItemBudgetLeft() const
+{
+	if (ItemUsesThisTurn >= ItemBudget.TurnUses) return false;
+	return ItemBudget.MatchUses < 0 || ItemUsesThisMatch < ItemBudget.MatchUses;
+}
+
+bool ATurnBasedPlayerState::CanUseItem(TSubclassOf<UTurnBasedPlayerAction> ActionClass) const
+{
+	return ActionClass && GetItemCount(ActionClass) > 0 && HasItemBudgetLeft();
+}
+
+namespace
+{
+	// The most of ActionClass a player can hold, from the game's item
+	// inventory asset; 0 (with a warning) when it can't be held
+	int32 GetItemCap(const TSubclassOf<UTurnBasedPlayerAction>& ActionClass)
+	{
+		const UItemActionInventoryDataAsset* Caps = UItemActionInventoryDataAsset::Get();
+		const int32 Cap = Caps ? Caps->GetMaxHeld(ActionClass) : 0;
+		if (Cap <= 0)
+		{
+			UE_LOG(LogTurnBasedMechanics, Warning,
+				TEXT("TurnBasedPlayerState: item action '%s' can't be held -- %s"),
+				ActionClass ? *ActionClass->GetName() : TEXT("(none)"),
+				Caps ? TEXT("the item inventory asset doesn't list it")
+				     : TEXT("no item inventory asset in Project Settings > Turn Based Mechanics"));
+		}
+		return Cap;
+	}
+}
+
+void ATurnBasedPlayerState::InitialiseInventory(const TArray<FItemActionEntry>& Entries)
+{
+	if (!HasAuthority()) return;
+
+	Inventory.Reset();
+	for (const FItemActionEntry& Source : Entries)
+	{
+		if (!Source.ActionClass || Source.Count <= 0 || FindEntry(Inventory, Source.ActionClass)) continue;
+
+		const int32 Cap = GetItemCap(Source.ActionClass);
+		if (Cap <= 0) continue;
+
+		FItemActionEntry Entry = Source;
+		Entry.Count = FMath::Min(Entry.Count, Cap);
+		Inventory.Add(Entry);
+	}
+
+	MarkInventoryChanged();
+}
+
+void ATurnBasedPlayerState::SetItemBudget(const FItemBudget& InBudget)
+{
+	if (!HasAuthority()) return;
+
+	ItemBudget = InBudget;
+	ItemBudget.TurnUses = FMath::Max(ItemBudget.TurnUses, 0);
+	ItemUsesThisMatch = 0;
+	ItemUsesThisTurn = 0;
+
+	MarkInventoryChanged();
+}
+
+bool ATurnBasedPlayerState::ConsumeItemUse(TSubclassOf<UTurnBasedPlayerAction> ActionClass)
+{
+	if (!HasAuthority()) return false;
+	if (!CanUseItem(ActionClass)) return false;
+
+	FItemActionEntry* Entry = FindEntry(Inventory, ActionClass);
+	if (!Entry) return false;
+
+	Entry->Count--;
+	ItemUsesThisMatch++;
+	ItemUsesThisTurn++;
+	// None left: the action leaves the inventory (only held items are kept)
+	if (Entry->Count <= 0)
+	{
+		Inventory.RemoveAll([&ActionClass](const FItemActionEntry& E) { return E.ActionClass == ActionClass; });
+	}
+
+	MarkInventoryChanged();
+	return true;
+}
+
+int32 ATurnBasedPlayerState::GrantItems(TSubclassOf<UTurnBasedPlayerAction> ActionClass, int32 Amount)
+{
+	if (!HasAuthority() || !ActionClass || Amount <= 0) return 0;
+
+	const int32 Cap = GetItemCap(ActionClass);
+	const int32 Held = GetItemCount(ActionClass);
+	const int32 Added = FMath::Clamp(Cap - Held, 0, Amount);
+	if (Added <= 0) return 0;
+
+	if (FItemActionEntry* Entry = FindEntry(Inventory, ActionClass))
+	{
+		Entry->Count += Added;
+	}
+	else
+	{
+		FItemActionEntry NewEntry;
+		NewEntry.ActionClass = ActionClass;
+		NewEntry.Count = Added;
+		Inventory.Add(NewEntry);
+	}
+
+	MarkInventoryChanged();
+	return Added;
+}
+
+void ATurnBasedPlayerState::OnRep_Inventory()
+{
+	OnInventoryChanged.Broadcast();
+}
+
+void ATurnBasedPlayerState::MarkInventoryChanged()
+{
+	OnInventoryChanged.Broadcast();
+	MarkActionStateChanged();
 }
 
 // --- Manager-only setters ---

@@ -39,9 +39,16 @@ enum class ETurnEndRequirementResult : uint8
     Unsatisfied
 };
 
-// Maps an action tag to how many times that action has completed this turn
-// (0 if unknown).
-using FTurnEndUsesLookup = TFunctionRef<int32(const FGameplayTag&)>;
+// What a turn-end tree is evaluated against: this turn's uses.
+struct FTurnEndUses
+{
+    // Maps an action tag to how many of its permanent uses were spent this
+    // turn (0 if unknown). Item uses of the action don't count here.
+    TFunctionRef<int32(const FGameplayTag&)> ActionUsesThisTurn;
+
+    // Item uses this turn, all item actions together
+    int32 ItemUsesThisTurn = 0;
+};
 
 UCLASS(Abstract, BlueprintType, EditInlineNew, DefaultToInstanced)
 class UNREALTURNBASEDMECHANICS_API UTurnEndRequirementNode : public UObject
@@ -57,7 +64,7 @@ public:
     bool bIsEnabled = true;
 
     // Skipped if disabled or if nothing under it is enabled
-    virtual ETurnEndRequirementResult Evaluate(FTurnEndUsesLookup GetUsesThisTurn) const
+    virtual ETurnEndRequirementResult Evaluate(const FTurnEndUses& Uses) const
     {
         return ETurnEndRequirementResult::Skipped;
     }
@@ -65,13 +72,15 @@ public:
     // Root-level convenience: true only if the tree resolves to Satisfied.
     // A root that resolves to Skipped (everything disabled/empty) is not
     // satisfied.
-    bool IsSatisfied(FTurnEndUsesLookup GetUsesThisTurn) const
+    bool IsSatisfied(const FTurnEndUses& Uses) const
     {
-        return Evaluate(GetUsesThisTurn) == ETurnEndRequirementResult::Satisfied;
+        return Evaluate(Uses) == ETurnEndRequirementResult::Satisfied;
     }
 };
 
-// Satisfied once its action has completed RequiredUsesThisTurn times this turn
+// Satisfied once its action has completed RequiredUsesThisTurn times this
+// turn -- permanent uses only: an item use of the action doesn't count (the
+// Item Used leaf counts those)
 UCLASS(BlueprintType, EditInlineNew, DefaultToInstanced,
     meta = (DisplayName = "Action Used"))
 class UNREALTURNBASEDMECHANICS_API UTurnEndRequirementLeaf : public UTurnEndRequirementNode
@@ -89,7 +98,25 @@ public:
     int32 RequiredUsesThisTurn = 1;
 
     virtual ETurnEndRequirementResult Evaluate(
-        FTurnEndUsesLookup GetUsesThisTurn) const override;
+        const FTurnEndUses& Uses) const override;
+};
+
+// Satisfied once RequiredItemUses item uses (of any item action) were made
+// this turn. Stands alone, or groups with Action Used leaves (e.g. "Place x1
+// OR an item").
+UCLASS(BlueprintType, EditInlineNew, DefaultToInstanced,
+    meta = (DisplayName = "Item Used"))
+class UNREALTURNBASEDMECHANICS_API UTurnEndRequirementItemUsed : public UTurnEndRequirementNode
+{
+    GENERATED_BODY()
+
+public:
+
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Turn End", meta = (ClampMin = 1))
+    int32 RequiredItemUses = 1;
+
+    virtual ETurnEndRequirementResult Evaluate(
+        const FTurnEndUses& Uses) const override;
 };
 
 // Combines its enabled children with Any/All
@@ -108,5 +135,5 @@ public:
     TArray<TObjectPtr<UTurnEndRequirementNode>> Children;
 
     virtual ETurnEndRequirementResult Evaluate(
-        FTurnEndUsesLookup GetUsesThisTurn) const override;
+        const FTurnEndUses& Uses) const override;
 };

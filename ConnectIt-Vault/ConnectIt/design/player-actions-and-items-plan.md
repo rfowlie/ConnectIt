@@ -45,6 +45,9 @@ Settled with the owner:
 - **Turn-end requirements:** an item use **doesn't** count as that action. It is its own requirement ("an item was
   used"), which can stand alone or be grouped with action requirements.
 - **No "choose items to bring"** before a node: the whole inventory is there, and the budget limits it.
+- **Design lean (owner, 2026-10-24): the core actions won't be item actions.** Place, Swap, Shift and the like are
+  very likely to stay permanent, and item actions to be their own set. Not a rule; the plugin allows either. It keeps
+  Adventure simpler: a permanent action and an item action rarely share a class.
 - **Renames:**
   - the plugin's `UTurnBasedAction` → `UTurnBasedPlayerAction`;
   - tags `ConnectIt.Action.*` → `ConnectIt.PlayerAction.*` and `ConnectIt.Game.State.*` → `ConnectIt.BoardOperation.*`;
@@ -150,6 +153,42 @@ stages.
   - no items at budget 0;
   - an item action not in the permanent list can be used;
   - the Item Used leaf, alone and in a group.
+- *As built (2026-10-24; 69/69 tests; Throughput 358k nodes/s):*
+  - **Structs** (`Action/ActionConfig.h`):
+    - `FItemActionEntry`: `ActionClass`, `Count` (the cap is the game's, below);
+    - `FItemBudget`: `MatchUses` (-1 = unlimited), `TurnUses` (0 = no items; always finite); the default is no
+      items.
+  - **PlayerState** (replicated: `Inventory`, `ItemBudget`, `ItemUsesThisMatch`, `ItemUsesThisTurn`):
+    - `GetInventory`, `GetItemCount`, `GetItemBudget`, `GetItemUsesThisTurn` / `ThisMatch`, `HasItemBudgetLeft`,
+      `CanUseItem`;
+    - server: `InitialiseInventory(Entries)`, `SetItemBudget`, `ConsumeItemUse`, `GrantItems`;
+    - `OnInventoryChanged`.
+    - An inventory change also bumps the action-state revision, so the actions component's post-request wait works
+      for item uses. The turn reset clears item uses this turn.
+  - **Revised after review (owner, 2026-10-24): caps are the game's static tuning.**
+    - A new plugin data asset, **`UItemActionInventoryDataAsset`** (`MaxHeld`: item action → cap, at least 1), is
+      named in a new plugin project setting (`UTurnBasedMechanicsSettings`: Project Settings > Plugins > Turn Based
+      Mechanics > **Item Inventory**). The plugin gains a `DeveloperSettings` dependency.
+    - **Every item action has a cap:** one the asset doesn't list can't be held. Seeding drops it, a grant adds
+      nothing, and both log a warning.
+    - **Grants can add an action not yet held,** clamped to its cap. Only held items are kept: seeding drops entries
+      holding none, and spending the last one removes its entry.
+    - This replaces a per-entry `MaxHeld` and "grants only to an existing entry" (which needed every possible item
+      seeded at 0).
+  - **The request:** `FTurnActionRequest::bIsItemUse` (in the outcome match too).
+  - **The action:** `IsItemUse()` / `SetItemUse()`.
+    - Set by `ActivateItemAction` and cleared when the action finishes (complete or cancel), so a refused request
+      retried stays an item use.
+    - While set, `CanActivate` asks `CanUseItem` and `RequestBoardChange` marks the request.
+  - **The component:** `ActivateItemAction(Class)`, and `SyncRuntimeActions` also builds instances for the
+    inventory's item actions.
+  - **Turn end:** the tree is evaluated against `FTurnEndUses` (an action's permanent uses this turn, plus item uses
+    this turn). New leaf **Item Used** (`UTurnEndRequirementItemUsed`, `RequiredItemUses`). An item use doesn't count
+    towards an Action Used leaf.
+  - **The server gate is Stage 4:** until the Mediator handles `bIsItemUse`, an item request is checked like a
+    permanent one.
+  - **Tests:** new `ConnectIt.PlayerActions.Items` and `.ItemUsedTurnEnd`.
+    - `ActivateItemAction` needs a controller and input, so it's for PIE (after Stage 4).
 
 ## Stage 4: ConnectIt conforms
 
@@ -175,7 +214,8 @@ stages.
 ## Stage 5: Adventure conforms
 
 - **Renames:**
-  - `UConnectIt_SkillShardTable` → **`UConnectIt_ActionShardTable`**; each entry gains **`MaxHeld`**, the item cap;
+  - `UConnectIt_SkillShardTable` → **`UConnectIt_ActionShardTable`** (shard costs only: item caps are the plugin's
+    item inventory asset, after the Stage 3 revision);
   - `RequiredSkills` / `RecommendedSkills` → `RequiredActions` / `RecommendedActions`;
   - "numbered uses" → "permanent uses" (`GetPermanentUses`);
   - the Project Settings field.
@@ -187,7 +227,7 @@ stages.
     "choose items to bring" step;
   - item use and grants are written back on return (grants kept on a loss);
   - the node panel shows the budget.
-- **Tests:** the Stage 1 Adventure tests renamed; max held read through the table.
+- **Tests:** the Stage 1 Adventure tests renamed.
 
 ## Stage 6: content (owner, editor)
 
@@ -227,3 +267,11 @@ stages.
    Power Triggered event and its tag, getter and hook, `HasTurnStartTilePowerReady`, `GetTilePowerTurnsLeft`,
    `FConnectItTilePowerChain`, `EConnectItTilePowerTrigger`...).
 2. **The AI never uses items:** a match's AI has everything it requires. Its item budget stays 0.
+
+## Settled after Stage 3 (owner, 2026-10-24)
+
+3. **Item caps live in a game-static data asset** (`UItemActionInventoryDataAsset`, named in the plugin's project
+   settings), never passed in or kept per entry. A grant can add an action the player doesn't hold yet.
+4. **An item action the asset doesn't list can't be held** (for clarity: every item action has a cap).
+5. **Only held items are kept** in the inventory (no zero-count entries).
+6. **Design lean:** the core actions (place, swap, shift...) are very likely not to be item actions.

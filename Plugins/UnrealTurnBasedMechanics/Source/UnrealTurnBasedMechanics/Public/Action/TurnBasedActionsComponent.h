@@ -196,6 +196,16 @@ public:
     // request confirmation, or CanActivate() false).
     UFUNCTION(BlueprintCallable, Category = "Turn Based|Actions")
     bool TryPushActionByClass(TSubclassOf<UTurnBasedPlayerAction> ActionClass);
+
+    // Starts an item action from the player's inventory (e.g. its inventory
+    // button): the player must hold one and the match's item budget have a
+    // use left. The action is marked as an item use for this activation, so
+    // its request spends the item and the budget, never its permanent uses --
+    // and it works for an action the player has no permanent uses of. False
+    // if refused (no item, no budget, the action already active, or the same
+    // refusals as TryPushActionByClass).
+    UFUNCTION(BlueprintCallable, Category = "Turn Based|Items")
+    bool ActivateItemAction(TSubclassOf<UTurnBasedPlayerAction> ActionClass);
     
     // Push a specific runtime action instance onto the stack
     UFUNCTION(BlueprintCallable, Category = "Turn Based|Actions")
@@ -425,11 +435,12 @@ private:
 
     // --- Initialisation ---
 
-    // Builds one instance per permanent action the owner's PlayerState has
-    // (its replicated state), or -- until that state is there -- per entry of
-    // the loadout's PermanentActions. Only adds: an instance already built is
-    // kept. Called on initialise and on every PlayerState action update, so a
-    // list the game seeded (not the loadout's) still gets its instances.
+    // Builds one instance per action the owner's PlayerState has -- its
+    // permanent actions and its inventory's item actions (its replicated
+    // state) -- or, until that state is there, per entry of the loadout's
+    // PermanentActions. Only adds: an instance already built is kept. Called
+    // on initialise and on every PlayerState action update, so a list the
+    // game seeded (not the loadout's) still gets its instances.
     void SyncRuntimeActions();
     void BuildRuntimeAction(TSubclassOf<UTurnBasedPlayerAction> ActionClass);
     void CreateSystemActions();

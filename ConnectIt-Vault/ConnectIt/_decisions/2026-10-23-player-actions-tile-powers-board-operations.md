@@ -30,7 +30,8 @@ One vocabulary for the plugin suite and the game. The plugin conforms first, the
   finite, at least 1: unlimited turn uses would break levels), set by the level's set-up or the save (Adventure:
   match uses from shards), never by the action itself.
 - **Item actions sit in the player's inventory** (owner, revised the same day):
-  - counts per action, capped by each action's **max held**;
+  - counts per action, capped by each action's **max held**: the game's static tuning, in one data asset (owner,
+    2026-10-24). An item action it doesn't list can't be held. Only held items are kept;
   - no match or turn uses of their own;
   - grants never exceed the cap, never touch the budget, and are kept even on a loss.
 - **Each level sets an item budget** (item uses per match and per turn, all items together; 0 = none).

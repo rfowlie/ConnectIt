@@ -86,3 +86,38 @@ struct UNREALTURNBASEDMECHANICS_API FPermanentActionRuntimeEntry
     UPROPERTY(BlueprintReadOnly, Category = "Action State")
     FPermanentActionRuntimeState State;
 };
+
+// One item action in a participant's inventory: how many they hold. An item
+// use is one-time -- spent, it's gone -- and comes from what the player keeps
+// (e.g. a save), not the match. Item actions have no match or turn uses of
+// their own: the match's item budget (FItemBudget) limits them all together.
+// How many can be held is the game's static tuning
+// (UItemActionInventoryDataAsset), never the entry's.
+USTRUCT(BlueprintType)
+struct UNREALTURNBASEDMECHANICS_API FItemActionEntry
+{
+    GENERATED_BODY()
+
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Item")
+    TSubclassOf<UTurnBasedPlayerAction> ActionClass;
+
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Item", meta = (ClampMin = 1))
+    int32 Count = 1;
+};
+
+// How many item uses a match allows, for all item actions together -- set by
+// the match's set-up (a level). The default allows none.
+USTRUCT(BlueprintType)
+struct UNREALTURNBASEDMECHANICS_API FItemBudget
+{
+    GENERATED_BODY()
+
+    // Item uses in the whole match. -1 = unlimited.
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Item Budget", meta = (ClampMin = -1))
+    int32 MatchUses = 0;
+
+    // Item uses per turn. Always a limit (0 = no items): unlimited uses in a
+    // turn would let a turn go on forever.
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Item Budget", meta = (ClampMin = 0))
+    int32 TurnUses = 0;
+};

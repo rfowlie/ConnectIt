@@ -149,6 +149,13 @@ struct FTurnActionRequest
     UPROPERTY(BlueprintReadWrite)
     FInstancedStruct Payload;
 
+    // The action was used from the player's inventory (an item use), not as
+    // one of its permanent uses: the server spends an item and the match's
+    // item budget (ATurnBasedPlayerState::ConsumeItemUse) instead. Stamped
+    // by RequestBoardChange; client-supplied, so the server checks it.
+    UPROPERTY(BlueprintReadWrite)
+    bool bIsItemUse = false;
+
     bool IsValid() const
     {
         return Payload.IsValid();
@@ -160,7 +167,8 @@ struct FTurnActionRequest
     bool operator==(const FTurnActionRequest& Other) const
     {
         return ActionTag == Other.ActionTag
-            && Payload == Other.Payload;
+            && Payload == Other.Payload
+            && bIsItemUse == Other.bIsItemUse;
     }
 };
 

@@ -173,6 +173,12 @@ intro region as the place the base skills are taught.
 - **The validator** walks the data assets: unreachable nodes; a gate with no reachable way to meet it (Seals counted
   along each path; specific seals must exist before their gate); concept warnings from the tags.
 
+## Design lean (owner, 2026-10-24)
+
+- **The core actions won't be item actions.** Place Piece, Swap, Shift and the like are very likely to stay permanent
+  actions (shards → permanent uses); item actions are their own set, held in the inventory and spent through a
+  level's item budget. See [player-actions-and-items-plan](player-actions-and-items-plan.md).
+
 ## Open
 
 - ~~Shard → use conversion~~ -- designer-set rising table per skill; numbered uses are per level and permanent;

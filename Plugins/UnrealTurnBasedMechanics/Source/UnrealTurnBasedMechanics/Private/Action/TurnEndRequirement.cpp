@@ -5,7 +5,7 @@
 
 
 ETurnEndRequirementResult UTurnEndRequirementLeaf::Evaluate(
-    FTurnEndUsesLookup GetUsesThisTurn) const
+    const FTurnEndUses& Uses) const
 {
     const FGameplayTag ActionTag = UTurnBasedPlayerAction::GetTagForClass(ActionClass);
 
@@ -16,13 +16,26 @@ ETurnEndRequirementResult UTurnEndRequirementLeaf::Evaluate(
         return ETurnEndRequirementResult::Skipped;
     }
 
-    return GetUsesThisTurn(ActionTag) >= RequiredUsesThisTurn
+    return Uses.ActionUsesThisTurn(ActionTag) >= RequiredUsesThisTurn
+        ? ETurnEndRequirementResult::Satisfied
+        : ETurnEndRequirementResult::Unsatisfied;
+}
+
+ETurnEndRequirementResult UTurnEndRequirementItemUsed::Evaluate(
+    const FTurnEndUses& Uses) const
+{
+    if (!bIsEnabled)
+    {
+        return ETurnEndRequirementResult::Skipped;
+    }
+
+    return Uses.ItemUsesThisTurn >= RequiredItemUses
         ? ETurnEndRequirementResult::Satisfied
         : ETurnEndRequirementResult::Unsatisfied;
 }
 
 ETurnEndRequirementResult UTurnEndRequirementGroup::Evaluate(
-    FTurnEndUsesLookup GetUsesThisTurn) const
+    const FTurnEndUses& Uses) const
 {
     if (!bIsEnabled)
     {
@@ -38,7 +51,7 @@ ETurnEndRequirementResult UTurnEndRequirementGroup::Evaluate(
         if (!IsValid(Child)) continue;
 
         const ETurnEndRequirementResult ChildResult =
-            Child->Evaluate(GetUsesThisTurn);
+            Child->Evaluate(Uses);
 
         if (ChildResult == ETurnEndRequirementResult::Skipped) continue;
 

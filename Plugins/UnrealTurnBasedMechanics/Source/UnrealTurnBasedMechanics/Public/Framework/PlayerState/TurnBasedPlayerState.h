@@ -17,6 +17,8 @@ class UTurnBasedPlayerAction;
 // waits on this to leave its post-completion limbo and check turn end.
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnActionRuntimeStateUpdated);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnLoadoutChanged);
+// The inventory, the item budget or the item uses counted against it changed
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnInventoryChanged);
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnTurnsMissedChanged, int32, NewCount);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnForfeited);
@@ -134,6 +136,61 @@ public:
     // CanUseAction fails.
     bool ConsumeActionUse(TSubclassOf<UTurnBasedPlayerAction> ActionClass);
 
+    // --- Item actions (inventory) ---
+    // Item actions the player holds, used one-time through their own path
+    // (UTurnBasedActionsComponent::ActivateItemAction, a request marked
+    // bIsItemUse). They have no match or turn uses of their own: the match's
+    // item budget limits all item uses together. Using one never touches the
+    // action's permanent counters, and it can be an action the player has no
+    // permanent uses of. The game seeds the inventory (e.g. from a save) and
+    // reads it back when the match ends.
+
+    UFUNCTION(BlueprintPure, Category = "Turn Based|Items")
+    TArray<FItemActionEntry> GetInventory() const { return Inventory; }
+
+    // How many of this item action the player holds (0 if none)
+    UFUNCTION(BlueprintPure, Category = "Turn Based|Items")
+    int32 GetItemCount(TSubclassOf<UTurnBasedPlayerAction> ActionClass) const;
+
+    UFUNCTION(BlueprintPure, Category = "Turn Based|Items")
+    FItemBudget GetItemBudget() const { return ItemBudget; }
+
+    UFUNCTION(BlueprintPure, Category = "Turn Based|Items")
+    int32 GetItemUsesThisTurn() const { return ItemUsesThisTurn; }
+
+    UFUNCTION(BlueprintPure, Category = "Turn Based|Items")
+    int32 GetItemUsesThisMatch() const { return ItemUsesThisMatch; }
+
+    // Whether the match's item budget has a use left this turn (any item)
+    UFUNCTION(BlueprintPure, Category = "Turn Based|Items")
+    bool HasItemBudgetLeft() const;
+
+    // The player holds one, and the item budget has a use left this turn
+    UFUNCTION(BlueprintPure, Category = "Turn Based|Items")
+    bool CanUseItem(TSubclassOf<UTurnBasedPlayerAction> ActionClass) const;
+
+    // Server only. Replaces the inventory: one entry per item action held (a
+    // later duplicate is ignored), each count clamped to the action's cap in
+    // the game's item inventory asset (UItemActionInventoryDataAsset). An
+    // entry holding none, or an action the asset doesn't list (it can't be
+    // held), is dropped -- the latter with a warning.
+    void InitialiseInventory(const TArray<FItemActionEntry>& Entries);
+
+    // Server only. The match's item budget, and its counters reset. Default:
+    // none (no items can be used).
+    void SetItemBudget(const FItemBudget& InBudget);
+
+    // Server only. Spends one item and one use of the budget (this turn's and
+    // the match's). Never touches the action's permanent counters. False (and
+    // no change) if CanUseItem fails.
+    bool ConsumeItemUse(TSubclassOf<UTurnBasedPlayerAction> ActionClass);
+
+    // Server only. Adds Amount of an item action -- held already or not --
+    // clamped to its cap in the game's item inventory asset; never touches
+    // the item budget. Returns how many were added: 0 at the cap, or for an
+    // action the asset doesn't list (it can't be held; a warning).
+    int32 GrantItems(TSubclassOf<UTurnBasedPlayerAction> ActionClass, int32 Amount);
+
     // Server only. Turn boundary hooks.
     void ResetActionTurnCounters();
     void TickActionCooldowns();
@@ -150,6 +207,10 @@ public:
     // static level data.
     UPROPERTY(BlueprintAssignable, Category = "Turn Based|Actions")
     FOnLoadoutChanged OnLoadoutChanged;
+
+    // On the server as it happens, on clients from replication
+    UPROPERTY(BlueprintAssignable, Category = "Turn Based|Items")
+    FOnInventoryChanged OnInventoryChanged;
 
     UPROPERTY(BlueprintAssignable, Category = "Turn Based")
     FOnTurnsMissedChanged OnTurnsMissedChanged;
@@ -204,6 +265,25 @@ private:
 
     UPROPERTY(ReplicatedUsing = OnRep_ActionState)
     int32 ActionStateRevision = 0;
+
+    UPROPERTY(ReplicatedUsing = OnRep_Inventory)
+    TArray<FItemActionEntry> Inventory;
+
+    UPROPERTY(ReplicatedUsing = OnRep_Inventory)
+    FItemBudget ItemBudget;
+
+    UPROPERTY(ReplicatedUsing = OnRep_Inventory)
+    int32 ItemUsesThisMatch = 0;
+
+    UPROPERTY(ReplicatedUsing = OnRep_Inventory)
+    int32 ItemUsesThisTurn = 0;
+
+    UFUNCTION()
+    void OnRep_Inventory();
+
+    // Server: notify, and bump the action-state revision (an item use is an
+    // action use the actions component waits on)
+    void MarkInventoryChanged();
 
     UFUNCTION()
     void OnRep_ActionState();

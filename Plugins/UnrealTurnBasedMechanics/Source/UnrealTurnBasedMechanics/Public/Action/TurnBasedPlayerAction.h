@@ -107,10 +107,22 @@ public:
     // ForceDeactivate() also unbinds selection input
 
     // Client-side convenience for UI/selection: asks the owner's PlayerState
-    // whether this action's uses, per-turn cap and cooldown allow it. The
-    // server re-checks every request regardless (see the Mediator gate).
+    // whether this action's uses, per-turn cap and cooldown allow it -- or,
+    // for an item use, whether an item is held and the item budget has a use
+    // left. The server re-checks every request regardless (see the Mediator
+    // gate).
     UFUNCTION(BlueprintPure, Category = "Action")
     bool CanActivate() const;
+
+    // Whether this activation is an item use: set by the actions component's
+    // ActivateItemAction, until the action completes or is cancelled (a
+    // refused request retried stays one). Its request is marked bIsItemUse,
+    // so it spends an item and the item budget, never its permanent uses.
+    UFUNCTION(BlueprintPure, Category = "Action")
+    bool IsItemUse() const { return bIsItemUse; }
+
+    // The actions component's (see IsItemUse)
+    void SetItemUse(bool bInIsItemUse) { bIsItemUse = bInIsItemUse; }
 
     // --- Runtime state (read-only) ---
     // The action instance holds NO budget/cap/cooldown state of its own -- it
@@ -249,6 +261,10 @@ protected:
     void OnSelectionInputTriggered();
 
 private:
+
+    // See IsItemUse
+    bool bIsItemUse = false;
+
 
     UPROPERTY()
     TObjectPtr<UEnhancedInputComponent> EnhancedInputComponent = nullptr;

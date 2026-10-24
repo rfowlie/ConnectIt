@@ -90,6 +90,8 @@ void UTurnBasedPlayerAction::Cancel()
 
 void UTurnBasedPlayerAction::FinishAction()
 {
+    // An item use ends with the activation it was made for
+    bIsItemUse = false;
     Deactivate_Internal();
     SetIsActive(false);
     OnDeactivated.Broadcast(this);
@@ -106,6 +108,10 @@ bool UTurnBasedPlayerAction::CanActivate() const
     // convenience; the server gate is the real check.
     if (const ATurnBasedPlayerState* PS = GetOwnerPlayerState())
     {
+        if (bIsItemUse)
+        {
+            return PS->CanUseItem(GetClass());
+        }
         if (PS->HasActionConfig())
         {
             return PS->CanUseAction(GetClass());
@@ -160,6 +166,7 @@ void UTurnBasedPlayerAction::RequestBoardChange(const FInstancedStruct& Payload)
     FTurnActionRequest Request;
     Request.ActionTag = GetActionTag();
     Request.Payload = Payload;
+    Request.bIsItemUse = bIsItemUse;
 
     OnChangeRequested.Broadcast(Request);
     OnChangeRequested_Native.Broadcast(Request);

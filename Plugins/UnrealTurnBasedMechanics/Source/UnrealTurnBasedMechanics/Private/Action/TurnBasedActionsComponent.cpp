@@ -86,6 +86,14 @@ void UTurnBasedActionsComponent::SyncRuntimeActions()
             Classes.Add(Entry.ActionClass);
         }
     }
+    if (IsValid(PS))
+    {
+        // Item actions can be ones the player has no permanent uses of
+        for (const FItemActionEntry& Entry : PS->GetInventory())
+        {
+            Classes.AddUnique(Entry.ActionClass);
+        }
+    }
     else
     {
         for (const FPermanentActionConfig& Config : Loadout->PermanentActions)
@@ -548,6 +556,34 @@ bool UTurnBasedActionsComponent::TryPushActionByClass(TSubclassOf<UTurnBasedPlay
     return TryPushActionByRef(*Found);
 }
 
+bool UTurnBasedActionsComponent::ActivateItemAction(TSubclassOf<UTurnBasedPlayerAction> ActionClass)
+{
+    const ATurnBasedPlayerState* PS = GetOwnerPlayerState();
+    if (!ActionClass || !IsValid(PS) || !PS->CanUseItem(ActionClass))
+    {
+        UE_LOG(LogTurnBasedMechanics, Log,
+            TEXT("TurnBasedActionsComponent: item '%s' can't be used -- none held, "
+                 "or no item budget left"),
+            ActionClass ? *ActionClass->GetName() : TEXT("(none)"));
+        return false;
+    }
+
+    // An item action the player just received may not have an instance yet
+    SyncRuntimeActions();
+    UTurnBasedPlayerAction* const* Found = RuntimeActions.FindByPredicate(
+        [&ActionClass](const UTurnBasedPlayerAction* A) { return IsValid(A) && A->GetClass() == ActionClass; });
+    if (!Found || (*Found)->IsActive()) return false;
+
+    UTurnBasedPlayerAction* Action = *Found;
+    Action->SetItemUse(true);
+    if (!TryPushActionByRef(Action))
+    {
+        Action->SetItemUse(false);
+        return false;
+    }
+    return true;
+}
+
 bool UTurnBasedActionsComponent::TryPushActionByRef(UTurnBasedPlayerAction* Action)
 {
     // Post-completion limbo: no new player-initiated action until the
@@ -583,7 +619,8 @@ bool UTurnBasedActionsComponent::TryPushActionByRef(UTurnBasedPlayerAction* Acti
     {
         UE_LOG(LogTurnBasedMechanics, Log,
             TEXT("TurnBasedActionsComponent: '%s' cannot activate "
-                 "— no uses left, per-turn cap reached, or on cooldown"),
+                 "— no uses left, per-turn cap reached, or on cooldown "
+                 "(an item use: no item or no item budget)"),
             *Action->GetActionTag().ToString());
         return false;
     }
