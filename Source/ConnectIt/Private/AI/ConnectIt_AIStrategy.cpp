@@ -4,7 +4,7 @@
 #include "Framework/Controller/ConnectIt_AIController.h"
 #include "Action/ActionConfig.h"
 #include "Action/ActionLoadoutDataAsset.h"
-#include "Action/TurnBasedAction.h"
+#include "Action/TurnBasedPlayerAction.h"
 #include "Board/Operations/ConnectIt_BoardOperation.h"
 
 
@@ -18,10 +18,10 @@ bool UConnectIt_AIStrategy::LoadoutGrantsRequestType(
 {
     if (!IsValid(Loadout) || !RequestType.IsValid()) return false;
 
-    const auto Grants = [RequestType](const TSubclassOf<UTurnBasedAction>& ActionClass)
+    const auto Grants = [RequestType](const TSubclassOf<UTurnBasedPlayerAction>& ActionClass)
     {
-        const UTurnBasedAction* DefaultAction =
-            ActionClass ? ActionClass->GetDefaultObject<UTurnBasedAction>() : nullptr;
+        const UTurnBasedPlayerAction* DefaultAction =
+            ActionClass ? ActionClass->GetDefaultObject<UTurnBasedPlayerAction>() : nullptr;
         return IsValid(DefaultAction) && DefaultAction->ProducesRequestType(RequestType);
     };
 

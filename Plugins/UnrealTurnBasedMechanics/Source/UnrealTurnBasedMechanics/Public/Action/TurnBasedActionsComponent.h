@@ -6,7 +6,7 @@
 #include "Components/ActorComponent.h"
 #include "Engine/TimerHandle.h"
 #include "Action/TurnBasedActionBase.h"
-#include "Action/TurnBasedAction.h"
+#include "Action/TurnBasedPlayerAction.h"
 #include "Action/TurnBasedSpectatorAction.h"
 #include "Action/ActionLoadoutDataAsset.h"
 #include "TurnBasedMechanicsStructs.h"
@@ -17,12 +17,12 @@ class ATurnBasedPlayerState;
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnBoardChangeRequested, const FTurnActionRequest&, Request);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnTurnEndReady);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnTurnEndRequested);
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnTurnActionsEvent, UTurnBasedAction*, Action);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnTurnActionsEvent, UTurnBasedPlayerAction*, Action);
 
 DECLARE_MULTICAST_DELEGATE_OneParam(FOnBoardChangeRequested_Native, const FTurnActionRequest&);
 DECLARE_MULTICAST_DELEGATE(FOnTurnEndRequested_Native);
 
-// Safe, copied stand-in for the live UTurnBasedActionBase*/UTurnBasedAction*
+// Safe, copied stand-in for the live UTurnBasedActionBase*/UTurnBasedPlayerAction*
 // OnActionPushed/OnActionPopped/OnActionCompleted/OnActionCancelled hand
 // out -- observer-style consumers (debug widgets) that only ever need to
 // know WHICH action, not a mutable reference TO it (Complete()/Cancel()
@@ -76,7 +76,7 @@ public:
     // Mandatory -- designers create a do-nothing action if needed
     UPROPERTY(EditDefaultsOnly, BlueprintReadOnly,
         Category = "Turn Based|Behaviour")
-    TSubclassOf<UTurnBasedAction> RootActionClass = nullptr;
+    TSubclassOf<UTurnBasedPlayerAction> RootActionClass = nullptr;
 
     // Pushed onto stack immediately after your turn ends
     // Active during Updating phase while resolution plays
@@ -195,11 +195,11 @@ public:
     // such action, or the push was refused (post-completion limbo, awaiting a
     // request confirmation, or CanActivate() false).
     UFUNCTION(BlueprintCallable, Category = "Turn Based|Actions")
-    bool TryPushActionByClass(TSubclassOf<UTurnBasedAction> ActionClass);
+    bool TryPushActionByClass(TSubclassOf<UTurnBasedPlayerAction> ActionClass);
     
     // Push a specific runtime action instance onto the stack
     UFUNCTION(BlueprintCallable, Category = "Turn Based|Actions")
-    bool TryPushActionByRef(UTurnBasedAction* Action);
+    bool TryPushActionByRef(UTurnBasedPlayerAction* Action);
 
     // Cancel and pop the top action if it is cancellable
     // Returns to whatever is below
@@ -230,10 +230,10 @@ public:
     int32 GetStackDepth() const { return ActionStack.Num(); }
 
     UFUNCTION(BlueprintPure, Category = "Turn Based|Actions")
-    TArray<UTurnBasedAction*> GetAllRuntimeActions() const;
+    TArray<UTurnBasedPlayerAction*> GetAllRuntimeActions() const;
 
     UFUNCTION(BlueprintPure, Category = "Turn Based|Actions")
-    UTurnBasedAction* FindActionByTag(FGameplayTag Tag) const;
+    UTurnBasedPlayerAction* FindActionByTag(FGameplayTag Tag) const;
 
     UFUNCTION(BlueprintPure, Category = "Turn Based|Actions")
     bool IsInitialised() const { return bIsInitialised; }
@@ -353,11 +353,11 @@ private:
     // --- Runtime Instances ---
 
     UPROPERTY()
-    TArray<UTurnBasedAction*> RuntimeActions;
+    TArray<UTurnBasedPlayerAction*> RuntimeActions;
 
     // Created from class references in InitialiseFromLoadout
     UPROPERTY()
-    TObjectPtr<UTurnBasedAction> RootAction = nullptr;
+    TObjectPtr<UTurnBasedPlayerAction> RootAction = nullptr;
 
     UPROPERTY()
     TObjectPtr<UTurnBasedSpectatorAction> IdleViewerAction = nullptr;
@@ -426,8 +426,8 @@ private:
 
     void CloneActionsFromLoadout();
     void CreateSystemActions();
-    void BindActionDelegates(UTurnBasedAction* Action);
-    void HandleNextActionRequested(TSubclassOf<UTurnBasedAction> NextClass);
+    void BindActionDelegates(UTurnBasedPlayerAction* Action);
+    void HandleNextActionRequested(TSubclassOf<UTurnBasedPlayerAction> NextClass);
 
     // Logs a warning if a viewer action instance is null -- used by
     // CreateSystemActions to report unset Idle/Spectator viewer classes
@@ -439,9 +439,9 @@ private:
     // --- Completion / Auto End ---
 
     UFUNCTION()
-    void HandleActionCompleted(UTurnBasedAction* Action);
+    void HandleActionCompleted(UTurnBasedPlayerAction* Action);
     UFUNCTION()
-    void HandleActionCancelled(UTurnBasedAction* Action);
+    void HandleActionCancelled(UTurnBasedPlayerAction* Action);
     UFUNCTION()
     void HandleBoardChangeRequested(const FTurnActionRequest& Request);
     
@@ -450,7 +450,7 @@ private:
     // --- Logging ---
 
     void LogActionRecord(
-        UTurnBasedAction* Action,
+        UTurnBasedPlayerAction* Action,
         FString Note = TEXT(""));
 
     AController* GetOwningController() const;

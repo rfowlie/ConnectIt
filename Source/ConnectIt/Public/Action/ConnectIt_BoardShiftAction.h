@@ -4,7 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "GridMechanicsBaseEnums.h"
-#include "Action/TurnBasedAction.h"
+#include "Action/TurnBasedPlayerAction.h"
 #include "Tile/GridTileRegistryBase.h"
 #include "ConnectIt_BoardShiftAction.generated.h"
 
@@ -13,7 +13,7 @@ enum class EGridDirection : uint8;
  * 
  */
 UCLASS(Blueprintable, BlueprintType, EditInlineNew, DefaultToInstanced)
-class CONNECTIT_API UConnectIt_BoardShiftAction : public UTurnBasedAction
+class CONNECTIT_API UConnectIt_BoardShiftAction : public UTurnBasedPlayerAction
 {
 	GENERATED_BODY()
 

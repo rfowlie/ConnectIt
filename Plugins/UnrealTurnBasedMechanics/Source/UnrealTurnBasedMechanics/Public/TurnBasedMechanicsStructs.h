@@ -118,7 +118,7 @@ struct FTurnBasedActionRecord
     float Timestamp = 0.f;
 };
 
-// A board-change request on its way from a UTurnBasedAction, through
+// A board-change request on its way from a UTurnBasedPlayerAction, through
 // UTurnBasedActionsComponent, to the server. It says two things only: WHICH
 // ACTION is asking (so the server can check and spend that action's uses) and
 // WHAT is being asked (the payload).
@@ -126,7 +126,7 @@ struct FTurnBasedActionRecord
 // The plugin has no idea what the payload is -- each project defines its own
 // USTRUCTs for it (e.g. ConnectIt's FConnectItBoardOperation_PlacePiece) and
 // its own server code to carry it out. An action hands over just the payload
-// (UTurnBasedAction::RequestBoardChange); the action tag is stamped for it.
+// (UTurnBasedPlayerAction::RequestBoardChange); the action tag is stamped for it.
 //
 // Deliberately absent: who is asking. A request arrives from a client, so the
 // server must take the requester from the connection it arrived on (the
@@ -137,7 +137,7 @@ struct FTurnActionRequest
     GENERATED_BODY()
 
     // The action that sent this request. Stamped by
-    // UTurnBasedAction::RequestBoardChange so an action can't forget it; the
+    // UTurnBasedPlayerAction::RequestBoardChange so an action can't forget it; the
     // server uses it to find (and spend) that action's runtime state on the
     // requester's PlayerState. Client-supplied, so the server must still
     // check this action is in the requester's loadout and may send this

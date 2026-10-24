@@ -7,11 +7,11 @@
 #include "UObject/Interface.h"
 #include "TurnBasedActionNotifier.generated.h"
 
-class UTurnBasedAction;
+class UTurnBasedPlayerAction;
 
 
 DECLARE_DYNAMIC_DELEGATE_TwoParams(FTurnBasedActionNotifierDelegate,
-	TSubclassOf<UTurnBasedAction>, ActionClass, FGameplayTag, ActionTag);
+	TSubclassOf<UTurnBasedPlayerAction>, ActionClass, FGameplayTag, ActionTag);
 
 
 // This class does not need to be modified.

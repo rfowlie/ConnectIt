@@ -10,7 +10,7 @@
 #include "TurnBasedPlayerState.generated.h"
 
 class UActionLoadoutDataAsset;
-class UTurnBasedAction;
+class UTurnBasedPlayerAction;
 
 // Fires whenever any per-action runtime state changes -- on the server as it
 // happens, on clients from the replication notify. The actions component
@@ -67,7 +67,7 @@ public:
 
     // The config class whose GetActionTag matches (null if none)
     UFUNCTION(BlueprintPure, Category = "Turn Based|Actions")
-    TSubclassOf<UTurnBasedAction> FindActionClassByTag(FGameplayTag ActionTag) const;
+    TSubclassOf<UTurnBasedPlayerAction> FindActionClassByTag(FGameplayTag ActionTag) const;
 
     // Bumped on every state mutation. Lets a waiting component tell "the
     // update I'm waiting for has landed" from "nothing has changed yet",
@@ -83,12 +83,12 @@ public:
 
     // How many times this action has been used this turn (0 if unknown)
     UFUNCTION(BlueprintPure, Category = "Turn Based|Actions")
-    int32 GetActionUsesThisTurn(TSubclassOf<UTurnBasedAction> ActionClass) const;
+    int32 GetActionUsesThisTurn(TSubclassOf<UTurnBasedPlayerAction> ActionClass) const;
 
     // The action's current effective per-turn cap (0 = unlimited, or unknown
     // action) -- read from runtime state, so it reflects temporary changes.
     UFUNCTION(BlueprintPure, Category = "Turn Based|Actions")
-    int32 GetActionMaxUsesPerTurn(TSubclassOf<UTurnBasedAction> ActionClass) const;
+    int32 GetActionMaxUsesPerTurn(TSubclassOf<UTurnBasedPlayerAction> ActionClass) const;
 
     UFUNCTION(BlueprintPure, Category = "Turn Based|Actions")
     int32 GetActionUsesThisTurnByTag(FGameplayTag ActionTag) const;
@@ -96,20 +96,20 @@ public:
     // Copies of one action's whole runtime state. Return false (and leave Out
     // untouched) if the action has no entry of that kind on this player.
     UFUNCTION(BlueprintPure, Category = "Turn Based|Actions")
-    bool GetPermanentRuntimeState(TSubclassOf<UTurnBasedAction> ActionClass,
+    bool GetPermanentRuntimeState(TSubclassOf<UTurnBasedPlayerAction> ActionClass,
         FPermanentActionRuntimeState& OutState) const;
 
     UFUNCTION(BlueprintPure, Category = "Turn Based|Actions")
-    bool GetNumberedRuntimeState(TSubclassOf<UTurnBasedAction> ActionClass,
+    bool GetNumberedRuntimeState(TSubclassOf<UTurnBasedPlayerAction> ActionClass,
         FNumberedActionRuntimeState& OutState) const;
 
     // Uses left in the match for a numbered action (0 if unknown/permanent)
     UFUNCTION(BlueprintPure, Category = "Turn Based|Actions")
-    int32 GetNumberedActionUsesRemaining(TSubclassOf<UTurnBasedAction> ActionClass) const;
+    int32 GetNumberedActionUsesRemaining(TSubclassOf<UTurnBasedPlayerAction> ActionClass) const;
 
     // Cooldown clear, per-turn cap not reached, and (numbered) uses left
     UFUNCTION(BlueprintPure, Category = "Turn Based|Actions")
-    bool CanUseAction(TSubclassOf<UTurnBasedAction> ActionClass) const;
+    bool CanUseAction(TSubclassOf<UTurnBasedPlayerAction> ActionClass) const;
 
     // Whether InLoadout's turn-end requirement tree is satisfied by this
     // player's uses this turn. No loadout or no tree = nothing is required,
@@ -128,11 +128,11 @@ public:
 
     // Server only. Spends one use: per-turn count up, cooldown started,
     // numbered uses down. False (and no change) if CanUseAction fails.
-    bool ConsumeActionUse(TSubclassOf<UTurnBasedAction> ActionClass);
+    bool ConsumeActionUse(TSubclassOf<UTurnBasedPlayerAction> ActionClass);
 
     // Server only. Adds uses to a numbered action, clamped to its
     // MaxHeldUses. Returns how many were actually added.
-    int32 GrantActionUses(TSubclassOf<UTurnBasedAction> ActionClass, int32 Amount);
+    int32 GrantActionUses(TSubclassOf<UTurnBasedPlayerAction> ActionClass, int32 Amount);
 
     // Server only. Turn boundary hooks.
     void ResetActionTurnCounters();

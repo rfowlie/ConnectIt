@@ -1,6 +1,6 @@
 ---
 type: plan
-status: not-started
+status: in-progress
 approved: true
 approved-on: 2026-10-23
 completed-on:
@@ -61,6 +61,17 @@ stages.
   - `UTurnBasedActionBase` (the stack entry) and `UTurnBasedSpectatorAction` (viewers) keep their names.
 - Every use in the plugin and ConnectIt (48 files name the class), comments included.
 - **Tests:** the existing ones, unchanged.
+- *As built (2026-10-24; 65/65 tests):*
+  - The real count was 29 source files (the 48 included generated files). The header and `.cpp` were moved with
+    `git mv`; includes and log prefixes were updated.
+  - **The class redirect lives in the plugin's own config** (`Plugins/UnrealTurnBasedMechanics/Config/DefaultUnrealTurnBasedMechanics.ini`),
+    so it travels with the plugin. The plugin's older function redirect (`ConstructActionInput`) now points at the new
+    class.
+  - The class gained a comment in the new vocabulary ("A Player Action: ..."), and an example comment lost the word
+    "ability".
+  - **Also fixed:** the adaptive unity build put the Adventure tests in one blob with the MinMax tests, and both
+    `using namespace` blocks brought in a `TestFlags`. The Adventure tests now qualify their names instead.
+  - **Still owner:** check in the editor that the action Blueprints load through the redirect (Stage 6).
 
 ## Stage 2: one permanent action list (plugin)
 

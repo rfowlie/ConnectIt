@@ -2,28 +2,28 @@
 
 #include "Framework/PlayerState/TurnBasedPlayerState.h"
 #include "Action/ActionLoadoutDataAsset.h"
-#include "Action/TurnBasedAction.h"
+#include "Action/TurnBasedPlayerAction.h"
 #include "Action/TurnEndRequirement.h"
 #include "Net/UnrealNetwork.h"
 
 namespace
 {
     template <typename TEntry>
-    TEntry* FindEntry(TArray<TEntry>& Entries, const TSubclassOf<UTurnBasedAction>& ActionClass)
+    TEntry* FindEntry(TArray<TEntry>& Entries, const TSubclassOf<UTurnBasedPlayerAction>& ActionClass)
     {
         return Entries.FindByPredicate(
             [&ActionClass](const TEntry& E) { return E.ActionClass == ActionClass; });
     }
 
     template <typename TEntry>
-    const TEntry* FindEntry(const TArray<TEntry>& Entries, const TSubclassOf<UTurnBasedAction>& ActionClass)
+    const TEntry* FindEntry(const TArray<TEntry>& Entries, const TSubclassOf<UTurnBasedPlayerAction>& ActionClass)
     {
         return Entries.FindByPredicate(
             [&ActionClass](const TEntry& E) { return E.ActionClass == ActionClass; });
     }
 
     template <typename TConfig>
-    const TConfig* FindConfig(const TArray<TConfig>& Configs, const TSubclassOf<UTurnBasedAction>& ActionClass)
+    const TConfig* FindConfig(const TArray<TConfig>& Configs, const TSubclassOf<UTurnBasedPlayerAction>& ActionClass)
     {
         return Configs.FindByPredicate(
             [&ActionClass](const TConfig& C) { return C.ActionClass == ActionClass; });
@@ -54,7 +54,7 @@ void ATurnBasedPlayerState::GetLifetimeReplicatedProps(
 
 // --- Action State ---
 
-int32 ATurnBasedPlayerState::GetActionUsesThisTurn(TSubclassOf<UTurnBasedAction> ActionClass) const
+int32 ATurnBasedPlayerState::GetActionUsesThisTurn(TSubclassOf<UTurnBasedPlayerAction> ActionClass) const
 {
 	if (const FPermanentActionRuntimeEntry* P = FindEntry(PermanentActionState, ActionClass))
 	{
@@ -67,7 +67,7 @@ int32 ATurnBasedPlayerState::GetActionUsesThisTurn(TSubclassOf<UTurnBasedAction>
 	return 0;
 }
 
-int32 ATurnBasedPlayerState::GetActionMaxUsesPerTurn(TSubclassOf<UTurnBasedAction> ActionClass) const
+int32 ATurnBasedPlayerState::GetActionMaxUsesPerTurn(TSubclassOf<UTurnBasedPlayerAction> ActionClass) const
 {
 	if (const FPermanentActionRuntimeEntry* P = FindEntry(PermanentActionState, ActionClass))
 	{
@@ -102,17 +102,17 @@ int32 ATurnBasedPlayerState::GetActionUsesThisTurnByTag(FGameplayTag ActionTag) 
 
 	for (const FPermanentActionRuntimeEntry& E : PermanentActionState)
 	{
-		if (UTurnBasedAction::GetTagForClass(E.ActionClass) == ActionTag) return E.State.UsesThisTurn;
+		if (UTurnBasedPlayerAction::GetTagForClass(E.ActionClass) == ActionTag) return E.State.UsesThisTurn;
 	}
 	for (const FNumberedActionRuntimeEntry& E : NumberedActionState)
 	{
-		if (UTurnBasedAction::GetTagForClass(E.ActionClass) == ActionTag) return E.State.UsesThisTurn;
+		if (UTurnBasedPlayerAction::GetTagForClass(E.ActionClass) == ActionTag) return E.State.UsesThisTurn;
 	}
 	return 0;
 }
 
 bool ATurnBasedPlayerState::GetPermanentRuntimeState(
-	TSubclassOf<UTurnBasedAction> ActionClass, FPermanentActionRuntimeState& OutState) const
+	TSubclassOf<UTurnBasedPlayerAction> ActionClass, FPermanentActionRuntimeState& OutState) const
 {
 	if (const FPermanentActionRuntimeEntry* P = FindEntry(PermanentActionState, ActionClass))
 	{
@@ -123,7 +123,7 @@ bool ATurnBasedPlayerState::GetPermanentRuntimeState(
 }
 
 bool ATurnBasedPlayerState::GetNumberedRuntimeState(
-	TSubclassOf<UTurnBasedAction> ActionClass, FNumberedActionRuntimeState& OutState) const
+	TSubclassOf<UTurnBasedPlayerAction> ActionClass, FNumberedActionRuntimeState& OutState) const
 {
 	if (const FNumberedActionRuntimeEntry* N = FindEntry(NumberedActionState, ActionClass))
 	{
@@ -133,13 +133,13 @@ bool ATurnBasedPlayerState::GetNumberedRuntimeState(
 	return false;
 }
 
-int32 ATurnBasedPlayerState::GetNumberedActionUsesRemaining(TSubclassOf<UTurnBasedAction> ActionClass) const
+int32 ATurnBasedPlayerState::GetNumberedActionUsesRemaining(TSubclassOf<UTurnBasedPlayerAction> ActionClass) const
 {
 	const FNumberedActionRuntimeEntry* N = FindEntry(NumberedActionState, ActionClass);
 	return N ? N->State.UsesRemaining : 0;
 }
 
-bool ATurnBasedPlayerState::CanUseAction(TSubclassOf<UTurnBasedAction> ActionClass) const
+bool ATurnBasedPlayerState::CanUseAction(TSubclassOf<UTurnBasedPlayerAction> ActionClass) const
 {
 	if (!IsValid(Loadout) || !ActionClass) return false;
 
@@ -212,7 +212,7 @@ void ATurnBasedPlayerState::OnRep_Loadout()
 	OnLoadoutChanged.Broadcast();
 }
 
-bool ATurnBasedPlayerState::ConsumeActionUse(TSubclassOf<UTurnBasedAction> ActionClass)
+bool ATurnBasedPlayerState::ConsumeActionUse(TSubclassOf<UTurnBasedPlayerAction> ActionClass)
 {
 	if (!HasAuthority()) return false;
 	if (!CanUseAction(ActionClass)) return false;
@@ -239,7 +239,7 @@ bool ATurnBasedPlayerState::ConsumeActionUse(TSubclassOf<UTurnBasedAction> Actio
 	return true;
 }
 
-int32 ATurnBasedPlayerState::GrantActionUses(TSubclassOf<UTurnBasedAction> ActionClass, int32 Amount)
+int32 ATurnBasedPlayerState::GrantActionUses(TSubclassOf<UTurnBasedPlayerAction> ActionClass, int32 Amount)
 {
 	if (!HasAuthority() || Amount <= 0 || !IsValid(Loadout)) return 0;
 
@@ -312,17 +312,17 @@ bool ATurnBasedPlayerState::HasActionConfig() const
 		&& (!Loadout->PermanentActions.IsEmpty() || !Loadout->NumberedActions.IsEmpty());
 }
 
-TSubclassOf<UTurnBasedAction> ATurnBasedPlayerState::FindActionClassByTag(FGameplayTag ActionTag) const
+TSubclassOf<UTurnBasedPlayerAction> ATurnBasedPlayerState::FindActionClassByTag(FGameplayTag ActionTag) const
 {
 	if (!ActionTag.IsValid()) return nullptr;
 
 	for (const FPermanentActionRuntimeEntry& E : PermanentActionState)
 	{
-		if (UTurnBasedAction::GetTagForClass(E.ActionClass) == ActionTag) return E.ActionClass;
+		if (UTurnBasedPlayerAction::GetTagForClass(E.ActionClass) == ActionTag) return E.ActionClass;
 	}
 	for (const FNumberedActionRuntimeEntry& E : NumberedActionState)
 	{
-		if (UTurnBasedAction::GetTagForClass(E.ActionClass) == ActionTag) return E.ActionClass;
+		if (UTurnBasedPlayerAction::GetTagForClass(E.ActionClass) == ActionTag) return E.ActionClass;
 	}
 	return nullptr;
 }

@@ -79,7 +79,7 @@ protected:
     UFUNCTION(BlueprintNativeEvent, Category = "Action")
     void ForceDeactivate_Internal();
 
-    // Called once OwningController first becomes valid -- for UTurnBasedAction
+    // Called once OwningController first becomes valid -- for UTurnBasedPlayerAction
     // that's inside InitialiseAction (well before Activate), for
     // UTurnBasedSpectatorAction that's inside its own InitialiseAction, called
     // from UTurnBasedActionsComponent::CreateSystemActions. Both branches get

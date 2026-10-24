@@ -13,7 +13,7 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnTurnBasedGameEventComplete, UTurn
 // Project-agnostic base for "something that happens as a reaction to a
 // board/game-state change" -- a NewObject'd instance with its own
 // lifecycle, not a persistent component, deliberately echoing
-// UTurnBasedAction's shape (construct, kick off, self-report done) without
+// UTurnBasedPlayerAction's shape (construct, kick off, self-report done) without
 // any of that class's player-input/selection/cooldown machinery, none of
 // which applies here.
 //

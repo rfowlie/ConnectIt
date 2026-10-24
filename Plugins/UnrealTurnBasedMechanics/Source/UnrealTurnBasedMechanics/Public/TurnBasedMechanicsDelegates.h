@@ -15,7 +15,7 @@
 // 	int32, ActiveParticipantSlotIndex);
 //
 // DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnTurnBasedActionEvent,
-// 	UTurnBasedAction*, Action);
+// 	UTurnBasedPlayerAction*, Action);
 
 DECLARE_MULTICAST_DELEGATE_OneParam(FOnTurnNotification_Native,
 	const FTurnNotification&);

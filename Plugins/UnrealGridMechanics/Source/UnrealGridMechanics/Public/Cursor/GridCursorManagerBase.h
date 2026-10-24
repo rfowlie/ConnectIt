@@ -13,7 +13,7 @@ class UGridHoverSubsystem;
 // tile is currently hovered and represents it visually
 //
 // Binds to UGridHoverSubsystem::OnGridTileHoverChanged -- the same
-// hover pipeline UTurnBasedAction uses for hover validation -- so any
+// hover pipeline UTurnBasedPlayerAction uses for hover validation -- so any
 // cursor built on this base stays in sync with the networked turn-based
 // hover flow automatically, with no extra wiring per project
 //

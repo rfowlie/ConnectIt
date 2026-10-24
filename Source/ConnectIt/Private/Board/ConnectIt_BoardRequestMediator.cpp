@@ -6,7 +6,7 @@
 #include "Misc/ScopeExit.h"
 #include "StructUtils/InstancedStruct.h"
 #include "TurnBasedMechanicsStructs.h"
-#include "Action/TurnBasedAction.h"
+#include "Action/TurnBasedPlayerAction.h"
 #include "Action/ConnectIt_BoardShiftAction.h"
 #include "Board/ConnectIt_BoardStateComponent.h"
 #include "Board/Operations/ConnectIt_BoardOperations.h"
@@ -63,7 +63,7 @@ bool UConnectIt_BoardRequestMediator::ProcessRequest(const FTurnActionRequest& R
     // ActionTag is client-supplied: it must name an action in this player's
     // loadout, that action must be allowed to send this kind of operation,
     // and the player must currently be able to use it.
-    const TSubclassOf<UTurnBasedAction> ActionClass =
+    const TSubclassOf<UTurnBasedPlayerAction> ActionClass =
         PlayerState->FindActionClassByTag(Request.ActionTag);
     if (!ActionClass)
     {
@@ -75,7 +75,7 @@ bool UConnectIt_BoardRequestMediator::ProcessRequest(const FTurnActionRequest& R
         return false;
     }
 
-    const UTurnBasedAction* DefaultAction = ActionClass->GetDefaultObject<UTurnBasedAction>();
+    const UTurnBasedPlayerAction* DefaultAction = ActionClass->GetDefaultObject<UTurnBasedPlayerAction>();
     if (!IsValid(DefaultAction) || !DefaultAction->ProducesRequestType(RequestType))
     {
         UE_LOG(LogTemp, Warning,

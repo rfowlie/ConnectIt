@@ -3,7 +3,7 @@
 
 #include "Action/TurnBasedActionsComponent.h"
 #include "UnrealTurnBasedMechanics.h"
-#include "Action/TurnBasedAction.h"
+#include "Action/TurnBasedPlayerAction.h"
 #include "Action/TurnBasedSpectatorAction.h"
 #include "Action/ActionLoadoutDataAsset.h"
 #include "Framework/PlayerState/TurnBasedPlayerState.h"
@@ -91,7 +91,7 @@ void UTurnBasedActionsComponent::CloneActionsFromLoadout()
         ? ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(PC->GetLocalPlayer())
         : nullptr;
 
-    auto RegisterAction = [&](UTurnBasedAction* Action, const TCHAR* Origin)
+    auto RegisterAction = [&](UTurnBasedPlayerAction* Action, const TCHAR* Origin)
     {
         Action->InitialiseAction(Controller, EIC, EILP);
         BindActionDelegates(Action);
@@ -118,7 +118,7 @@ void UTurnBasedActionsComponent::CloneActionsFromLoadout()
             continue;
         }
 
-        RegisterAction(NewObject<UTurnBasedAction>(this, Config.ActionClass),
+        RegisterAction(NewObject<UTurnBasedPlayerAction>(this, Config.ActionClass),
             TEXT("Built permanent"));
     }
 
@@ -133,7 +133,7 @@ void UTurnBasedActionsComponent::CloneActionsFromLoadout()
             continue;
         }
 
-        RegisterAction(NewObject<UTurnBasedAction>(this, Config.ActionClass),
+        RegisterAction(NewObject<UTurnBasedPlayerAction>(this, Config.ActionClass),
             TEXT("Built numbered"));
     }
 
@@ -223,7 +223,7 @@ void UTurnBasedActionsComponent::WarnIfViewerActionMissing(
         Consequence);
 }
 
-void UTurnBasedActionsComponent::BindActionDelegates(UTurnBasedAction* Action)
+void UTurnBasedActionsComponent::BindActionDelegates(UTurnBasedPlayerAction* Action)
 {
     if (!IsValid(Action)) return;
 
@@ -238,19 +238,19 @@ void UTurnBasedActionsComponent::BindActionDelegates(UTurnBasedAction* Action)
 
     // Wire next action request -- component finds and pushes the action
     Action->OnNextActionRequested_Native.AddLambda(
-        [this](TSubclassOf<UTurnBasedAction> NextClass)
+        [this](TSubclassOf<UTurnBasedPlayerAction> NextClass)
         {
             HandleNextActionRequested(NextClass);
         });
 }
 
-void UTurnBasedActionsComponent::HandleNextActionRequested(TSubclassOf<UTurnBasedAction> NextClass)
+void UTurnBasedActionsComponent::HandleNextActionRequested(TSubclassOf<UTurnBasedPlayerAction> NextClass)
 {
     if (!NextClass) return;
 
     // Find matching runtime action by class
-    UTurnBasedAction* const* Found = RuntimeActions.FindByPredicate(
-        [NextClass](const UTurnBasedAction* Action)
+    UTurnBasedPlayerAction* const* Found = RuntimeActions.FindByPredicate(
+        [NextClass](const UTurnBasedPlayerAction* Action)
         {
             return IsValid(Action) && Action->GetClass() == NextClass;
         });
@@ -535,10 +535,10 @@ bool UTurnBasedActionsComponent::TryPushAction(FGameplayTag ActionTag)
     return TryPushActionByRef(FindActionByTag(ActionTag));
 }
 
-bool UTurnBasedActionsComponent::TryPushActionByClass(TSubclassOf<UTurnBasedAction> ActionClass)
+bool UTurnBasedActionsComponent::TryPushActionByClass(TSubclassOf<UTurnBasedPlayerAction> ActionClass)
 {
-    UTurnBasedAction* const* Found = RuntimeActions.FindByPredicate(
-        [ActionClass](const UTurnBasedAction* A)
+    UTurnBasedPlayerAction* const* Found = RuntimeActions.FindByPredicate(
+        [ActionClass](const UTurnBasedPlayerAction* A)
         {
             return A->GetClass() == ActionClass;
         });
@@ -550,7 +550,7 @@ bool UTurnBasedActionsComponent::TryPushActionByClass(TSubclassOf<UTurnBasedActi
     return TryPushActionByRef(*Found);
 }
 
-bool UTurnBasedActionsComponent::TryPushActionByRef(UTurnBasedAction* Action)
+bool UTurnBasedActionsComponent::TryPushActionByRef(UTurnBasedPlayerAction* Action)
 {
     // Post-completion limbo: no new player-initiated action until the
     // updated state has arrived -- stops accidental repeat requests.
@@ -596,13 +596,13 @@ bool UTurnBasedActionsComponent::TryPushActionByRef(UTurnBasedAction* Action)
 
 void UTurnBasedActionsComponent::CancelTopAction()
 {
-    UTurnBasedAction* TopAction = Cast<UTurnBasedAction>(GetTopAction());
+    UTurnBasedPlayerAction* TopAction = Cast<UTurnBasedPlayerAction>(GetTopAction());
 
     if (!IsValid(TopAction))
     {
         UE_LOG(LogTurnBasedMechanics, Warning,
             TEXT("TurnBasedActionsComponent: CancelTopAction — "
-                 "top of stack is not a UTurnBasedAction on %s"),
+                 "top of stack is not a UTurnBasedPlayerAction on %s"),
             *GetOwner()->GetName());
         return;
     }
@@ -679,20 +679,20 @@ FTurnBasedActionsComponentInfo UTurnBasedActionsComponent::GetInfo() const
     return Info;
 }
 
-TArray<UTurnBasedAction*> UTurnBasedActionsComponent::GetAllRuntimeActions() const
+TArray<UTurnBasedPlayerAction*> UTurnBasedActionsComponent::GetAllRuntimeActions() const
 {
-    TArray<UTurnBasedAction*> Out;
-    for (UTurnBasedAction* A : RuntimeActions)
+    TArray<UTurnBasedPlayerAction*> Out;
+    for (UTurnBasedPlayerAction* A : RuntimeActions)
     {
         if (IsValid(A)) Out.Add(A);
     }
     return Out;
 }
 
-UTurnBasedAction* UTurnBasedActionsComponent::FindActionByTag(FGameplayTag Tag) const
+UTurnBasedPlayerAction* UTurnBasedActionsComponent::FindActionByTag(FGameplayTag Tag) const
 {
-    UTurnBasedAction* const* Found = RuntimeActions.FindByPredicate(
-        [Tag](const UTurnBasedAction* A)
+    UTurnBasedPlayerAction* const* Found = RuntimeActions.FindByPredicate(
+        [Tag](const UTurnBasedPlayerAction* A)
         {
             return IsValid(A) && A->GetActionTag() == Tag;
         });
@@ -763,7 +763,7 @@ bool UTurnBasedActionsComponent::CanAutoEndTurn_Implementation() const
 
 // --- Completion Handlers ---
 
-void UTurnBasedActionsComponent::HandleActionCompleted(UTurnBasedAction* Action)
+void UTurnBasedActionsComponent::HandleActionCompleted(UTurnBasedPlayerAction* Action)
 {
     LogActionRecord(Action, TEXT("Completed"));
     SafePopAction();
@@ -784,7 +784,7 @@ void UTurnBasedActionsComponent::HandleActionCompleted(UTurnBasedAction* Action)
     CheckAutoEndTurn();
 }
 
-void UTurnBasedActionsComponent::HandleActionCancelled(UTurnBasedAction* Action)
+void UTurnBasedActionsComponent::HandleActionCancelled(UTurnBasedPlayerAction* Action)
 {
     LogActionRecord(Action, TEXT("Cancelled"));
     SafePopAction();
@@ -848,7 +848,7 @@ void UTurnBasedActionsComponent::NotifyBoardChangeOutcome(
 
     if (bSucceeded)
     {
-        if (UTurnBasedAction* Action = Cast<UTurnBasedAction>(GetTopAction()))
+        if (UTurnBasedPlayerAction* Action = Cast<UTurnBasedPlayerAction>(GetTopAction()))
         {
             // New-system loadouts: HandleActionCompleted (fired from inside
             // Complete) enters limbo instead of checking turn end right away
@@ -961,7 +961,7 @@ void UTurnBasedActionsComponent::CheckAutoEndTurn()
 
 // --- Logging ---
 
-void UTurnBasedActionsComponent::LogActionRecord(UTurnBasedAction* Action, FString Note)
+void UTurnBasedActionsComponent::LogActionRecord(UTurnBasedPlayerAction* Action, FString Note)
 {
     if (!IsValid(Action)) return;
 

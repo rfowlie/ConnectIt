@@ -347,7 +347,7 @@ void UTurnBasedParticipantManagerComponent::StartTurn(int32 ParticipantIndex)
 
     // Authoritative per-action turn bookkeeping for the participant whose
     // turn this is: tick cooldowns (own turns only, matching
-    // UTurnBasedAction::ShouldTickCooldown's default) and zero the per-turn
+    // UTurnBasedPlayerAction::ShouldTickCooldown's default) and zero the per-turn
     // use counters. Done before the turn notification so clients never see
     // last turn's counts as this turn's.
     if (AController* ActiveController = GetControllerAtIndex(ParticipantIndex))

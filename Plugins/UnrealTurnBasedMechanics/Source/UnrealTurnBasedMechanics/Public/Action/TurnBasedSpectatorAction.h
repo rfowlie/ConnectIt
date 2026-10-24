@@ -12,12 +12,12 @@ class UTurnBasedSpectatorAction;
 // Base class for passive controller actions that run when it
 // is not this participant's turn
 //
-// Key differences from UTurnBasedAction:
+// Key differences from UTurnBasedPlayerAction:
 //   -- Never completes naturally -- deactivated by external signal
 //   -- Cannot request board state changes
 //   -- Not queued or managed by required action system
 //   -- Single instance per controller -- no cooldown or uses tracking
-//   -- World access via typed outer (same pattern as UTurnBasedAction)
+//   -- World access via typed outer (same pattern as UTurnBasedPlayerAction)
 UCLASS(Abstract, Blueprintable, BlueprintType, EditInlineNew, DefaultToInstanced)
 class UNREALTURNBASEDMECHANICS_API UTurnBasedSpectatorAction : public UTurnBasedActionBase
 {
@@ -28,7 +28,7 @@ public:
     // Called once by UTurnBasedActionsComponent::CreateSystemActions right
     // after construction -- sets OwningController and fires
     // PostInitialiseAction, giving viewer actions the same early,
-    // pre-Activate dependency-resolution point UTurnBasedAction already has
+    // pre-Activate dependency-resolution point UTurnBasedPlayerAction already has
     // via its own InitialiseAction. Before this existed, OwningController
     // only became valid when Activate() ran.
     void InitialiseAction(AController* InOwningController);

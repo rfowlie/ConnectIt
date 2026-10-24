@@ -1,13 +1,13 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 #include "Action/TurnEndRequirement.h"
-#include "Action/TurnBasedAction.h"
+#include "Action/TurnBasedPlayerAction.h"
 
 
 ETurnEndRequirementResult UTurnEndRequirementLeaf::Evaluate(
     FTurnEndUsesLookup GetUsesThisTurn) const
 {
-    const FGameplayTag ActionTag = UTurnBasedAction::GetTagForClass(ActionClass);
+    const FGameplayTag ActionTag = UTurnBasedPlayerAction::GetTagForClass(ActionClass);
 
     if (!bIsEnabled || !ActionTag.IsValid())
     {

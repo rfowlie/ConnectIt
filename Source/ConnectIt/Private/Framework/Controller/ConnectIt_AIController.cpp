@@ -10,7 +10,7 @@
 #include "Board/Rules/ConnectIt_RuleSet.h"
 #include "Board/Operations/ConnectIt_BoardOperation.h"
 #include "Action/ActionLoadoutDataAsset.h"
-#include "Action/TurnBasedAction.h"
+#include "Action/TurnBasedPlayerAction.h"
 #include "Turn/Participant/TurnBasedParticipantComponent.h"
 #include "AI/ConnectIt_AIDirector.h"
 #include "AI/ConnectIt_AICoordinator.h"
@@ -344,9 +344,9 @@ void AConnectIt_AIController::BeginDecision()
     // server's gate makes of a real request
     if (const UActionLoadoutDataAsset* OwnLoadout = PS->GetLoadout())
     {
-        const auto Consider = [&Context, PS](const TSubclassOf<UTurnBasedAction>& ActionClass)
+        const auto Consider = [&Context, PS](const TSubclassOf<UTurnBasedPlayerAction>& ActionClass)
         {
-            const UTurnBasedAction* CDO = ActionClass ? ActionClass->GetDefaultObject<UTurnBasedAction>() : nullptr;
+            const UTurnBasedPlayerAction* CDO = ActionClass ? ActionClass->GetDefaultObject<UTurnBasedPlayerAction>() : nullptr;
             if (!IsValid(CDO) || !PS->CanUseAction(ActionClass)) return;
 
             for (const FGameplayTag& RequestType : FConnectItBoardOperation::GetAllRequestTypes())
@@ -466,11 +466,11 @@ bool AConnectIt_AIController::SubmitCandidate(const FConnectItAICandidate& Candi
     // found by asking each configured class, not by hardcoding a reference
     // (the class-keyed action-config convention: config references the
     // class, the tag is derived from it). The Mediator gate checks the same.
-    TSubclassOf<UTurnBasedAction> ActionClass = nullptr;
-    auto ConsiderClass = [&ActionClass, &RequestType](const TSubclassOf<UTurnBasedAction>& Candidate)
+    TSubclassOf<UTurnBasedPlayerAction> ActionClass = nullptr;
+    auto ConsiderClass = [&ActionClass, &RequestType](const TSubclassOf<UTurnBasedPlayerAction>& Candidate)
     {
         if (ActionClass || !Candidate) return;
-        const UTurnBasedAction* CDO = Candidate->GetDefaultObject<UTurnBasedAction>();
+        const UTurnBasedPlayerAction* CDO = Candidate->GetDefaultObject<UTurnBasedPlayerAction>();
         if (IsValid(CDO) && CDO->ProducesRequestType(RequestType))
         {
             ActionClass = Candidate;
@@ -504,7 +504,7 @@ bool AConnectIt_AIController::SubmitCandidate(const FConnectItAICandidate& Candi
     }
 
     FTurnActionRequest Request;
-    Request.ActionTag = UTurnBasedAction::GetTagForClass(ActionClass);
+    Request.ActionTag = UTurnBasedPlayerAction::GetTagForClass(ActionClass);
     Request.Payload = Candidate.Payload;
 
     const bool bSucceeded = GameMode->ProcessBoardRequest(Request, PS->GetSlotIndex());

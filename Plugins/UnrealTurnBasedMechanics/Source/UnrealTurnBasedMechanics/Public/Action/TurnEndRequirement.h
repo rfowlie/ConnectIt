@@ -7,7 +7,7 @@
 #include "GameplayTagContainer.h"
 #include "TurnEndRequirement.generated.h"
 
-class UTurnBasedAction;
+class UTurnBasedPlayerAction;
 
 // A loadout's turn-end requirement is a tree of these nodes. Nodes are
 // Instanced UObjects rather than a recursive struct because UnrealHeaderTool
@@ -81,9 +81,9 @@ class UNREALTURNBASEDMECHANICS_API UTurnEndRequirementLeaf : public UTurnEndRequ
 public:
 
     // The action this leaf counts; its tag is derived from the class
-    // (UTurnBasedAction::GetTagForClass), never typed here.
+    // (UTurnBasedPlayerAction::GetTagForClass), never typed here.
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Turn End")
-    TSubclassOf<UTurnBasedAction> ActionClass;
+    TSubclassOf<UTurnBasedPlayerAction> ActionClass;
 
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Turn End", meta = (ClampMin = 1))
     int32 RequiredUsesThisTurn = 1;

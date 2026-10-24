@@ -5,7 +5,7 @@
 #include "Board/ConnectIt_BoardStateComponent.h"
 #include "Action/TurnBasedActionsComponent.h"
 #include "Action/TurnBasedActionBase.h"
-#include "Action/TurnBasedAction.h"
+#include "Action/TurnBasedPlayerAction.h"
 #include "Turn/Participant/TurnBasedParticipantManagerComponent.h"
 #include "GameEvent/GameEventTaskSubsystem.h"
 #include "Framework/Library/ConnectIt_GameUtilityLibrary.h"
@@ -289,7 +289,7 @@ void UConnectIt_DebugStateWidget::HandleActionStackChanged(UTurnBasedActionBase*
     ForceRefreshAll();
 }
 
-void UConnectIt_DebugStateWidget::HandleActionResolved(UTurnBasedAction* Action)
+void UConnectIt_DebugStateWidget::HandleActionResolved(UTurnBasedPlayerAction* Action)
 {
     ForceRefreshAll();
 }

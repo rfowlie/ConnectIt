@@ -14,7 +14,7 @@ class UConnectIt_BoardStateComponent;
 class UTurnBasedParticipantManagerComponent;
 class UTurnBasedActionsComponent;
 class UTurnBasedActionBase;
-class UTurnBasedAction;
+class UTurnBasedPlayerAction;
 class UGameEventTaskSubsystem;
 
 // See Docs/RuntimeStateAccess.md -- this widget is the "cache everything,
@@ -193,7 +193,7 @@ private:
 
     // Shared by OnActionCompleted/OnActionCancelled -- both are FOnTurnActionsEvent
     UFUNCTION()
-    void HandleActionResolved(UTurnBasedAction* Action);
+    void HandleActionResolved(UTurnBasedPlayerAction* Action);
 
     UFUNCTION()
     void HandleBoardChangeRequested(const FTurnActionRequest& Request);

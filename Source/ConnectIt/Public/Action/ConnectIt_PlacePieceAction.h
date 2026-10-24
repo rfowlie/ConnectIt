@@ -3,7 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "Action/TurnBasedAction.h"
+#include "Action/TurnBasedPlayerAction.h"
 #include "ConnectIt_PlacePieceAction.generated.h"
 
 
@@ -20,7 +20,7 @@ class UGridTileRegistryBase;
 //   - Has NO knowledge of pools, piece actors, or board state mutation
 //   - Has NO visual responsibilities beyond sending tags to tiles
 UCLASS(Blueprintable, BlueprintType, EditInlineNew, DefaultToInstanced)
-class CONNECTIT_API UConnectIt_PlacePieceAction : public UTurnBasedAction
+class CONNECTIT_API UConnectIt_PlacePieceAction : public UTurnBasedPlayerAction
 {
     GENERATED_BODY()
 
@@ -55,7 +55,7 @@ protected:
     virtual void Activate_Internal_Implementation() override;
 
     // Resolves and caches TileRegistry via UConnectIt_GameUtilityLibrary --
-    // called once by UTurnBasedAction::InitialiseAction, well before
+    // called once by UTurnBasedPlayerAction::InitialiseAction, well before
     // Activate. Eager, fail-loud dependency resolution instead of repeated
     // on-demand lookups at point of use.
     virtual void PostInitialiseAction_Implementation() override;

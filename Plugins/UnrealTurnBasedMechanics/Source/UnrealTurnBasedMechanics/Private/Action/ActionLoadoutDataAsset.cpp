@@ -8,9 +8,9 @@
 
 // --- System Action Vending ---
 
-UTurnBasedAction* UActionLoadoutDataAsset::GetRootAction(UObject* Outer) const
+UTurnBasedPlayerAction* UActionLoadoutDataAsset::GetRootAction(UObject* Outer) const
 {
-    return CreateSystemAction<UTurnBasedAction>(RootActionClass, Outer);
+    return CreateSystemAction<UTurnBasedPlayerAction>(RootActionClass, Outer);
 }
 
 UTurnBasedSpectatorAction* UActionLoadoutDataAsset::GetIdleViewerAction(UObject* Outer) const
@@ -40,7 +40,7 @@ namespace
     // MaxUsesPerTurnByClass maps a config class to its cap (0 = unlimited).
     void ValidateTurnEndNode(
         const UTurnEndRequirementNode* Node,
-        const TMap<TSubclassOf<UTurnBasedAction>, int32>& MaxUsesPerTurnByClass,
+        const TMap<TSubclassOf<UTurnBasedPlayerAction>, int32>& MaxUsesPerTurnByClass,
         const FString& LoadoutName,
         FDataValidationContext& Context,
         EDataValidationResult& InOutResult)
@@ -95,9 +95,9 @@ EDataValidationResult UActionLoadoutDataAsset::IsDataValid(
 
     // --- Action config arrays ---
     // A class may appear once, in exactly one of the two arrays.
-    TMap<TSubclassOf<UTurnBasedAction>, int32> MaxUsesPerTurnByClass;
+    TMap<TSubclassOf<UTurnBasedPlayerAction>, int32> MaxUsesPerTurnByClass;
 
-    auto NoteClass = [&](const TSubclassOf<UTurnBasedAction>& ActionClass,
+    auto NoteClass = [&](const TSubclassOf<UTurnBasedPlayerAction>& ActionClass,
                          int32 MaxUsesPerTurn, const TCHAR* ArrayName)
     {
         if (!ActionClass)
@@ -119,7 +119,7 @@ EDataValidationResult UActionLoadoutDataAsset::IsDataValid(
             return;
         }
 
-        if (!UTurnBasedAction::GetTagForClass(ActionClass).IsValid())
+        if (!UTurnBasedPlayerAction::GetTagForClass(ActionClass).IsValid())
         {
             Context.AddWarning(FText::FromString(FString::Printf(
                 TEXT("Loadout '%s': '%s' returns no ActionTag from GetActionTag."),

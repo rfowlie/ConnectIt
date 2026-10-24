@@ -3,7 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "Action/TurnBasedAction.h"
+#include "Action/TurnBasedPlayerAction.h"
 #include "GridMechanicsBaseStructs.h"
 #include "ConnectIt_SwapPieceAction.generated.h"
 
@@ -14,7 +14,7 @@ class UGridTileRegistryBase;
 // turn (alone, or as an alternative to PlacePiece) are configured in the
 // loadout -- a NumberedActions entry and the TurnEndRequirements tree.
 //
-// Needs two tiles, which UTurnBasedAction's selection hooks don't natively
+// Needs two tiles, which UTurnBasedPlayerAction's selection hooks don't natively
 // support (built around one CurrentHoveredTile / one HandleValidSelection
 // call per pick). Layers a small first/second-pick state machine on top
 // instead: the first valid selection is remembered (bHasFirstSelection/
@@ -28,7 +28,7 @@ class UGridTileRegistryBase;
 // knowledge of pools, piece actors, or board-state mutation -- only builds
 // the request and fires it.
 UCLASS(Blueprintable, BlueprintType, EditInlineNew, DefaultToInstanced)
-class CONNECTIT_API UConnectIt_SwapPieceAction : public UTurnBasedAction
+class CONNECTIT_API UConnectIt_SwapPieceAction : public UTurnBasedPlayerAction
 {
     GENERATED_BODY()
 

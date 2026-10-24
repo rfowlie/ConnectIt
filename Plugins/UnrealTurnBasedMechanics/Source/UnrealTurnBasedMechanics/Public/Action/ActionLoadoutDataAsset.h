@@ -5,7 +5,7 @@
 #include "CoreMinimal.h"
 #include "Engine/DataAsset.h"
 #include "GameplayTagContainer.h"
-#include "TurnBasedAction.h"
+#include "TurnBasedPlayerAction.h"
 #include "Action/ActionConfig.h"
 #include "Action/TurnEndRequirement.h"
 #include "ActionLoadoutDataAsset.generated.h"
@@ -33,7 +33,7 @@ public:
     // Mandatory -- create a do-nothing action if your game has no idle state
     UPROPERTY(EditAnywhere, BlueprintReadOnly,
         Category = "Loadout|System Actions")
-    TSubclassOf<UTurnBasedAction> RootActionClass = nullptr;
+    TSubclassOf<UTurnBasedPlayerAction> RootActionClass = nullptr;
 
     // Active immediately after your turn ends and during Updating phase
     // Appropriate for disabling input while resolution plays
@@ -95,7 +95,7 @@ public:
     // Caller (action component) is responsible for validity check
 
     UFUNCTION(BlueprintCallable, Category = "Loadout")
-    UTurnBasedAction* GetRootAction(UObject* Outer) const;
+    UTurnBasedPlayerAction* GetRootAction(UObject* Outer) const;
 
     UFUNCTION(BlueprintCallable, Category = "Loadout")
     UTurnBasedSpectatorAction* GetIdleViewerAction(UObject* Outer) const;

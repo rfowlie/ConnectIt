@@ -5,7 +5,7 @@
 #include "CoreMinimal.h"
 #include "ActionConfig.generated.h"
 
-class UTurnBasedAction;
+class UTurnBasedPlayerAction;
 
 // Designer-authored config for an action that is available for the whole
 // match (PlacePiece-style). Split from FNumberedActionConfig by type rather
@@ -17,9 +17,9 @@ struct UNREALTURNBASEDMECHANICS_API FPermanentActionConfig
     GENERATED_BODY()
 
     // The action this config applies to. Its tag is derived from the class
-    // (UTurnBasedAction::GetTagForClass), never typed here.
+    // (UTurnBasedPlayerAction::GetTagForClass), never typed here.
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Action Config")
-    TSubclassOf<UTurnBasedAction> ActionClass;
+    TSubclassOf<UTurnBasedPlayerAction> ActionClass;
 
     // 0 = unlimited
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Action Config", meta = (ClampMin = 0))
@@ -66,7 +66,7 @@ struct UNREALTURNBASEDMECHANICS_API FNumberedActionConfig
 
     // See FPermanentActionConfig::ActionClass
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Action Config")
-    TSubclassOf<UTurnBasedAction> ActionClass;
+    TSubclassOf<UTurnBasedPlayerAction> ActionClass;
 
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Action Config", meta = (ClampMin = 0))
     int32 StartingMatchUses = 0;
@@ -118,7 +118,7 @@ struct UNREALTURNBASEDMECHANICS_API FPermanentActionRuntimeEntry
     GENERATED_BODY()
 
     UPROPERTY(BlueprintReadOnly, Category = "Action State")
-    TSubclassOf<UTurnBasedAction> ActionClass;
+    TSubclassOf<UTurnBasedPlayerAction> ActionClass;
 
     UPROPERTY(BlueprintReadOnly, Category = "Action State")
     FPermanentActionRuntimeState State;
@@ -130,7 +130,7 @@ struct UNREALTURNBASEDMECHANICS_API FNumberedActionRuntimeEntry
     GENERATED_BODY()
 
     UPROPERTY(BlueprintReadOnly, Category = "Action State")
-    TSubclassOf<UTurnBasedAction> ActionClass;
+    TSubclassOf<UTurnBasedPlayerAction> ActionClass;
 
     UPROPERTY(BlueprintReadOnly, Category = "Action State")
     FNumberedActionRuntimeState State;

@@ -52,7 +52,7 @@ public:
     void UnbindAll();
 
     // Exposed so a consumer with its own bespoke, non-tag-dispatched input
-    // (e.g. UTurnBasedAction's spatial hover+confirm selection pipeline)
+    // (e.g. UTurnBasedPlayerAction's spatial hover+confirm selection pipeline)
     // can add one more key mapping onto the same context instead of
     // standing up a second mapping context of its own.
     UFUNCTION(BlueprintPure, Category = "Input")

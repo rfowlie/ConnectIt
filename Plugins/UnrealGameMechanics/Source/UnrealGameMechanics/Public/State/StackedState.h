@@ -24,7 +24,7 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE(FStackedStatePopDelegate);
 // interface -- that dependency wasn't provided and its contract is unknown,
 // so it's not something this port can honestly reproduce. Concrete states
 // bind whatever input they need themselves (Initialize/Deinitialize are the
-// hook for that), the same way UTurnBasedAction's own selection binding
+// hook for that), the same way UTurnBasedPlayerAction's own selection binding
 // works in the sibling UnrealTurnBasedMechanics plugin.
 //
 // Intended use: any action, controller, or system that has a "mini state

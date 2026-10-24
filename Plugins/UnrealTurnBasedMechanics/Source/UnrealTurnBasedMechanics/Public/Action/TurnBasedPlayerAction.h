@@ -9,9 +9,9 @@
 #include "Action/TurnBasedActionBase.h"
 #include "Input/InputTagBinder.h"
 #include "Action/ActionConfig.h"
-#include "TurnBasedAction.generated.h"
+#include "TurnBasedPlayerAction.generated.h"
 
-class UTurnBasedAction;
+class UTurnBasedPlayerAction;
 class ATurnBasedPlayerState;
 class AGridTileBase;
 class UGridHoverSubsystem;
@@ -23,17 +23,23 @@ class UInputAction;
 // Fired when this action wants to chain into another action,
 // Action component listens to this and calls TryPushAction(Class)
 // Example: a menu action fires this when the player selects an option
-// Example: an ability selection action fires this to push targeting action
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnNextActionRequested, TSubclassOf<UTurnBasedAction>, NextActionClass);
-DECLARE_MULTICAST_DELEGATE_OneParam(FOnNextActionRequested_Native, TSubclassOf<UTurnBasedAction>);
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnTurnActionEvent, UTurnBasedAction*, Action);
+// Example: an action-selection menu fires this to push a targeting action
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnNextActionRequested, TSubclassOf<UTurnBasedPlayerAction>, NextActionClass);
+DECLARE_MULTICAST_DELEGATE_OneParam(FOnNextActionRequested_Native, TSubclassOf<UTurnBasedPlayerAction>);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnTurnActionEvent, UTurnBasedPlayerAction*, Action);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnTurnActionRequested, const FTurnActionRequest&, Request);
-DECLARE_MULTICAST_DELEGATE_OneParam(FOnTurnBasedActionEvent_Native, UTurnBasedAction*);
+DECLARE_MULTICAST_DELEGATE_OneParam(FOnTurnBasedActionEvent_Native, UTurnBasedPlayerAction*);
 DECLARE_MULTICAST_DELEGATE_OneParam(FOnTurnActionRequested_Native, const FTurnActionRequest&);
 
 
+// A Player Action: something a participant chooses to do on their turn (place
+// a piece, swap two...). It builds a request for the server and plays its
+// part of the turn on the client. How many times it may be used is not the
+// action's to say: the loadout or the game sets that. Spectator actions
+// (UTurnBasedSpectatorAction) share the base but aren't player actions.
+// (Was UTurnBasedAction; a class redirect keeps old assets loading.)
 UCLASS(Abstract, Blueprintable, BlueprintType, EditInlineNew, DefaultToInstanced)
-class UNREALTURNBASEDMECHANICS_API UTurnBasedAction : public UTurnBasedActionBase
+class UNREALTURNBASEDMECHANICS_API UTurnBasedPlayerAction : public UTurnBasedActionBase
 {
     GENERATED_BODY()
 
@@ -70,7 +76,7 @@ public:
     // object -- lets config reference an action by class alone instead of a
     // separately typed tag. Invalid tag if the class is null or its
     // GetActionTag isn't implemented.
-    static FGameplayTag GetTagForClass(TSubclassOf<UTurnBasedAction> ActionClass);
+    static FGameplayTag GetTagForClass(TSubclassOf<UTurnBasedPlayerAction> ActionClass);
 
     // Whether this action is allowed to produce a request of this type.
     // The server checks it against a request's client-supplied ActionTag so
@@ -139,7 +145,7 @@ public:
 
     // --- Action Events ---
     // Separate from base OnActivated/OnDeactivated
-    // Carry UTurnBasedAction* for typed access
+    // Carry UTurnBasedPlayerAction* for typed access
 
     UPROPERTY(BlueprintAssignable, Category = "Action|Delegates")
     FOnTurnActionEvent OnActionCompleted;
@@ -158,7 +164,7 @@ public:
     // Helper -- subclasses call this to request chaining
     // Component receives and pushes the named action onto the stack
     UFUNCTION(BlueprintCallable, Category = "Action")
-    void RequestNextAction(TSubclassOf<UTurnBasedAction> NextActionClass);
+    void RequestNextAction(TSubclassOf<UTurnBasedPlayerAction> NextActionClass);
     
 protected:
 

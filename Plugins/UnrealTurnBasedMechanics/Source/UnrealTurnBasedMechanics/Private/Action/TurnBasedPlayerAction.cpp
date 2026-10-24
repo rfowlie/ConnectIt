@@ -1,6 +1,6 @@
 ﻿// Fill out your copyright notice in the Description page of Project Settings.
 
-#include "Action/TurnBasedAction.h"
+#include "Action/TurnBasedPlayerAction.h"
 #include "UnrealTurnBasedMechanics.h"
 #include "EnhancedInputComponent.h"
 #include "GameFramework/Controller.h"
@@ -9,15 +9,15 @@
 #include "Tile/GridTileBase.h"
 
 
-FGameplayTag UTurnBasedAction::GetTagForClass(TSubclassOf<UTurnBasedAction> ActionClass)
+FGameplayTag UTurnBasedPlayerAction::GetTagForClass(TSubclassOf<UTurnBasedPlayerAction> ActionClass)
 {
     if (!ActionClass) return FGameplayTag();
 
-    const UTurnBasedAction* DefaultAction = ActionClass->GetDefaultObject<UTurnBasedAction>();
+    const UTurnBasedPlayerAction* DefaultAction = ActionClass->GetDefaultObject<UTurnBasedPlayerAction>();
     return IsValid(DefaultAction) ? DefaultAction->GetActionTag() : FGameplayTag();
 }
 
-void UTurnBasedAction::InitialiseAction(
+void UTurnBasedPlayerAction::InitialiseAction(
     AController* InOwningController,
     UEnhancedInputComponent* InInputComponent,
     UEnhancedInputLocalPlayerSubsystem* InLocalPlayerSubsystem)
@@ -36,12 +36,12 @@ void UTurnBasedAction::InitialiseAction(
     PostInitialiseAction();
 }
 
-void UTurnBasedAction::Complete()
+void UTurnBasedPlayerAction::Complete()
 {
     if (!IsActive())
     {
         UE_LOG(LogTurnBasedMechanics, Warning,
-            TEXT("TurnBasedAction: '%s' Complete called but not active"),
+            TEXT("TurnBasedPlayerAction: '%s' Complete called but not active"),
             *GetActionTag().ToString());
         return;
     }
@@ -57,17 +57,17 @@ void UTurnBasedAction::Complete()
     FinishAction();
 
     UE_LOG(LogTurnBasedMechanics, Log,
-        TEXT("TurnBasedAction: '%s' completed"),
+        TEXT("TurnBasedPlayerAction: '%s' completed"),
         *GetActionTag().ToString());
 }
 
-void UTurnBasedAction::Cancel()
+void UTurnBasedPlayerAction::Cancel()
 {
     if (!IsActive()) return;
     if (!bIsCancellable)
     {
         UE_LOG(LogTurnBasedMechanics, Warning,
-            TEXT("TurnBasedAction: '%s' Cancel called "
+            TEXT("TurnBasedPlayerAction: '%s' Cancel called "
                  "but bIsCancellable is false"),
             *GetActionTag().ToString());
         return;
@@ -84,11 +84,11 @@ void UTurnBasedAction::Cancel()
     FinishAction();
 
     UE_LOG(LogTurnBasedMechanics, Log,
-        TEXT("TurnBasedAction: '%s' cancelled"),
+        TEXT("TurnBasedPlayerAction: '%s' cancelled"),
         *GetActionTag().ToString());
 }
 
-void UTurnBasedAction::FinishAction()
+void UTurnBasedPlayerAction::FinishAction()
 {
     Deactivate_Internal();
     SetIsActive(false);
@@ -96,7 +96,7 @@ void UTurnBasedAction::FinishAction()
     OnDeactivated_Native.Broadcast(this);
 }
 
-bool UTurnBasedAction::CanActivate() const
+bool UTurnBasedPlayerAction::CanActivate() const
 {
     if (IsActive()) return false;
 
@@ -115,48 +115,48 @@ bool UTurnBasedAction::CanActivate() const
     return true;
 }
 
-ATurnBasedPlayerState* UTurnBasedAction::GetOwnerPlayerState() const
+ATurnBasedPlayerState* UTurnBasedPlayerAction::GetOwnerPlayerState() const
 {
     const AController* Controller = OwningController;
     return IsValid(Controller) ? Controller->GetPlayerState<ATurnBasedPlayerState>() : nullptr;
 }
 
-bool UTurnBasedAction::GetPermanentRuntimeState(FPermanentActionRuntimeState& OutState) const
+bool UTurnBasedPlayerAction::GetPermanentRuntimeState(FPermanentActionRuntimeState& OutState) const
 {
     const ATurnBasedPlayerState* PS = GetOwnerPlayerState();
     return IsValid(PS) && PS->GetPermanentRuntimeState(GetClass(), OutState);
 }
 
-bool UTurnBasedAction::GetNumberedRuntimeState(FNumberedActionRuntimeState& OutState) const
+bool UTurnBasedPlayerAction::GetNumberedRuntimeState(FNumberedActionRuntimeState& OutState) const
 {
     const ATurnBasedPlayerState* PS = GetOwnerPlayerState();
     return IsValid(PS) && PS->GetNumberedRuntimeState(GetClass(), OutState);
 }
 
-int32 UTurnBasedAction::GetUsesThisTurn() const
+int32 UTurnBasedPlayerAction::GetUsesThisTurn() const
 {
     const ATurnBasedPlayerState* PS = GetOwnerPlayerState();
     return IsValid(PS) ? PS->GetActionUsesThisTurn(GetClass()) : 0;
 }
 
-int32 UTurnBasedAction::GetMaxUsesPerTurn() const
+int32 UTurnBasedPlayerAction::GetMaxUsesPerTurn() const
 {
     const ATurnBasedPlayerState* PS = GetOwnerPlayerState();
     return IsValid(PS) ? PS->GetActionMaxUsesPerTurn(GetClass()) : 0;
 }
 
-int32 UTurnBasedAction::GetUsesRemaining() const
+int32 UTurnBasedPlayerAction::GetUsesRemaining() const
 {
     const ATurnBasedPlayerState* PS = GetOwnerPlayerState();
     return IsValid(PS) ? PS->GetNumberedActionUsesRemaining(GetClass()) : 0;
 }
 
-void UTurnBasedAction::RequestBoardChange(const FInstancedStruct& Payload)
+void UTurnBasedPlayerAction::RequestBoardChange(const FInstancedStruct& Payload)
 {
     if (!Payload.IsValid())
     {
         UE_LOG(LogTurnBasedMechanics, Warning,
-            TEXT("TurnBasedAction: '%s' requested a board change with no payload"),
+            TEXT("TurnBasedPlayerAction: '%s' requested a board change with no payload"),
             *GetActionTag().ToString());
         return;
     }
@@ -171,7 +171,7 @@ void UTurnBasedAction::RequestBoardChange(const FInstancedStruct& Payload)
     OnChangeRequested_Native.Broadcast(Request);
 }
 
-UGridHoverSubsystem* UTurnBasedAction::GetGridSubsystem() const
+UGridHoverSubsystem* UTurnBasedPlayerAction::GetGridSubsystem() const
 {
     UWorld* World = GetWorld();
     return IsValid(World)
@@ -181,12 +181,12 @@ UGridHoverSubsystem* UTurnBasedAction::GetGridSubsystem() const
 
 // --- Base overrides ---
 
-void UTurnBasedAction::RequestNextAction(TSubclassOf<UTurnBasedAction> NextActionClass)
+void UTurnBasedPlayerAction::RequestNextAction(TSubclassOf<UTurnBasedPlayerAction> NextActionClass)
 {
     if (!NextActionClass)
     {
         UE_LOG(LogTurnBasedMechanics, Warning,
-            TEXT("TurnBasedAction: '%s' RequestNextAction called "
+            TEXT("TurnBasedPlayerAction: '%s' RequestNextAction called "
                  "with null class"),
             *GetActionTag().ToString());
         return;
@@ -196,12 +196,12 @@ void UTurnBasedAction::RequestNextAction(TSubclassOf<UTurnBasedAction> NextActio
     OnNextActionRequested_Native.Broadcast(NextActionClass);
 
     UE_LOG(LogTurnBasedMechanics, Log,
-        TEXT("TurnBasedAction: '%s' requested next action '%s'"),
+        TEXT("TurnBasedPlayerAction: '%s' requested next action '%s'"),
         *GetActionTag().ToString(),
         *NextActionClass->GetName());
 }
 
-void UTurnBasedAction::Activate_Internal_Implementation()
+void UTurnBasedPlayerAction::Activate_Internal_Implementation()
 {
     if (bRequiresSelection)
     {
@@ -210,14 +210,14 @@ void UTurnBasedAction::Activate_Internal_Implementation()
     }
 }
 
-void UTurnBasedAction::Deactivate_Internal_Implementation()
+void UTurnBasedPlayerAction::Deactivate_Internal_Implementation()
 {
     UnbindInput();
     UnbindGridSubsystem();
     ClearSelectionState();
 }
 
-void UTurnBasedAction::ForceDeactivate_Internal_Implementation()
+void UTurnBasedPlayerAction::ForceDeactivate_Internal_Implementation()
 {
     // Force deactivate -- no completion increment
     // Clean up selection state same as cancel
@@ -228,7 +228,7 @@ void UTurnBasedAction::ForceDeactivate_Internal_Implementation()
 
 // --- Input Binding ---
 
-void UTurnBasedAction::BindInput()
+void UTurnBasedPlayerAction::BindInput()
 {
     if (IsValid(InputTagBinder))
     {
@@ -236,7 +236,7 @@ void UTurnBasedAction::BindInput()
     }
 }
 
-void UTurnBasedAction::UnbindInput()
+void UTurnBasedPlayerAction::UnbindInput()
 {
     if (IsValid(EnhancedInputComponent))
     {
@@ -249,34 +249,34 @@ void UTurnBasedAction::UnbindInput()
     }
 }
 
-void UTurnBasedAction::BindGridSubsystem()
+void UTurnBasedPlayerAction::BindGridSubsystem()
 {
     if (UGridHoverSubsystem* GridSub = GetGridSubsystem())
     {
         GridSub->OnGridTileHoverChanged.AddDynamic(
-            this, &UTurnBasedAction::OnGridTileHoverChanged);
+            this, &UTurnBasedPlayerAction::OnGridTileHoverChanged);
     }
 }
 
-void UTurnBasedAction::UnbindGridSubsystem()
+void UTurnBasedPlayerAction::UnbindGridSubsystem()
 {
     if (UGridHoverSubsystem* GridSub = GetGridSubsystem())
     {
         GridSub->OnGridTileHoverChanged.RemoveDynamic(
-            this, &UTurnBasedAction::OnGridTileHoverChanged);
+            this, &UTurnBasedPlayerAction::OnGridTileHoverChanged);
     }
 }
 
 // --- Action Helpers ---
 
-void UTurnBasedAction::OnSelectionInputTriggered()
+void UTurnBasedPlayerAction::OnSelectionInputTriggered()
 {
     AGridTileBase* Tile = CurrentHoveredTile.Get();
     if (!IsValid(Tile)) return;
     if (IsValidSelectionTile(Tile)) { HandleValidSelection(Tile); }
 }
 
-void UTurnBasedAction::OnGridTileHoverChanged(AGridTileBase* NewTile)
+void UTurnBasedPlayerAction::OnGridTileHoverChanged(AGridTileBase* NewTile)
 {
     AGridTileBase* Previous = CurrentHoveredTile.Get();
 
@@ -299,12 +299,12 @@ void UTurnBasedAction::OnGridTileHoverChanged(AGridTileBase* NewTile)
 
 // --- Default Virtual Implementations ---
 
-void UTurnBasedAction::OnCancelled_Implementation() {}
-void UTurnBasedAction::OnCompleted_Implementation() {}
-void UTurnBasedAction::ConstructInputBindings_Implementation() {}
-bool UTurnBasedAction::IsValidHoverTile_Implementation(AGridTileBase* Tile) const { return IsValid(Tile); }
-bool UTurnBasedAction::IsValidSelectionTile_Implementation(AGridTileBase* Tile) const { return IsValid(Tile); }
-void UTurnBasedAction::HandleValidHover_Implementation(AGridTileBase*) {}
-void UTurnBasedAction::HandleHoverCleared_Implementation(AGridTileBase*) {}
-void UTurnBasedAction::HandleValidSelection_Implementation(AGridTileBase*) {}
-void UTurnBasedAction::ClearSelectionState_Implementation() {}
+void UTurnBasedPlayerAction::OnCancelled_Implementation() {}
+void UTurnBasedPlayerAction::OnCompleted_Implementation() {}
+void UTurnBasedPlayerAction::ConstructInputBindings_Implementation() {}
+bool UTurnBasedPlayerAction::IsValidHoverTile_Implementation(AGridTileBase* Tile) const { return IsValid(Tile); }
+bool UTurnBasedPlayerAction::IsValidSelectionTile_Implementation(AGridTileBase* Tile) const { return IsValid(Tile); }
+void UTurnBasedPlayerAction::HandleValidHover_Implementation(AGridTileBase*) {}
+void UTurnBasedPlayerAction::HandleHoverCleared_Implementation(AGridTileBase*) {}
+void UTurnBasedPlayerAction::HandleValidSelection_Implementation(AGridTileBase*) {}
+void UTurnBasedPlayerAction::ClearSelectionState_Implementation() {}

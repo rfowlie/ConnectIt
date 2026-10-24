@@ -6,6 +6,10 @@ Vault-wide passes go in `_core/_logs/`.
 
 Newest first:
 
+- [2026-10-24-1259](2026-10-24-1259.md) — session — top-down camera: review of the imported pawn, needs, a strategy-system proposal (new design note).
+
+- [2026-10-24-1256](2026-10-24-1256.md) — session — player actions plan, Stage 1: `UTurnBasedAction` →
+  `UTurnBasedPlayerAction` (29 files, class redirect in the plugin's config). 65/65 tests.
 - [2026-10-23-1507](2026-10-23-1507.md) — session — player actions and items plan approved: all "Power" names →
   "TilePower"; the AI never uses items.
 - [2026-10-23-1501](2026-10-23-1501.md) — session — Player Action details settled (finite turn uses, item inventory
