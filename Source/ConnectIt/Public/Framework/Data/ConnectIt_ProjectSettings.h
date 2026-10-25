@@ -8,7 +8,7 @@
 
 class UConnectIt_TileCatalog;
 class AConnectIt_BuilderTile;
-class UConnectIt_SkillShardTable;
+class UConnectIt_ActionShardTable;
 
 
 // Project-wide ConnectIt settings (Project Settings > Game > ConnectIt)
@@ -28,9 +28,9 @@ public:
     UPROPERTY(Config, EditAnywhere, Category = "Tiles")
     TSoftClassPtr<AConnectIt_BuilderTile> BuilderTileClass;
 
-    // How each skill's shards become numbered uses in Adventure mode
+    // How each action's shards become permanent uses in Adventure mode
     UPROPERTY(Config, EditAnywhere, Category = "Adventure")
-    TSoftObjectPtr<UConnectIt_SkillShardTable> SkillShardTable;
+    TSoftObjectPtr<UConnectIt_ActionShardTable> ActionShardTable;
 
     virtual FName GetCategoryName() const override { return TEXT("Game"); }
 };

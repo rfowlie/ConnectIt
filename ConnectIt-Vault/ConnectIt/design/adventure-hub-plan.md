@@ -18,6 +18,19 @@ Design: [adventure-hub](adventure-hub.md) (rounds 1-5, 2026-10-23); background:
 
 ## Context
 
+> **Revised 2026-10-25** by the [player actions and items plan](player-actions-and-items-plan.md) (its Stage 5). The
+> settled points below are kept as written; read them in the new vocabulary:
+>
+> - "skills" are **player actions**;
+> - "numbered uses" are **permanent uses**: owned for good, from shards, back every level;
+> - "itemed uses" are **item actions** in the player's **inventory**. Each has a cap from the game's item inventory
+>   asset, and each node has an **item budget** limiting item uses per match and per turn;
+> - there is no "choose items to bring" step: the whole inventory is available, and the budget limits it;
+> - grants are kept even on a loss.
+>
+> Stages 2, 3, 5 and 6 below are rewritten to match; Stage 1's as-built notes are history (renamed since, see its
+> last bullet).
+
 Settled with the owner on 2026-10-23:
 
 - **The hub is a 3D level** of **map node actors** placed and dressed by artists, each holding a
@@ -99,29 +112,60 @@ stages.
     the node's region and concepts.
   - **Tests:** new `ConnectIt.Adventure.ShardTable`, `.NodeRequirements`, `.NodeData` (in
     `Tests/ConnectIt_AdventureTests.cpp`).
+  - **Renamed 2026-10-25** (player actions plan, Stage 5):
+    - `UConnectIt_SkillShardTable` → `UConnectIt_ActionShardTable` (`ConnectIt_ActionShardTable.h/.cpp`; `Actions`
+      map; `FConnectItActionShardCosts`), with the Project Settings field **Action Shard Table**;
+    - `GetNumberedUses` → `GetPermanentUses`;
+    - `RequiredSkills` / `RecommendedSkills` / `MissingSkills` → `...Actions`;
+    - `EConnectItSkillDesign` / `SkillDesign` → `EConnectItActionDesign` / `ActionDesign`;
+    - keys are `ConnectIt.PlayerAction.*` tags.
+    - The node gained an **`ItemBudget`** (the plugin's `FItemBudget`; default none; a closed node with one is a
+      warning).
 
 ## Stage 2: progress and the save
 
-- **`UConnectIt_AdventureSaveGame`** (`USaveGame`): completed node ids; **broken seals** (gated node ids opened);
-  shards per skill (numbered uses are **derived** from shards and the table, not stored); itemed uses per skill; seals
-  held (specific tags, general count); the last-played node id.
-- **`UConnectIt_AdventureSubsystem`** (game instance): load / save (one slot to start); queries -- a node's state
-  (hidden / available / gated, with what's missing / completed), numbered uses of a skill, seals held; actions --
-  **break a seal** (spend the seals a gated node needs; it becomes available for good), **record a result** (on a win:
-  mark complete, grant rewards, spend the itemed uses the player took in, save).
-- Tests: state of a node through complete / gate / break; rewards applied once; derived uses grow with shards; itemed
-  uses don't satisfy a required skill.
+- **`UConnectIt_AdventureSaveGame`** (`USaveGame`), holding the progress value (`FConnectItAdventureProgress`):
+  - completed node ids;
+  - **broken seals** (gated node ids opened);
+  - shards per player action (permanent uses are **derived** from shards and the action shard table, not stored);
+  - the **inventory**: item actions held, by player action tag;
+  - seals held (specific tags, general count);
+  - the last-played node id.
+- **`UConnectIt_AdventureSubsystem`** (game instance):
+  - load / save (one slot to start);
+  - **queries:** a node's state (hidden / available / gated, with what's missing / completed), permanent uses of a
+    player action, the inventory, seals held;
+  - **break a seal:** spend the seals a gated node needs; it becomes available for good;
+  - **record a result:** on a win, mark complete and grant rewards (shards, item actions up to their caps, seals).
+    Win or lose, write back the item uses spent and any items granted during the match. Then save.
+- **Tag ↔ class (to settle here):** the save and rewards key player actions by tag, the plugin's inventory and
+  permanent list by class. Either the action shard table's entries also name their action class, or a lookup finds the
+  class for a tag.
+- **Tests:**
+  - a node's state through complete / gate / break;
+  - rewards applied once;
+  - derived uses grow with shards;
+  - item uses don't satisfy a required action;
+  - granted items respect their caps.
 
 ## Stage 3: starting a node and coming back
 
-- **Start** from the hub: the subsystem builds the match settings (`UConnectIt_MatchSetupSubsystem` -- level, preset)
-  and remembers the node being played.
-- **The player's loadout**: closed -- the preset's Player director gives it, as today. Open -- at match start the Player
-  director is handed **Place Piece + the player's numbered uses + the itemed uses chosen in the panel** (a numbered
-  action's starting uses = numbered + itemed; the itemed part is marked so its consumption can be counted).
-- **Coming back**: when the match ends, the result (won / lost) goes to the subsystem, which records it, and the hub map
-  loads again, focusing the node just played. A loss changes nothing except itemed uses actually spent (to confirm).
-- Tests: open loadout built from a progress value; itemed uses spent in a match are removed on return.
+- **Start** from the hub: the subsystem builds the match settings (`UConnectIt_MatchSetupSubsystem` -- level,
+  preset) and remembers the node being played.
+- **The player's set-up:**
+  - **Closed:** the preset's Player director gives the loadout, as today.
+  - **Open:** at match start the player's PlayerState is seeded with Place Piece plus each player action with
+    permanent uses from shards (`InitialiseActionState(Loadout, PermanentActions)`: match uses = the permanent uses,
+    turn uses from the action's set-up).
+  - **Either way:** the inventory is seeded from the save (`InitialiseInventory`), and the item budget from the node
+    (`SetItemBudget(Node->ItemBudget)`).
+- **Coming back:** when the match ends, the result (won / lost) and the PlayerState's inventory go to the
+  subsystem, which records them, and the hub map loads again, focusing the node just played. A loss changes nothing
+  but the inventory (items spent, items granted).
+- **Tests:**
+  - an open set-up built from a progress value;
+  - the inventory read back after item uses and a grant;
+  - a loss keeps grants and removes spent items.
 
 ## Stage 4: the hub level
 
@@ -146,8 +190,8 @@ An editor utility (map check on the hub map, plus a button) that walks the data 
 - every data asset reachable from the start has exactly one node actor in the hub map; no actor without a data asset;
 - unreachable nodes;
 - **gates**: each gate's seals can be earned on paths that don't pass through it (specific seals before their gate;
-  general seals counted along the way); each required skill can reach its first threshold from shards available
-  before the gate;
+  general seals counted along the way); each required action can reach its first permanent use from shards
+  available before the gate;
 - **concept warnings**: a node that *uses* a concept with no node that *teaches* it on any path to it;
 - a sub-map with no exit node.
 
@@ -155,19 +199,20 @@ Warnings and errors only -- it never changes data.
 
 ## Stage 6: UI and art (owner, editor)
 
-- Node panel: name, description, region, rewards, required (with what's missing) and recommended skills, concepts,
-  gate and its seal cost, **Break Seal** / **Start**; the itemed uses to bring (open nodes).
+- Node panel: name, description, region, rewards, required (with what's missing) and recommended actions, concepts,
+  gate and its seal cost, the **item budget**, **Break Seal** / **Start**.
 - **Breaking a seal** (owner, 2026-10-23): selecting a gated node opens its panel with a **Break Seal** button,
   **interactable only when the player can afford it** (the subsystem's query says so, and why not). Clicking it breaks
   the seal through the subsystem (spends the seals, records it, saves), plays a **break visual** on the node actor, and
   the node turns available.
-- Progress display: shards toward the next use per skill, seals held.
+- Progress display: shards toward the next permanent use per action, the inventory, seals held.
 - Node actor visuals per state; region dressing; the camera port.
 - The intro region map and its node on the world map.
 
 ## Stage 7: vault
 
-Decision notes (the hub as a 3D level with revealed node actors; skills, shards and Seals); `code/` recipe "add an
+Decision notes (the hub as a 3D level with revealed node actors; shards, permanent and item actions, and Seals);
+`code/` recipe "add an
 adventure node / region"; update [adventure-hub](adventure-hub.md) and
 [adventure-modules-and-progression](adventure-modules-and-progression.md); log.
 
@@ -190,5 +235,7 @@ adventure node / region"; update [adventure-hub](adventure-hub.md) and
 1. Nodes are identified in the save by a GUID on the data asset (renames / moves keep progress).
 2. Seals are spent with the **Break Seal** button in the selected gated node's panel -- enabled only when affordable;
    clicking breaks the seal, shows a visual and saves; the node stays open. Never automatic on Start.
-3. On a loss, only the itemed uses actually spent are lost; nothing else changes.
-4. Numbered uses are derived from shards (only shards are saved) -- less data, more error-proof.
+3. On a loss, only the itemed uses actually spent are lost; nothing else changes. *(2026-10-25: items spent are
+   lost, items granted are kept -- the inventory is the save's.)*
+4. Numbered uses are derived from shards (only shards are saved) -- less data, more error-proof. *(Now "permanent
+   uses".)*

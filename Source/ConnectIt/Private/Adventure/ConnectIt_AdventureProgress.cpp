@@ -1,9 +1,9 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 #include "Adventure/ConnectIt_AdventureProgress.h"
-#include "Adventure/ConnectIt_SkillShardTable.h"
+#include "Adventure/ConnectIt_ActionShardTable.h"
 
-int32 FConnectItAdventureProgress::GetNumberedUses(const FGameplayTag& Skill, const UConnectIt_SkillShardTable* Table) const
+int32 FConnectItAdventureProgress::GetPermanentUses(const FGameplayTag& Action, const UConnectIt_ActionShardTable* Table) const
 {
-    return Table ? Table->GetNumberedUses(Skill, GetShards(Skill)) : 0;
+    return Table ? Table->GetPermanentUses(Action, GetShards(Action)) : 0;
 }

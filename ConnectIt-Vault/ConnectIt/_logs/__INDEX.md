@@ -6,6 +6,11 @@ Vault-wide passes go in `_core/_logs/`.
 
 Newest first:
 
+- [2026-10-25-1157](2026-10-25-1157.md) — session — level-outcomes plan approved.
+
+- [2026-10-25-1155](2026-10-25-1155.md) — session — player actions Stage 5: Adventure conforms ("skill" → "action",
+  `UConnectIt_ActionShardTable`, `GetPermanentUses`, `ActionDesign`; nodes get an `ItemBudget`); the adventure-hub
+  plan's later stages revised. 69/69 tests.
 - [2026-10-24-1529](2026-10-24-1529.md) — session — player actions Stage 4: `ConnectIt.PlayerAction.*` /
   `ConnectIt.BoardOperation.*` tags (old ones redirected), "operation tag" naming, the Mediator's item gate, every bare
   "Power" → "TilePower" (with redirects); a Stage 3 dangling-lambda bug fixed. 69/69 tests.

@@ -6,13 +6,13 @@
 #include "GameplayTagContainer.h"
 #include "ConnectIt_AdventureProgress.generated.h"
 
-class UConnectIt_SkillShardTable;
+class UConnectIt_ActionShardTable;
 
 
 // A player's Adventure progress: what the save holds. Nodes are named by their
 // data asset's NodeId (a GUID), so renaming or moving an asset keeps progress.
-// Numbered uses aren't stored: they come from the shards through the skill
-// shard table (GetNumberedUses).
+// Permanent uses aren't stored: they come from the shards through the action
+// shard table (GetPermanentUses).
 USTRUCT(BlueprintType)
 struct CONNECTIT_API FConnectItAdventureProgress
 {
@@ -26,12 +26,12 @@ struct CONNECTIT_API FConnectItAdventureProgress
     UPROPERTY(BlueprintReadOnly, Category = "Adventure")
     TSet<FGuid> BrokenSeals;
 
-    // Shards per skill (ConnectIt.PlayerAction.*)
+    // Shards per action (ConnectIt.PlayerAction.*)
     UPROPERTY(BlueprintReadOnly, Category = "Adventure")
     TMap<FGameplayTag, int32> Shards;
 
-    // One-time uses per skill, from level rewards. Never count towards a
-    // node's required skills.
+    // One-time uses per action, from level rewards. Never count towards a
+    // node's required actions.
     UPROPERTY(BlueprintReadOnly, Category = "Adventure")
     TMap<FGameplayTag, int32> ItemUses;
 
@@ -51,28 +51,28 @@ struct CONNECTIT_API FConnectItAdventureProgress
     bool IsCompleted(const FGuid& NodeId) const { return CompletedNodes.Contains(NodeId); }
     bool IsSealBroken(const FGuid& NodeId) const { return BrokenSeals.Contains(NodeId); }
 
-    int32 GetShards(const FGameplayTag& Skill) const
+    int32 GetShards(const FGameplayTag& Action) const
     {
-        const int32* Found = Shards.Find(Skill);
+        const int32* Found = Shards.Find(Action);
         return Found ? *Found : 0;
     }
 
-    // The permanent uses of Skill the shards give, through Table (0 with no
+    // The permanent uses of Action the shards give, through Table (0 with no
     // table)
-    int32 GetNumberedUses(const FGameplayTag& Skill, const UConnectIt_SkillShardTable* Table) const;
+    int32 GetPermanentUses(const FGameplayTag& Action, const UConnectIt_ActionShardTable* Table) const;
 };
 
 // What a node still needs before it can be started (UConnectIt_MapNodeDataAsset::
-// CheckRequirements). Required skills are always checked; seals only until the
+// CheckRequirements). Required actions are always checked; seals only until the
 // node's seal is broken.
 USTRUCT(BlueprintType)
 struct CONNECTIT_API FConnectItNodeRequirementCheck
 {
     GENERATED_BODY()
 
-    // Required skills with no numbered use yet
+    // Required actions with no permanent use yet
     UPROPERTY(BlueprintReadOnly, Category = "Adventure")
-    FGameplayTagContainer MissingSkills;
+    FGameplayTagContainer MissingActions;
 
     // Required specific seals not held
     UPROPERTY(BlueprintReadOnly, Category = "Adventure")
@@ -82,6 +82,6 @@ struct CONNECTIT_API FConnectItNodeRequirementCheck
     UPROPERTY(BlueprintReadOnly, Category = "Adventure")
     int32 MissingGeneralSeals = 0;
 
-    bool IsMet() const { return MissingSkills.IsEmpty() && MissingSeals.IsEmpty() && MissingGeneralSeals == 0; }
+    bool IsMet() const { return MissingActions.IsEmpty() && MissingSeals.IsEmpty() && MissingGeneralSeals == 0; }
     bool IsMissingSeals() const { return !MissingSeals.IsEmpty() || MissingGeneralSeals > 0; }
 };

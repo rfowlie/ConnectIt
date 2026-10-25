@@ -6,22 +6,25 @@
 #include "Engine/DataAsset.h"
 #include "GameplayTagContainer.h"
 #include "Adventure/ConnectIt_AdventureProgress.h"
+#include "Action/ActionConfig.h"
 #include "ConnectIt_MapNodeDataAsset.generated.h"
 
 class UConnectIt_MatchPreset;
-class UConnectIt_SkillShardTable;
+class UConnectIt_ActionShardTable;
 class UTexture2D;
 class UWorld;
 
 
-// Which skills a node's level plays with
+// Which player actions a node's level plays with
 UENUM(BlueprintType)
-enum class EConnectItSkillDesign : uint8
+enum class EConnectItActionDesign : uint8
 {
-    // Place Piece, the player's numbered uses, and any itemed uses they bring
+    // Place Piece and the player's permanent actions (their uses from shards);
+    // plus items from the inventory, up to the node's item budget
     Open,
     // The level's own loadout (its preset's Player director), whatever the
-    // player has unlocked -- teaching levels, hard puzzle levels
+    // player has unlocked -- teaching levels, hard puzzle levels. Its item
+    // budget is normally 0.
     Closed,
 };
 
@@ -31,10 +34,10 @@ struct CONNECTIT_API FConnectItNodeGate
 {
     GENERATED_BODY()
 
-    // Skills the player must have at least one numbered use of (itemed uses
-    // don't count). Place Piece is everyone's.
+    // Player actions the player must have at least one permanent use of (item
+    // uses don't count). Place Piece is everyone's.
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Gate", meta = (Categories = "ConnectIt.PlayerAction"))
-    FGameplayTagContainer RequiredSkills;
+    FGameplayTagContainer RequiredActions;
 
     // Specific seals spent to open it, one of each
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Gate", meta = (Categories = "ConnectIt.Adventure.Seal"))
@@ -53,12 +56,13 @@ struct CONNECTIT_API FConnectItNodeRewards
 {
     GENERATED_BODY()
 
-    // Shards per skill
+    // Shards per action
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Rewards",
         meta = (Categories = "ConnectIt.PlayerAction", ForceInlineRow))
     TMap<FGameplayTag, int32> Shards;
 
-    // One-time uses per skill
+    // Item actions per player action, into the inventory (each up to its cap
+    // in the game's item inventory asset)
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Rewards",
         meta = (Categories = "ConnectIt.PlayerAction", ForceInlineRow))
     TMap<FGameplayTag, int32> ItemUses;
@@ -122,7 +126,13 @@ public:
     TSoftObjectPtr<UWorld> SubMap;
 
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Play")
-    EConnectItSkillDesign SkillDesign = EConnectItSkillDesign::Open;
+    EConnectItActionDesign ActionDesign = EConnectItActionDesign::Open;
+
+    // How many item uses the level allows, for all items together (per match
+    // and per turn). The default allows none; a closed level normally keeps
+    // it that way.
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Play")
+    FItemBudget ItemBudget;
 
     // --- The map ---
 
@@ -137,9 +147,9 @@ public:
 
     // --- Information (for the player and the map validator; never gates) ---
 
-    // Skills that make the level much easier
+    // Actions that make the level much easier
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Information", meta = (Categories = "ConnectIt.PlayerAction"))
-    FGameplayTagContainer RecommendedSkills;
+    FGameplayTagContainer RecommendedActions;
 
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Information", meta = (Categories = "ConnectIt.Adventure.Concept"))
     FGameplayTagContainer TeachesConcepts;
@@ -157,12 +167,12 @@ public:
     UFUNCTION(BlueprintPure, Category = "ConnectIt|Adventure")
     bool IsSubMap() const { return !SubMap.IsNull(); }
 
-    // What this node still needs for Progress: required skills without a
-    // numbered use (through Table), and -- unless its seal is broken -- the
+    // What this node still needs for Progress: required actions without a
+    // permanent use (through Table), and -- unless its seal is broken -- the
     // seals not held
     UFUNCTION(BlueprintPure, Category = "ConnectIt|Adventure")
     FConnectItNodeRequirementCheck CheckRequirements(
-        const FConnectItAdventureProgress& Progress, const UConnectIt_SkillShardTable* Table) const;
+        const FConnectItAdventureProgress& Progress, const UConnectIt_ActionShardTable* Table) const;
 
     virtual void PostInitProperties() override;
     virtual void PostDuplicate(bool bDuplicateForPIE) override;

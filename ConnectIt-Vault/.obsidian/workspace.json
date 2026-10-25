@@ -224,8 +224,10 @@
       "bases:Create new base": false
     }
   },
-  "active": "97e0ab6e321a7903",
+  "active": "7e9d793cb5121f8b",
   "lastOpenFiles": [
+    "ConnectIt/_logs/2026-10-25-1157.md",
+    "ConnectIt/_logs/2026-10-25-1155.md",
     "ConnectIt/design/top-down-camera-plan.md",
     "ConnectIt/design/level-outcomes-plan.md",
     "ConnectIt/design/level-outcomes-plan.md.tmp.7932.7141aac2726e",
@@ -253,8 +255,6 @@
     "ConnectIt/_logs/2026-10-23-1339.md",
     "ConnectIt/design/adventure-hub-plan.md",
     "ConnectIt/_logs/2026-10-23-1500.md",
-    "ConnectIt/_decisions/2026-10-23-tile-visuals-use-per-event-hooks.md",
-    "ConnectIt/_questions/level-director-turn.md",
     "UnrealUnsorted",
     "ConnectIt/_questions/tile-powers-in-the-board-pipeline.md.tmp.33392.4e6a2c82500f",
     "ConnectIt/design/tile-powers-plan.md.tmp.32036.653886de9551",

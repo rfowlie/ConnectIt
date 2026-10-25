@@ -1,8 +1,8 @@
 ---
 type: plan
 status: not-started
-approved: false
-approved-on:
+approved: true
+approved-on: 2026-10-25
 completed-on:
 playtested: false
 design: "[adventure-mode-roadmap](adventure-mode-roadmap.md)"
@@ -15,7 +15,7 @@ requires: "[player-actions-and-items-plan](player-actions-and-items-plan.md)"
 
 Design: [adventure-mode-roadmap](adventure-mode-roadmap.md) ("Level outcomes", rounds 2-4) and
 [adventure-content-definitions](adventure-content-definitions.md) ("Shift distance"). Written 2026-10-24 in a
-design-only session; **not approved yet**. Building happens in its own session.
+design-only session; **approved by the owner 2026-10-25**. Not built -- building happens in its own session.
 
 > **Prerequisite:** [player-actions-and-items-plan](player-actions-and-items-plan.md) (in progress) -- "can this side
 > move" counts the item inventory and the item budget, which that plan builds (its Stage 3). Stages 4-5 here don't
@@ -129,7 +129,7 @@ with them; recipes (conditions; the test opponent); log.
   (try Draw); a cooldown skips a turn instead of ending the level; the rotating test opponent plays place / swap / shift
   in turn; a loadout with max steps 2 lets the player shift 1 or 2.
 
-## To confirm before approval
+## Settled before approval (owner, 2026-10-25: all three as written)
 
 1. In versus (no AI), what Stuck Board **Lose / Win** mean -- lean: only **Draw** is offered for versus presets; Lose /
    Win are from the human player's side in AI matches.

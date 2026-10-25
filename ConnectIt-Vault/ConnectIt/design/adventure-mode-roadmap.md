@@ -1,7 +1,7 @@
 # Adventure mode: remaining holes and a build roadmap
 
 Design note (2026-10-24), from a gap review with the owner. Plan for the level outcomes:
-[level-outcomes-plan](level-outcomes-plan.md) (not approved yet). Originally -- a map of what still needs
+[level-outcomes-plan](level-outcomes-plan.md) (**approved 2026-10-25**, not built). Originally -- a map of what still needs
 designing and a proposed order for building Adventure mode. Builds on [adventure-hub](adventure-hub.md),
 [adventure-modules-and-progression](adventure-modules-and-progression.md) and the plans in this folder.
 

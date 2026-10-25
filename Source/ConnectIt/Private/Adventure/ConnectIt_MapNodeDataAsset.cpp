@@ -1,21 +1,21 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 #include "Adventure/ConnectIt_MapNodeDataAsset.h"
-#include "Adventure/ConnectIt_SkillShardTable.h"
+#include "Adventure/ConnectIt_ActionShardTable.h"
 #include "AI/ConnectIt_PlayerDirector.h"
 #include "Framework/Data/ConnectIt_MatchPreset.h"
 #include "Misc/DataValidation.h"
 
 FConnectItNodeRequirementCheck UConnectIt_MapNodeDataAsset::CheckRequirements(
-    const FConnectItAdventureProgress& Progress, const UConnectIt_SkillShardTable* Table) const
+    const FConnectItAdventureProgress& Progress, const UConnectIt_ActionShardTable* Table) const
 {
     FConnectItNodeRequirementCheck Check;
 
-    for (const FGameplayTag& Skill : Gate.RequiredSkills)
+    for (const FGameplayTag& Action : Gate.RequiredActions)
     {
-        if (Progress.GetNumberedUses(Skill, Table) < 1)
+        if (Progress.GetPermanentUses(Action, Table) < 1)
         {
-            Check.MissingSkills.AddTag(Skill);
+            Check.MissingActions.AddTag(Action);
         }
     }
 
@@ -84,7 +84,7 @@ EDataValidationResult UConnectIt_MapNodeDataAsset::IsDataValid(FDataValidationCo
     }
 
     // A closed node plays its preset's loadout, so the preset must have one
-    if (bHasLevel && SkillDesign == EConnectItSkillDesign::Closed)
+    if (bHasLevel && ActionDesign == EConnectItActionDesign::Closed)
     {
         const UConnectIt_MatchPreset* Preset = MatchPreset.LoadSynchronous();
         if (!Preset)
@@ -103,6 +103,15 @@ EDataValidationResult UConnectIt_MapNodeDataAsset::IsDataValid(FDataValidationCo
                     "ConnectIt_MapNodeDataAsset %s: closed, but preset %s's Player director gives no loadout."),
                     *Name, *Preset->GetName()));
             }
+        }
+
+        // Closed means the level's own set-up: items from the inventory are
+        // normally left out
+        if (ItemBudget.MatchUses != 0 && ItemBudget.TurnUses > 0)
+        {
+            Context.AddWarning(FText::FromString(FString::Printf(TEXT(
+                "ConnectIt_MapNodeDataAsset %s: closed, but its item budget allows items -- a closed level is "
+                "normally played with its own loadout only."), *Name)));
         }
     }
 

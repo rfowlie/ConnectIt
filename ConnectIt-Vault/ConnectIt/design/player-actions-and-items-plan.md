@@ -264,6 +264,28 @@ stages.
   - item use and grants are written back on return (grants kept on a loss);
   - the node panel shows the budget.
 - **Tests:** the Stage 1 Adventure tests renamed.
+- *As built (2026-10-25; 69/69 tests; Throughput 370k nodes/s):*
+  - **Renames** (in the 8 Adventure files; no asset used them, so no redirects):
+    - `UConnectIt_ActionShardTable` (moved with `git mv`), `FConnectItActionShardCosts`, its `Actions` map;
+    - `GetPermanentUses`; the project setting `ActionShardTable` ("Action Shard Table");
+    - `RequiredActions` / `RecommendedActions` / `MissingActions`;
+    - **"skill design" → `EConnectItActionDesign` / `ActionDesign`** (not in the plan's list; it was the last
+      "skill");
+    - comments and test names ("skill" → "action", "numbered" → "permanent"); the concept tag's description.
+  - **The node's item budget is the plugin's `FItemBudget`** (`ItemBudget`; default none) rather than two ints.
+    - A closed node whose budget allows items is a warning.
+    - The open / closed descriptions now say the inventory and budget.
+  - **Rewards keep `ItemUses`**, keyed by player action tag: now item actions into the inventory, up to their caps.
+  - **The adventure-hub plan revised:**
+    - a revision note in its Context;
+    - Stage 1's renames recorded;
+    - Stages 2, 3, 5 and 6 rewritten (the save holds the inventory; open set-ups seeded through
+      `InitialiseActionState(Loadout, PermanentActions)`; inventory and budget at match start; spent items lost and
+      grants kept, win or lose; the node panel shows the budget);
+    - the settled points annotated.
+    - **A new point to settle in its Stage 2:** tag ↔ class (the save keys player actions by tag; the plugin's
+      inventory and permanent list by class).
+  - **Tests:** renamed, plus a closed node's item-budget warning (in `.NodeData`).
 
 ## Stage 6: content (owner, editor)
 

@@ -5,7 +5,7 @@
 #include "NativeGameplayTags.h"
 #include "Adventure/ConnectIt_AdventureProgress.h"
 #include "Adventure/ConnectIt_MapNodeDataAsset.h"
-#include "Adventure/ConnectIt_SkillShardTable.h"
+#include "Adventure/ConnectIt_ActionShardTable.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
 
@@ -14,71 +14,71 @@ namespace ConnectItAdventureTests
     constexpr EAutomationTestFlags TestFlags =
         EAutomationTestFlags::EditorContext | EAutomationTestFlags::ProductFilter;
 
-    UE_DEFINE_GAMEPLAY_TAG_STATIC(TestSkill, "ConnectIt.PlayerAction.Test");
-    UE_DEFINE_GAMEPLAY_TAG_STATIC(TestOtherSkill, "ConnectIt.PlayerAction.TestOther");
+    UE_DEFINE_GAMEPLAY_TAG_STATIC(TestAction, "ConnectIt.PlayerAction.Test");
+    UE_DEFINE_GAMEPLAY_TAG_STATIC(TestOtherAction, "ConnectIt.PlayerAction.TestOther");
     UE_DEFINE_GAMEPLAY_TAG_STATIC(TestSeal, "ConnectIt.Adventure.Seal.Test");
     UE_DEFINE_GAMEPLAY_TAG_STATIC(TestOtherSeal, "ConnectIt.Adventure.Seal.TestOther");
 
-    // A table where TestSkill's uses cost 3, 5 and 8 shards: uses at 3, 8 and
+    // A table where TestAction's uses cost 3, 5 and 8 shards: uses at 3, 8 and
     // 16 shards in all
-    UConnectIt_SkillShardTable* MakeTable()
+    UConnectIt_ActionShardTable* MakeTable()
     {
-        UConnectIt_SkillShardTable* Table = NewObject<UConnectIt_SkillShardTable>();
-        FConnectItSkillShardCosts Costs;
+        UConnectIt_ActionShardTable* Table = NewObject<UConnectIt_ActionShardTable>();
+        FConnectItActionShardCosts Costs;
         Costs.ShardsPerUse = { 3, 5, 8 };
-        Table->Skills.Add(TestSkill, Costs);
+        Table->Actions.Add(TestAction, Costs);
         return Table;
     }
 
-    // A level node needing TestSkill, TestSeal and one general seal
+    // A level node needing TestAction, TestSeal and one general seal
     UConnectIt_MapNodeDataAsset* MakeGatedNode()
     {
         UConnectIt_MapNodeDataAsset* Node = NewObject<UConnectIt_MapNodeDataAsset>();
         Node->Level = TSoftObjectPtr<UWorld>(FSoftObjectPath(TEXT("/Game/Test/TestLevel.TestLevel")));
-        Node->Gate.RequiredSkills.AddTag(TestSkill);
+        Node->Gate.RequiredActions.AddTag(TestAction);
         Node->Gate.RequiredSeals.AddTag(TestSeal);
         Node->Gate.GeneralSeals = 1;
         return Node;
     }
 }
 
-// Shards become numbered uses through a skill's table: each use costs its
+// Shards become permanent uses through a action's table: each use costs its
 // entry's shards on top of the earlier uses'
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FConnectItAdventureShardTableTest,
     "ConnectIt.Adventure.ShardTable", ConnectItAdventureTests::TestFlags)
 
 bool FConnectItAdventureShardTableTest::RunTest(const FString& Parameters)
 {
-    const UConnectIt_SkillShardTable* Table = ConnectItAdventureTests::MakeTable();
+    const UConnectIt_ActionShardTable* Table = ConnectItAdventureTests::MakeTable();
 
-    TestEqual(TEXT("0 shards: no use"), Table->GetNumberedUses(ConnectItAdventureTests::TestSkill, 0), 0);
-    TestEqual(TEXT("2 shards: no use"), Table->GetNumberedUses(ConnectItAdventureTests::TestSkill, 2), 0);
-    TestEqual(TEXT("3 shards: 1 use"), Table->GetNumberedUses(ConnectItAdventureTests::TestSkill, 3), 1);
-    TestEqual(TEXT("7 shards: still 1 use"), Table->GetNumberedUses(ConnectItAdventureTests::TestSkill, 7), 1);
-    TestEqual(TEXT("8 shards (3 + 5): 2 uses"), Table->GetNumberedUses(ConnectItAdventureTests::TestSkill, 8), 2);
-    TestEqual(TEXT("15 shards: still 2 uses"), Table->GetNumberedUses(ConnectItAdventureTests::TestSkill, 15), 2);
-    TestEqual(TEXT("16 shards (3 + 5 + 8): 3 uses"), Table->GetNumberedUses(ConnectItAdventureTests::TestSkill, 16), 3);
-    TestEqual(TEXT("past the table: still 3"), Table->GetNumberedUses(ConnectItAdventureTests::TestSkill, 100), 3);
-    TestEqual(TEXT("a skill with no entry: none"), Table->GetNumberedUses(ConnectItAdventureTests::TestOtherSkill, 100), 0);
+    TestEqual(TEXT("0 shards: no use"), Table->GetPermanentUses(ConnectItAdventureTests::TestAction, 0), 0);
+    TestEqual(TEXT("2 shards: no use"), Table->GetPermanentUses(ConnectItAdventureTests::TestAction, 2), 0);
+    TestEqual(TEXT("3 shards: 1 use"), Table->GetPermanentUses(ConnectItAdventureTests::TestAction, 3), 1);
+    TestEqual(TEXT("7 shards: still 1 use"), Table->GetPermanentUses(ConnectItAdventureTests::TestAction, 7), 1);
+    TestEqual(TEXT("8 shards (3 + 5): 2 uses"), Table->GetPermanentUses(ConnectItAdventureTests::TestAction, 8), 2);
+    TestEqual(TEXT("15 shards: still 2 uses"), Table->GetPermanentUses(ConnectItAdventureTests::TestAction, 15), 2);
+    TestEqual(TEXT("16 shards (3 + 5 + 8): 3 uses"), Table->GetPermanentUses(ConnectItAdventureTests::TestAction, 16), 3);
+    TestEqual(TEXT("past the table: still 3"), Table->GetPermanentUses(ConnectItAdventureTests::TestAction, 100), 3);
+    TestEqual(TEXT("a action with no entry: none"), Table->GetPermanentUses(ConnectItAdventureTests::TestOtherAction, 100), 0);
 
     // Through a progress value (shards are what's saved; uses are derived)
     FConnectItAdventureProgress Progress;
-    Progress.Shards.Add(ConnectItAdventureTests::TestSkill, 5);
-    TestEqual(TEXT("progress: 5 shards = 1 use"), Progress.GetNumberedUses(ConnectItAdventureTests::TestSkill, Table), 1);
-    TestEqual(TEXT("progress: no table = none"), Progress.GetNumberedUses(ConnectItAdventureTests::TestSkill, nullptr), 0);
-    Progress.Shards.Add(ConnectItAdventureTests::TestSkill, 8);
-    TestEqual(TEXT("progress: more shards, more uses"), Progress.GetNumberedUses(ConnectItAdventureTests::TestSkill, Table), 2);
+    Progress.Shards.Add(ConnectItAdventureTests::TestAction, 5);
+    TestEqual(TEXT("progress: 5 shards = 1 use"), Progress.GetPermanentUses(ConnectItAdventureTests::TestAction, Table), 1);
+    TestEqual(TEXT("progress: no table = none"), Progress.GetPermanentUses(ConnectItAdventureTests::TestAction, nullptr), 0);
+    Progress.Shards.Add(ConnectItAdventureTests::TestAction, 8);
+    TestEqual(TEXT("progress: more shards, more uses"), Progress.GetPermanentUses(ConnectItAdventureTests::TestAction, Table), 2);
 
     // Falling costs are only a warning, and still count: 5 then 3 = uses at 5 and 8
-    UConnectIt_SkillShardTable* Falling = NewObject<UConnectIt_SkillShardTable>();
-    FConnectItSkillShardCosts Costs;
+    UConnectIt_ActionShardTable* Falling = NewObject<UConnectIt_ActionShardTable>();
+    FConnectItActionShardCosts Costs;
     Costs.ShardsPerUse = { 5, 3 };
-    Falling->Skills.Add(ConnectItAdventureTests::TestSkill, Costs);
+    Falling->Actions.Add(ConnectItAdventureTests::TestAction, Costs);
     FDataValidationContext Validation;
     TestTrue(TEXT("falling: still valid"), Falling->IsDataValid(Validation) != EDataValidationResult::Invalid);
     TestEqual(TEXT("falling: one warning"), static_cast<int32>(Validation.GetNumWarnings()), 1);
-    TestEqual(TEXT("falling: 7 shards = 1 use"), Falling->GetNumberedUses(ConnectItAdventureTests::TestSkill, 7), 1);
-    TestEqual(TEXT("falling: 8 shards = 2 uses"), Falling->GetNumberedUses(ConnectItAdventureTests::TestSkill, 8), 2);
+    TestEqual(TEXT("falling: 7 shards = 1 use"), Falling->GetPermanentUses(ConnectItAdventureTests::TestAction, 7), 1);
+    TestEqual(TEXT("falling: 8 shards = 2 uses"), Falling->GetPermanentUses(ConnectItAdventureTests::TestAction, 8), 2);
     return true;
 }
 
@@ -88,26 +88,26 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(FConnectItAdventureNodeRequirementsTest,
 
 bool FConnectItAdventureNodeRequirementsTest::RunTest(const FString& Parameters)
 {
-    const UConnectIt_SkillShardTable* Table = ConnectItAdventureTests::MakeTable();
+    const UConnectIt_ActionShardTable* Table = ConnectItAdventureTests::MakeTable();
     const UConnectIt_MapNodeDataAsset* Node = ConnectItAdventureTests::MakeGatedNode();
 
     FConnectItAdventureProgress Progress;
     FConnectItNodeRequirementCheck Check = Node->CheckRequirements(Progress, Table);
     TestFalse(TEXT("nothing yet: not met"), Check.IsMet());
-    TestTrue(TEXT("nothing yet: missing the skill"), Check.MissingSkills.HasTagExact(ConnectItAdventureTests::TestSkill));
+    TestTrue(TEXT("nothing yet: missing the action"), Check.MissingActions.HasTagExact(ConnectItAdventureTests::TestAction));
     TestTrue(TEXT("nothing yet: missing the seal"), Check.MissingSeals.HasTagExact(ConnectItAdventureTests::TestSeal));
     TestEqual(TEXT("nothing yet: one general seal short"), Check.MissingGeneralSeals, 1);
 
-    // Itemed uses never count towards a required skill
-    Progress.ItemUses.Add(ConnectItAdventureTests::TestSkill, 5);
-    Progress.Shards.Add(ConnectItAdventureTests::TestSkill, 2);
+    // Item uses never count towards a required action
+    Progress.ItemUses.Add(ConnectItAdventureTests::TestAction, 5);
+    Progress.Shards.Add(ConnectItAdventureTests::TestAction, 2);
     Check = Node->CheckRequirements(Progress, Table);
-    TestTrue(TEXT("itemed uses and too few shards: skill still missing"), Check.MissingSkills.HasTagExact(ConnectItAdventureTests::TestSkill));
+    TestTrue(TEXT("item uses and too few shards: action still missing"), Check.MissingActions.HasTagExact(ConnectItAdventureTests::TestAction));
 
-    // Enough shards for a numbered use (the 1st costs 3)
-    Progress.Shards.Add(ConnectItAdventureTests::TestSkill, 3);
+    // Enough shards for a permanent use (the 1st costs 3)
+    Progress.Shards.Add(ConnectItAdventureTests::TestAction, 3);
     Check = Node->CheckRequirements(Progress, Table);
-    TestTrue(TEXT("a numbered use: skill met"), Check.MissingSkills.IsEmpty());
+    TestTrue(TEXT("a permanent use: action met"), Check.MissingActions.IsEmpty());
     TestTrue(TEXT("seals still missing"), Check.IsMissingSeals());
 
     // The wrong specific seal doesn't open it
@@ -118,14 +118,14 @@ bool FConnectItAdventureNodeRequirementsTest::RunTest(const FString& Parameters)
     TestEqual(TEXT("one general seal held: none short"), Check.MissingGeneralSeals, 0);
 
     Progress.SpecificSeals.AddTag(ConnectItAdventureTests::TestSeal);
-    TestTrue(TEXT("skill and seals: met"), Node->CheckRequirements(Progress, Table).IsMet());
+    TestTrue(TEXT("action and seals: met"), Node->CheckRequirements(Progress, Table).IsMet());
 
-    // A broken seal needs no seals any more -- but required skills still count
+    // A broken seal needs no seals any more -- but required actions still count
     FConnectItAdventureProgress Broken;
     Broken.BrokenSeals.Add(Node->NodeId);
     Check = Node->CheckRequirements(Broken, Table);
     TestFalse(TEXT("broken seal: no seals needed"), Check.IsMissingSeals());
-    TestTrue(TEXT("broken seal: skill still needed"), Check.MissingSkills.HasTagExact(ConnectItAdventureTests::TestSkill));
+    TestTrue(TEXT("broken seal: action still needed"), Check.MissingActions.HasTagExact(ConnectItAdventureTests::TestAction));
     return true;
 }
 
@@ -151,6 +151,19 @@ bool FConnectItAdventureNodeDataTest::RunTest(const FString& Parameters)
     TestTrue(TEXT("plays nothing, unlocks itself: invalid"),
         Broken->IsDataValid(Validation) == EDataValidationResult::Invalid);
     TestEqual(TEXT("both reported"), static_cast<int32>(Validation.GetNumErrors()), 2);
+
+    // A closed node: no items by default; an item budget is warned about
+    UConnectIt_MapNodeDataAsset* Closed = ConnectItAdventureTests::MakeGatedNode();
+    Closed->ActionDesign = EConnectItActionDesign::Closed;
+    TestEqual(TEXT("the default item budget allows none"), Closed->ItemBudget.TurnUses, 0);
+    FDataValidationContext NoItems;
+    Closed->IsDataValid(NoItems);
+    Closed->ItemBudget.MatchUses = 2;
+    Closed->ItemBudget.TurnUses = 1;
+    FDataValidationContext WithItems;
+    Closed->IsDataValid(WithItems);
+    TestEqual(TEXT("closed with an item budget: one more warning"),
+        static_cast<int32>(WithItems.GetNumWarnings()), static_cast<int32>(NoItems.GetNumWarnings()) + 1);
 
     // Both a level and a sub-map
     Node->SubMap = TSoftObjectPtr<UWorld>(FSoftObjectPath(TEXT("/Game/Test/TestHub.TestHub")));
