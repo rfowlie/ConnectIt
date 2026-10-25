@@ -1,6 +1,6 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
-#include "Board/Powers/ConnectIt_PowerChain.h"
+#include "Board/Powers/ConnectIt_TilePowerChain.h"
 #include "Board/Rules/ConnectIt_RuleSet.h"
 #include "Board/Operations/ConnectIt_BoardOperation.h"
 #include "Board/Events/ConnectIt_BoardEvents.h"
@@ -22,26 +22,26 @@ namespace
     }
 }
 
-FConnectItPowerChain::FConnectItPowerChain(
+FConnectItTilePowerChain::FConnectItTilePowerChain(
     const FConnectItRuleSet& InRules, FConnectItBoardState& InBoard, FConnectItBoardChangeEvent* InEvents)
     : Rules(InRules)
     , Board(InBoard)
     , Events(InEvents)
 {
-    bHasPowers = !Rules.TilePowers.IsEmpty();
-    bHasSyncPowers = Rules.TilePowers.ContainsByPredicate([](const FConnectItTilePower& Power)
+    bHasTilePowers = !Rules.TilePowers.IsEmpty();
+    bHasSyncTilePowers = Rules.TilePowers.ContainsByPredicate([](const FConnectItTilePower& Power)
     {
-        return Power.HasTrigger(EConnectItPowerTrigger::Sync);
+        return Power.HasTrigger(EConnectItTilePowerTrigger::Sync);
     });
-    for (const FGameplayTag& Name : Rules.LevelWidePowers)
+    for (const FGameplayTag& Name : Rules.LevelWideTilePowers)
     {
         LevelWide.Add(Rules.FindTilePower(Name));
     }
 }
 
-void FConnectItPowerChain::Settle(FConnectItBoardChanges& InOutStep)
+void FConnectItTilePowerChain::Settle(FConnectItBoardChanges& InOutStep)
 {
-    if (!bHasPowers) return;
+    if (!bHasTilePowers) return;
 
     // The first loop reacts to the whole step; each later one to what the
     // loop before it changed
@@ -53,7 +53,7 @@ void FConnectItPowerChain::Settle(FConnectItBoardChanges& InOutStep)
     {
         FConnectItBoardChanges Ticked;
         Ticked.Faction = InOutStep.Faction;
-        RunTurnStartPowers(InOutStep.Faction, Ticked);
+        RunTurnStartTilePowers(InOutStep.Faction, Ticked);
         Triggers.Append(Ticked);
         InOutStep.Append(Ticked);
     }
@@ -62,7 +62,7 @@ void FConnectItPowerChain::Settle(FConnectItBoardChanges& InOutStep)
         // Sync powers first; what they change feeds this loop's triggers
         FConnectItBoardChanges Synced;
         Synced.Faction = InOutStep.Faction;
-        const bool bSynced = RunSyncPowers(InOutStep.Faction, Synced);
+        const bool bSynced = RunSyncTilePowers(InOutStep.Faction, Synced);
         Triggers.Append(Synced);
 
         FConnectItBoardChanges Reacted;
@@ -78,46 +78,46 @@ void FConnectItPowerChain::Settle(FConnectItBoardChanges& InOutStep)
     }
 
     UE_LOG(LogTemp, Error,
-        TEXT("ConnectIt_PowerChain: settle stopped after %d loops -- powers that never settle are a bug"),
+        TEXT("ConnectIt_TilePowerChain: settle stopped after %d loops -- powers that never settle are a bug"),
         MaxSettleLoops);
 }
 
-void FConnectItPowerChain::ReactToScoring(FConnectItBoardChanges& InOutScored)
+void FConnectItTilePowerChain::ReactToScoring(FConnectItBoardChanges& InOutScored)
 {
-    if (!bHasPowers) return;
+    if (!bHasTilePowers) return;
 
     FConnectItBoardChanges Reacted;
     Reacted.Faction = InOutScored.Faction;
     for (const FConnectItScoredTile& Scored : InOutScored.ScoredThrough)
     {
-        FireAt(Scored.Position, EConnectItPowerTrigger::Scoring, Scored.Faction, Scored.Cause, Reacted);
+        FireAt(Scored.Position, EConnectItTilePowerTrigger::Scoring, Scored.Faction, Scored.Cause, Reacted);
     }
     InOutScored.Append(Reacted);
 }
 
-bool FConnectItPowerChain::FireTriggers(const FConnectItBoardChanges& Triggers, FConnectItBoardChanges& OutChanges)
+bool FConnectItTilePowerChain::FireTriggers(const FConnectItBoardChanges& Triggers, FConnectItBoardChanges& OutChanges)
 {
     bool bFired = false;
     for (const FConnectItPieceArrival& Entered : Triggers.Entered)
     {
-        bFired |= FireAt(Entered.Position, EConnectItPowerTrigger::PieceEnter, Entered.Faction, Entered.Cause, OutChanges);
+        bFired |= FireAt(Entered.Position, EConnectItTilePowerTrigger::PieceEnter, Entered.Faction, Entered.Cause, OutChanges);
     }
     for (const FConnectItPieceExit& Exited : Triggers.Exited)
     {
-        bFired |= FireAt(Exited.Position, EConnectItPowerTrigger::PieceExit, Exited.Faction, Exited.Cause, OutChanges);
+        bFired |= FireAt(Exited.Position, EConnectItTilePowerTrigger::PieceExit, Exited.Faction, Exited.Cause, OutChanges);
     }
     for (const FConnectItPieceChange& Changed : Triggers.PieceChanged)
     {
-        bFired |= FireAt(Changed.Position, EConnectItPowerTrigger::PieceChanged, Changed.Faction, Changed.Cause, OutChanges);
+        bFired |= FireAt(Changed.Position, EConnectItTilePowerTrigger::PieceChanged, Changed.Faction, Changed.Cause, OutChanges);
     }
     for (const FConnectItTileChange& Changed : Triggers.TileChanged)
     {
-        bFired |= FireAt(Changed.Position, EConnectItPowerTrigger::TileChanged, Changed.Faction, Changed.Cause, OutChanges);
+        bFired |= FireAt(Changed.Position, EConnectItTilePowerTrigger::TileChanged, Changed.Faction, Changed.Cause, OutChanges);
     }
     return bFired;
 }
 
-bool FConnectItPowerChain::FireAt(const FGridPosition& Position, EConnectItPowerTrigger Trigger, int32 Faction,
+bool FConnectItTilePowerChain::FireAt(const FGridPosition& Position, EConnectItTilePowerTrigger Trigger, int32 Faction,
     int32 Cause, FConnectItBoardChanges& OutChanges)
 {
     const FConnectItTileData* Tile = Board.GetTileData(Position);
@@ -141,9 +141,9 @@ bool FConnectItPowerChain::FireAt(const FGridPosition& Position, EConnectItPower
     return bFired;
 }
 
-bool FConnectItPowerChain::RunSyncPowers(int32 Faction, FConnectItBoardChanges& OutChanges)
+bool FConnectItTilePowerChain::RunSyncTilePowers(int32 Faction, FConnectItBoardChanges& OutChanges)
 {
-    if (!bHasSyncPowers) return false;
+    if (!bHasSyncTilePowers) return false;
 
     // The positions as they are now (a Sync power may add or remove tiles)
     const TArray<FGridPosition, TInlineAllocator<64>> Positions(Board.TilePositions);
@@ -155,13 +155,13 @@ bool FConnectItPowerChain::RunSyncPowers(int32 Faction, FConnectItBoardChanges& 
         if (!Tile) continue;
 
         const FConnectItTilePower* Own = Rules.FindTilePower(Tile->TilePowerTag);
-        if (Own && Own->HasTrigger(EConnectItPowerTrigger::Sync))
+        if (Own && Own->HasTrigger(EConnectItTilePowerTrigger::Sync))
         {
             bChanged |= TryFire(Position, *Own, INDEX_NONE, Faction, INDEX_NONE, OutChanges);
         }
         for (int32 Index = 0; Index < LevelWide.Num(); Index++)
         {
-            if (LevelWide[Index] && LevelWide[Index]->HasTrigger(EConnectItPowerTrigger::Sync))
+            if (LevelWide[Index] && LevelWide[Index]->HasTrigger(EConnectItTilePowerTrigger::Sync))
             {
                 bChanged |= TryFire(Position, *LevelWide[Index], Index, Faction, INDEX_NONE, OutChanges);
             }
@@ -170,7 +170,7 @@ bool FConnectItPowerChain::RunSyncPowers(int32 Faction, FConnectItBoardChanges& 
     return bChanged;
 }
 
-bool FConnectItPowerChain::RunTurnStartPowers(int32 Faction, FConnectItBoardChanges& OutChanges)
+bool FConnectItTilePowerChain::RunTurnStartTilePowers(int32 Faction, FConnectItBoardChanges& OutChanges)
 {
     // The positions as they are now (a power may add or remove tiles)
     const TArray<FGridPosition, TInlineAllocator<64>> Positions(Board.TilePositions);
@@ -182,13 +182,13 @@ bool FConnectItPowerChain::RunTurnStartPowers(int32 Faction, FConnectItBoardChan
         if (!Tile) continue;
 
         const FConnectItTilePower* Own = Rules.FindTilePower(Tile->TilePowerTag);
-        if (Own && Own->HasTrigger(EConnectItPowerTrigger::TurnStart))
+        if (Own && Own->HasTrigger(EConnectItTilePowerTrigger::TurnStart))
         {
             bFired |= TryFire(Position, *Own, INDEX_NONE, Faction, INDEX_NONE, OutChanges);
         }
         for (int32 Index = 0; Index < LevelWide.Num(); Index++)
         {
-            if (LevelWide[Index] && LevelWide[Index]->HasTrigger(EConnectItPowerTrigger::TurnStart))
+            if (LevelWide[Index] && LevelWide[Index]->HasTrigger(EConnectItTilePowerTrigger::TurnStart))
             {
                 bFired |= TryFire(Position, *LevelWide[Index], Index, Faction, INDEX_NONE, OutChanges);
             }
@@ -197,7 +197,7 @@ bool FConnectItPowerChain::RunTurnStartPowers(int32 Faction, FConnectItBoardChan
     return bFired;
 }
 
-bool FConnectItPowerChain::TryFire(const FGridPosition& Position, const FConnectItTilePower& Power,
+bool FConnectItTilePowerChain::TryFire(const FGridPosition& Position, const FConnectItTilePower& Power,
     int32 LevelWideIndex, int32 Faction, int32 Cause, FConnectItBoardChanges& OutChanges)
 {
     FConnectItTileData* Tile = Board.GetTileDataMutable(Position);
@@ -206,8 +206,8 @@ bool FConnectItPowerChain::TryFire(const FGridPosition& Position, const FConnect
     // The gate
     if (Power.FireAtMultiplier > 0.f && Tile->Multiplier < Power.FireAtMultiplier) return false;
 
-    const bool bSync = Power.HasTrigger(EConnectItPowerTrigger::Sync);
-    int32 ReadyTurn = Tile->PowerReadyTurn;
+    const bool bSync = Power.HasTrigger(EConnectItTilePowerTrigger::Sync);
+    int32 ReadyTurn = Tile->TilePowerReadyTurn;
     if (LevelWideIndex != INDEX_NONE)
     {
         Board.LevelWideReadyTurns.SetNumZeroed(FMath::Max(Board.LevelWideReadyTurns.Num(), LevelWideIndex + 1));
@@ -226,7 +226,7 @@ bool FConnectItPowerChain::TryFire(const FGridPosition& Position, const FConnect
         ReadyTurn = Board.TurnNumber + Power.CooldownTurns;
         if (LevelWideIndex == INDEX_NONE)
         {
-            Tile->PowerReadyTurn = ReadyTurn;
+            Tile->TilePowerReadyTurn = ReadyTurn;
         }
         else
         {
@@ -247,10 +247,10 @@ bool FConnectItPowerChain::TryFire(const FGridPosition& Position, const FConnect
     int32 TriggeredIndex = INDEX_NONE;
     if (Events)
     {
-        FConnectItBoardEvent_PowerTriggered Triggered;
+        FConnectItBoardEvent_TilePowerTriggered Triggered;
         Triggered.CauseIndex     = Cause;
         Triggered.Position       = Position;
-        Triggered.PowerName      = Power.Name;
+        Triggered.TilePowerName      = Power.Name;
         Triggered.Faction        = Faction;
         Triggered.LevelWideIndex = LevelWideIndex;
         Triggered.ReadyTurn      = ReadyTurn;
@@ -264,7 +264,7 @@ bool FConnectItPowerChain::TryFire(const FGridPosition& Position, const FConnect
         FConnectItBoardOperation* Operation = Entry.GetMutablePtr<FConnectItBoardOperation>();
         if (!Operation)
         {
-            UE_LOG(LogTemp, Warning, TEXT("ConnectIt_PowerChain: power %s gave something that isn't a board operation (%s)"),
+            UE_LOG(LogTemp, Warning, TEXT("ConnectIt_TilePowerChain: power %s gave something that isn't a board operation (%s)"),
                 *Power.Name.ToString(), *GetNameSafe(Entry.GetScriptStruct()));
             continue;
         }
@@ -308,7 +308,7 @@ bool FConnectItPowerChain::TryFire(const FGridPosition& Position, const FConnect
         }
         if (Events && TriggeredIndex != INDEX_NONE)
         {
-            Events->Events[TriggeredIndex].GetMutable<FConnectItBoardEvent_PowerTriggered>().bNoEffect = true;
+            Events->Events[TriggeredIndex].GetMutable<FConnectItBoardEvent_TilePowerTriggered>().bNoEffect = true;
         }
     }
     return true;

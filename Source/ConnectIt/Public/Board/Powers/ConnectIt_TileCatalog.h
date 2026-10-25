@@ -26,7 +26,7 @@ struct CONNECTIT_API FConnectItTileCatalogEntry
     // Trigger, gate, cooldown, effect and its values. Its Name is the entry's
     // key (leave it empty, or the same).
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Tile")
-    FConnectItTilePower Power;
+    FConnectItTilePower TilePower;
 };
 
 // Every kind of tile a level can have, by power tag: the one place a power is
@@ -62,7 +62,7 @@ public:
     bool Defines(FGameplayTag TilePowerTag) const { return Tiles.Contains(TilePowerTag); }
 
     // Every power, each named by its key: what the rules play with
-    TArray<FConnectItTilePower> MakePowers() const;
+    TArray<FConnectItTilePower> MakeTilePowers() const;
 
     // The catalog WorldContextObject's map uses: its World Settings', else
     // the project default. Null (with a warning) if neither is set.

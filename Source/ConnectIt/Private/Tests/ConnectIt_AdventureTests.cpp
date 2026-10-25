@@ -14,8 +14,8 @@ namespace ConnectItAdventureTests
     constexpr EAutomationTestFlags TestFlags =
         EAutomationTestFlags::EditorContext | EAutomationTestFlags::ProductFilter;
 
-    UE_DEFINE_GAMEPLAY_TAG_STATIC(TestSkill, "ConnectIt.Action.Test");
-    UE_DEFINE_GAMEPLAY_TAG_STATIC(TestOtherSkill, "ConnectIt.Action.TestOther");
+    UE_DEFINE_GAMEPLAY_TAG_STATIC(TestSkill, "ConnectIt.PlayerAction.Test");
+    UE_DEFINE_GAMEPLAY_TAG_STATIC(TestOtherSkill, "ConnectIt.PlayerAction.TestOther");
     UE_DEFINE_GAMEPLAY_TAG_STATIC(TestSeal, "ConnectIt.Adventure.Seal.Test");
     UE_DEFINE_GAMEPLAY_TAG_STATIC(TestOtherSeal, "ConnectIt.Adventure.Seal.TestOther");
 

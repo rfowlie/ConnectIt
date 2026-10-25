@@ -33,7 +33,7 @@ struct CONNECTIT_API FConnectItNodeGate
 
     // Skills the player must have at least one numbered use of (itemed uses
     // don't count). Place Piece is everyone's.
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Gate", meta = (Categories = "ConnectIt.Action"))
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Gate", meta = (Categories = "ConnectIt.PlayerAction"))
     FGameplayTagContainer RequiredSkills;
 
     // Specific seals spent to open it, one of each
@@ -55,12 +55,12 @@ struct CONNECTIT_API FConnectItNodeRewards
 
     // Shards per skill
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Rewards",
-        meta = (Categories = "ConnectIt.Action", ForceInlineRow))
+        meta = (Categories = "ConnectIt.PlayerAction", ForceInlineRow))
     TMap<FGameplayTag, int32> Shards;
 
     // One-time uses per skill
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Rewards",
-        meta = (Categories = "ConnectIt.Action", ForceInlineRow))
+        meta = (Categories = "ConnectIt.PlayerAction", ForceInlineRow))
     TMap<FGameplayTag, int32> ItemUses;
 
     // Specific seals (a region capstone's, for a known gate)
@@ -138,7 +138,7 @@ public:
     // --- Information (for the player and the map validator; never gates) ---
 
     // Skills that make the level much easier
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Information", meta = (Categories = "ConnectIt.Action"))
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Information", meta = (Categories = "ConnectIt.PlayerAction"))
     FGameplayTagContainer RecommendedSkills;
 
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Information", meta = (Categories = "ConnectIt.Adventure.Concept"))

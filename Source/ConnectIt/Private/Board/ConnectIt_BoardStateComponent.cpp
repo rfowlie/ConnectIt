@@ -50,10 +50,10 @@ FConnectItTileData UConnectIt_BoardStateComponent::MakeTileData(
     // plain tile's), and a Turn Start power's countdown from the first turn
     {
         const FConnectItTileCatalogEntry* Entry = Catalog ? Catalog->Tiles.Find(TileData.TilePowerTag) : nullptr;
-        TileData.Multiplier = FConnectItTilePower::ClampMultiplier(Entry ? &Entry->Power : nullptr, TileData.Multiplier);
-        if (Entry && Entry->Power.HasTrigger(EConnectItPowerTrigger::TurnStart))
+        TileData.Multiplier = FConnectItTilePower::ClampMultiplier(Entry ? &Entry->TilePower : nullptr, TileData.Multiplier);
+        if (Entry && Entry->TilePower.HasTrigger(EConnectItTilePowerTrigger::TurnStart))
         {
-            TileData.PowerReadyTurn = Entry->Power.CooldownTurns;
+            TileData.TilePowerReadyTurn = Entry->TilePower.CooldownTurns;
         }
     }
 

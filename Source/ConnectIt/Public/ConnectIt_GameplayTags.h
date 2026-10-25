@@ -5,26 +5,28 @@
 #include "CoreMinimal.h"
 #include "NativeGameplayTags.h"
 
-UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_Game_Pre);
-UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_Game_Post);
 
-UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_Game_SelectTile);
-UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_Game_PlacePiece);
-UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_Game_UpdateBoard);
+// --- Player actions (what a participant does on its turn; an action's tag) ---
+UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_PlayerAction_PlacePiece);
+UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_PlayerAction_SwapPiece);
+UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_PlayerAction_Shift);
 
-// RequestType tags for actions added alongside the generic UStackedState/
+// --- Board operations (a change to the board; an operation's tag) ---
+UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_BoardOperation_PlacePiece);
+
+// OperationTag tags for actions added alongside the generic UStackedState/
 // UStackedStateMachine port -- see Docs (Action classes) for which action
 // sends which
-UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_Game_DestroyTileMultiplier);
-UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_Game_RemovePiece);
-UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_Game_SwapPieces);
-UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_Game_ForcePlacePiece);
-UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_Game_ToggleTileActive);
-UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_Game_SetTileLocked);
-UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_Game_SetChainPartner);
-UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_Game_MovePiece);
-UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_Game_AdjustMultiplier);
-UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_Game_TurnStart);
+UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_BoardOperation_DestroyTileMultiplier);
+UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_BoardOperation_RemovePiece);
+UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_BoardOperation_SwapPieces);
+UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_BoardOperation_ForcePlacePiece);
+UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_BoardOperation_ToggleTileActive);
+UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_BoardOperation_SetTileLocked);
+UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_BoardOperation_SetChainPartner);
+UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_BoardOperation_MovePiece);
+UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_BoardOperation_AdjustMultiplier);
+UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_BoardOperation_TurnStart);
 // The Chained tile's power (FConnectItTilePowerEffect_Chained): locked while its partner has no piece
 UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_TilePower_Chained);
 // Push (FConnectItTilePowerEffect_Push): pushes a neighbouring piece one tile away
@@ -33,16 +35,16 @@ UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_TilePower_Push);
 UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_TilePower_Vacuum);
 // Repel (FConnectItTilePowerEffect_Repel): on a countdown, moves its piece to an open neighbour
 UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_TilePower_Repel);
-UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_Game_CapturePiece);
-UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_Game_Shift);
+UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_BoardOperation_CapturePiece);
+UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_BoardOperation_Shift);
 // Level only (FConnectItBoardOperation_ChangeGoals): no action produces it
-UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_Game_ChangeGoals);
+UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_BoardOperation_ChangeGoals);
 // Level only for now: tiles leaving / joining the board, and a whole new layout
-UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_Game_RemoveTiles);
-UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_Game_AddTiles);
-UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_Game_ChangeLayout);
+UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_BoardOperation_RemoveTiles);
+UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_BoardOperation_AddTiles);
+UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_BoardOperation_ChangeLayout);
 // Level only (FConnectItBoardOperation_BeginPhase)
-UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_Game_BeginPhase);
+UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_BoardOperation_BeginPhase);
 
 UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_Tile_ValidHover);
 UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_Tile_InvalidHover);
@@ -57,8 +59,8 @@ UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_Event_PiecePlaced);
 // create visuals for any designer-placed starting pieces
 UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_Event_BoardSeeded);
 UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_Event_Scored);
-// A tile power fired (see FConnectItBoardEvent_PowerTriggered)
-UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_Event_PowerTriggered);
+// A tile power fired (see FConnectItBoardEvent_TilePowerTriggered)
+UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_Event_TilePowerTriggered);
 UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_Event_PlayerWin);
 // A faction completed a win condition group that was not its last (see
 // FConnectItBoardEvent_WinCheckpointReached)

@@ -85,7 +85,7 @@ struct CONNECTIT_API FConnectItRuleSet
     // order: the Level director's Level Wide Powers, each one TilePowers
     // defines. Not authored.
     UPROPERTY(Transient, BlueprintReadOnly, Category = "Rules")
-    TArray<FGameplayTag> LevelWidePowers;
+    TArray<FGameplayTag> LevelWideTilePowers;
 
     // Copies the Level director's condition assets into the win and lose
     // groups, in order (empty entries skipped, with a warning). Game thread,
@@ -96,7 +96,7 @@ struct CONNECTIT_API FConnectItRuleSet
         const TArray<TObjectPtr<UConnectIt_MatchConditionAsset>>& PlayerLoseConditions = {},
         const TArray<TObjectPtr<UConnectIt_MatchConditionAsset>>& AILoseConditions = {});
 
-    // Copies Powers into TilePowers and LevelWide into LevelWidePowers. A
+    // Copies Powers into TilePowers and LevelWide into LevelWideTilePowers. A
     // power with no name or a second one with the same name, and a
     // level-wide tag Powers doesn't define or that is listed twice, are
     // skipped with a warning.
@@ -108,7 +108,7 @@ struct CONNECTIT_API FConnectItRuleSet
     // Whether a Turn Start tile power would fire on Board when turn TurnNumber
     // starts (its countdown has run out) -- the GameMode commits a Turn Start
     // operation only then
-    bool HasTurnStartPowerReady(const FConnectItBoardState& Board, int32 TurnNumber) const;
+    bool HasTurnStartTilePowerReady(const FConnectItBoardState& Board, int32 TurnNumber) const;
 
     // Value within the multiplier limits of Tile's type (its power tag's
     // floor and ceiling; a plain tile: floor 1, no ceiling)
@@ -158,12 +158,12 @@ struct CONNECTIT_API FConnectItRuleSet
     // itself, starting from what the operation reported (Changes). A loop:
     //   1. settle -- the Sync tile powers, then the Piece Enter / Piece Exit /
     //      Piece Changed / Tile Changed ones what changed sets off, until
-    //      nothing more fires (FConnectItPowerChain);
+    //      nothing more fires (FConnectItTilePowerChain);
     //   2. score -- one scoring pass over every piece that arrived since the
     //      last pass (FConnectItScoringRule::ScorePass: all found first, then
     //      all applied);
     //   3. scoring reactions: the Scoring tile powers on the tiles the
-    //      lines ran through (FConnectItPowerChain);
+    //      lines ran through (FConnectItTilePowerChain);
     //   then back to 1 with what scoring and its reactions changed. The chain
     //   ends at the first pass that scores nothing (a bug guard stops it
     //   after 64 passes).

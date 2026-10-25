@@ -12,9 +12,14 @@
 #include "Tile/GridTileBase.h"
 
 
-bool UConnectIt_BoardShiftAction::ProducesRequestType_Implementation(FGameplayTag RequestType) const
+bool UConnectIt_BoardShiftAction::ProducesRequestType_Implementation(FGameplayTag OperationTag) const
 {
-	return RequestType == ConnectIt_Game_Shift;
+	return OperationTag == ConnectIt_BoardOperation_Shift;
+}
+
+FGameplayTag UConnectIt_BoardShiftAction::GetActionTag_Implementation() const
+{
+    return ConnectIt_PlayerAction_Shift;
 }
 
 UConnectIt_BoardShiftAction::UConnectIt_BoardShiftAction()

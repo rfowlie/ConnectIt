@@ -210,6 +210,42 @@ stages.
   - Property and struct redirects where assets store them. **All of them** (owner, at approval): every name with a
     bare "Power" becomes "TilePower".
 - **Tests:** the existing ones (renamed tags and types).
+- *As built (2026-10-24; 69/69 tests; Throughput 344k-366k nodes/s):*
+  - **Found on the way: the action Blueprints named themselves with the operation's tag.** `CI_Action_PlacePiece` /
+    `_SwapPiece` / `_BoardShift` returned `ConnectIt.Game.State.PlacePiece` / `.SwapPieces` / `.Shift` as their
+    action tag, and the `ConnectIt.Action.*` tags were used nowhere. So:
+    - the three old tags **redirect to the new player action tags** (`ConnectIt.PlayerAction.PlacePiece`,
+      `.SwapPiece`, `.Shift`, native), and the Blueprints return them unedited;
+    - the C++ actions now return them too (`GetActionTag_Implementation`);
+    - the operation tags are native `ConnectIt.BoardOperation.*`, and no asset used them, so they need no redirect.
+    - `ConnectIt.Action.PlacePiece` / `.SwapPiece` redirect too; the unused `ConnectIt.Action.*` list entries are
+      gone.
+  - **Native tag symbols:**
+    - `ConnectIt_Game_*` → `ConnectIt_BoardOperation_*`, plus `ConnectIt_PlayerAction_*`;
+    - the unused `ConnectIt.Game.Pre` / `.Post`, `.Game.State.SelectTile` / `.UpdateBoard` are removed.
+  - **Operation-tag names:** `GetRequestType` → `GetOperationTag`, `GetAllRequestTypes` → `GetAllOperationTags`; the
+    AI's `AvailableOperationTags`, `Own/OpponentOperationTags`, `GetSupportedOperationTags`, `LoadoutGrantsOperation`,
+    `GetModelledOperationTags` (property and function redirects; `CI_AIStrategy_PlaceRandom` uses two).
+    - The plugin's generic `ProducesRequestType` stays (a plugin request has a type).
+    - Comments say "operation tag".
+  - **The No Legal Move condition's `Move`** takes `ConnectIt.BoardOperation` tags.
+  - **The request gate:** an item use (`bIsItemUse`) looks the action up among held items (new plugin
+    `FindItemActionClassByTag`), checks `CanUseItem` and spends with `ConsumeItemUse`. A player with only items can
+    send item requests.
+  - **Tile Power renames,** with redirects for every Blueprint-visible one:
+    - the event `FConnectItBoardEvent_TilePowerTriggered` (its `TilePowerName`), tag
+      `ConnectIt.Event.TilePowerTriggered`, getter `GetActiveTilePowerTriggeredEvent`, hook `OnTilePowerTriggered`;
+    - `LevelWideTilePowers` (rule set and Level director), `TilePowerReadyTurn(s)`, `GetTilePowerTurnsLeft`;
+    - `EConnectItTilePowerTrigger` (and the bitmask path), `HasTurnStartTilePowerReady`;
+    - the catalog entry's `TilePower`, `MakeTilePowers`;
+    - `FConnectItTilePowerChain` in `ConnectIt_TilePowerChain.h/.cpp` (moved with `git mv`), `RunSyncTilePowers`,
+      `RunTurnStartTilePowers`;
+    - the test `ConnectIt.Board.TurnStartTilePowers`.
+    - **Left alone:** function-local variables (`Power`, `Powers`, `PowerTag`...) and test helpers (`MakeTestPower`,
+      `SetPower`).
+  - **A Stage 3 bug fixed:** `AreTurnEndRequirementsMet` built its `FTurnEndUses` around a temporary lambda, which
+    the `TFunctionRef` outlived. The Item Used test crashed once the build layout changed. It now uses a named lambda,
+    and `FTurnEndUses`' comment warns.
 
 ## Stage 5: Adventure conforms
 

@@ -57,8 +57,11 @@ public:
     UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Action|Tags")
     FGameplayTag TagFirstSelection;
 
-    // Server-side check that a request's ActionTag matches its RequestType
-    virtual bool ProducesRequestType_Implementation(FGameplayTag RequestType) const override;
+    // Server-side check that a request's ActionTag matches its OperationTag
+    virtual bool ProducesRequestType_Implementation(FGameplayTag OperationTag) const override;
+
+    // Its player action tag (ConnectIt.PlayerAction.*)
+    virtual FGameplayTag GetActionTag_Implementation() const override;
 
 protected:
 

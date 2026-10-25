@@ -50,11 +50,11 @@ struct CONNECTIT_API FConnectItBoardOperation
     UPROPERTY(BlueprintReadWrite, Category = "Operation")
     int32 Faction = INDEX_NONE;
 
-    // The request type this kind of operation is (e.g.
-    // ConnectIt_Game_PlacePiece). The server's gate decides from the request
+    // The operation tag this kind of operation is (e.g.
+    // ConnectIt_BoardOperation_PlacePiece). The server's gate decides from the request
     // type whether the player's action may send this, so it checks the
     // operation it was sent really is of the type the request claims.
-    virtual FGameplayTag GetRequestType() const { return FGameplayTag(); }
+    virtual FGameplayTag GetOperationTag() const { return FGameplayTag(); }
 
     // Whether this operation may be made on Board. OutWhyNot, if given, gets
     // a reason for the log.
@@ -114,15 +114,15 @@ struct CONNECTIT_API FConnectItBoardOperation
         return EConnectItMoveLegality::Unknown;
     }
 
-    // HasAnyLegalInstance for the kind of operation whose request type is
-    // RequestType. Unknown for a tag that isn't a board operation. Safe on any
-    // thread once GetAllRequestTypes has run on the game thread (the GameMode
+    // HasAnyLegalInstance for the kind of operation whose operation tag is
+    // OperationTag. Unknown for a tag that isn't a board operation. Safe on any
+    // thread once GetAllOperationTags has run on the game thread (the GameMode
     // does it at match setup).
-    static EConnectItMoveLegality GetLegality(FGameplayTag RequestType, const FConnectItBoardState& Board, int32 ForFaction);
+    static EConnectItMoveLegality GetLegality(FGameplayTag OperationTag, const FConnectItBoardState& Board, int32 ForFaction);
 
-    // The request type of every kind of board operation there is (every
+    // The operation tag of every kind of board operation there is (every
     // C++ struct deriving from this one), found once by reflection. Lets
     // code ask "which kinds of move can this action produce?" of an action,
     // which can only answer yes or no per type (ProducesRequestType).
-    static const TArray<FGameplayTag>& GetAllRequestTypes();
+    static const TArray<FGameplayTag>& GetAllOperationTags();
 };

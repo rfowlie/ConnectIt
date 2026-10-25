@@ -94,9 +94,9 @@ FGameplayTag FConnectItBoardEvent_ChainPartnerChanged::GetEventTag() const
     return ConnectIt_Event_ChainPartnerChanged;
 }
 
-FGameplayTag FConnectItBoardEvent_PowerTriggered::GetEventTag() const
+FGameplayTag FConnectItBoardEvent_TilePowerTriggered::GetEventTag() const
 {
-    return ConnectIt_Event_PowerTriggered;
+    return ConnectIt_Event_TilePowerTriggered;
 }
 
 FGameplayTag FConnectItBoardEvent_WinCheckpointReached::GetEventTag() const
@@ -237,7 +237,7 @@ void FConnectItBoardEvent_TilesAdded::ApplyTo(FConnectItBoardState& Board) const
         {
             FConnectItTileData Tile = Cell.TileData.ToTileData(NumFactions);
             Tile.TileId = TileIds[Index];
-            Tile.PowerReadyTurn = PowerReadyTurns.IsValidIndex(Index) ? PowerReadyTurns[Index] : 0;
+            Tile.TilePowerReadyTurn = TilePowerReadyTurns.IsValidIndex(Index) ? TilePowerReadyTurns[Index] : 0;
             Board.SetTileData(Cell.Position, Tile);
             Board.NextTileId = FMath::Max(Board.NextTileId, Tile.TileId + 1);
         }
@@ -329,14 +329,14 @@ void FConnectItBoardEvent_ChainPartnerChanged::ApplyTo(FConnectItBoardState& Boa
     }
 }
 
-void FConnectItBoardEvent_PowerTriggered::ApplyTo(FConnectItBoardState& Board) const
+void FConnectItBoardEvent_TilePowerTriggered::ApplyTo(FConnectItBoardState& Board) const
 {
     // Its cooldown: the tile's own power's, or the level-wide power's
     if (LevelWideIndex == INDEX_NONE)
     {
         if (FConnectItTileData* Tile = Board.GetTileDataMutable(Position))
         {
-            Tile->PowerReadyTurn = ReadyTurn;
+            Tile->TilePowerReadyTurn = ReadyTurn;
         }
     }
     else if (LevelWideIndex >= 0)

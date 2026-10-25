@@ -30,7 +30,7 @@ class UConnectIt_AICoordinator;
 // Coordinator->Begin (the director's strategies, then its selector) -> ... ->
 // HandleCoordinatorConcluded (stale check, minimum think time) ->
 // SubmitDecision (each candidate in order as the loadout action producing its
-// request type, straight to the GameMode's Mediator, until one is accepted)
+// operation tag, straight to the GameMode's Mediator, until one is accepted)
 // -> end turn, or decide again if the turn-end requirements aren't met yet.
 UCLASS(Blueprintable, BlueprintType)
 class CONNECTIT_API AConnectIt_AIController : public ATurnBasedAIController

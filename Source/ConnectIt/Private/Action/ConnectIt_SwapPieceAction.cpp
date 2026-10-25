@@ -13,9 +13,14 @@
 #include "Tile/GridTileRegistryBase.h"
 
 
-bool UConnectIt_SwapPieceAction::ProducesRequestType_Implementation(FGameplayTag RequestType) const
+bool UConnectIt_SwapPieceAction::ProducesRequestType_Implementation(FGameplayTag OperationTag) const
 {
-    return RequestType == ConnectIt_Game_SwapPieces;
+    return OperationTag == ConnectIt_BoardOperation_SwapPieces;
+}
+
+FGameplayTag UConnectIt_SwapPieceAction::GetActionTag_Implementation() const
+{
+    return ConnectIt_PlayerAction_SwapPiece;
 }
 
 UConnectIt_SwapPieceAction::UConnectIt_SwapPieceAction()

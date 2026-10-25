@@ -120,7 +120,7 @@ public:
     // Board is only used for its geometry -- the position to search from is
     // passed to MakeRoot. InRules (the match's rule set) and the weights are
     // copied.
-    // Side0RequestTypes / Side1RequestTypes: the request types faction slot 0
+    // Side0RequestTypes / Side1RequestTypes: the operation tags faction slot 0
     // and 1 may send -- each side moves with the operations of those types
     // (types the search can't model are ignored).
     FConnectItMinMaxRules(
@@ -178,7 +178,7 @@ private:
     FConnectItMinMaxGeometry Geometry;
 
     // Which kinds of operation each side may make, resolved once from its
-    // request types
+    // operation tags
     bool bSideCanPlace[2] = { false, false };
 
     FConnectItMinMaxEvaluationWeights EvaluationWeights;

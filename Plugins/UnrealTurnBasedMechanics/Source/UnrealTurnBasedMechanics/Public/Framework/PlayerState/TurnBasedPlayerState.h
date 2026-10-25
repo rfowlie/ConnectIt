@@ -152,6 +152,11 @@ public:
     UFUNCTION(BlueprintPure, Category = "Turn Based|Items")
     int32 GetItemCount(TSubclassOf<UTurnBasedPlayerAction> ActionClass) const;
 
+    // The held item action whose GetActionTag matches (null if none) -- the
+    // item-use counterpart of FindActionClassByTag
+    UFUNCTION(BlueprintPure, Category = "Turn Based|Items")
+    TSubclassOf<UTurnBasedPlayerAction> FindItemActionClassByTag(FGameplayTag ActionTag) const;
+
     UFUNCTION(BlueprintPure, Category = "Turn Based|Items")
     FItemBudget GetItemBudget() const { return ItemBudget; }
 

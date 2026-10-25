@@ -124,7 +124,7 @@ void AConnectIt_GameMode::EnsureMatchSetupResolved()
 
     // Build the board-operation catalog here, on the game thread, before any
     // background search can ask for it (FConnectItBoardOperation::GetLegality)
-    FConnectItBoardOperation::GetAllRequestTypes();
+    FConnectItBoardOperation::GetAllOperationTags();
 
     // Main-menu match setup for this level, if any
     FConnectItMatchSettings MatchSettings;
@@ -162,8 +162,8 @@ void AConnectIt_GameMode::EnsureMatchSetupResolved()
 
     // Every tile power the level's tile catalog defines, and which apply level-wide
     const UConnectIt_TileCatalog* TileCatalog = UConnectIt_TileCatalog::FindFor(this);
-    Rules.SetTilePowers(TileCatalog ? TileCatalog->MakePowers() : TArray<FConnectItTilePower>(),
-        LevelDefaults->LevelWidePowers);
+    Rules.SetTilePowers(TileCatalog ? TileCatalog->MakeTilePowers() : TArray<FConnectItTilePower>(),
+        LevelDefaults->LevelWideTilePowers);
 
     // Tweaks from the menu, on top of whichever preset plays
     if (bHasMatchSettings)
@@ -348,7 +348,7 @@ void AConnectIt_GameMode::HandleTurnPhaseChanged(ETurnPhase NewPhase)
         // The turn's Turn Start tile powers (e.g. Repel's countdown) come first,
         // as their own board change -- only when one is ready
         const UConnectIt_BoardStateComponent* BoardState = UConnectIt_GameUtilityLibrary::GetBoardStateComponent(this);
-        if (IsValid(BoardState) && Rules.HasTurnStartPowerReady(BoardState->GetCurrentState(), TurnNumber))
+        if (IsValid(BoardState) && Rules.HasTurnStartTilePowerReady(BoardState->GetCurrentState(), TurnNumber))
         {
             FConnectItLevelChange TurnStart;
             TurnStart.Operation = FInstancedStruct::Make(FConnectItBoardOperation_TurnStart());

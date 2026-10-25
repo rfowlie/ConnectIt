@@ -25,14 +25,14 @@ struct FConnectItRuleSet;
 // operation may). It applies them with Apply, not CarryOutOperation: what
 // they change goes back into this chain, not a new one. They act for the
 // faction of the change that set the power off.
-class FConnectItPowerChain
+class FConnectItTilePowerChain
 {
 public:
 
-    FConnectItPowerChain(const FConnectItRuleSet& InRules, FConnectItBoardState& InBoard, FConnectItBoardChangeEvent* InEvents);
+    FConnectItTilePowerChain(const FConnectItRuleSet& InRules, FConnectItBoardState& InBoard, FConnectItBoardChangeEvent* InEvents);
 
     // Whether the match has any tile powers (none: the chain is just scoring)
-    bool HasPowers() const { return bHasPowers; }
+    bool HasTilePowers() const { return bHasTilePowers; }
 
     // Settle, before a scoring pass: on a turn's start, its Turn Start powers
     // first (once); then Sync powers, then the Piece Enter,
@@ -51,18 +51,18 @@ private:
 
     // The tile's own power and each level-wide power whose trigger is
     // Trigger, on Position. True if any fired.
-    bool FireAt(const FGridPosition& Position, EConnectItPowerTrigger Trigger, int32 Faction, int32 Cause,
+    bool FireAt(const FGridPosition& Position, EConnectItTilePowerTrigger Trigger, int32 Faction, int32 Cause,
         FConnectItBoardChanges& OutChanges);
 
     // The powers Triggers sets off. True if any fired.
     bool FireTriggers(const FConnectItBoardChanges& Triggers, FConnectItBoardChanges& OutChanges);
 
     // Every Sync power, on every tile it applies to. True if any changed something.
-    bool RunSyncPowers(int32 Faction, FConnectItBoardChanges& OutChanges);
+    bool RunSyncTilePowers(int32 Faction, FConnectItBoardChanges& OutChanges);
 
     // Every Turn Start power whose countdown has run out, on every tile it
     // applies to. True if any fired.
-    bool RunTurnStartPowers(int32 Faction, FConnectItBoardChanges& OutChanges);
+    bool RunTurnStartTilePowers(int32 Faction, FConnectItBoardChanges& OutChanges);
 
     // One power on one tile (LevelWideIndex: which level-wide power, or
     // INDEX_NONE for the tile's own). True if it fired (a Sync power: if it
@@ -77,8 +77,8 @@ private:
     // The level-wide powers, looked up once (null where the rules don't define one)
     TArray<const FConnectItTilePower*, TInlineAllocator<4>> LevelWide;
 
-    bool bHasPowers = false;
-    bool bHasSyncPowers = false;
+    bool bHasTilePowers = false;
+    bool bHasSyncTilePowers = false;
 
     // The once-per-action guard: (tile, power slot) pairs that have fired.
     // A tile is its id (it survives a shift), or its position for a board

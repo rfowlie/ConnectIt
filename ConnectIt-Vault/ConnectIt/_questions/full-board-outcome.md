@@ -42,6 +42,21 @@ player's lose condition (or as a goal, for a fill-the-board level) -- the per-le
 expressible (no draw outcome exists). Separately, a side with no legal move now **passes**: the AI ends its turn at once,
 and the UI can grey out actions with *Has Any Legal Move*.
 
+2026-10-24 (owner): **reframed as a "stuck board".** A full board isn't the problem -- Swap or Shift can still score
+and clear it. What ends a level is **no participant able to make any move**. Every level must say what that means, so
+it becomes **its own parameter** on the level (not one of the optional conditions): Adventure usually = the player
+**loses**; exceptions possible (a "freeze the board" level where stuck = **win**). Claude: "able to make a move" should
+count uses (permanent action uses left, item budget), which also answers
+[out-of-uses-condition](out-of-uses-condition.md); a **draw** outcome still doesn't exist (matters for versus, not
+Adventure); the parameter fits the Level director (it owns the level's rules) with the AI's search seeing a stuck
+board as terminal only as far as it can tell (it doesn't track uses). Next: a small plan. See
+[adventure-mode-roadmap](../design/adventure-mode-roadmap.md).
+
+2026-10-24, round 4 (owner): **Stuck Board = both players have no way to change the board**, reached through the flow
+in [adventure-mode-roadmap](../design/adventure-mode-roadmap.md) (No Moves → Stuck Player for this side → for the
+opponent → Stuck Board outcome, Lose / Win / Draw on the Level director, default Lose). Claude: it should also count
+legality (unlimited Place on a full board).
+
 ## Resolution
 
 <Filled when status moves to answered / parked.>

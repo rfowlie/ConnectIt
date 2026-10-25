@@ -39,7 +39,9 @@ enum class ETurnEndRequirementResult : uint8
     Unsatisfied
 };
 
-// What a turn-end tree is evaluated against: this turn's uses.
+// What a turn-end tree is evaluated against: this turn's uses. Only
+// references its lookup (TFunctionRef): build it from a named callable that
+// outlives the evaluation, never a temporary lambda.
 struct FTurnEndUses
 {
     // Maps an action tag to how many of its permanent uses were spent this

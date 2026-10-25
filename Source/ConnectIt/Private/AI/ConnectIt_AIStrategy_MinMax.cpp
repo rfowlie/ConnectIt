@@ -3,9 +3,9 @@
 #include "AI/ConnectIt_AIStrategy_MinMax.h"
 
 
-FGameplayTagContainer UConnectIt_AIStrategy_MinMax::GetSupportedRequestTypes_Implementation() const
+FGameplayTagContainer UConnectIt_AIStrategy_MinMax::GetSupportedOperationTags_Implementation() const
 {
-    return ConnectItMinMaxSearch::GetModelledRequestTypes();
+    return ConnectItMinMaxSearch::GetModelledOperationTags();
 }
 
 void UConnectIt_AIStrategy_MinMax::BeginDecision_Implementation(

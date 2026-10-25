@@ -51,7 +51,7 @@ namespace ConnectItMinMaxTests
 
     // A test power: Name, Trigger and Effect (a test effect struct)
     template<typename TEffect>
-    FConnectItTilePower MakeTestPower(FGameplayTag Name, EConnectItPowerTrigger Trigger, const TEffect& Effect,
+    FConnectItTilePower MakeTestPower(FGameplayTag Name, EConnectItTilePowerTrigger Trigger, const TEffect& Effect,
         int32 CooldownTurns = 0, float FireAtMultiplier = 0.f)
     {
         FConnectItTilePower Power;
@@ -76,12 +76,12 @@ namespace ConnectItMinMaxTests
     }
 
     // Every Power Triggered event of a change, in order
-    TArray<const FConnectItBoardEvent_PowerTriggered*> PowersTriggered(const FConnectItBoardChangeEvent& Change)
+    TArray<const FConnectItBoardEvent_TilePowerTriggered*> PowersTriggered(const FConnectItBoardChangeEvent& Change)
     {
-        TArray<const FConnectItBoardEvent_PowerTriggered*> Found;
+        TArray<const FConnectItBoardEvent_TilePowerTriggered*> Found;
         for (const FInstancedStruct& Entry : Change.Events)
         {
-            if (const auto* Triggered = Entry.GetPtr<FConnectItBoardEvent_PowerTriggered>()) Found.Add(Triggered);
+            if (const auto* Triggered = Entry.GetPtr<FConnectItBoardEvent_TilePowerTriggered>()) Found.Add(Triggered);
         }
         return Found;
     }
@@ -191,7 +191,7 @@ namespace ConnectItMinMaxTests
     // strategy hands the search today
     FGameplayTagContainer PlaceOnly()
     {
-        return FGameplayTagContainer(ConnectIt_Game_PlacePiece);
+        return FGameplayTagContainer(ConnectIt_BoardOperation_PlacePiece);
     }
 
     // A search move that places a piece at (X, Y)
@@ -559,9 +559,9 @@ bool FConnectItNoLegalMoveTest::RunTest(const FString& Parameters)
 {
     const FConnectItRuleSet Rules;
     FConnectItMatchCondition_NoLegalMove NoPlace;
-    NoPlace.Move = ConnectIt_Game_PlacePiece;
+    NoPlace.Move = ConnectIt_BoardOperation_PlacePiece;
     FConnectItMatchCondition_NoLegalMove NoSwap;
-    NoSwap.Move = ConnectIt_Game_SwapPieces;
+    NoSwap.Move = ConnectIt_BoardOperation_SwapPieces;
 
     // Place: a full board has none, one free tile is enough
     FConnectItBoardState Full = MakeBoard(2);
@@ -572,12 +572,12 @@ bool FConnectItNoLegalMoveTest::RunTest(const FString& Parameters)
     const FConnectItConditionContext OneFree{ Full, Rules };
     TestFalse(TEXT("one free tile: a legal place"), NoPlace.IsMetFor(OneFree, 0));
     TestTrue(TEXT("the helper agrees"),
-        UConnectIt_BoardStateLibrary::HasAnyLegalMove(Full, ConnectIt_Game_PlacePiece, 0) == EConnectItMoveLegality::Legal);
+        UConnectIt_BoardStateLibrary::HasAnyLegalMove(Full, ConnectIt_BoardOperation_PlacePiece, 0) == EConnectItMoveLegality::Legal);
     Place(Full, 1, 1, 1);
     const FConnectItConditionContext NoneFree{ Full, Rules };
     TestTrue(TEXT("a full board: no legal place"), NoPlace.IsMetFor(NoneFree, 0));
     TestTrue(TEXT("the helper agrees"),
-        UConnectIt_BoardStateLibrary::HasAnyLegalMove(Full, ConnectIt_Game_PlacePiece, 0) == EConnectItMoveLegality::NoLegalMove);
+        UConnectIt_BoardStateLibrary::HasAnyLegalMove(Full, ConnectIt_BoardOperation_PlacePiece, 0) == EConnectItMoveLegality::NoLegalMove);
 
     // Swap: needs a piece of its own and another piece to trade with
     FConnectItBoardState Board = MakeBoard(5);
@@ -594,9 +594,9 @@ bool FConnectItNoLegalMoveTest::RunTest(const FString& Parameters)
 
     // A kind of move that can't tell yet: Unknown, never met, and validation says so
     FConnectItMatchCondition_NoLegalMove NoShift;
-    NoShift.Move = ConnectIt_Game_Shift;
+    NoShift.Move = ConnectIt_BoardOperation_Shift;
     TestTrue(TEXT("shift can't tell yet"),
-        FConnectItBoardOperation::GetLegality(ConnectIt_Game_Shift, Board, 0) == EConnectItMoveLegality::Unknown);
+        FConnectItBoardOperation::GetLegality(ConnectIt_BoardOperation_Shift, Board, 0) == EConnectItMoveLegality::Unknown);
     TestFalse(TEXT("so No Legal Move: Shift never holds"), NoShift.IsMetFor(Ctx, 0));
     TArray<FText> Warnings;
     NoShift.GetValidationWarnings(nullptr, Warnings);
@@ -995,8 +995,8 @@ bool FConnectItPlaceOperationTest::RunTest(const FString& Parameters)
     TestTrue(TEXT("one Piece Placed event says where and by whom"),
         Placed && Placed->Position == FGridPosition(0, 0) && Placed->Faction == 0);
 
-    TestEqual(TEXT("its request type is Place Piece"),
-        Free.GetRequestType(), FGameplayTag(ConnectIt_Game_PlacePiece));
+    TestEqual(TEXT("its operation tag is Place Piece"),
+        Free.GetOperationTag(), FGameplayTag(ConnectIt_BoardOperation_PlacePiece));
     return true;
 }
 
@@ -1296,7 +1296,7 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(FConnectItNoOperationNoMovesTest,
 
 bool FConnectItNoOperationNoMovesTest::RunTest(const FString& Parameters)
 {
-    // Side 0 was granted no request types; side 1 can place
+    // Side 0 was granted no operation tags; side 1 can place
     const FConnectItBoardState Board = MakeBoard(5);
     const FConnectItMinMaxRules Rules(Board, RulesWonAt(100.f),
         DefaultEvaluationWeights(), DefaultOrderingWeights(), FGameplayTagContainer(), PlaceOnly());
@@ -1822,18 +1822,18 @@ bool FConnectItAICandidatesTest::RunTest(const FString& Parameters)
 
     // What the AI may do now
     FConnectItAIDecisionContext Context;
-    Context.AvailableRequestTypes.AddTag(ConnectIt_Game_PlacePiece);
+    Context.AvailableOperationTags.AddTag(ConnectIt_BoardOperation_PlacePiece);
     TestTrue(TEXT("a place move is available"),
         UConnectIt_AIStrategy::IsOperationAvailable(Context, FInstancedStruct::Make(Place)));
     TestFalse(TEXT("a swap is not"),
         UConnectIt_AIStrategy::IsOperationAvailable(Context, FInstancedStruct::Make(FConnectItBoardOperation_SwapPieces())));
 
     // Every kind of board operation is found
-    const TArray<FGameplayTag>& AllTypes = FConnectItBoardOperation::GetAllRequestTypes();
-    TestTrue(TEXT("all request types include place, swap and shift"),
-        AllTypes.Contains(FGameplayTag(ConnectIt_Game_PlacePiece))
-        && AllTypes.Contains(FGameplayTag(ConnectIt_Game_SwapPieces))
-        && AllTypes.Contains(FGameplayTag(ConnectIt_Game_Shift)));
+    const TArray<FGameplayTag>& AllTypes = FConnectItBoardOperation::GetAllOperationTags();
+    TestTrue(TEXT("all operation tags include place, swap and shift"),
+        AllTypes.Contains(FGameplayTag(ConnectIt_BoardOperation_PlacePiece))
+        && AllTypes.Contains(FGameplayTag(ConnectIt_BoardOperation_SwapPieces))
+        && AllTypes.Contains(FGameplayTag(ConnectIt_BoardOperation_Shift)));
     // The eight player-facing ones and the level's Change Goals, Begin
     // Phase, Remove Tiles, Add Tiles, Change Layout, Set Tile Locked, Set
     // Chain Partner, Move Piece, Adjust Multiplier and Turn Start
@@ -1858,12 +1858,12 @@ bool FConnectItMinMaxSearchToolTest::RunTest(const FString& Parameters)
     Context.Board = Board;
     Context.OwnSlot = 0;
     Context.Rules = RulesWonAt(4.f);
-    Context.AvailableRequestTypes.AddTag(ConnectIt_Game_PlacePiece);
+    Context.AvailableOperationTags.AddTag(ConnectIt_BoardOperation_PlacePiece);
 
     FConnectItMinMaxSearchSettings Settings;
     Settings.MaxDepth = 1;
     Settings.DefaultTimeBudgetSeconds = 0.f;
-    Settings.OpponentRequestTypes = PlaceOnly();
+    Settings.OpponentOperationTags = PlaceOnly();
 
     ConnectItMinMaxSearch::FPrepared Prepared;
     FString WhyNot;
@@ -1884,12 +1884,12 @@ bool FConnectItMinMaxSearchToolTest::RunTest(const FString& Parameters)
 
     // Explicit move sets replace the context's -- and the search only models place moves
     FConnectItMinMaxSearchSettings SwapOnly = Settings;
-    SwapOnly.OwnRequestTypes.AddTag(ConnectIt_Game_SwapPieces);
+    SwapOnly.OwnOperationTags.AddTag(ConnectIt_BoardOperation_SwapPieces);
     TestFalse(TEXT("a side with only swaps can't be searched"),
         ConnectItMinMaxSearch::Prepare(Context, SwapOnly, Prepared, &WhyNot));
 
     FConnectItAIDecisionContext NothingAvailable = Context;
-    NothingAvailable.AvailableRequestTypes.Reset();
+    NothingAvailable.AvailableOperationTags.Reset();
     TestFalse(TEXT("nothing available, nothing to search"),
         ConnectItMinMaxSearch::Prepare(NothingAvailable, Settings, Prepared, &WhyNot));
 
@@ -1912,7 +1912,7 @@ bool FConnectItMinMaxSearchToolTest::RunTest(const FString& Parameters)
     }
 
     TestTrue(TEXT("the MinMax strategy declares place moves"),
-        GetDefault<UConnectIt_AIStrategy_MinMax>()->GetSupportedRequestTypes().HasTagExact(ConnectIt_Game_PlacePiece));
+        GetDefault<UConnectIt_AIStrategy_MinMax>()->GetSupportedOperationTags().HasTagExact(ConnectIt_BoardOperation_PlacePiece));
     return true;
 }
 
@@ -1966,12 +1966,12 @@ bool FConnectItMinMaxSearchProgressTest::RunTest(const FString& Parameters)
     Context.Board = Board;
     Context.OwnSlot = 0;
     Context.Rules = RulesWonAt(4.f);
-    Context.AvailableRequestTypes.AddTag(ConnectIt_Game_PlacePiece);
+    Context.AvailableOperationTags.AddTag(ConnectIt_BoardOperation_PlacePiece);
 
     FConnectItMinMaxSearchSettings Settings;
     Settings.MaxDepth = 3;
     Settings.DefaultTimeBudgetSeconds = 0.f;
-    Settings.OpponentRequestTypes = PlaceOnly();
+    Settings.OpponentOperationTags = PlaceOnly();
 
     ConnectItMinMaxSearch::FPrepared Prepared;
     if (!TestTrue(TEXT("prepared"), ConnectItMinMaxSearch::Prepare(Context, Settings, Prepared))) return false;
@@ -2109,12 +2109,12 @@ bool FConnectItMinMaxStrategyPartialTest::RunTest(const FString& Parameters)
     Context.Board = Board;
     Context.OwnSlot = 0;
     Context.Rules = RulesWonAt(4.f);
-    Context.AvailableRequestTypes.AddTag(ConnectIt_Game_PlacePiece);
+    Context.AvailableOperationTags.AddTag(ConnectIt_BoardOperation_PlacePiece);
 
     UConnectIt_AIStrategy_MinMax* Strategy = NewObject<UConnectIt_AIStrategy_MinMax>();
     Strategy->Search.MaxDepth = 10;
     Strategy->Search.DefaultTimeBudgetSeconds = 0.f;
-    Strategy->Search.OpponentRequestTypes = PlaceOnly();
+    Strategy->Search.OpponentOperationTags = PlaceOnly();
     Strategy->MaxCandidates = 3;
 
     Strategy->StartDecision(Context);
@@ -3445,10 +3445,10 @@ bool FConnectItTilePowerDataTest::RunTest(const FString& Parameters)
     {
         FConnectItTileCatalogEntry Entry;
         Entry.TileClass = AConnectIt_TileBase::StaticClass();
-        Entry.Power.CooldownTurns = 2;
+        Entry.TilePower.CooldownTurns = 2;
         FConnectItTilePowerEffect_Test Effect;
         Effect.Strength = Strength;
-        Entry.Power.Effect = TInstancedStruct<FConnectItTilePowerEffect>::Make<FConnectItTilePowerEffect_Test>(Effect);
+        Entry.TilePower.Effect = TInstancedStruct<FConnectItTilePowerEffect>::Make<FConnectItTilePowerEffect_Test>(Effect);
         return Entry;
     };
 
@@ -3467,7 +3467,7 @@ bool FConnectItTilePowerDataTest::RunTest(const FString& Parameters)
             bAnyPower |= Board.GetTileDataAt(Index).TilePowerTag.IsValid();
         }
         TestFalse(TEXT("fresh board: no tile has a power"), bAnyPower);
-        TestTrue(TEXT("fresh rules: no powers"), FConnectItRuleSet().TilePowers.IsEmpty() && FConnectItRuleSet().LevelWidePowers.IsEmpty());
+        TestTrue(TEXT("fresh rules: no powers"), FConnectItRuleSet().TilePowers.IsEmpty() && FConnectItRuleSet().LevelWideTilePowers.IsEmpty());
     }
 
     // --- The catalog: one entry per tag, a class for each, powers named by their tag ---
@@ -3476,7 +3476,7 @@ bool FConnectItTilePowerDataTest::RunTest(const FString& Parameters)
         TestTrue(TEXT("catalog: no tag is the default class"), Catalog->GetTileClassFor(FGameplayTag()) == AConnectIt_BuilderTile::StaticClass());
         TestTrue(TEXT("catalog: an undefined tag has none"), Catalog->GetTileClassFor(UndefinedTag) == nullptr);
 
-        const TArray<FConnectItTilePower> Powers = Catalog->MakePowers();
+        const TArray<FConnectItTilePower> Powers = Catalog->MakeTilePowers();
         const FConnectItTilePower* Named = Powers.FindByPredicate([&PowerTag](const FConnectItTilePower& Power) { return Power.Name == PowerTag; });
         TestTrue(TEXT("catalog: each power named by its key, with its values"),
             Powers.Num() == 2 && Named && StrengthOf(Named) == 5 && Named->CooldownTurns == 2);
@@ -3485,12 +3485,12 @@ bool FConnectItTilePowerDataTest::RunTest(const FString& Parameters)
     // --- Rules: the catalog's powers and the level-wide tags ---
     {
         FConnectItRuleSet Rules;
-        Rules.SetTilePowers(Catalog->MakePowers(), { OtherTag, OtherTag, UndefinedTag });
+        Rules.SetTilePowers(Catalog->MakeTilePowers(), { OtherTag, OtherTag, UndefinedTag });
         TestEqual(TEXT("rules: every catalog power"), Rules.TilePowers.Num(), 2);
         TestEqual(TEXT("rules: a tag finds its power and values"), StrengthOf(Rules.FindTilePower(PowerTag)), 5);
         TestNull(TEXT("rules: an undefined tag finds none"), Rules.FindTilePower(UndefinedTag));
         TestTrue(TEXT("rules: level-wide tags, a repeat and an undefined one skipped"),
-            Rules.LevelWidePowers == TArray<FGameplayTag>({ OtherTag }));
+            Rules.LevelWideTilePowers == TArray<FGameplayTag>({ OtherTag }));
     }
 
     // --- Building the board: a builder tile's tag reaches its tile data ---
@@ -3557,7 +3557,7 @@ bool FConnectItTilePowerDataTest::RunTest(const FString& Parameters)
         FConnectItTileData* Start = Board.GetTileDataMutable(FGridPosition(0, 0));
         Start->TilePowerTag = PowerTag;
         Start->TileId = 42;
-        Start->PowerReadyTurn = 6;
+        Start->TilePowerReadyTurn = 6;
 
         FConnectItBoardOperation_Shift Shift;
         Shift.Faction = 0;
@@ -3570,7 +3570,7 @@ bool FConnectItTilePowerDataTest::RunTest(const FString& Parameters)
         Shift.Apply(Board, Changes, nullptr);
         const FConnectItTileData* Moved = Board.GetTileData(FGridPosition(1, 0));
         TestTrue(TEXT("shift: the power moved with its tile"),
-            Moved && Moved->TilePowerTag == PowerTag && Moved->TileId == 42 && Moved->PowerReadyTurn == 6);
+            Moved && Moved->TilePowerTag == PowerTag && Moved->TileId == 42 && Moved->TilePowerReadyTurn == 6);
         TestFalse(TEXT("shift: and left nothing behind"), Board.GetTileData(FGridPosition(0, 0))->TilePowerTag.IsValid());
     }
 
@@ -3579,7 +3579,7 @@ bool FConnectItTilePowerDataTest::RunTest(const FString& Parameters)
         UConnectIt_TileCatalog* Bad = NewObject<UConnectIt_TileCatalog>();
         Bad->Tiles.Add(PowerTag, FConnectItTileCatalogEntry());
         FConnectItTileCatalogEntry Misnamed = MakeEntry(1);
-        Misnamed.Power.Name = PowerTag;
+        Misnamed.TilePower.Name = PowerTag;
         Bad->Tiles.Add(OtherTag, Misnamed);
         FDataValidationContext CatalogContext;
         TestEqual(TEXT("catalog validation: fails"), Bad->IsDataValid(CatalogContext), EDataValidationResult::Invalid);
@@ -3587,7 +3587,7 @@ bool FConnectItTilePowerDataTest::RunTest(const FString& Parameters)
             CatalogContext.GetNumErrors() == 3);
 
         UConnectIt_LevelDirector* Director = NewObject<UConnectIt_LevelDirector>();
-        Director->LevelWidePowers = { PowerTag, PowerTag, FGameplayTag() };
+        Director->LevelWideTilePowers = { PowerTag, PowerTag, FGameplayTag() };
         FDataValidationContext Context;
         Director->IsDataValid(Context);
         const auto Reported = [&Context](const TCHAR* Text)
@@ -3623,7 +3623,7 @@ bool FConnectItTilePowerChainTest::RunTest(const FString& Parameters)
 {
     // Stage 4 of tile powers: firing them in the after-move chain, with
     // test-only powers (the first real powers are designed separately)
-    using EPower = EConnectItPowerTrigger;
+    using EPower = EConnectItTilePowerTrigger;
     if (!TestTrue(TEXT("the test power tags exist"), FGameplayTag(TestPower5).IsValid()))
     {
         return false;
@@ -3673,17 +3673,17 @@ bool FConnectItTilePowerChainTest::RunTest(const FString& Parameters)
         const bool bOrder = Events.Events.Num() == 7
             && EventAt<FConnectItBoardEvent_PiecePlaced>(Events, 0)
             && EventAt<FConnectItBoardEvent_Scored>(Events, 1)
-            && EventAt<FConnectItBoardEvent_PowerTriggered>(Events, 2)
+            && EventAt<FConnectItBoardEvent_TilePowerTriggered>(Events, 2)
             && EventAt<FConnectItBoardEvent_PieceRemoved>(Events, 3)
             && EventAt<FConnectItBoardEvent_PiecePlaced>(Events, 4)
             && EventAt<FConnectItBoardEvent_Scored>(Events, 5)
-            && EventAt<FConnectItBoardEvent_PowerTriggered>(Events, 6);
+            && EventAt<FConnectItBoardEvent_TilePowerTriggered>(Events, 6);
         if (TestTrue(TEXT("chain: placed, scored, mover fired, moved, scored, second power fired"), bOrder))
         {
-            const auto* Mover = EventAt<FConnectItBoardEvent_PowerTriggered>(Events, 2);
-            const auto* Second = EventAt<FConnectItBoardEvent_PowerTriggered>(Events, 6);
+            const auto* Mover = EventAt<FConnectItBoardEvent_TilePowerTriggered>(Events, 2);
+            const auto* Second = EventAt<FConnectItBoardEvent_TilePowerTriggered>(Events, 6);
             TestTrue(TEXT("chain: the mover is the tile's power, for the scoring faction"),
-                Mover->PowerName == TestPower1 && Mover->Position == FGridPosition(2, 0) && Mover->Faction == 0 && !Mover->bNoEffect);
+                Mover->TilePowerName == TestPower1 && Mover->Position == FGridPosition(2, 0) && Mover->Faction == 0 && !Mover->bNoEffect);
             TestTrue(TEXT("chain: each event names its cause"),
                 EventAt<FConnectItBoardEvent_PiecePlaced>(Events, 0)->CauseIndex == INDEX_NONE
                 && EventAt<FConnectItBoardEvent_Scored>(Events, 1)->CauseIndex == INDEX_NONE
@@ -3692,7 +3692,7 @@ bool FConnectItTilePowerChainTest::RunTest(const FString& Parameters)
                 && EventAt<FConnectItBoardEvent_PiecePlaced>(Events, 4)->CauseIndex == 2
                 && EventAt<FConnectItBoardEvent_Scored>(Events, 5)->CauseIndex == 4
                 && Second->CauseIndex == 5);
-            TestTrue(TEXT("chain: the second power had nothing to do"), Second->PowerName == TestPower2 && Second->bNoEffect);
+            TestTrue(TEXT("chain: the second power had nothing to do"), Second->TilePowerName == TestPower2 && Second->bNoEffect);
         }
         TestTrue(TEXT("chain: before + events = after"), ReplaysTo(Board, Events, After));
     }
@@ -3743,7 +3743,7 @@ bool FConnectItTilePowerChainTest::RunTest(const FString& Parameters)
             TArray<FGameplayTag> Names;
             for (const auto* Triggered : PowersTriggered(Events))
             {
-                Names.Add(Triggered->PowerName);
+                Names.Add(Triggered->TilePowerName);
             }
             return MakeTuple(Names, PowersTriggered(Events).Num() == 1 ? PowersTriggered(Events)[0]->Faction : INDEX_NONE);
         };
@@ -3773,7 +3773,7 @@ bool FConnectItTilePowerChainTest::RunTest(const FString& Parameters)
         const auto First = PowersTriggered(Events);
         TestTrue(FString::Printf(TEXT("cooldown %d: fires, with no effect, ready again at turn %d"), Cooldown, 5 + Cooldown),
             First.Num() == 1 && First[0]->bNoEffect && First[0]->ReadyTurn == 5 + Cooldown
-            && TileAt(Fired, 0, 0).PowerReadyTurn == 5 + Cooldown);
+            && TileAt(Fired, 0, 0).TilePowerReadyTurn == 5 + Cooldown);
 
         for (int32 Later = 0; Later <= 2; Later++)
         {
@@ -3853,7 +3853,7 @@ bool FConnectItTilePowerChainTest::RunTest(const FString& Parameters)
             int32 Syncs = 0;
             for (const auto* Triggered : PowersTriggered(OutEvents))
             {
-                Syncs += Triggered->PowerName == TestPower5 ? 1 : 0;
+                Syncs += Triggered->TilePowerName == TestPower5 ? 1 : 0;
             }
             return Syncs;
         };
@@ -3993,12 +3993,12 @@ bool FConnectItTileLockTest::RunTest(const FString& Parameters)
         Lock(Board, 0, 1);
         Lock(Board, 1, 1);
         TestEqual(TEXT("legality: no placeable tile"),
-            FConnectItBoardOperation::GetLegality(ConnectIt_Game_PlacePiece, Board, 0), EConnectItMoveLegality::NoLegalMove);
+            FConnectItBoardOperation::GetLegality(ConnectIt_BoardOperation_PlacePiece, Board, 0), EConnectItMoveLegality::NoLegalMove);
         TestEqual(TEXT("legality: a swap is still possible"),
-            FConnectItBoardOperation::GetLegality(ConnectIt_Game_SwapPieces, Board, 0), EConnectItMoveLegality::Legal);
+            FConnectItBoardOperation::GetLegality(ConnectIt_BoardOperation_SwapPieces, Board, 0), EConnectItMoveLegality::Legal);
         Lock(Board, 1, 0);
         TestEqual(TEXT("legality: the only enemy piece is locked -- no swap"),
-            FConnectItBoardOperation::GetLegality(ConnectIt_Game_SwapPieces, Board, 0), EConnectItMoveLegality::NoLegalMove);
+            FConnectItBoardOperation::GetLegality(ConnectIt_BoardOperation_SwapPieces, Board, 0), EConnectItMoveLegality::NoLegalMove);
     }
 
     // --- The AI: an empty locked tile blocks a line ---
@@ -4019,7 +4019,7 @@ bool FConnectItTileLockTest::RunTest(const FString& Parameters)
         FConnectItTilePowerEffect_TestMove Move;
         Move.From = FIntPoint(1, 1);   // (0,0) + (1,1) = the locked (1,1)
         Move.To = FIntPoint(2, 0);
-        Rules.SetTilePowers({ MakeTestPower(TestPower1, EConnectItPowerTrigger::PieceEnter, Move) }, {});
+        Rules.SetTilePowers({ MakeTestPower(TestPower1, EConnectItTilePowerTrigger::PieceEnter, Move) }, {});
         FConnectItBoardState Board = MakeBoard(3);
         Board.GetTileDataMutable(FGridPosition(0, 0))->TilePowerTag = TestPower1;
         Place(Board, 1, 1, 1);
@@ -4042,7 +4042,7 @@ bool FConnectItChainedTilesTest::RunTest(const FString& Parameters)
     // Tile lock plan, Stage 2: a Chained tile (a Sync power) is locked exactly
     // while its partner has no piece; the partner is a per-tile link (tile id)
     FConnectItRuleSet Rules;
-    Rules.SetTilePowers({ MakeTestPower(ConnectIt_TilePower_Chained, EConnectItPowerTrigger::Sync, FConnectItTilePowerEffect_Chained()) }, {});
+    Rules.SetTilePowers({ MakeTestPower(ConnectIt_TilePower_Chained, EConnectItTilePowerTrigger::Sync, FConnectItTilePowerEffect_Chained()) }, {});
 
     // A 5x5 board with tile ids; Chained tiles at Chains, all naming the partner at (0,0)
     const auto MakeChainBoard = [](std::initializer_list<FGridPosition> Chains)
@@ -4088,7 +4088,7 @@ bool FConnectItChainedTilesTest::RunTest(const FString& Parameters)
         const FConnectItBoardChangeEvent Events = Settle(Seeded);
         TestTrue(TEXT("seed: the chained tile starts locked"), TileAt(Seeded, 4, 4).bIsLocked);
         TestTrue(TEXT("seed: Power Triggered, then Tile Lock Changed"), Events.Events.Num() == 2
-            && EventAt<FConnectItBoardEvent_PowerTriggered>(Events, 0) && EventAt<FConnectItBoardEvent_TileLockChanged>(Events, 1));
+            && EventAt<FConnectItBoardEvent_TilePowerTriggered>(Events, 0) && EventAt<FConnectItBoardEvent_TileLockChanged>(Events, 1));
         TestTrue(TEXT("seed: before + events = after"), ReplaysTo(Built, Events, Seeded));
 
         FConnectItBoardState WithPiece = MakeChainBoard({ C });
@@ -4113,7 +4113,7 @@ bool FConnectItChainedTilesTest::RunTest(const FString& Parameters)
         TestTrue(TEXT("chain: the partner emptied -- the piece goes, then the lock"),
             !Board.IsTileOccupied(C) && TileAt(Board, 4, 4).bIsLocked);
         TestTrue(TEXT("chain: removed, power, removed, locked"), Events.Events.Num() == 4
-            && EventAt<FConnectItBoardEvent_PieceRemoved>(Events, 0) && EventAt<FConnectItBoardEvent_PowerTriggered>(Events, 1)
+            && EventAt<FConnectItBoardEvent_PieceRemoved>(Events, 0) && EventAt<FConnectItBoardEvent_TilePowerTriggered>(Events, 1)
             && EventAt<FConnectItBoardEvent_PieceRemoved>(Events, 2) && EventAt<FConnectItBoardEvent_TileLockChanged>(Events, 3));
         TestTrue(TEXT("chain: before + events = after"), ReplaysTo(Before, Events, Board));
     }
@@ -4297,12 +4297,12 @@ bool FConnectItMoveAndMultiplierTest::RunTest(const FString& Parameters)
     // A tile type with limits: TestPower1, floor 0, ceiling 2; TestPower2, floor 2
     FConnectItRuleSet Rules;
     {
-        FConnectItTilePower Capped = MakeTestPower(TestPower1, EConnectItPowerTrigger::PieceEnter, FConnectItTilePowerEffect_Test());
+        FConnectItTilePower Capped = MakeTestPower(TestPower1, EConnectItTilePowerTrigger::PieceEnter, FConnectItTilePowerEffect_Test());
         Capped.MultiplierFloor = 0.f;
         Capped.MultiplierCeiling = 2.f;
-        FConnectItTilePower Floored = MakeTestPower(TestPower2, EConnectItPowerTrigger::PieceEnter, FConnectItTilePowerEffect_Test());
+        FConnectItTilePower Floored = MakeTestPower(TestPower2, EConnectItTilePowerTrigger::PieceEnter, FConnectItTilePowerEffect_Test());
         Floored.MultiplierFloor = 2.f;
-        FConnectItTilePower Silent = MakeTestPower(TestPower3, EConnectItPowerTrigger::PieceEnter, FConnectItTilePowerEffect_Test());
+        FConnectItTilePower Silent = MakeTestPower(TestPower3, EConnectItTilePowerTrigger::PieceEnter, FConnectItTilePowerEffect_Test());
         Silent.MultiplierFloor = 0.f;
         Silent.MultiplierCeiling = 0.f;
         Rules.SetTilePowers({ Capped, Floored, Silent }, {});
@@ -4418,7 +4418,7 @@ bool FConnectItMoveAndMultiplierTest::RunTest(const FString& Parameters)
 
         UConnectIt_TileCatalog* Catalog = NewObject<UConnectIt_TileCatalog>();
         FConnectItTileCatalogEntry Entry;
-        Entry.Power.MultiplierCeiling = 2.f;
+        Entry.TilePower.MultiplierCeiling = 2.f;
         Catalog->Tiles.Add(TestPower1, Entry);
         AConnectIt_BuilderTile* Builder = GetMutableDefault<AConnectIt_BuilderTile>();
         const FConnectItTileInitialData Saved = Builder->TileData;
@@ -4441,7 +4441,7 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(FConnectItPushAndVacuumTest,
 bool FConnectItPushAndVacuumTest::RunTest(const FString& Parameters)
 {
     // First tile powers plan, Stage 2: trigger sets, Push and Vacuum
-    using EPower = EConnectItPowerTrigger;
+    using EPower = EConnectItTilePowerTrigger;
     FConnectItTilePower Push = MakeTestPower(ConnectIt_TilePower_Push, EPower::Scoring, FConnectItTilePowerEffect_Push());
     FConnectItTilePower Vacuum = MakeTestPower(ConnectIt_TilePower_Vacuum, EPower::PieceExit, FConnectItTilePowerEffect_Vacuum());
     Vacuum.AddTrigger(EPower::Scoring);
@@ -4475,9 +4475,9 @@ bool FConnectItPushAndVacuumTest::RunTest(const FString& Parameters)
         UConnectIt_TileCatalog* Catalog = NewObject<UConnectIt_TileCatalog>();
         FConnectItTileCatalogEntry Entry;
         Entry.TileClass = AConnectIt_TileBase::StaticClass();
-        Entry.Power = MakeTestPower(TestPower1, EPower::Sync, FConnectItTilePowerEffect_Test());
-        Entry.Power.Name = FGameplayTag();
-        Entry.Power.AddTrigger(EPower::PieceEnter);
+        Entry.TilePower = MakeTestPower(TestPower1, EPower::Sync, FConnectItTilePowerEffect_Test());
+        Entry.TilePower.Name = FGameplayTag();
+        Entry.TilePower.AddTrigger(EPower::PieceEnter);
         Catalog->Tiles.Add(TestPower1, Entry);
         FDataValidationContext Context;
         TestEqual(TEXT("triggers: Sync with another trigger fails validation"), Catalog->IsDataValid(Context), EDataValidationResult::Invalid);
@@ -4588,13 +4588,13 @@ bool FConnectItPushAndVacuumTest::RunTest(const FString& Parameters)
     return true;
 }
 
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(FConnectItTurnStartPowersTest,
-    "ConnectIt.Board.TurnStartPowers", TestFlags)
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FConnectItTurnStartTilePowersTest,
+    "ConnectIt.Board.TurnStartTilePowers", TestFlags)
 
-bool FConnectItTurnStartPowersTest::RunTest(const FString& Parameters)
+bool FConnectItTurnStartTilePowersTest::RunTest(const FString& Parameters)
 {
     // First tile powers plan, Stage 3: Turn Start powers (a countdown) and Repel
-    FConnectItTilePower Repel = MakeTestPower(ConnectIt_TilePower_Repel, EConnectItPowerTrigger::TurnStart,
+    FConnectItTilePower Repel = MakeTestPower(ConnectIt_TilePower_Repel, EConnectItTilePowerTrigger::TurnStart,
         FConnectItTilePowerEffect_Repel(), /*CooldownTurns=*/3);
     FConnectItRuleSet Rules;
     Rules.SetTilePowers({ Repel }, {});
@@ -4604,7 +4604,7 @@ bool FConnectItTurnStartPowersTest::RunTest(const FString& Parameters)
     {
         Board.TurnNumber = Turn;
         FConnectItBoardChangeEvent Events;
-        if (Rules.HasTurnStartPowerReady(Board, Turn))
+        if (Rules.HasTurnStartTilePowerReady(Board, Turn))
         {
             FConnectItBoardOperation_TurnStart Operation = TurnStart;
             Operation.Faction = Turn % 2;
@@ -4624,7 +4624,7 @@ bool FConnectItTurnStartPowersTest::RunTest(const FString& Parameters)
         FConnectItBoardState Board = MakeBoard(5);
         FConnectItTileData* Tile = Board.GetTileDataMutable(FGridPosition(2, 2));
         Tile->TilePowerTag = ConnectIt_TilePower_Repel;
-        Tile->PowerReadyTurn = 3;   // built at turn 0
+        Tile->TilePowerReadyTurn = 3;   // built at turn 0
         Place(Board, 2, 2, 0);
 
         TArray<int32> FiredOn;
@@ -4638,10 +4638,10 @@ bool FConnectItTurnStartPowersTest::RunTest(const FString& Parameters)
         }
         TestTrue(TEXT("countdown: fires on turns 3 and 6"), FiredOn == TArray<int32>({ 3, 6 }));
         TestFalse(TEXT("countdown: the first time it moved the piece off"), Board.IsTileOccupied(FGridPosition(2, 2)));
-        TestEqual(TEXT("countdown: the second (no piece) still reset it"), TileAt(Board, 2, 2).PowerReadyTurn, 9);
+        TestEqual(TEXT("countdown: the second (no piece) still reset it"), TileAt(Board, 2, 2).TilePowerReadyTurn, 9);
         TestTrue(TEXT("countdown: before + events = after, each turn"), bReplays);
-        TestFalse(TEXT("countdown: nothing ready -- no turn-start change to make"), Rules.HasTurnStartPowerReady(Board, 8));
-        TestFalse(TEXT("countdown: no Turn Start powers -- none"), FConnectItRuleSet().HasTurnStartPowerReady(Board, 9));
+        TestFalse(TEXT("countdown: nothing ready -- no turn-start change to make"), Rules.HasTurnStartTilePowerReady(Board, 8));
+        TestFalse(TEXT("countdown: no Turn Start powers -- none"), FConnectItRuleSet().HasTurnStartTilePowerReady(Board, 9));
     }
 
     // --- The countdown starts when the tile joins the board ---
@@ -4656,19 +4656,19 @@ bool FConnectItTurnStartPowersTest::RunTest(const FString& Parameters)
         const FConnectItBoardState Before = Board;
         FConnectItBoardChangeEvent Events;
         Rules.CarryOutOperation(Add, Board, &Events);
-        TestEqual(TEXT("join: added at turn 5, first fires at turn 8"), TileAt(Board, 3, 0).PowerReadyTurn, 8);
+        TestEqual(TEXT("join: added at turn 5, first fires at turn 8"), TileAt(Board, 3, 0).TilePowerReadyTurn, 8);
         TestTrue(TEXT("join: before + events = after"), ReplaysTo(Before, Events, Board));
 
         UConnectIt_TileCatalog* Catalog = NewObject<UConnectIt_TileCatalog>();
         FConnectItTileCatalogEntry Entry;
-        Entry.Power = Repel;
+        Entry.TilePower = Repel;
         Catalog->Tiles.Add(ConnectIt_TilePower_Repel, Entry);
         AConnectIt_BuilderTile* Builder = GetMutableDefault<AConnectIt_BuilderTile>();
         const FConnectItTileInitialData Saved = Builder->TileData;
         ON_SCOPE_EXIT { Builder->TileData = Saved; };
         Builder->TileData.TilePowerTag = ConnectIt_TilePower_Repel;
         TestEqual(TEXT("join: built with the board, first fires at turn 3"),
-            UConnectIt_BoardStateComponent::MakeTileData(Builder, 2, 1.f, Catalog).PowerReadyTurn, 3);
+            UConnectIt_BoardStateComponent::MakeTileData(Builder, 2, 1.f, Catalog).TilePowerReadyTurn, 3);
     }
 
     // --- Repel: only to an open neighbour; boxed in, it stays ---
@@ -4750,7 +4750,7 @@ bool FConnectItTileHooksTest::RunTest(const FString& Parameters)
     {
         AConnectIt_TileBase* Tile = GetMutableDefault<AConnectIt_TileBase>();
         Finished = 0;
-        Tile->OnPowerTriggered(FConnectItBoardEvent_PowerTriggered(), MakeReaction());
+        Tile->OnTilePowerTriggered(FConnectItBoardEvent_TilePowerTriggered(), MakeReaction());
         Tile->OnPieceEnter(0, ConnectIt_Event_PiecePlaced, MakeReaction());
         Tile->OnPieceExit(0, ConnectIt_Event_PieceRemoved, MakeReaction());
         Tile->OnMultiplierChanged(2.f, MakeReaction());
@@ -4777,7 +4777,7 @@ bool FConnectItTileHooksTest::RunTest(const FString& Parameters)
     {
         const TArray<FGameplayTag> Handled = UConnectIt_TileVisualizer::GetHandledEventTags();
         TestTrue(TEXT("visualizer: power, pieces, multipliers, lock, active, chain"),
-            Handled.Contains(FGameplayTag(ConnectIt_Event_PowerTriggered)) && Handled.Contains(FGameplayTag(ConnectIt_Event_PieceMoved))
+            Handled.Contains(FGameplayTag(ConnectIt_Event_TilePowerTriggered)) && Handled.Contains(FGameplayTag(ConnectIt_Event_PieceMoved))
             && Handled.Contains(FGameplayTag(ConnectIt_Event_Scored)) && Handled.Contains(FGameplayTag(ConnectIt_Event_TileLockChanged))
             && Handled.Contains(FGameplayTag(ConnectIt_Event_ChainPartnerChanged)) && Handled.Num() == 12);
     }

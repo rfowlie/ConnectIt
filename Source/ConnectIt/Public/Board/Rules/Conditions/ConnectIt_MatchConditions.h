@@ -205,8 +205,8 @@ struct CONNECTIT_API FConnectItMatchCondition_NoLegalMove : public FConnectItMat
 {
     GENERATED_BODY()
 
-    // The kind of move (its request type, e.g. ConnectIt.Game.State.SwapPieces)
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Condition", meta = (Categories = "ConnectIt.Game.State"))
+    // The kind of move (its operation tag, e.g. ConnectIt.BoardOperation.SwapPieces)
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Condition", meta = (Categories = "ConnectIt.BoardOperation"))
     FGameplayTag Move;
 
     virtual bool IsMetFor(const FConnectItConditionContext& Context, int32 Faction) const override
@@ -221,7 +221,7 @@ struct CONNECTIT_API FConnectItMatchCondition_NoLegalMove : public FConnectItMat
         {
             OutWarnings.Add(FText::FromString(TEXT("No Legal Move: no Move set, so this condition never holds.")));
         }
-        else if (!FConnectItBoardOperation::GetAllRequestTypes().Contains(Move))
+        else if (!FConnectItBoardOperation::GetAllOperationTags().Contains(Move))
         {
             OutWarnings.Add(FText::FromString(FString::Printf(TEXT(
                 "No Legal Move: '%s' is not a kind of board move, so this condition never holds."),

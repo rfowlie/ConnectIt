@@ -291,7 +291,7 @@ struct CONNECTIT_API FConnectItBoardEvent_TilesAdded : public FConnectItBoardOpe
     // Each tile's power ready turn (a Turn Start power's countdown starts as
     // the tile joins), parallel to Cells
     UPROPERTY(BlueprintReadOnly, Category = "Event")
-    TArray<int32> PowerReadyTurns;
+    TArray<int32> TilePowerReadyTurns;
 
     virtual FGameplayTag GetEventTag() const override;
     virtual void ApplyTo(FConnectItBoardState& Board) const override;
@@ -469,7 +469,7 @@ struct CONNECTIT_API FConnectItBoardEvent_Scored : public FConnectItBoardResultE
 // effect found nothing to do (the power still shows and cools down). A Sync
 // power only appears when it changed something.
 USTRUCT(BlueprintType, meta = (DisplayName = "Power Triggered"))
-struct CONNECTIT_API FConnectItBoardEvent_PowerTriggered : public FConnectItBoardResultEvent
+struct CONNECTIT_API FConnectItBoardEvent_TilePowerTriggered : public FConnectItBoardResultEvent
 {
     GENERATED_BODY()
 
@@ -479,7 +479,7 @@ struct CONNECTIT_API FConnectItBoardEvent_PowerTriggered : public FConnectItBoar
 
     // Which power (ConnectIt.TilePower.*)
     UPROPERTY(BlueprintReadOnly, Category = "Event")
-    FGameplayTag PowerName;
+    FGameplayTag TilePowerName;
 
     // Whose change set it off -- the faction its effect acted for (-1: none)
     UPROPERTY(BlueprintReadOnly, Category = "Event")
@@ -489,7 +489,7 @@ struct CONNECTIT_API FConnectItBoardEvent_PowerTriggered : public FConnectItBoar
     bool bNoEffect = false;
 
     // Which of the rules' level-wide powers it was (FConnectItRuleSet::
-    // LevelWidePowers), or -1: the tile's own power
+    // LevelWideTilePowers), or -1: the tile's own power
     UPROPERTY(BlueprintReadOnly, Category = "Event")
     int32 LevelWideIndex = INDEX_NONE;
 

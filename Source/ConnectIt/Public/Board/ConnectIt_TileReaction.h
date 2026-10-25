@@ -10,7 +10,7 @@ class AConnectIt_TileBase;
 
 
 // One tile's reaction to one board event: handed to a tile hook
-// (AConnectIt_TileBase::OnPowerTriggered...) by the tile visualizer, which
+// (AConnectIt_TileBase::OnTilePowerTriggered...) by the tile visualizer, which
 // waits for every reaction it handed out before the event queue moves on.
 //
 // A hook that overrides must call Finish once its animation ends -- cache the

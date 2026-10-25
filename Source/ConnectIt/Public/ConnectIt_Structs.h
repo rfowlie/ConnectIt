@@ -71,7 +71,7 @@ struct FConnectItTileData
     // The first turn (FConnectItBoardState::TurnNumber) its power can fire
     // again after a cooldown
     UPROPERTY(BlueprintReadOnly)
-    int32 PowerReadyTurn = 0;
+    int32 TilePowerReadyTurn = 0;
 
     // A Chained tile's partner: the partner tile's TileId, or INDEX_NONE for
     // none. A per-tile link, set when the tile joins the board (from its
@@ -130,7 +130,7 @@ struct FConnectItBoardState
     UPROPERTY(BlueprintReadOnly)
     int32 NextTileId = 0;
 
-    // The first turn each level-wide power (FConnectItRuleSet::LevelWidePowers,
+    // The first turn each level-wide power (FConnectItRuleSet::LevelWideTilePowers,
     // same order) can fire again: a level-wide power cools down across the
     // whole board, not per tile. Empty until one fires.
     UPROPERTY(BlueprintReadOnly)
@@ -329,7 +329,7 @@ struct FConnectItBoardState
                 || Ours.bIsLocked != Theirs->bIsLocked
                 || Ours.TileId != Theirs->TileId
                 || Ours.TilePowerTag != Theirs->TilePowerTag
-                || Ours.PowerReadyTurn != Theirs->PowerReadyTurn
+                || Ours.TilePowerReadyTurn != Theirs->TilePowerReadyTurn
                 || Ours.ChainPartnerId != Theirs->ChainPartnerId)
             {
                 return false;

@@ -3,34 +3,37 @@
 
 #include "ConnectIt_GameplayTags.h"
 
-UE_DEFINE_GAMEPLAY_TAG_COMMENT(ConnectIt_Game_Pre, "ConnectIt.Game.Pre", "");
-UE_DEFINE_GAMEPLAY_TAG_COMMENT(ConnectIt_Game_Post, "ConnectIt.Game.Post", "");
+// --- Player actions (what a participant does on its turn; an action's tag) ---
+UE_DEFINE_GAMEPLAY_TAG_COMMENT(ConnectIt_PlayerAction_PlacePiece, "ConnectIt.PlayerAction.PlacePiece", "The Place Piece player action");
+UE_DEFINE_GAMEPLAY_TAG_COMMENT(ConnectIt_PlayerAction_SwapPiece, "ConnectIt.PlayerAction.SwapPiece", "The Swap player action");
+UE_DEFINE_GAMEPLAY_TAG_COMMENT(ConnectIt_PlayerAction_Shift, "ConnectIt.PlayerAction.Shift", "The Board Shift player action");
 
-UE_DEFINE_GAMEPLAY_TAG_COMMENT(ConnectIt_Game_SelectTile, "ConnectIt.Game.State.SelectTile", "");
-UE_DEFINE_GAMEPLAY_TAG_COMMENT(ConnectIt_Game_PlacePiece, "ConnectIt.Game.State.PlacePiece", "");
-UE_DEFINE_GAMEPLAY_TAG_COMMENT(ConnectIt_Game_UpdateBoard, "ConnectIt.Game.State.UpdateBoard", "");
+// --- Board operations (a change to the board; an operation's tag) ---
 
-UE_DEFINE_GAMEPLAY_TAG_COMMENT(ConnectIt_Game_DestroyTileMultiplier, "ConnectIt.Game.State.DestroyTileMultiplier", "");
-UE_DEFINE_GAMEPLAY_TAG_COMMENT(ConnectIt_Game_RemovePiece, "ConnectIt.Game.State.RemovePiece", "");
-UE_DEFINE_GAMEPLAY_TAG_COMMENT(ConnectIt_Game_SwapPieces, "ConnectIt.Game.State.SwapPieces", "");
-UE_DEFINE_GAMEPLAY_TAG_COMMENT(ConnectIt_Game_ForcePlacePiece, "ConnectIt.Game.State.ForcePlacePiece", "");
-UE_DEFINE_GAMEPLAY_TAG_COMMENT(ConnectIt_Game_ToggleTileActive, "ConnectIt.Game.State.ToggleTileActive", "");
-UE_DEFINE_GAMEPLAY_TAG_COMMENT(ConnectIt_Game_SetTileLocked, "ConnectIt.Game.State.SetTileLocked", "Lock or unlock a tile (FConnectItBoardOperation_SetTileLocked)");
-UE_DEFINE_GAMEPLAY_TAG_COMMENT(ConnectIt_Game_MovePiece, "ConnectIt.Game.State.MovePiece", "Move a piece to an empty tile, keeping its owner (FConnectItBoardOperation_MovePiece)");
-UE_DEFINE_GAMEPLAY_TAG_COMMENT(ConnectIt_Game_AdjustMultiplier, "ConnectIt.Game.State.AdjustMultiplier", "Change a tile's multiplier by an amount (FConnectItBoardOperation_AdjustMultiplier)");
-UE_DEFINE_GAMEPLAY_TAG_COMMENT(ConnectIt_Game_TurnStart, "ConnectIt.Game.State.TurnStart", "A turn started: the Turn Start tile powers that are ready fire (FConnectItBoardOperation_TurnStart)");
-UE_DEFINE_GAMEPLAY_TAG_COMMENT(ConnectIt_Game_SetChainPartner, "ConnectIt.Game.State.SetChainPartner", "Set or clear a Chained tile's partner (FConnectItBoardOperation_SetChainPartner)");
+
+UE_DEFINE_GAMEPLAY_TAG_COMMENT(ConnectIt_BoardOperation_PlacePiece, "ConnectIt.BoardOperation.PlacePiece", "");
+
+UE_DEFINE_GAMEPLAY_TAG_COMMENT(ConnectIt_BoardOperation_DestroyTileMultiplier, "ConnectIt.BoardOperation.DestroyTileMultiplier", "");
+UE_DEFINE_GAMEPLAY_TAG_COMMENT(ConnectIt_BoardOperation_RemovePiece, "ConnectIt.BoardOperation.RemovePiece", "");
+UE_DEFINE_GAMEPLAY_TAG_COMMENT(ConnectIt_BoardOperation_SwapPieces, "ConnectIt.BoardOperation.SwapPieces", "");
+UE_DEFINE_GAMEPLAY_TAG_COMMENT(ConnectIt_BoardOperation_ForcePlacePiece, "ConnectIt.BoardOperation.ForcePlacePiece", "");
+UE_DEFINE_GAMEPLAY_TAG_COMMENT(ConnectIt_BoardOperation_ToggleTileActive, "ConnectIt.BoardOperation.ToggleTileActive", "");
+UE_DEFINE_GAMEPLAY_TAG_COMMENT(ConnectIt_BoardOperation_SetTileLocked, "ConnectIt.BoardOperation.SetTileLocked", "Lock or unlock a tile (FConnectItBoardOperation_SetTileLocked)");
+UE_DEFINE_GAMEPLAY_TAG_COMMENT(ConnectIt_BoardOperation_MovePiece, "ConnectIt.BoardOperation.MovePiece", "Move a piece to an empty tile, keeping its owner (FConnectItBoardOperation_MovePiece)");
+UE_DEFINE_GAMEPLAY_TAG_COMMENT(ConnectIt_BoardOperation_AdjustMultiplier, "ConnectIt.BoardOperation.AdjustMultiplier", "Change a tile's multiplier by an amount (FConnectItBoardOperation_AdjustMultiplier)");
+UE_DEFINE_GAMEPLAY_TAG_COMMENT(ConnectIt_BoardOperation_TurnStart, "ConnectIt.BoardOperation.TurnStart", "A turn started: the Turn Start tile powers that are ready fire (FConnectItBoardOperation_TurnStart)");
+UE_DEFINE_GAMEPLAY_TAG_COMMENT(ConnectIt_BoardOperation_SetChainPartner, "ConnectIt.BoardOperation.SetChainPartner", "Set or clear a Chained tile's partner (FConnectItBoardOperation_SetChainPartner)");
 UE_DEFINE_GAMEPLAY_TAG_COMMENT(ConnectIt_TilePower_Push, "ConnectIt.TilePower.Push", "Push tile: pushes a neighbouring piece one tile away (FConnectItTilePowerEffect_Push)");
 UE_DEFINE_GAMEPLAY_TAG_COMMENT(ConnectIt_TilePower_Vacuum, "ConnectIt.TilePower.Vacuum", "Vacuum tile: pulls the nearest piece in some direction onto its empty tile (FConnectItTilePowerEffect_Vacuum)");
 UE_DEFINE_GAMEPLAY_TAG_COMMENT(ConnectIt_TilePower_Repel, "ConnectIt.TilePower.Repel", "Repel tile: on a countdown, moves its piece to an open neighbour (FConnectItTilePowerEffect_Repel)");
 UE_DEFINE_GAMEPLAY_TAG_COMMENT(ConnectIt_TilePower_Chained, "ConnectIt.TilePower.Chained", "Chained tile: locked while its partner has no piece (FConnectItTilePowerEffect_Chained, a Sync power)");
-UE_DEFINE_GAMEPLAY_TAG_COMMENT(ConnectIt_Game_CapturePiece, "ConnectIt.Game.State.CapturePiece", "");
-UE_DEFINE_GAMEPLAY_TAG_COMMENT(ConnectIt_Game_Shift, "ConnectIt.Game.State.Shift", "");
-UE_DEFINE_GAMEPLAY_TAG_COMMENT(ConnectIt_Game_ChangeGoals, "ConnectIt.Game.State.ChangeGoals", "Level only: a side's goals replaced mid-match (FConnectItBoardOperation_ChangeGoals)");
-UE_DEFINE_GAMEPLAY_TAG_COMMENT(ConnectIt_Game_RemoveTiles, "ConnectIt.Game.State.RemoveTiles", "Tiles taken off the board (FConnectItBoardOperation_RemoveTiles)");
-UE_DEFINE_GAMEPLAY_TAG_COMMENT(ConnectIt_Game_AddTiles, "ConnectIt.Game.State.AddTiles", "Tiles put on the board (FConnectItBoardOperation_AddTiles)");
-UE_DEFINE_GAMEPLAY_TAG_COMMENT(ConnectIt_Game_BeginPhase, "ConnectIt.Game.State.BeginPhase", "Level only: a phased level moves to a new phase (FConnectItBoardOperation_BeginPhase)");
-UE_DEFINE_GAMEPLAY_TAG_COMMENT(ConnectIt_Game_ChangeLayout, "ConnectIt.Game.State.ChangeLayout", "The board's tiles changed to a layout in one change (FConnectItBoardOperation_ChangeLayout)");
+UE_DEFINE_GAMEPLAY_TAG_COMMENT(ConnectIt_BoardOperation_CapturePiece, "ConnectIt.BoardOperation.CapturePiece", "");
+UE_DEFINE_GAMEPLAY_TAG_COMMENT(ConnectIt_BoardOperation_Shift, "ConnectIt.BoardOperation.Shift", "");
+UE_DEFINE_GAMEPLAY_TAG_COMMENT(ConnectIt_BoardOperation_ChangeGoals, "ConnectIt.BoardOperation.ChangeGoals", "Level only: a side's goals replaced mid-match (FConnectItBoardOperation_ChangeGoals)");
+UE_DEFINE_GAMEPLAY_TAG_COMMENT(ConnectIt_BoardOperation_RemoveTiles, "ConnectIt.BoardOperation.RemoveTiles", "Tiles taken off the board (FConnectItBoardOperation_RemoveTiles)");
+UE_DEFINE_GAMEPLAY_TAG_COMMENT(ConnectIt_BoardOperation_AddTiles, "ConnectIt.BoardOperation.AddTiles", "Tiles put on the board (FConnectItBoardOperation_AddTiles)");
+UE_DEFINE_GAMEPLAY_TAG_COMMENT(ConnectIt_BoardOperation_BeginPhase, "ConnectIt.BoardOperation.BeginPhase", "Level only: a phased level moves to a new phase (FConnectItBoardOperation_BeginPhase)");
+UE_DEFINE_GAMEPLAY_TAG_COMMENT(ConnectIt_BoardOperation_ChangeLayout, "ConnectIt.BoardOperation.ChangeLayout", "The board's tiles changed to a layout in one change (FConnectItBoardOperation_ChangeLayout)");
 
 UE_DEFINE_GAMEPLAY_TAG_COMMENT(ConnectIt_Tile_ValidHover, "ConnectIt.Tile.ValidHover", "");
 UE_DEFINE_GAMEPLAY_TAG_COMMENT(ConnectIt_Tile_InvalidHover, "ConnectIt.Tile.InvalidHover", "");
@@ -40,7 +43,7 @@ UE_DEFINE_GAMEPLAY_TAG_COMMENT(ConnectIt_Tile_Default, "ConnectIt.Tile.Default",
 UE_DEFINE_GAMEPLAY_TAG_COMMENT(ConnectIt_Event_PiecePlaced, "ConnectIt.Event.PiecePlaced", "");
 UE_DEFINE_GAMEPLAY_TAG_COMMENT(ConnectIt_Event_BoardSeeded, "ConnectIt.Event.BoardSeeded", "");
 UE_DEFINE_GAMEPLAY_TAG_COMMENT(ConnectIt_Event_Scored, "ConnectIt.Event.Scored", "Something scored as a result of a board change (see FConnectItBoardEvent_Scored)");
-UE_DEFINE_GAMEPLAY_TAG_COMMENT(ConnectIt_Event_PowerTriggered, "ConnectIt.Event.PowerTriggered", "A tile power fired (see FConnectItBoardEvent_PowerTriggered)");
+UE_DEFINE_GAMEPLAY_TAG_COMMENT(ConnectIt_Event_TilePowerTriggered, "ConnectIt.Event.TilePowerTriggered", "A tile power fired (see FConnectItBoardEvent_TilePowerTriggered)");
 UE_DEFINE_GAMEPLAY_TAG_COMMENT(ConnectIt_Event_PlayerWin, "ConnectIt.Event.PlayerWin", "");
 UE_DEFINE_GAMEPLAY_TAG_COMMENT(ConnectIt_Event_LoseConditionMet, "ConnectIt.Event.LoseConditionMet", "A faction met one of its lose conditions, so it has lost (see FConnectItBoardEvent_LoseConditionMet)");
 UE_DEFINE_GAMEPLAY_TAG_COMMENT(ConnectIt_Event_GoalsChanged, "ConnectIt.Event.GoalsChanged", "A side's goals were replaced mid-match (see FConnectItBoardEvent_GoalsChanged)");

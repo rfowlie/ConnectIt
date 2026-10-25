@@ -26,7 +26,7 @@ struct CONNECTIT_API FConnectItAdventureProgress
     UPROPERTY(BlueprintReadOnly, Category = "Adventure")
     TSet<FGuid> BrokenSeals;
 
-    // Shards per skill (ConnectIt.Action.*)
+    // Shards per skill (ConnectIt.PlayerAction.*)
     UPROPERTY(BlueprintReadOnly, Category = "Adventure")
     TMap<FGameplayTag, int32> Shards;
 

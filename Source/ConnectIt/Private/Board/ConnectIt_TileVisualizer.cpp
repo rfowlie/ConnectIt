@@ -17,7 +17,7 @@
 TArray<FGameplayTag> UConnectIt_TileVisualizer::GetHandledEventTags()
 {
     return {
-        ConnectIt_Event_PowerTriggered,
+        ConnectIt_Event_TilePowerTriggered,
         ConnectIt_Event_PiecePlaced,
         ConnectIt_Event_PiecesSwapped,
         ConnectIt_Event_PieceCaptured,
@@ -89,11 +89,11 @@ void UConnectIt_TileVisualizer::Dispatch(const FInstancedStruct& Payload)
         return Tile ? Tile->FactionPiece : INDEX_NONE;
     };
 
-    if (const auto* Triggered = Payload.GetPtr<FConnectItBoardEvent_PowerTriggered>())
+    if (const auto* Triggered = Payload.GetPtr<FConnectItBoardEvent_TilePowerTriggered>())
     {
         if (AConnectIt_TileBase* Tile = TileAt(Triggered->Position))
         {
-            Tile->OnPowerTriggered(*Triggered, MakeReaction(Tile));
+            Tile->OnTilePowerTriggered(*Triggered, MakeReaction(Tile));
         }
     }
     else if (const auto* Placed = Payload.GetPtr<FConnectItBoardEvent_PiecePlaced>())

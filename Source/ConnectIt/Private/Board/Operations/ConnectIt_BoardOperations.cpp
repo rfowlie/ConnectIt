@@ -23,11 +23,11 @@ namespace
 
 namespace
 {
-    // Every kind of board operation: its request type and a default instance
+    // Every kind of board operation: its operation tag and a default instance
     // to ask type-level questions of (HasAnyLegalInstance)
     struct FOperationCatalog
     {
-        TArray<FGameplayTag> RequestTypes;
+        TArray<FGameplayTag> OperationTags;
         TMap<FGameplayTag, FInstancedStruct> Defaults;
     };
 
@@ -47,11 +47,11 @@ namespace
 
                 FInstancedStruct Instance;
                 Instance.InitializeAs(*It);
-                const FGameplayTag RequestType = Instance.Get<FConnectItBoardOperation>().GetRequestType();
-                if (RequestType.IsValid() && !Found.Defaults.Contains(RequestType))
+                const FGameplayTag OperationTag = Instance.Get<FConnectItBoardOperation>().GetOperationTag();
+                if (OperationTag.IsValid() && !Found.Defaults.Contains(OperationTag))
                 {
-                    Found.RequestTypes.Add(RequestType);
-                    Found.Defaults.Add(RequestType, MoveTemp(Instance));
+                    Found.OperationTags.Add(OperationTag);
+                    Found.Defaults.Add(OperationTag, MoveTemp(Instance));
                 }
             }
             return Found;
@@ -60,15 +60,15 @@ namespace
     }
 }
 
-const TArray<FGameplayTag>& FConnectItBoardOperation::GetAllRequestTypes()
+const TArray<FGameplayTag>& FConnectItBoardOperation::GetAllOperationTags()
 {
-    return GetOperationCatalog().RequestTypes;
+    return GetOperationCatalog().OperationTags;
 }
 
 EConnectItMoveLegality FConnectItBoardOperation::GetLegality(
-    FGameplayTag RequestType, const FConnectItBoardState& Board, int32 ForFaction)
+    FGameplayTag OperationTag, const FConnectItBoardState& Board, int32 ForFaction)
 {
-    const FInstancedStruct* Default = GetOperationCatalog().Defaults.Find(RequestType);
+    const FInstancedStruct* Default = GetOperationCatalog().Defaults.Find(OperationTag);
     const FConnectItBoardOperation* Operation = Default ? Default->GetPtr<FConnectItBoardOperation>() : nullptr;
     return Operation ? Operation->HasAnyLegalInstance(Board, ForFaction) : EConnectItMoveLegality::Unknown;
 }
@@ -77,9 +77,9 @@ EConnectItMoveLegality FConnectItBoardOperation::GetLegality(
 // Place Piece
 // ---------------------------------------------------------------------------
 
-FGameplayTag FConnectItBoardOperation_PlacePiece::GetRequestType() const
+FGameplayTag FConnectItBoardOperation_PlacePiece::GetOperationTag() const
 {
-    return ConnectIt_Game_PlacePiece;
+    return ConnectIt_BoardOperation_PlacePiece;
 }
 
 bool FConnectItBoardOperation_PlacePiece::CanApply(const FConnectItBoardState& Board, FString* OutWhyNot) const
@@ -132,9 +132,9 @@ FString FConnectItBoardOperation_PlacePiece::Describe() const
 // Swap Pieces
 // ---------------------------------------------------------------------------
 
-FGameplayTag FConnectItBoardOperation_SwapPieces::GetRequestType() const
+FGameplayTag FConnectItBoardOperation_SwapPieces::GetOperationTag() const
 {
-    return ConnectIt_Game_SwapPieces;
+    return ConnectIt_BoardOperation_SwapPieces;
 }
 
 bool FConnectItBoardOperation_SwapPieces::CanApply(const FConnectItBoardState& Board, FString* OutWhyNot) const
@@ -220,9 +220,9 @@ FString FConnectItBoardOperation_SwapPieces::Describe() const
 // Shift
 // ---------------------------------------------------------------------------
 
-FGameplayTag FConnectItBoardOperation_Shift::GetRequestType() const
+FGameplayTag FConnectItBoardOperation_Shift::GetOperationTag() const
 {
-    return ConnectIt_Game_Shift;
+    return ConnectIt_BoardOperation_Shift;
 }
 
 bool FConnectItBoardOperation_Shift::CanApply(const FConnectItBoardState& Board, FString* OutWhyNot) const
@@ -356,9 +356,9 @@ FString FConnectItBoardOperation_Shift::Describe() const
 // Force Place Piece
 // ---------------------------------------------------------------------------
 
-FGameplayTag FConnectItBoardOperation_ForcePlacePiece::GetRequestType() const
+FGameplayTag FConnectItBoardOperation_ForcePlacePiece::GetOperationTag() const
 {
-    return ConnectIt_Game_ForcePlacePiece;
+    return ConnectIt_BoardOperation_ForcePlacePiece;
 }
 
 bool FConnectItBoardOperation_ForcePlacePiece::CanApply(const FConnectItBoardState& Board, FString* OutWhyNot) const
@@ -404,9 +404,9 @@ FString FConnectItBoardOperation_ForcePlacePiece::Describe() const
 // Capture Piece
 // ---------------------------------------------------------------------------
 
-FGameplayTag FConnectItBoardOperation_CapturePiece::GetRequestType() const
+FGameplayTag FConnectItBoardOperation_CapturePiece::GetOperationTag() const
 {
-    return ConnectIt_Game_CapturePiece;
+    return ConnectIt_BoardOperation_CapturePiece;
 }
 
 bool FConnectItBoardOperation_CapturePiece::CanApply(const FConnectItBoardState& Board, FString* OutWhyNot) const
@@ -461,9 +461,9 @@ FString FConnectItBoardOperation_CapturePiece::Describe() const
 // Remove Piece
 // ---------------------------------------------------------------------------
 
-FGameplayTag FConnectItBoardOperation_RemovePiece::GetRequestType() const
+FGameplayTag FConnectItBoardOperation_RemovePiece::GetOperationTag() const
 {
-    return ConnectIt_Game_RemovePiece;
+    return ConnectIt_BoardOperation_RemovePiece;
 }
 
 bool FConnectItBoardOperation_RemovePiece::CanApply(const FConnectItBoardState& Board, FString* OutWhyNot) const
@@ -519,9 +519,9 @@ FString FConnectItBoardOperation_RemovePiece::Describe() const
 // Destroy Tile Multiplier
 // ---------------------------------------------------------------------------
 
-FGameplayTag FConnectItBoardOperation_DestroyTileMultiplier::GetRequestType() const
+FGameplayTag FConnectItBoardOperation_DestroyTileMultiplier::GetOperationTag() const
 {
-    return ConnectIt_Game_DestroyTileMultiplier;
+    return ConnectIt_BoardOperation_DestroyTileMultiplier;
 }
 
 bool FConnectItBoardOperation_DestroyTileMultiplier::CanApply(const FConnectItBoardState& Board, FString* OutWhyNot) const
@@ -578,9 +578,9 @@ FString FConnectItBoardOperation_DestroyTileMultiplier::Describe() const
 // Toggle Tile Active
 // ---------------------------------------------------------------------------
 
-FGameplayTag FConnectItBoardOperation_ToggleTileActive::GetRequestType() const
+FGameplayTag FConnectItBoardOperation_ToggleTileActive::GetOperationTag() const
 {
-    return ConnectIt_Game_ToggleTileActive;
+    return ConnectIt_BoardOperation_ToggleTileActive;
 }
 
 bool FConnectItBoardOperation_ToggleTileActive::CanApply(const FConnectItBoardState& Board, FString* OutWhyNot) const
@@ -625,9 +625,9 @@ FString FConnectItBoardOperation_ToggleTileActive::Describe() const
 // Change Goals
 // ---------------------------------------------------------------------------
 
-FGameplayTag FConnectItBoardOperation_ChangeGoals::GetRequestType() const
+FGameplayTag FConnectItBoardOperation_ChangeGoals::GetOperationTag() const
 {
-    return ConnectIt_Game_ChangeGoals;
+    return ConnectIt_BoardOperation_ChangeGoals;
 }
 
 bool FConnectItBoardOperation_ChangeGoals::CanApply(const FConnectItBoardState& Board, FString* OutWhyNot) const
@@ -698,9 +698,9 @@ FString FConnectItBoardOperation_ChangeGoals::Describe() const
 // Begin Phase
 // ---------------------------------------------------------------------------
 
-FGameplayTag FConnectItBoardOperation_BeginPhase::GetRequestType() const
+FGameplayTag FConnectItBoardOperation_BeginPhase::GetOperationTag() const
 {
-    return ConnectIt_Game_BeginPhase;
+    return ConnectIt_BoardOperation_BeginPhase;
 }
 
 bool FConnectItBoardOperation_BeginPhase::CanApply(const FConnectItBoardState& Board, FString* OutWhyNot) const
@@ -849,9 +849,9 @@ namespace
 
             // A Turn Start power's countdown starts now
             const FConnectItTilePower* Power = OutChanges.Rules ? OutChanges.Rules->FindTilePower(TileData.TilePowerTag) : nullptr;
-            if (Power && Power->HasTrigger(EConnectItPowerTrigger::TurnStart))
+            if (Power && Power->HasTrigger(EConnectItTilePowerTrigger::TurnStart))
             {
-                TileData.PowerReadyTurn = Board.TurnNumber + Power->CooldownTurns;
+                TileData.TilePowerReadyTurn = Board.TurnNumber + Power->CooldownTurns;
             }
 
             const int32 TileId = Board.AddTile(Cell.Position, TileData);
@@ -865,7 +865,7 @@ namespace
             }
             OutEvent.Cells.Add(Added);
             OutEvent.TileIds.Add(TileId);
-            OutEvent.PowerReadyTurns.Add(TileData.PowerReadyTurn);
+            OutEvent.TilePowerReadyTurns.Add(TileData.TilePowerReadyTurn);
         }
 
         // Partners once every cell is a tile (a partner can be one added alongside)
@@ -889,9 +889,9 @@ namespace
     }
 }
 
-FGameplayTag FConnectItBoardOperation_RemoveTiles::GetRequestType() const
+FGameplayTag FConnectItBoardOperation_RemoveTiles::GetOperationTag() const
 {
-    return ConnectIt_Game_RemoveTiles;
+    return ConnectIt_BoardOperation_RemoveTiles;
 }
 
 bool FConnectItBoardOperation_RemoveTiles::CanApply(const FConnectItBoardState& Board, FString* OutWhyNot) const
@@ -922,9 +922,9 @@ FString FConnectItBoardOperation_RemoveTiles::Describe() const
     return PositionsText(Positions);
 }
 
-FGameplayTag FConnectItBoardOperation_AddTiles::GetRequestType() const
+FGameplayTag FConnectItBoardOperation_AddTiles::GetOperationTag() const
 {
-    return ConnectIt_Game_AddTiles;
+    return ConnectIt_BoardOperation_AddTiles;
 }
 
 bool FConnectItBoardOperation_AddTiles::CanApply(const FConnectItBoardState& Board, FString* OutWhyNot) const
@@ -961,9 +961,9 @@ void FConnectItBoardOperation_ChangeLayout::SetDiff(const FConnectItBoardLayoutD
     AddCells = Diff.Added;
 }
 
-FGameplayTag FConnectItBoardOperation_ChangeLayout::GetRequestType() const
+FGameplayTag FConnectItBoardOperation_ChangeLayout::GetOperationTag() const
 {
-    return ConnectIt_Game_ChangeLayout;
+    return ConnectIt_BoardOperation_ChangeLayout;
 }
 
 bool FConnectItBoardOperation_ChangeLayout::CanApply(const FConnectItBoardState& Board, FString* OutWhyNot) const
@@ -1007,9 +1007,9 @@ FString FConnectItBoardOperation_ChangeLayout::Describe() const
 // Set Tile Locked
 // ---------------------------------------------------------------------------
 
-FGameplayTag FConnectItBoardOperation_SetTileLocked::GetRequestType() const
+FGameplayTag FConnectItBoardOperation_SetTileLocked::GetOperationTag() const
 {
-    return ConnectIt_Game_SetTileLocked;
+    return ConnectIt_BoardOperation_SetTileLocked;
 }
 
 bool FConnectItBoardOperation_SetTileLocked::CanApply(const FConnectItBoardState& Board, FString* OutWhyNot) const
@@ -1058,9 +1058,9 @@ FString FConnectItBoardOperation_SetTileLocked::Describe() const
 // Set Chain Partner
 // ---------------------------------------------------------------------------
 
-FGameplayTag FConnectItBoardOperation_SetChainPartner::GetRequestType() const
+FGameplayTag FConnectItBoardOperation_SetChainPartner::GetOperationTag() const
 {
-    return ConnectIt_Game_SetChainPartner;
+    return ConnectIt_BoardOperation_SetChainPartner;
 }
 
 bool FConnectItBoardOperation_SetChainPartner::CanApply(const FConnectItBoardState& Board, FString* OutWhyNot) const
@@ -1110,9 +1110,9 @@ FString FConnectItBoardOperation_SetChainPartner::Describe() const
 // Move Piece
 // ---------------------------------------------------------------------------
 
-FGameplayTag FConnectItBoardOperation_MovePiece::GetRequestType() const
+FGameplayTag FConnectItBoardOperation_MovePiece::GetOperationTag() const
 {
-    return ConnectIt_Game_MovePiece;
+    return ConnectIt_BoardOperation_MovePiece;
 }
 
 bool FConnectItBoardOperation_MovePiece::CanApply(const FConnectItBoardState& Board, FString* OutWhyNot) const
@@ -1167,9 +1167,9 @@ FString FConnectItBoardOperation_MovePiece::Describe() const
 // Adjust Multiplier
 // ---------------------------------------------------------------------------
 
-FGameplayTag FConnectItBoardOperation_AdjustMultiplier::GetRequestType() const
+FGameplayTag FConnectItBoardOperation_AdjustMultiplier::GetOperationTag() const
 {
-    return ConnectIt_Game_AdjustMultiplier;
+    return ConnectIt_BoardOperation_AdjustMultiplier;
 }
 
 bool FConnectItBoardOperation_AdjustMultiplier::CanApply(const FConnectItBoardState& Board, FString* OutWhyNot) const
@@ -1222,9 +1222,9 @@ FString FConnectItBoardOperation_AdjustMultiplier::Describe() const
 // Turn Start
 // ---------------------------------------------------------------------------
 
-FGameplayTag FConnectItBoardOperation_TurnStart::GetRequestType() const
+FGameplayTag FConnectItBoardOperation_TurnStart::GetOperationTag() const
 {
-    return ConnectIt_Game_TurnStart;
+    return ConnectIt_BoardOperation_TurnStart;
 }
 
 void FConnectItBoardOperation_TurnStart::Apply(

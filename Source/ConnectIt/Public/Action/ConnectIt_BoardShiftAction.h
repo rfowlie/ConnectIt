@@ -31,8 +31,11 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Action|Tags")
 	FGameplayTag TagActionMouseHover;
 
-	// Server-side check that a request's ActionTag matches its RequestType
-	virtual bool ProducesRequestType_Implementation(FGameplayTag RequestType) const override;
+	// Server-side check that a request's ActionTag matches its OperationTag
+	virtual bool ProducesRequestType_Implementation(FGameplayTag OperationTag) const override;
+
+    // Its player action tag (ConnectIt.PlayerAction.*)
+    virtual FGameplayTag GetActionTag_Implementation() const override;
 
 	// How many places along the shift direction a shift by this action moves
 	// the line (counted in shiftable tiles -- a fixed tile is jumped over, not

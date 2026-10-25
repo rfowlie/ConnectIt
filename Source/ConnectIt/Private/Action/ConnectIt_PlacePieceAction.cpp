@@ -15,9 +15,14 @@
 #include "Turn/Participant/TurnBasedParticipantComponent.h"
 
 
-bool UConnectIt_PlacePieceAction::ProducesRequestType_Implementation(FGameplayTag RequestType) const
+bool UConnectIt_PlacePieceAction::ProducesRequestType_Implementation(FGameplayTag OperationTag) const
 {
-    return RequestType == ConnectIt_Game_PlacePiece;
+    return OperationTag == ConnectIt_BoardOperation_PlacePiece;
+}
+
+FGameplayTag UConnectIt_PlacePieceAction::GetActionTag_Implementation() const
+{
+    return ConnectIt_PlayerAction_PlacePiece;
 }
 
 UConnectIt_PlacePieceAction::UConnectIt_PlacePieceAction()

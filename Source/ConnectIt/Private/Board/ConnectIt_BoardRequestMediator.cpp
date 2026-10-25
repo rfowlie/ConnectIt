@@ -39,49 +39,56 @@ bool UConnectIt_BoardRequestMediator::ProcessRequest(const FTurnActionRequest& R
             *Request.ActionTag.ToString());
         return false;
     }
-    const FGameplayTag RequestType = Requested->GetRequestType();
+    const FGameplayTag OperationTag = Requested->GetOperationTag();
 
-    // Every board-change request is spent against an action in the requester's
-    // loadout, and the requester's PlayerState holds the authoritative
-    // per-action state. There is no ungated path: a player with no action
-    // state (e.g. the PlayerState was never seeded) can do nothing.
-    // RequestingFaction is the server's own knowledge of who sent this.
+    // Every board-change request is spent against one of the requester's
+    // actions -- a permanent use, or an item use (bIsItemUse: an item from the
+    // inventory and the match's item budget) -- and the requester's
+    // PlayerState holds the authoritative state. There is no ungated path: a
+    // player with no action state (e.g. the PlayerState was never seeded) can
+    // do nothing. RequestingFaction is the server's own knowledge of who sent
+    // this; bIsItemUse is client-supplied, so the item path is checked like
+    // the permanent one.
     AConnectIt_PlayerState* PlayerState = RequestingFaction >= 0
         ? UConnectIt_GameUtilityLibrary::GetPlayerStateForFaction(this, RequestingFaction)
         : nullptr;
+    const bool bItemUse = Request.bIsItemUse;
 
-    if (!IsValid(PlayerState) || !PlayerState->HasActionConfig())
+    if (!IsValid(PlayerState) || (!bItemUse && !PlayerState->HasActionConfig()))
     {
         UE_LOG(LogTemp, Error,
             TEXT("ConnectIt_BoardRequestMediator: request '%s' rejected -- "
                  "faction %d has no action state (PlayerState missing, or not "
                  "seeded with any permanent actions)"),
-            *RequestType.ToString(), RequestingFaction);
+            *OperationTag.ToString(), RequestingFaction);
         return false;
     }
 
-    // ActionTag is client-supplied: it must name an action in this player's
-    // loadout, that action must be allowed to send this kind of operation,
-    // and the player must currently be able to use it.
-    const TSubclassOf<UTurnBasedPlayerAction> ActionClass =
-        PlayerState->FindActionClassByTag(Request.ActionTag);
+    // ActionTag is client-supplied: it must name one of this player's
+    // permanent actions (or, for an item use, a held item action), that
+    // action must be allowed to send this kind of operation, and the player
+    // must currently be able to use it.
+    const TSubclassOf<UTurnBasedPlayerAction> ActionClass = bItemUse
+        ? PlayerState->FindItemActionClassByTag(Request.ActionTag)
+        : PlayerState->FindActionClassByTag(Request.ActionTag);
     if (!ActionClass)
     {
         UE_LOG(LogTemp, Warning,
             TEXT("ConnectIt_BoardRequestMediator: request '%s' rejected -- "
-                 "ActionTag '%s' is not in faction %d's loadout"),
-            *RequestType.ToString(),
-            *Request.ActionTag.ToString(), RequestingFaction);
+                 "ActionTag '%s' is not one of faction %d's %s"),
+            *OperationTag.ToString(),
+            *Request.ActionTag.ToString(), RequestingFaction,
+            bItemUse ? TEXT("held item actions") : TEXT("permanent actions"));
         return false;
     }
 
     const UTurnBasedPlayerAction* DefaultAction = ActionClass->GetDefaultObject<UTurnBasedPlayerAction>();
-    if (!IsValid(DefaultAction) || !DefaultAction->ProducesRequestType(RequestType))
+    if (!IsValid(DefaultAction) || !DefaultAction->ProducesRequestType(OperationTag))
     {
         UE_LOG(LogTemp, Warning,
             TEXT("ConnectIt_BoardRequestMediator: request '%s' rejected -- "
-                 "action '%s' does not produce that request type"),
-            *RequestType.ToString(), *ActionClass->GetName());
+                 "action '%s' does not produce that operation tag"),
+            *OperationTag.ToString(), *ActionClass->GetName());
         return false;
     }
 
@@ -97,20 +104,21 @@ bool UConnectIt_BoardRequestMediator::ProcessRequest(const FTurnActionRequest& R
             UE_LOG(LogTemp, Warning,
                 TEXT("ConnectIt_BoardRequestMediator: request '%s' rejected -- "
                      "shift of %d step(s) but action '%s' grants %d"),
-                *RequestType.ToString(), Shift->Steps, *ActionClass->GetName(),
+                *OperationTag.ToString(), Shift->Steps, *ActionClass->GetName(),
                 ShiftAction ? ShiftAction->ShiftSteps : 0);
             return false;
         }
     }
 
-    if (!PlayerState->CanUseAction(ActionClass))
+    if (bItemUse ? !PlayerState->CanUseItem(ActionClass) : !PlayerState->CanUseAction(ActionClass))
     {
         UE_LOG(LogTemp, Warning,
             TEXT("ConnectIt_BoardRequestMediator: request '%s' rejected -- "
-                 "faction %d cannot use '%s' right now (no uses left, "
-                 "per-turn cap reached, or on cooldown)"),
-            *RequestType.ToString(), RequestingFaction,
-            *ActionClass->GetName());
+                 "faction %d cannot use '%s' right now (%s)"),
+            *OperationTag.ToString(), RequestingFaction,
+            *ActionClass->GetName(),
+            bItemUse ? TEXT("no item held, or no item budget left")
+                     : TEXT("no uses left, per-turn cap reached, or on cooldown"));
         return false;
     }
 
@@ -120,7 +128,7 @@ bool UConnectIt_BoardRequestMediator::ProcessRequest(const FTurnActionRequest& R
     // never burn one on a request rejected above or by its handler.
     if (bSucceeded)
     {
-        if (!PlayerState->ConsumeActionUse(ActionClass))
+        if (bItemUse ? !PlayerState->ConsumeItemUse(ActionClass) : !PlayerState->ConsumeActionUse(ActionClass))
         {
             UE_LOG(LogTemp, Error,
                 TEXT("ConnectIt_BoardRequestMediator: '%s' committed but its "
@@ -143,7 +151,7 @@ bool UConnectIt_BoardRequestMediator::ProcessLevelOperation(const FInstancedStru
     }
 
     UE_LOG(LogTemp, Log, TEXT("ConnectIt_BoardRequestMediator: level operation '%s' %s as faction %d"),
-        *Requested->GetRequestType().ToString(), *Requested->Describe(), AsFaction);
+        *Requested->GetOperationTag().ToString(), *Requested->Describe(), AsFaction);
     return DispatchRequest(Operation, AsFaction);
 }
 
@@ -182,7 +190,7 @@ bool UConnectIt_BoardRequestMediator::DispatchRequest(
     FConnectItBoardOperation& Operation = *OperationPtr;
     Operation.Faction = RequestingFaction;
 
-    const FGameplayTag RequestType = Operation.GetRequestType();
+    const FGameplayTag OperationTag = Operation.GetOperationTag();
 
     // May this be done to the board as it stands?
     FString WhyNot;
@@ -191,7 +199,7 @@ bool UConnectIt_BoardRequestMediator::DispatchRequest(
         UE_LOG(LogTemp, Warning,
             TEXT("ConnectIt_BoardRequestMediator: '%s' by faction %d rejected "
                  "-- %s"),
-            *RequestType.ToString(), Operation.Faction, *WhyNot);
+            *OperationTag.ToString(), Operation.Faction, *WhyNot);
         return false;
     }
 
@@ -234,7 +242,7 @@ bool UConnectIt_BoardRequestMediator::DispatchRequest(
 
     UE_LOG(LogTemp, Log,
         TEXT("ConnectIt_BoardRequestMediator: '%s' %s by faction %d (scored %.0f)"),
-        *RequestType.ToString(), *Operation.Describe(), Operation.Faction, PointsScored);
+        *OperationTag.ToString(), *Operation.Describe(), Operation.Faction, PointsScored);
 
     BoardState->SetBoardState(NewState, ChangeEvent);
     return true;

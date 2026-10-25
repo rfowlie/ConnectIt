@@ -45,15 +45,15 @@ struct CONNECTIT_API FConnectItMinMaxSearchSettings
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "MinMax")
     FConnectItMinMaxOrderingWeights OrderingWeights;
 
-    // The kinds of move (request types) the searching side may use. Empty =
-    // what it may do right now (the decision context's AvailableRequestTypes).
+    // The kinds of move (operation tags) the searching side may use. Empty =
+    // what it may do right now (the decision context's AvailableOperationTags).
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "MinMax")
-    FGameplayTagContainer OwnRequestTypes;
+    FGameplayTagContainer OwnOperationTags;
 
     // The kinds of move the search assumes the opponent may reply with.
     // Empty = whatever the opponent's loadout grants.
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "MinMax")
-    FGameplayTagContainer OpponentRequestTypes;
+    FGameplayTagContainer OpponentOperationTags;
 };
 
 // One move the search ranked
@@ -140,7 +140,7 @@ namespace ConnectItMinMaxSearch
     };
 
     // The kinds of move the search can model at all (today: Place Piece)
-    CONNECTIT_API FGameplayTagContainer GetModelledRequestTypes();
+    CONNECTIT_API FGameplayTagContainer GetModelledOperationTags();
 
     // Builds everything the search reads, as plain data. False (with a
     // reason) if it can't search: not two factions, or no move the search can

@@ -103,7 +103,7 @@ public:
     // in firing order: their tags -- the level's tile catalog defines them.
     // Copied into the match's rules when it starts.
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Level|Tile Powers", meta = (Categories = "ConnectIt.TilePower"))
-    TArray<FGameplayTag> LevelWidePowers;
+    TArray<FGameplayTag> LevelWideTilePowers;
 
     // --- Triggers ---
 

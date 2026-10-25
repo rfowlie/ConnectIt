@@ -73,12 +73,13 @@ bool ATurnBasedPlayerState::AreTurnEndRequirementsMet(const UActionLoadoutDataAs
 
     // Each Action Used leaf compares its action's permanent uses this turn
     // against its own required count; each Item Used leaf, the item uses
-    const FTurnEndUses Uses{
-        [this](const FGameplayTag& ActionTag) -> int32
-        {
-            return GetActionUsesThisTurnByTag(ActionTag);
-        },
-        ItemUsesThisTurn };
+    // A named lambda: FTurnEndUses only references it (TFunctionRef), so it
+    // must outlive the evaluation -- a temporary would dangle
+    const auto ActionUsesThisTurn = [this](const FGameplayTag& ActionTag) -> int32
+    {
+        return GetActionUsesThisTurnByTag(ActionTag);
+    };
+    const FTurnEndUses Uses{ ActionUsesThisTurn, ItemUsesThisTurn };
     return InLoadout->TurnEndRequirements->IsSatisfied(Uses);
 }
 
@@ -240,6 +241,17 @@ int32 ATurnBasedPlayerState::GetItemCount(TSubclassOf<UTurnBasedPlayerAction> Ac
 {
 	const FItemActionEntry* Entry = FindEntry(Inventory, ActionClass);
 	return Entry ? Entry->Count : 0;
+}
+
+TSubclassOf<UTurnBasedPlayerAction> ATurnBasedPlayerState::FindItemActionClassByTag(FGameplayTag ActionTag) const
+{
+	if (!ActionTag.IsValid()) return nullptr;
+
+	for (const FItemActionEntry& E : Inventory)
+	{
+		if (UTurnBasedPlayerAction::GetTagForClass(E.ActionClass) == ActionTag) return E.ActionClass;
+	}
+	return nullptr;
 }
 
 bool ATurnBasedPlayerState::HasItemBudgetLeft() const

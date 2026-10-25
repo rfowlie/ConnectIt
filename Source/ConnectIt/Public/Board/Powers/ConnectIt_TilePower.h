@@ -18,7 +18,7 @@ struct FConnectItRuleSet;
 // changes it only when the board calls for it. See the vault's
 // design/tile-power-triggers.md.
 UENUM(BlueprintType)
-enum class EConnectItPowerTrigger : uint8
+enum class EConnectItTilePowerTrigger : uint8
 {
     // A piece arrived at the tile (placed, swapped in)
     PieceEnter,
@@ -96,8 +96,8 @@ struct CONNECTIT_API FConnectItTilePower
 
     // What sets it off: one or more triggers (a Vacuum tile: Piece Exit and
     // Scoring). Sync stays on its own -- a Sync power has no other trigger.
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Power", meta = (Bitmask, BitmaskEnum = "/Script/ConnectIt.EConnectItPowerTrigger"))
-    int32 Triggers = 1 << static_cast<int32>(EConnectItPowerTrigger::PieceEnter);
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Power", meta = (Bitmask, BitmaskEnum = "/Script/ConnectIt.EConnectItTilePowerTrigger"))
+    int32 Triggers = 1 << static_cast<int32>(EConnectItTilePowerTrigger::PieceEnter);
 
     // The gate: the tile's multiplier must be at least this for the power to
     // fire. 0 = no gate.
@@ -126,15 +126,15 @@ struct CONNECTIT_API FConnectItTilePower
 
     bool IsSet() const { return Name.IsValid(); }
 
-    bool HasTrigger(EConnectItPowerTrigger Trigger) const
+    bool HasTrigger(EConnectItTilePowerTrigger Trigger) const
     {
         return (Triggers & (1 << static_cast<int32>(Trigger))) != 0;
     }
 
     // Only Trigger (replacing any others)
-    void SetTrigger(EConnectItPowerTrigger Trigger) { Triggers = 1 << static_cast<int32>(Trigger); }
+    void SetTrigger(EConnectItTilePowerTrigger Trigger) { Triggers = 1 << static_cast<int32>(Trigger); }
 
-    void AddTrigger(EConnectItPowerTrigger Trigger) { Triggers |= 1 << static_cast<int32>(Trigger); }
+    void AddTrigger(EConnectItTilePowerTrigger Trigger) { Triggers |= 1 << static_cast<int32>(Trigger); }
 
     // Value within a tile type's multiplier limits: Power's, or a plain
     // tile's (null: floor 1, no ceiling)

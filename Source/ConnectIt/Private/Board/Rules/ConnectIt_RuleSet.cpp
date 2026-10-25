@@ -5,7 +5,7 @@
 #include "Board/Events/ConnectIt_BoardEvents.h"
 #include "Board/Operations/ConnectIt_BoardOperation.h"
 #include "Board/Rules/Conditions/ConnectIt_MatchConditionAsset.h"
-#include "Board/Powers/ConnectIt_PowerChain.h"
+#include "Board/Powers/ConnectIt_TilePowerChain.h"
 
 
 namespace
@@ -76,7 +76,7 @@ void FConnectItRuleSet::SetTilePowers(const TArray<FConnectItTilePower>& Powers,
         TilePowers.Add(Power);
     }
 
-    LevelWidePowers.Reset(LevelWide.Num());
+    LevelWideTilePowers.Reset(LevelWide.Num());
     for (const FGameplayTag& Name : LevelWide)
     {
         if (!FindTilePower(Name))
@@ -85,23 +85,23 @@ void FConnectItRuleSet::SetTilePowers(const TArray<FConnectItTilePower>& Powers,
                 TEXT("ConnectIt_RuleSet: level-wide power %s isn't in the tile catalog -- skipped"), *Name.ToString());
             continue;
         }
-        if (LevelWidePowers.Contains(Name))
+        if (LevelWideTilePowers.Contains(Name))
         {
             UE_LOG(LogTemp, Warning, TEXT("ConnectIt_RuleSet: level-wide power %s is listed twice -- the second skipped"),
                 *Name.ToString());
             continue;
         }
-        LevelWidePowers.Add(Name);
+        LevelWideTilePowers.Add(Name);
     }
 }
 
-bool FConnectItRuleSet::HasTurnStartPowerReady(const FConnectItBoardState& Board, int32 TurnNumber) const
+bool FConnectItRuleSet::HasTurnStartTilePowerReady(const FConnectItBoardState& Board, int32 TurnNumber) const
 {
-    for (int32 Index = 0; Index < LevelWidePowers.Num(); Index++)
+    for (int32 Index = 0; Index < LevelWideTilePowers.Num(); Index++)
     {
-        const FConnectItTilePower* Power = FindTilePower(LevelWidePowers[Index]);
+        const FConnectItTilePower* Power = FindTilePower(LevelWideTilePowers[Index]);
         const int32 ReadyTurn = Board.LevelWideReadyTurns.IsValidIndex(Index) ? Board.LevelWideReadyTurns[Index] : 0;
-        if (Power && Power->HasTrigger(EConnectItPowerTrigger::TurnStart) && TurnNumber >= ReadyTurn && Board.NumTiles() > 0)
+        if (Power && Power->HasTrigger(EConnectItTilePowerTrigger::TurnStart) && TurnNumber >= ReadyTurn && Board.NumTiles() > 0)
         {
             return true;
         }
@@ -109,7 +109,7 @@ bool FConnectItRuleSet::HasTurnStartPowerReady(const FConnectItBoardState& Board
     for (const FConnectItTileData& Tile : Board.TileDataArray)
     {
         const FConnectItTilePower* Power = FindTilePower(Tile.TilePowerTag);
-        if (Power && Power->HasTrigger(EConnectItPowerTrigger::TurnStart) && TurnNumber >= Tile.PowerReadyTurn)
+        if (Power && Power->HasTrigger(EConnectItTilePowerTrigger::TurnStart) && TurnNumber >= Tile.TilePowerReadyTurn)
         {
             return true;
         }
@@ -207,7 +207,7 @@ float FConnectItRuleSet::ResolveBoardChange(
     float TotalPoints = 0.f;
 
     // This action's tile powers (with none, only scoring runs and nothing is copied)
-    FConnectItPowerChain Powers(*this, Board, OutEvents);
+    FConnectItTilePowerChain Powers(*this, Board, OutEvents);
 
     // What the last step changed: the operation's record, then each pass's
     FConnectItBoardChanges Next;
@@ -217,7 +217,7 @@ float FConnectItRuleSet::ResolveBoardChange(
     {
         // 1. Settle: the pre-scoring powers Step sets off, until quiet, adding
         //    what they changed (and brought in) to what is scored
-        if (Powers.HasPowers())
+        if (Powers.HasTilePowers())
         {
             Settled = *Step;
             Powers.Settle(Settled);

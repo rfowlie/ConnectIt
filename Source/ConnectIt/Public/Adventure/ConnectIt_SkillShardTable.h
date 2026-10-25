@@ -25,7 +25,7 @@ struct CONNECTIT_API FConnectItSkillShardCosts
 };
 
 // How each skill's shards become numbered uses in Adventure mode. A skill is
-// its action's tag (ConnectIt.Action.*). Numbered uses are permanent and come
+// its action's tag (ConnectIt.PlayerAction.*). Numbered uses are permanent and come
 // back every level; they are never saved, only the shards are, and derived
 // through this table -- so retuning a table retunes every save.
 //
@@ -40,7 +40,7 @@ class CONNECTIT_API UConnectIt_SkillShardTable : public UDataAsset
 public:
 
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Shards",
-        meta = (Categories = "ConnectIt.Action", ForceInlineRow))
+        meta = (Categories = "ConnectIt.PlayerAction", ForceInlineRow))
     TMap<FGameplayTag, FConnectItSkillShardCosts> Skills;
 
     // How many numbered uses of Skill Shards give (0 for a skill with no

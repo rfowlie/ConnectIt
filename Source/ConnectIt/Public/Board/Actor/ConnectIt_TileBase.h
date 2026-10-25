@@ -31,7 +31,7 @@ public:
 
     // A tile power fired on this tile
     UFUNCTION(BlueprintNativeEvent, Category = "ConnectIt|Tile Hooks")
-    void OnPowerTriggered(const FConnectItBoardEvent_PowerTriggered& Event, UConnectIt_TileReaction* Reaction);
+    void OnTilePowerTriggered(const FConnectItBoardEvent_TilePowerTriggered& Event, UConnectIt_TileReaction* Reaction);
 
     // A piece arrived on this tile: placed, swapped in, captured (now
     // Faction's), moved in. Cause: the board event's tag.
@@ -72,7 +72,7 @@ protected:
 
     virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 
-    virtual void OnPowerTriggered_Implementation(const FConnectItBoardEvent_PowerTriggered& Event, UConnectIt_TileReaction* Reaction);
+    virtual void OnTilePowerTriggered_Implementation(const FConnectItBoardEvent_TilePowerTriggered& Event, UConnectIt_TileReaction* Reaction);
     virtual void OnPieceEnter_Implementation(int32 Faction, FGameplayTag Cause, UConnectIt_TileReaction* Reaction);
     virtual void OnPieceExit_Implementation(int32 Faction, FGameplayTag Cause, UConnectIt_TileReaction* Reaction);
     virtual void OnMultiplierChanged_Implementation(float NewMultiplier, UConnectIt_TileReaction* Reaction);

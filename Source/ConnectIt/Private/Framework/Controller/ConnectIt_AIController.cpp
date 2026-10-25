@@ -348,11 +348,11 @@ void AConnectIt_AIController::BeginDecision()
             const UTurnBasedPlayerAction* CDO = ActionClass ? ActionClass->GetDefaultObject<UTurnBasedPlayerAction>() : nullptr;
             if (!IsValid(CDO) || !PS->CanUseAction(ActionClass)) return;
 
-            for (const FGameplayTag& RequestType : FConnectItBoardOperation::GetAllRequestTypes())
+            for (const FGameplayTag& OperationTag : FConnectItBoardOperation::GetAllOperationTags())
             {
-                if (CDO->ProducesRequestType(RequestType))
+                if (CDO->ProducesRequestType(OperationTag))
                 {
-                    Context.AvailableRequestTypes.AddTag(RequestType);
+                    Context.AvailableOperationTags.AddTag(OperationTag);
                 }
             }
         };
@@ -365,18 +365,18 @@ void AConnectIt_AIController::BeginDecision()
     // ...and that can actually apply somewhere on this board (a kind of move
     // that can't tell stays in)
     FGameplayTagContainer Legal;
-    for (const FGameplayTag& RequestType : Context.AvailableRequestTypes)
+    for (const FGameplayTag& OperationTag : Context.AvailableOperationTags)
     {
-        if (FConnectItBoardOperation::GetLegality(RequestType, Context.Board, Context.OwnSlot)
+        if (FConnectItBoardOperation::GetLegality(OperationTag, Context.Board, Context.OwnSlot)
             != EConnectItMoveLegality::NoLegalMove)
         {
-            Legal.AddTag(RequestType);
+            Legal.AddTag(OperationTag);
         }
     }
-    Context.AvailableRequestTypes = Legal;
+    Context.AvailableOperationTags = Legal;
 
     // Nothing it can do: pass rather than wait out the turn timer
-    if (Context.AvailableRequestTypes.IsEmpty())
+    if (Context.AvailableOperationTags.IsEmpty())
     {
         UE_LOG(LogTemp, Log,
             TEXT("ConnectIt_AIController: no legal move -- passing (ending the turn)"));
@@ -455,18 +455,18 @@ bool AConnectIt_AIController::SubmitCandidate(const FConnectItAICandidate& Candi
                  "operation -- skipped"), Index);
         return false;
     }
-    const FGameplayTag RequestType = Operation->GetRequestType();
+    const FGameplayTag OperationTag = Operation->GetOperationTag();
 
-    // Submit as the loadout action allowed to produce this request type --
+    // Submit as the loadout action allowed to produce this operation tag --
     // found by asking each configured class, not by hardcoding a reference
     // (the class-keyed action-config convention: config references the
     // class, the tag is derived from it). The Mediator gate checks the same.
     TSubclassOf<UTurnBasedPlayerAction> ActionClass = nullptr;
-    auto ConsiderClass = [&ActionClass, &RequestType](const TSubclassOf<UTurnBasedPlayerAction>& Candidate)
+    auto ConsiderClass = [&ActionClass, &OperationTag](const TSubclassOf<UTurnBasedPlayerAction>& Candidate)
     {
         if (ActionClass || !Candidate) return;
         const UTurnBasedPlayerAction* CDO = Candidate->GetDefaultObject<UTurnBasedPlayerAction>();
-        if (IsValid(CDO) && CDO->ProducesRequestType(RequestType))
+        if (IsValid(CDO) && CDO->ProducesRequestType(OperationTag))
         {
             ActionClass = Candidate;
         }
@@ -481,7 +481,7 @@ bool AConnectIt_AIController::SubmitCandidate(const FConnectItAICandidate& Candi
         UE_LOG(LogTemp, Error,
             TEXT("ConnectIt_AIController: candidate %d -- loadout '%s' has no "
                  "configured action that produces '%s' requests"),
-            Index, *Loadout->LoadoutName, *RequestType.ToString());
+            Index, *Loadout->LoadoutName, *OperationTag.ToString());
         return false;
     }
 
@@ -502,7 +502,7 @@ bool AConnectIt_AIController::SubmitCandidate(const FConnectItAICandidate& Candi
 
     UE_LOG(LogTemp, Log,
         TEXT("ConnectIt_AIController: candidate %d '%s' %s as %s -- %s"),
-        Index, *RequestType.ToString(), *Operation->Describe(), *ActionClass->GetName(),
+        Index, *OperationTag.ToString(), *Operation->Describe(), *ActionClass->GetName(),
         bSucceeded ? TEXT("accepted") : TEXT("REJECTED"));
 
     return bSucceeded;
@@ -615,7 +615,7 @@ void AConnectIt_AIController::SubmitDecision(int32 DecisionId, FConnectItAIDecis
             TEXT("ConnectIt_AIController: the server rejected all %d candidate(s) "
                  "-- ending the AI's turn. The Mediator's log above says why each "
                  "was refused; a strategy should only offer moves of "
-                 "Context.AvailableRequestTypes that can be applied to the board."),
+                 "Context.AvailableOperationTags that can be applied to the board."),
             Decision.Candidates.Num());
         ParticipantComponent->ServerSubmitTurnEnd();
         return;

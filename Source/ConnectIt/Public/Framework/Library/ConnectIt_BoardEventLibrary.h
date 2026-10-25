@@ -120,7 +120,7 @@ public:
     // For listeners of ConnectIt.Event.PowerTriggered
     UFUNCTION(BlueprintCallable, Category = "ConnectIt|Board Events",
         meta = (WorldContext = "WorldContextObject", ExpandBoolAsExecs = "ReturnValue"))
-    static bool GetActivePowerTriggeredEvent(const UObject* WorldContextObject, FConnectItBoardEvent_PowerTriggered& OutEvent);
+    static bool GetActiveTilePowerTriggeredEvent(const UObject* WorldContextObject, FConnectItBoardEvent_TilePowerTriggered& OutEvent);
 
     // For listeners of ConnectIt.Event.WinCheckpointReached
     UFUNCTION(BlueprintCallable, Category = "ConnectIt|Board Events",

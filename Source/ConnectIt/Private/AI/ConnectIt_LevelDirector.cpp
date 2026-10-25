@@ -187,9 +187,9 @@ EDataValidationResult UConnectIt_LevelDirector::IsDataValid(FDataValidationConte
     // project default's -- a director isn't tied to one level)
     const UConnectIt_TileCatalog* Catalog = UConnectIt_TileCatalog::GetProjectDefault();
     TSet<FGameplayTag> PowerNames;
-    for (int32 Index = 0; Index < LevelWidePowers.Num(); Index++)
+    for (int32 Index = 0; Index < LevelWideTilePowers.Num(); Index++)
     {
-        const FGameplayTag& Name = LevelWidePowers[Index];
+        const FGameplayTag& Name = LevelWideTilePowers[Index];
         if (!Name.IsValid())
         {
             Context.AddError(FText::FromString(FString::Printf(TEXT(

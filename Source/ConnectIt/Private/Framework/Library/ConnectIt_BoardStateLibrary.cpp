@@ -37,10 +37,10 @@ bool UConnectIt_BoardStateLibrary::IsTileValidForPlacement(
     return FConnectItBoardOperation_PlacePiece::IsTilePlaceableAt(State, Position);
 }
 
-int32 UConnectIt_BoardStateLibrary::GetPowerTurnsLeft(const FConnectItBoardState& State, FGridPosition Position, int32 CurrentTurn)
+int32 UConnectIt_BoardStateLibrary::GetTilePowerTurnsLeft(const FConnectItBoardState& State, FGridPosition Position, int32 CurrentTurn)
 {
     const FConnectItTileData* Tile = State.GetTileData(Position);
-    return Tile ? FMath::Max(0, Tile->PowerReadyTurn - CurrentTurn) : 0;
+    return Tile ? FMath::Max(0, Tile->TilePowerReadyTurn - CurrentTurn) : 0;
 }
 
 TArray<FGridPosition> UConnectIt_BoardStateLibrary::GetChainedTilesFor(const FConnectItBoardState& State, FGridPosition Position)

@@ -81,7 +81,7 @@ public:
     // change's).
     UFUNCTION(BlueprintPure, Category = "ConnectIt|Board State",
         meta = (DisplayName = "Get Power Turns Left (Board State)"))
-    static int32 GetPowerTurnsLeft(const FConnectItBoardState& State, FGridPosition Position, int32 CurrentTurn);
+    static int32 GetTilePowerTurnsLeft(const FConnectItBoardState& State, FGridPosition Position, int32 CurrentTurn);
 
     // --- Chained tiles ---
 
@@ -145,7 +145,7 @@ public:
         meta = (DisplayName = "Get Placeable Positions (Board State)"))
     static TArray<FGridPosition> GetPlaceablePositions(const FConnectItBoardState& State);
 
-    // Whether Faction has any legal move of one kind (Move: its request type,
+    // Whether Faction has any legal move of one kind (Move: its operation tag,
     // e.g. Swap Pieces) on the board -- e.g. to grey out an action that has no
     // possible use, so the player sees they must pass. Board only (not the
     // loadout or uses left). Unknown: that kind of move can't tell yet --

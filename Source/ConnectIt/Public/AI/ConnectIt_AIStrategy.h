@@ -37,7 +37,7 @@ struct FConnectItAIDecisionContext
     FConnectItRuleSet Rules;
 
     // Each side's loadout: the actions (and so the board operations) it has.
-    // Ask UConnectIt_AIStrategy::LoadoutGrantsRequestType. Game thread only
+    // Ask UConnectIt_AIStrategy::LoadoutGrantsOperation. Game thread only
     // -- unlike the rest of the context these are assets, not plain data, so
     // don't hand them to a background search. Opponent's is null if it has
     // no PlayerState.
@@ -59,13 +59,13 @@ struct FConnectItAIDecisionContext
     UPROPERTY(BlueprintReadOnly, Category = "AI")
     int32 DecisionIndexThisTurn = 0;
 
-    // The kinds of move (request types, e.g. ConnectIt_Game_PlacePiece) this
+    // The kinds of move (operation tags, e.g. ConnectIt_BoardOperation_PlacePiece) this
     // AI may make RIGHT NOW: its loadout has an action that produces them, and
     // that action is usable this decision (per-turn cap, cooldown, uses left).
     // Offer only candidates of these types. The server still checks every
     // move; this is so a strategy doesn't have to work it out.
     UPROPERTY(BlueprintReadOnly, Category = "AI")
-    FGameplayTagContainer AvailableRequestTypes;
+    FGameplayTagContainer AvailableOperationTags;
 
     // How long this decision may take, in seconds; 0 = no limit. Set by the
     // coordinator from the director's think time; a strategy that searches should stop
@@ -195,25 +195,25 @@ public:
     // controller) -- for timers and Blueprint world-context nodes
     virtual UWorld* GetWorld() const override;
 
-    // Whether Loadout has an action that may send RequestType (e.g.
-    // ConnectIt_Game_PlacePiece) -- the same question the server's gate asks
+    // Whether Loadout has an action that may send OperationTag (e.g.
+    // ConnectIt_BoardOperation_PlacePiece) -- the same question the server's gate asks
     // of a real request. Says nothing about use limits. Game thread only.
     UFUNCTION(BlueprintPure, Category = "AI")
-    static bool LoadoutGrantsRequestType(const UActionLoadoutDataAsset* Loadout, FGameplayTag RequestType);
+    static bool LoadoutGrantsOperation(const UActionLoadoutDataAsset* Loadout, FGameplayTag OperationTag);
 
     // A decision with a single move -- the common case
     UFUNCTION(BlueprintPure, Category = "AI")
     static FConnectItAIDecision MakeSingleMoveDecision(const FInstancedStruct& Operation, const FString& Summary);
 
-    // The kinds of move (request types) this strategy can ever offer. Used to
+    // The kinds of move (operation tags) this strategy can ever offer. Used to
     // check an AI setup: the loadout and the strategies should overlap.
     // Empty (the default) = not declared, no check.
     UFUNCTION(BlueprintNativeEvent, BlueprintPure, Category = "AI")
-    FGameplayTagContainer GetSupportedRequestTypes() const;
-    virtual FGameplayTagContainer GetSupportedRequestTypes_Implementation() const { return FGameplayTagContainer(); }
+    FGameplayTagContainer GetSupportedOperationTags() const;
+    virtual FGameplayTagContainer GetSupportedOperationTags_Implementation() const { return FGameplayTagContainer(); }
 
     // Whether Operation (a board operation struct) is a kind of move the AI
-    // may make right now (Context.AvailableRequestTypes). False if it isn't a
+    // may make right now (Context.AvailableOperationTags). False if it isn't a
     // board operation.
     UFUNCTION(BlueprintPure, Category = "AI")
     static bool IsOperationAvailable(const FConnectItAIDecisionContext& Context, const FInstancedStruct& Operation);

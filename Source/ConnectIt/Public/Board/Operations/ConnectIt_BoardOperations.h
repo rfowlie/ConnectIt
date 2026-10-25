@@ -62,7 +62,7 @@ struct CONNECTIT_API FConnectItBoardOperation_PlacePiece : public FConnectItBoar
         }
     }
 
-    virtual FGameplayTag GetRequestType() const override;
+    virtual FGameplayTag GetOperationTag() const override;
     virtual bool CanApply(const FConnectItBoardState& Board, FString* OutWhyNot = nullptr) const override;
     virtual void Apply(
         FConnectItBoardState& Board,
@@ -91,7 +91,7 @@ struct CONNECTIT_API FConnectItBoardOperation_SwapPieces : public FConnectItBoar
 
     virtual bool ArrivingPiecesSurviveScoring() const override { return false; }
 
-    virtual FGameplayTag GetRequestType() const override;
+    virtual FGameplayTag GetOperationTag() const override;
     virtual bool CanApply(const FConnectItBoardState& Board, FString* OutWhyNot = nullptr) const override;
     virtual void Apply(
         FConnectItBoardState& Board,
@@ -130,7 +130,7 @@ struct CONNECTIT_API FConnectItBoardOperation_Shift : public FConnectItBoardOper
     UPROPERTY(BlueprintReadWrite, Category = "Operation", meta = (ClampMin = 1))
     int32 Steps = 1;
 
-    virtual FGameplayTag GetRequestType() const override;
+    virtual FGameplayTag GetOperationTag() const override;
     virtual bool CanApply(const FConnectItBoardState& Board, FString* OutWhyNot = nullptr) const override;
     virtual void Apply(
         FConnectItBoardState& Board,
@@ -152,7 +152,7 @@ struct CONNECTIT_API FConnectItBoardOperation_ForcePlacePiece : public FConnectI
     UPROPERTY(BlueprintReadWrite, Category = "Operation")
     FGridPosition Position;
 
-    virtual FGameplayTag GetRequestType() const override;
+    virtual FGameplayTag GetOperationTag() const override;
     virtual bool CanApply(const FConnectItBoardState& Board, FString* OutWhyNot = nullptr) const override;
     virtual void Apply(
         FConnectItBoardState& Board,
@@ -172,7 +172,7 @@ struct CONNECTIT_API FConnectItBoardOperation_CapturePiece : public FConnectItBo
     UPROPERTY(BlueprintReadWrite, Category = "Operation")
     FGridPosition Position;
 
-    virtual FGameplayTag GetRequestType() const override;
+    virtual FGameplayTag GetOperationTag() const override;
     virtual bool CanApply(const FConnectItBoardState& Board, FString* OutWhyNot = nullptr) const override;
     virtual void Apply(
         FConnectItBoardState& Board,
@@ -197,7 +197,7 @@ struct CONNECTIT_API FConnectItBoardOperation_RemovePiece : public FConnectItBoa
     UPROPERTY(BlueprintReadWrite, Category = "Operation", meta = (ClampMin = 0))
     int32 DelayTurns = 0;
 
-    virtual FGameplayTag GetRequestType() const override;
+    virtual FGameplayTag GetOperationTag() const override;
     virtual bool CanApply(const FConnectItBoardState& Board, FString* OutWhyNot = nullptr) const override;
     virtual void Apply(
         FConnectItBoardState& Board,
@@ -217,7 +217,7 @@ struct CONNECTIT_API FConnectItBoardOperation_DestroyTileMultiplier : public FCo
     UPROPERTY(BlueprintReadWrite, Category = "Operation")
     FGridPosition Position;
 
-    virtual FGameplayTag GetRequestType() const override;
+    virtual FGameplayTag GetOperationTag() const override;
     virtual bool CanApply(const FConnectItBoardState& Board, FString* OutWhyNot = nullptr) const override;
     virtual void Apply(
         FConnectItBoardState& Board,
@@ -252,7 +252,7 @@ struct CONNECTIT_API FConnectItBoardOperation_ChangeGoals : public FConnectItBoa
     UPROPERTY(BlueprintReadWrite, Category = "Operation")
     TArray<FName> GroupNames;
 
-    virtual FGameplayTag GetRequestType() const override;
+    virtual FGameplayTag GetOperationTag() const override;
     virtual bool CanApply(const FConnectItBoardState& Board, FString* OutWhyNot = nullptr) const override;
     virtual void Apply(
         FConnectItBoardState& Board,
@@ -271,7 +271,7 @@ struct CONNECTIT_API FConnectItBoardOperation_BeginPhase : public FConnectItBoar
     UPROPERTY(BlueprintReadWrite, Category = "Operation", meta = (Categories = "ConnectIt.Phase"))
     FGameplayTag Phase;
 
-    virtual FGameplayTag GetRequestType() const override;
+    virtual FGameplayTag GetOperationTag() const override;
     virtual bool CanApply(const FConnectItBoardState& Board, FString* OutWhyNot = nullptr) const override;
     virtual void Apply(
         FConnectItBoardState& Board,
@@ -297,7 +297,7 @@ struct CONNECTIT_API FConnectItBoardOperation_RemoveTiles : public FConnectItBoa
     UPROPERTY(BlueprintReadWrite, Category = "Operation")
     TArray<FGridPosition> Positions;
 
-    virtual FGameplayTag GetRequestType() const override;
+    virtual FGameplayTag GetOperationTag() const override;
     virtual bool CanApply(const FConnectItBoardState& Board, FString* OutWhyNot = nullptr) const override;
     virtual void Apply(
         FConnectItBoardState& Board,
@@ -319,7 +319,7 @@ struct CONNECTIT_API FConnectItBoardOperation_AddTiles : public FConnectItBoardO
     UPROPERTY(BlueprintReadWrite, Category = "Operation")
     TArray<FConnectItBoardLayoutCell> Cells;
 
-    virtual FGameplayTag GetRequestType() const override;
+    virtual FGameplayTag GetOperationTag() const override;
     virtual bool CanApply(const FConnectItBoardState& Board, FString* OutWhyNot = nullptr) const override;
     virtual void Apply(
         FConnectItBoardState& Board,
@@ -358,7 +358,7 @@ struct CONNECTIT_API FConnectItBoardOperation_ChangeLayout : public FConnectItBo
     // Removals and additions from a diff
     void SetDiff(const FConnectItBoardLayoutDiff& Diff);
 
-    virtual FGameplayTag GetRequestType() const override;
+    virtual FGameplayTag GetOperationTag() const override;
     virtual bool CanApply(const FConnectItBoardState& Board, FString* OutWhyNot = nullptr) const override;
     virtual void Apply(
         FConnectItBoardState& Board,
@@ -377,7 +377,7 @@ struct CONNECTIT_API FConnectItBoardOperation_ToggleTileActive : public FConnect
     UPROPERTY(BlueprintReadWrite, Category = "Operation")
     FGridPosition Position;
 
-    virtual FGameplayTag GetRequestType() const override;
+    virtual FGameplayTag GetOperationTag() const override;
     virtual bool CanApply(const FConnectItBoardState& Board, FString* OutWhyNot = nullptr) const override;
     virtual void Apply(
         FConnectItBoardState& Board,
@@ -401,7 +401,7 @@ struct CONNECTIT_API FConnectItBoardOperation_SetTileLocked : public FConnectItB
     UPROPERTY(BlueprintReadWrite, Category = "Operation")
     bool bLocked = true;
 
-    virtual FGameplayTag GetRequestType() const override;
+    virtual FGameplayTag GetOperationTag() const override;
     virtual bool CanApply(const FConnectItBoardState& Board, FString* OutWhyNot = nullptr) const override;
     virtual void Apply(
         FConnectItBoardState& Board,
@@ -433,7 +433,7 @@ struct CONNECTIT_API FConnectItBoardOperation_SetChainPartner : public FConnectI
     UPROPERTY(BlueprintReadWrite, Category = "Operation")
     FGridPosition PartnerPosition;
 
-    virtual FGameplayTag GetRequestType() const override;
+    virtual FGameplayTag GetOperationTag() const override;
     virtual bool CanApply(const FConnectItBoardState& Board, FString* OutWhyNot = nullptr) const override;
     virtual void Apply(
         FConnectItBoardState& Board,
@@ -458,7 +458,7 @@ struct CONNECTIT_API FConnectItBoardOperation_MovePiece : public FConnectItBoard
     UPROPERTY(BlueprintReadWrite, Category = "Operation")
     FGridPosition To;
 
-    virtual FGameplayTag GetRequestType() const override;
+    virtual FGameplayTag GetOperationTag() const override;
     virtual bool CanApply(const FConnectItBoardState& Board, FString* OutWhyNot = nullptr) const override;
     virtual void Apply(
         FConnectItBoardState& Board,
@@ -482,7 +482,7 @@ struct CONNECTIT_API FConnectItBoardOperation_AdjustMultiplier : public FConnect
     UPROPERTY(BlueprintReadWrite, Category = "Operation")
     float Delta = 1.f;
 
-    virtual FGameplayTag GetRequestType() const override;
+    virtual FGameplayTag GetOperationTag() const override;
     virtual bool CanApply(const FConnectItBoardState& Board, FString* OutWhyNot = nullptr) const override;
     virtual void Apply(
         FConnectItBoardState& Board,
@@ -496,13 +496,13 @@ struct CONNECTIT_API FConnectItBoardOperation_AdjustMultiplier : public FConnect
 // fire (e.g. Repel), for the faction whose turn it is. Changes nothing itself
 // and has no event of its own -- the powers' events are the change. The
 // GameMode commits it first at each turn start, but only when one is ready
-// (FConnectItRuleSet::HasTurnStartPowerReady).
+// (FConnectItRuleSet::HasTurnStartTilePowerReady).
 USTRUCT(BlueprintType, meta = (DisplayName = "Turn Start"))
 struct CONNECTIT_API FConnectItBoardOperation_TurnStart : public FConnectItBoardOperation
 {
     GENERATED_BODY()
 
-    virtual FGameplayTag GetRequestType() const override;
+    virtual FGameplayTag GetOperationTag() const override;
     virtual bool CanApply(const FConnectItBoardState& Board, FString* OutWhyNot = nullptr) const override { return true; }
     virtual void Apply(
         FConnectItBoardState& Board,

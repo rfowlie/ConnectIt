@@ -13,16 +13,16 @@ AConnectIt_AIController* UConnectIt_AIStrategy::GetOwningController() const
     return GetTypedOuter<AConnectIt_AIController>();
 }
 
-bool UConnectIt_AIStrategy::LoadoutGrantsRequestType(
-    const UActionLoadoutDataAsset* Loadout, FGameplayTag RequestType)
+bool UConnectIt_AIStrategy::LoadoutGrantsOperation(
+    const UActionLoadoutDataAsset* Loadout, FGameplayTag OperationTag)
 {
-    if (!IsValid(Loadout) || !RequestType.IsValid()) return false;
+    if (!IsValid(Loadout) || !OperationTag.IsValid()) return false;
 
-    const auto Grants = [RequestType](const TSubclassOf<UTurnBasedPlayerAction>& ActionClass)
+    const auto Grants = [OperationTag](const TSubclassOf<UTurnBasedPlayerAction>& ActionClass)
     {
         const UTurnBasedPlayerAction* DefaultAction =
             ActionClass ? ActionClass->GetDefaultObject<UTurnBasedPlayerAction>() : nullptr;
-        return IsValid(DefaultAction) && DefaultAction->ProducesRequestType(RequestType);
+        return IsValid(DefaultAction) && DefaultAction->ProducesRequestType(OperationTag);
     };
 
     for (const FPermanentActionConfig& Config : Loadout->PermanentActions)
@@ -138,7 +138,7 @@ bool UConnectIt_AIStrategy::IsOperationAvailable(
     const FConnectItAIDecisionContext& Context, const FInstancedStruct& Operation)
 {
     const FConnectItBoardOperation* BoardOperation = Operation.GetPtr<FConnectItBoardOperation>();
-    return BoardOperation && Context.AvailableRequestTypes.HasTagExact(BoardOperation->GetRequestType());
+    return BoardOperation && Context.AvailableOperationTags.HasTagExact(BoardOperation->GetOperationTag());
 }
 
 UWorld* UConnectIt_AIStrategy::GetWorld() const

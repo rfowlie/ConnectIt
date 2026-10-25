@@ -31,7 +31,7 @@ public:
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "AI|MinMax")
     FConnectItMinMaxSearchSettings Search;
 
-    virtual FGameplayTagContainer GetSupportedRequestTypes_Implementation() const override;
+    virtual FGameplayTagContainer GetSupportedOperationTags_Implementation() const override;
 
     // While the search runs: its deepest completed ranking so far
     virtual FConnectItAIDecision GetBestSoFar() const override;

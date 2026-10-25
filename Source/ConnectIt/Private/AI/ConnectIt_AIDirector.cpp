@@ -49,7 +49,7 @@ EDataValidationResult UConnectIt_AIDirector::IsDataValid(FDataValidationContext&
     {
         if (!IsValid(Strategy)) continue;
         bAnyStrategy = true;
-        Supported.AppendTags(Strategy->GetSupportedRequestTypes());
+        Supported.AppendTags(Strategy->GetSupportedOperationTags());
     }
     if (!bAnyStrategy)
     {
@@ -69,11 +69,11 @@ EDataValidationResult UConnectIt_AIDirector::IsDataValid(FDataValidationContext&
     if (IsValid(StartingLoadout) && !Supported.IsEmpty())
     {
         FGameplayTagContainer Granted;
-        for (const FGameplayTag& RequestType : FConnectItBoardOperation::GetAllRequestTypes())
+        for (const FGameplayTag& OperationTag : FConnectItBoardOperation::GetAllOperationTags())
         {
-            if (UConnectIt_AIStrategy::LoadoutGrantsRequestType(StartingLoadout, RequestType))
+            if (UConnectIt_AIStrategy::LoadoutGrantsOperation(StartingLoadout, OperationTag))
             {
-                Granted.AddTag(RequestType);
+                Granted.AddTag(OperationTag);
             }
         }
 
@@ -87,11 +87,11 @@ EDataValidationResult UConnectIt_AIDirector::IsDataValid(FDataValidationContext&
         }
 
         FGameplayTagContainer NeverPlayed;
-        for (const FGameplayTag& RequestType : Granted)
+        for (const FGameplayTag& OperationTag : Granted)
         {
-            if (!Supported.HasTagExact(RequestType))
+            if (!Supported.HasTagExact(OperationTag))
             {
-                NeverPlayed.AddTag(RequestType);
+                NeverPlayed.AddTag(OperationTag);
             }
         }
         if (!NeverPlayed.IsEmpty())

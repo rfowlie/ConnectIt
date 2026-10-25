@@ -134,9 +134,9 @@ FConnectItMinMaxRules::FConnectItMinMaxRules(
     }
 
     // Each side's kinds of move: the ones the search can model (see
-    // FConnectItMinMaxMove) that the side was given the request type for
-    bSideCanPlace[0] = Side0RequestTypes.HasTagExact(ConnectIt_Game_PlacePiece);
-    bSideCanPlace[1] = Side1RequestTypes.HasTagExact(ConnectIt_Game_PlacePiece);
+    // FConnectItMinMaxMove) that the side was given the operation tag for
+    bSideCanPlace[0] = Side0RequestTypes.HasTagExact(ConnectIt_BoardOperation_PlacePiece);
+    bSideCanPlace[1] = Side1RequestTypes.HasTagExact(ConnectIt_BoardOperation_PlacePiece);
 }
 
 FConnectItMinMaxRules::FState FConnectItMinMaxRules::MakeRoot(

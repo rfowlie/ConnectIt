@@ -19,14 +19,14 @@ TSubclassOf<AConnectIt_TileBase> UConnectIt_TileCatalog::GetTileClassFor(FGamepl
     return Entry ? Entry->TileClass : nullptr;
 }
 
-TArray<FConnectItTilePower> UConnectIt_TileCatalog::MakePowers() const
+TArray<FConnectItTilePower> UConnectIt_TileCatalog::MakeTilePowers() const
 {
     TArray<FConnectItTilePower> Powers;
     Powers.Reserve(Tiles.Num());
     for (const TPair<FGameplayTag, FConnectItTileCatalogEntry>& Pair : Tiles)
     {
         if (!Pair.Key.IsValid()) continue;
-        FConnectItTilePower& Power = Powers.Add_GetRef(Pair.Value.Power);
+        FConnectItTilePower& Power = Powers.Add_GetRef(Pair.Value.TilePower);
         Power.Name = Pair.Key;
     }
     return Powers;
@@ -85,14 +85,14 @@ EDataValidationResult UConnectIt_TileCatalog::IsDataValid(FDataValidationContext
                 "ConnectIt_TileCatalog: %s has no Tile Class."), *Key)));
             Result = EDataValidationResult::Invalid;
         }
-        if (!Pair.Value.Power.Effect.IsValid())
+        if (!Pair.Value.TilePower.Effect.IsValid())
         {
             Context.AddError(FText::FromString(FString::Printf(TEXT(
                 "ConnectIt_TileCatalog: %s's power has no Effect."), *Key)));
             Result = EDataValidationResult::Invalid;
         }
-        const FConnectItTilePower& Power = Pair.Value.Power;
-        if (Power.HasTrigger(EConnectItPowerTrigger::Sync) && Power.Triggers != (1 << static_cast<int32>(EConnectItPowerTrigger::Sync)))
+        const FConnectItTilePower& Power = Pair.Value.TilePower;
+        if (Power.HasTrigger(EConnectItTilePowerTrigger::Sync) && Power.Triggers != (1 << static_cast<int32>(EConnectItTilePowerTrigger::Sync)))
         {
             Context.AddError(FText::FromString(FString::Printf(TEXT(
                 "ConnectIt_TileCatalog: %s is Sync and has other triggers -- a Sync power has only Sync."), *Key)));
@@ -104,11 +104,11 @@ EDataValidationResult UConnectIt_TileCatalog::IsDataValid(FDataValidationContext
                 "ConnectIt_TileCatalog: %s has no trigger -- it never fires."), *Key)));
             Result = EDataValidationResult::Invalid;
         }
-        if (Pair.Value.Power.Name.IsValid() && Pair.Value.Power.Name != Pair.Key)
+        if (Pair.Value.TilePower.Name.IsValid() && Pair.Value.TilePower.Name != Pair.Key)
         {
             Context.AddError(FText::FromString(FString::Printf(TEXT(
                 "ConnectIt_TileCatalog: %s's power is named %s -- leave Name empty or the same as the entry's tag."),
-                *Key, *Pair.Value.Power.Name.ToString())));
+                *Key, *Pair.Value.TilePower.Name.ToString())));
             Result = EDataValidationResult::Invalid;
         }
     }

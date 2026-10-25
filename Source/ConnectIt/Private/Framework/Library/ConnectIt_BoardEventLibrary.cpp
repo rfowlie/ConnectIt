@@ -107,10 +107,10 @@ bool UConnectIt_BoardEventLibrary::GetActiveChainPartnerChangedEvent(
     return TryGetActiveBoardEvent(WorldContextObject, OutEvent, TEXT("GetActiveChainPartnerChangedEvent"));
 }
 
-bool UConnectIt_BoardEventLibrary::GetActivePowerTriggeredEvent(
-    const UObject* WorldContextObject, FConnectItBoardEvent_PowerTriggered& OutEvent)
+bool UConnectIt_BoardEventLibrary::GetActiveTilePowerTriggeredEvent(
+    const UObject* WorldContextObject, FConnectItBoardEvent_TilePowerTriggered& OutEvent)
 {
-    return TryGetActiveBoardEvent(WorldContextObject, OutEvent, TEXT("GetActivePowerTriggeredEvent"));
+    return TryGetActiveBoardEvent(WorldContextObject, OutEvent, TEXT("GetActiveTilePowerTriggeredEvent"));
 }
 
 bool UConnectIt_BoardEventLibrary::GetActiveWinCheckpointReachedEvent(

@@ -42,13 +42,13 @@ int32 FConnectItMinMaxSearchProgress::GetDepthReached() const
     return DepthReached;
 }
 
-FGameplayTagContainer ConnectItMinMaxSearch::GetModelledRequestTypes()
+FGameplayTagContainer ConnectItMinMaxSearch::GetModelledOperationTags()
 {
     // FConnectItMinMaxMove lists the operations the search can model; it
     // assumes every move ends the turn and has no use limit -- true of
     // placing a piece only. Widening this is the task "Explore letting MinMax
     // use moves other than PlacePiece".
-    return FGameplayTagContainer(ConnectIt_Game_PlacePiece);
+    return FGameplayTagContainer(ConnectIt_BoardOperation_PlacePiece);
 }
 
 bool ConnectItMinMaxSearch::Prepare(
@@ -68,31 +68,31 @@ bool ConnectItMinMaxSearch::Prepare(
         return false;
     }
 
-    const FGameplayTagContainer Modelled = GetModelledRequestTypes();
+    const FGameplayTagContainer Modelled = GetModelledOperationTags();
 
     // Each side's kinds of move: the settings' if given, else what the
     // context says -- limited to what the search can model
     const FGameplayTagContainer& OwnSource =
-        Settings.OwnRequestTypes.IsEmpty() ? Context.AvailableRequestTypes : Settings.OwnRequestTypes;
-    const FGameplayTagContainer OwnRequestTypes = OwnSource.FilterExact(Modelled);
+        Settings.OwnOperationTags.IsEmpty() ? Context.AvailableOperationTags : Settings.OwnOperationTags;
+    const FGameplayTagContainer OwnOperationTags = OwnSource.FilterExact(Modelled);
 
-    FGameplayTagContainer OpponentRequestTypes;
-    if (Settings.OpponentRequestTypes.IsEmpty())
+    FGameplayTagContainer OpponentOperationTags;
+    if (Settings.OpponentOperationTags.IsEmpty())
     {
-        for (const FGameplayTag& RequestType : Modelled)
+        for (const FGameplayTag& OperationTag : Modelled)
         {
-            if (UConnectIt_AIStrategy::LoadoutGrantsRequestType(Context.OpponentLoadout, RequestType))
+            if (UConnectIt_AIStrategy::LoadoutGrantsOperation(Context.OpponentLoadout, OperationTag))
             {
-                OpponentRequestTypes.AddTag(RequestType);
+                OpponentOperationTags.AddTag(OperationTag);
             }
         }
     }
     else
     {
-        OpponentRequestTypes = Settings.OpponentRequestTypes.FilterExact(Modelled);
+        OpponentOperationTags = Settings.OpponentOperationTags.FilterExact(Modelled);
     }
 
-    if (OwnRequestTypes.IsEmpty())
+    if (OwnOperationTags.IsEmpty())
     {
         if (OutWhyNot)
         {
@@ -114,8 +114,8 @@ bool ConnectItMinMaxSearch::Prepare(
         Context.Rules,
         Settings.EvaluationWeights,
         Settings.OrderingWeights,
-        bOwnIsSlot0 ? OwnRequestTypes : OpponentRequestTypes,
-        bOwnIsSlot0 ? OpponentRequestTypes : OwnRequestTypes);
+        bOwnIsSlot0 ? OwnOperationTags : OpponentOperationTags,
+        bOwnIsSlot0 ? OpponentOperationTags : OwnOperationTags);
 
     OutPrepared.Root = OutPrepared.Rules->MakeRoot(Context.Board, Context.OwnSlot);
     OutPrepared.Params = MinMax::FParams();

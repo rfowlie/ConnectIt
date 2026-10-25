@@ -12,7 +12,7 @@ namespace
     }
 }
 
-void AConnectIt_TileBase::OnPowerTriggered_Implementation(const FConnectItBoardEvent_PowerTriggered& Event, UConnectIt_TileReaction* Reaction) { FinishNow(Reaction); }
+void AConnectIt_TileBase::OnTilePowerTriggered_Implementation(const FConnectItBoardEvent_TilePowerTriggered& Event, UConnectIt_TileReaction* Reaction) { FinishNow(Reaction); }
 void AConnectIt_TileBase::OnPieceEnter_Implementation(int32 Faction, FGameplayTag Cause, UConnectIt_TileReaction* Reaction) { FinishNow(Reaction); }
 void AConnectIt_TileBase::OnPieceExit_Implementation(int32 Faction, FGameplayTag Cause, UConnectIt_TileReaction* Reaction) { FinishNow(Reaction); }
 void AConnectIt_TileBase::OnMultiplierChanged_Implementation(float NewMultiplier, UConnectIt_TileReaction* Reaction) { FinishNow(Reaction); }

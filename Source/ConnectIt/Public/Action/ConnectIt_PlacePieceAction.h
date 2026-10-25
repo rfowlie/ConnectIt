@@ -40,14 +40,17 @@ public:
     FGameplayTag TagActionMouseHoverInvalid;
 
     // TODO: what is this for?
-    // Request type tag sent to board manager
+    // Operation tag tag sent to board manager
     // Must match ConnectItRequestTags::PlacePiece in board manager
     UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Action|Tags")
     FGameplayTag Tag_RequestType;
 
     // The server checks a request's ActionTag against this so a PlacePiece
     // budget can only be spent by a PlacePiece request
-    virtual bool ProducesRequestType_Implementation(FGameplayTag RequestType) const override;
+    virtual bool ProducesRequestType_Implementation(FGameplayTag OperationTag) const override;
+
+    // Its player action tag (ConnectIt.PlayerAction.*)
+    virtual FGameplayTag GetActionTag_Implementation() const override;
 
 protected:
 

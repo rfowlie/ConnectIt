@@ -6,6 +6,9 @@ Vault-wide passes go in `_core/_logs/`.
 
 Newest first:
 
+- [2026-10-24-1529](2026-10-24-1529.md) — session — player actions Stage 4: `ConnectIt.PlayerAction.*` /
+  `ConnectIt.BoardOperation.*` tags (old ones redirected), "operation tag" naming, the Mediator's item gate, every bare
+  "Power" → "TilePower" (with redirects); a Stage 3 dangling-lambda bug fixed. 69/69 tests.
 - [2026-10-24-1507](2026-10-24-1507.md) — session — player actions Stage 3 revised: item caps in a game-static
   `UItemActionInventoryDataAsset` (plugin settings), unlisted = can't be held, grants add new actions, only held items
   kept; design lean: core actions aren't items. 69/69 tests.
