@@ -4,6 +4,10 @@
 #include "GridHoverTestTypes.h"
 #include "Hover/GridHoverComponent.h"
 #include "Tile/GridTileBase.h"
+#include "Subsystem/GridHoverSubsystem.h"
+#include "Engine/Engine.h"
+#include "Engine/World.h"
+#include "Misc/ScopeExit.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
 
@@ -83,6 +87,62 @@ bool FGridHoverComponentTest::RunTest(const FString& Parameters)
         const AGridTileBase* Tile = GetDefault<AGridTileBase>();
         TestNotNull(TEXT("a tile has a hover component"), Tile->HoverComponent.Get());
     }
+    return true;
+}
+
+// UGridHoverSubsystem and the tiles' hover components, in a throwaway world:
+// registering binds and enables a tile's component, unregistering ends its
+// hover and unbinds it; begin, end and click reach the relays
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FGridHoverSubsystemTest,
+    "UnrealGridMechanics.Hover.Subsystem", GridHoverTests::TestFlags)
+
+bool FGridHoverSubsystemTest::RunTest(const FString& Parameters)
+{
+    UWorld* World = UWorld::CreateWorld(EWorldType::Game, false, TEXT("GridHoverTestWorld"));
+    GEngine->CreateNewWorldContext(EWorldType::Game).SetCurrentWorld(World);
+    ON_SCOPE_EXIT
+    {
+        GEngine->DestroyWorldContext(World);
+        World->DestroyWorld(false);
+    };
+
+    UGridHoverSubsystem* Subsystem = World->GetSubsystem<UGridHoverSubsystem>();
+    AGridTileBase* Tile = World->SpawnActor<AGridTileBase>();
+    if (!TestNotNull(TEXT("subsystem"), Subsystem) || !TestNotNull(TEXT("tile spawned"), Tile)) return false;
+    UGridHoverComponent* Hover = Tile->HoverComponent;
+    UGridHoverTestTileListener* Listener = NewObject<UGridHoverTestTileListener>();
+    Listener->Listen(Subsystem);
+
+    // --- Not registered: nothing reaches the relays ---
+    Hover->NotifyHoverBegin();
+    Hover->NotifyHoverEnd();
+    TestEqual(TEXT("unregistered: nothing relayed"), Listener->Begins + Listener->Ends, 0);
+
+    // --- Registered: begin, click and end relay, naming the tile ---
+    Hover->SetHoverEnabled(false);
+    Subsystem->RegisterTile(Tile);
+    TestTrue(TEXT("registered"), Subsystem->IsTileRegistered(Tile));
+    TestTrue(TEXT("registering enables the component"), Hover->IsHoverEnabled());
+    Hover->NotifyHoverBegin();
+    TestEqual(TEXT("registered: hover begin relayed"), Listener->Begins, 1);
+    TestTrue(TEXT("registered: for this tile"), Listener->LastTile == Tile);
+    Hover->NotifyClicked();
+    TestEqual(TEXT("registered: click relayed"), Listener->Clicks, 1);
+    Hover->NotifyHoverEnd();
+    TestEqual(TEXT("registered: hover end relayed"), Listener->Ends, 1);
+
+    // --- Unregistering during a hover ends it, then unbinds ---
+    Hover->NotifyHoverBegin();
+    Subsystem->UnregisterTile(Tile);
+    TestFalse(TEXT("unregistered"), Subsystem->IsTileRegistered(Tile));
+    TestFalse(TEXT("unregistering disables the component"), Hover->IsHoverEnabled());
+    TestEqual(TEXT("unregistered while hovered: the end is relayed"), Listener->Ends, 2);
+
+    Hover->SetHoverEnabled(true);
+    Hover->NotifyHoverBegin();
+    Hover->NotifyClicked();
+    TestEqual(TEXT("unbound: no further begin"), Listener->Begins, 2);
+    TestEqual(TEXT("unbound: no further click"), Listener->Clicks, 1);
     return true;
 }
 

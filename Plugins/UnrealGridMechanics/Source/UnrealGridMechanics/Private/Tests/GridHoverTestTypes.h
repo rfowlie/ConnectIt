@@ -4,6 +4,8 @@
 
 #include "CoreMinimal.h"
 #include "Hover/GridHoverComponent.h"
+#include "Subsystem/GridHoverSubsystem.h"
+#include "Tile/GridTileBase.h"
 #include "GridHoverTestTypes.generated.h"
 
 
@@ -36,6 +38,36 @@ public:
 
     UFUNCTION()
     void HandleClicked(UGridHoverComponent* Component) { Clicks++; }
+};
+
+// Counts what UGridHoverSubsystem relays for tiles
+UCLASS(Hidden, NotBlueprintable)
+class UGridHoverTestTileListener : public UObject
+{
+    GENERATED_BODY()
+
+public:
+
+    int32 Begins = 0;
+    int32 Ends = 0;
+    int32 Clicks = 0;
+    TObjectPtr<AGridTileBase> LastTile = nullptr;
+
+    void Listen(UGridHoverSubsystem* Subsystem)
+    {
+        Subsystem->OnGridTileHoverChanged.AddDynamic(this, &UGridHoverTestTileListener::HandleBegin);
+        Subsystem->OnGridTileHoverEnded.AddDynamic(this, &UGridHoverTestTileListener::HandleEnd);
+        Subsystem->OnGridTileClicked.AddDynamic(this, &UGridHoverTestTileListener::HandleClicked);
+    }
+
+    UFUNCTION()
+    void HandleBegin(AGridTileBase* Tile) { Begins++; LastTile = Tile; }
+
+    UFUNCTION()
+    void HandleEnd(AGridTileBase* Tile) { Ends++; LastTile = Tile; }
+
+    UFUNCTION()
+    void HandleClicked(AGridTileBase* Tile) { Clicks++; LastTile = Tile; }
 };
 
 // A hover component whose CanHover is bAllow

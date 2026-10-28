@@ -183,8 +183,12 @@ stages.
   waypoints); the listener plays it on hover / unhover.
 - **Lines between nodes:** a **spline mesh** actor per unlock link (node to node, a repeating mesh or ribbon
   material), revealed with its destination node by the reveal walk.
-- **The hub manager** (the hub map's GameMode or a world subsystem): on load, finds every node component in the map
-  (data asset → actor), walks the graph from the map's **starting node** -- reveal the start; for each completed node,
+- *Owner, 2026-10-28:* **node components register themselves with a world subsystem** (the hub manager), which keeps
+  **actor → data asset and data asset → actor** maps; the **start node is a Start flag on the component** (an **Exit**
+  flag likewise for sub-maps); the walk enables nodes from the **active player file's Adventure progress** (game
+  instance). Validation: a `ConnectIt_GameMode_AdventureHub` map with no Start flag → error; two → error. Detail in
+  [adventure-hub](adventure-hub.md), "The reveal walk".
+- **The hub manager** (a world subsystem): once the components have registered, walks the graph from the map's **starting node** -- reveal the start; for each completed node,
   reveal its unlocks; recurse -- sets each revealed actor's state, then focuses the last-played node.
 - **Camera** (owner's ported logic): top-down, pan with drag / wheel / mouse at the screen edge, **bounded** to the
   revealed nodes' area plus a margin; **focus** a node on selection.

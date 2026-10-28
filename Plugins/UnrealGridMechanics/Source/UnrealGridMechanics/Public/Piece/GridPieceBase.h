@@ -27,13 +27,23 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Grid")
 	FGridPosition GetGridPosition() const { return GridPosition; }
 
-	// Allow piece Blueprints to customize what counts as a cursor-over
-	// (mirror of AGridTileBase::OnGridTileBeginCursorOver). Broadcast from
-	// the piece Blueprint's native "Begin Cursor Over" event.
-	// UGridHoverSubsystem chains this into OnGridPieceHoverChanged for every
-	// registered (i.e. currently active, pool-checked-out) piece.
-	UPROPERTY(BlueprintAssignable, BlueprintCallable, Category = "Grid")
+	// Deprecated (kept working for one release): pieces aren't hovered -- the
+	// piece on a tile is found through the hovered tile. Was broadcast from
+	// the piece Blueprint's "Begin Cursor Over"; UGridHoverSubsystem chains it
+	// into OnGridPieceHoverChanged for registered pieces.
+	UPROPERTY(BlueprintAssignable, BlueprintCallable, Category = "Grid", meta = (DeprecatedProperty, DeprecationMessage =
+		"Pieces aren't hovered any more: find the piece through the hovered tile."))
 	FGridPieceBaseBeginCursorOver OnGridPieceBeginCursorOver;
+
+	// Pieces ignore the cursor trace by default, so the tile under them is
+	// hovered. True: leave this piece's collision as it is.
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Grid|Hover")
+	bool bBlocksCursorTrace = false;
+
+	// The channel the player controller's cursor traces (its Default Click
+	// Trace Channel)
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Grid|Hover")
+	TEnumAsByte<ECollisionChannel> CursorTraceChannel = ECC_Visibility;
 
 	// Fired once this piece's own activation (spawn-in) visual effect has
 	// genuinely finished, not merely started -- a Blueprint subclass with
@@ -59,6 +69,7 @@ public:
 
 protected:
 	virtual void BeginPlay() override;
+	virtual void PostInitializeComponents() override;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Grid")
 	FGridPosition GridPosition;

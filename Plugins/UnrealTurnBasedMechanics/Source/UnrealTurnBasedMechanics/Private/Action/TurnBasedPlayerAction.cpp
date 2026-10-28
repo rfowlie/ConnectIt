@@ -256,6 +256,10 @@ void UTurnBasedPlayerAction::BindGridSubsystem()
     {
         GridSub->OnGridTileHoverChanged.AddDynamic(
             this, &UTurnBasedPlayerAction::OnGridTileHoverChanged);
+        GridSub->OnGridTileHoverEnded.AddDynamic(
+            this, &UTurnBasedPlayerAction::OnGridTileHoverEnded);
+        GridSub->OnGridTileClicked.AddDynamic(
+            this, &UTurnBasedPlayerAction::OnGridTileClicked);
     }
 }
 
@@ -265,6 +269,10 @@ void UTurnBasedPlayerAction::UnbindGridSubsystem()
     {
         GridSub->OnGridTileHoverChanged.RemoveDynamic(
             this, &UTurnBasedPlayerAction::OnGridTileHoverChanged);
+        GridSub->OnGridTileHoverEnded.RemoveDynamic(
+            this, &UTurnBasedPlayerAction::OnGridTileHoverEnded);
+        GridSub->OnGridTileClicked.RemoveDynamic(
+            this, &UTurnBasedPlayerAction::OnGridTileClicked);
     }
 }
 
@@ -298,6 +306,21 @@ void UTurnBasedPlayerAction::OnGridTileHoverChanged(AGridTileBase* NewTile)
     }
 }
 
+void UTurnBasedPlayerAction::OnGridTileHoverEnded(AGridTileBase* Tile)
+{
+    // Only the tile this action thinks is hovered: an end for another tile
+    // (already replaced by a newer hover) changes nothing
+    if (!IsValid(Tile) || CurrentHoveredTile.Get() != Tile) return;
+
+    CurrentHoveredTile = nullptr;
+    HandleHoverCleared(Tile);
+}
+
+void UTurnBasedPlayerAction::OnGridTileClicked(AGridTileBase* Tile)
+{
+    if (IsValid(Tile)) { HandleTileClicked(Tile); }
+}
+
 // --- Default Virtual Implementations ---
 
 void UTurnBasedPlayerAction::OnCancelled_Implementation() {}
@@ -308,4 +331,5 @@ bool UTurnBasedPlayerAction::IsValidSelectionTile_Implementation(AGridTileBase* 
 void UTurnBasedPlayerAction::HandleValidHover_Implementation(AGridTileBase*) {}
 void UTurnBasedPlayerAction::HandleHoverCleared_Implementation(AGridTileBase*) {}
 void UTurnBasedPlayerAction::HandleValidSelection_Implementation(AGridTileBase*) {}
+void UTurnBasedPlayerAction::HandleTileClicked_Implementation(AGridTileBase*) {}
 void UTurnBasedPlayerAction::ClearSelectionState_Implementation() {}

@@ -26,8 +26,12 @@ public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Grid Tile")
 	TObjectPtr<UGridHoverComponent> HoverComponent;
 
-	// allow for grid actors to customize what triggers the cursor over
-	UPROPERTY(BlueprintAssignable, BlueprintCallable)
+	// Deprecated: forwarded from HoverComponent's hover begin for one release,
+	// so existing Blueprints keep working. Don't broadcast it by hand (the
+	// component raises hover now); listen to the component or
+	// UGridHoverSubsystem instead.
+	UPROPERTY(BlueprintAssignable, BlueprintCallable, meta = (DeprecatedProperty, DeprecationMessage =
+		"The hover component raises hover now: remove manual broadcasts; listen to HoverComponent or UGridHoverSubsystem."))
 	FGridTileBaseBeginCursorOver OnGridTileBeginCursorOver;
 
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "Grid Tile")
@@ -35,5 +39,9 @@ public:
 
 protected:
 	virtual void BeginPlay() override;
+
+private:
+	UFUNCTION()
+	void ForwardHoverBegin(UGridHoverComponent* Component);
 	
 };

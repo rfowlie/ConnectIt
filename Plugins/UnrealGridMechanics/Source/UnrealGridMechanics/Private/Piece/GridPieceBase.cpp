@@ -2,10 +2,26 @@
 
 
 #include "Piece/GridPieceBase.h"
+#include "Components/PrimitiveComponent.h"
 
 
 AGridPieceBase::AGridPieceBase()
 {
+}
+
+void AGridPieceBase::PostInitializeComponents()
+{
+	Super::PostInitializeComponents();
+
+	// The tile under the piece gets the cursor, not the piece
+	if (!bBlocksCursorTrace)
+	{
+		TInlineComponentArray<UPrimitiveComponent*> Primitives(this);
+		for (UPrimitiveComponent* Primitive : Primitives)
+		{
+			Primitive->SetCollisionResponseToChannel(CursorTraceChannel, ECR_Ignore);
+		}
+	}
 }
 
 void AGridPieceBase::BeginPlay()

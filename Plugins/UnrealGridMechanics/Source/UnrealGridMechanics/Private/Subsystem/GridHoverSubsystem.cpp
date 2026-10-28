@@ -4,20 +4,21 @@
 #include "Subsystem/GridHoverSubsystem.h"
 #include "Tile/GridTileBase.h"
 #include "Piece/GridPieceBase.h"
+#include "Hover/GridHoverComponent.h"
 
 
 void UGridHoverSubsystem::Deinitialize()
 {
     // World / actor teardown order is not guaranteed -- the registry
     // components normally unregister everything first, but if they don't,
-    // drop every remaining cursor-over binding here so nothing is left
-    // bound to a stale object on PIE restart. RemoveDynamic on an
-    // already-unbound delegate is a harmless no-op.
+    // drop every remaining binding here so nothing is left bound to a stale
+    // object on PIE restart. RemoveDynamic on an already-unbound delegate is
+    // a harmless no-op.
     for (const TObjectPtr<AGridTileBase>& Tile : RegisteredTiles)
     {
         if (IsValid(Tile))
         {
-            Tile->OnGridTileBeginCursorOver.RemoveDynamic(this, &ThisClass::BroadcastGridTileHoverChanged);
+            BindTile(Tile, false);
         }
     }
     for (const TObjectPtr<AGridPieceBase>& Piece : RegisteredPieces)
@@ -43,11 +44,18 @@ void UGridHoverSubsystem::RegisterTile(AGridTileBase* Tile)
     }
 
     if (RegisteredTiles.Contains(Tile)) return;
+    if (!IsValid(Tile->HoverComponent))
+    {
+        UE_LOG(LogTemp, Warning,
+            TEXT("GridHoverSubsystem: tile '%s' has no hover component -- it can't be hovered"), *Tile->GetName());
+        return;
+    }
 
     RegisteredTiles.Add(Tile);
 
-    // chain the tile's own cursor-over into the global relay
-    Tile->OnGridTileBeginCursorOver.AddDynamic(this, &ThisClass::BroadcastGridTileHoverChanged);
+    // chain the tile's hover component into the global relays
+    BindTile(Tile, true);
+    Tile->HoverComponent->SetHoverEnabled(true);
 }
 
 void UGridHoverSubsystem::UnregisterTile(AGridTileBase* Tile)
@@ -55,8 +63,32 @@ void UGridHoverSubsystem::UnregisterTile(AGridTileBase* Tile)
     if (!IsValid(Tile)) return;
     if (!RegisteredTiles.Contains(Tile)) return;
 
-    Tile->OnGridTileBeginCursorOver.RemoveDynamic(this, &ThisClass::BroadcastGridTileHoverChanged);
+    // Disabled while still bound, so a hover on it ends for the listeners too
+    if (IsValid(Tile->HoverComponent))
+    {
+        Tile->HoverComponent->SetHoverEnabled(false);
+    }
+    BindTile(Tile, false);
     RegisteredTiles.Remove(Tile);
+}
+
+void UGridHoverSubsystem::BindTile(AGridTileBase* Tile, bool bBind)
+{
+    UGridHoverComponent* Hover = Tile->HoverComponent;
+    if (!IsValid(Hover)) return;
+
+    if (bBind)
+    {
+        Hover->OnHoverBegin.AddDynamic(this, &ThisClass::HandleTileHoverBegin);
+        Hover->OnHoverEnd.AddDynamic(this, &ThisClass::HandleTileHoverEnd);
+        Hover->OnClicked.AddDynamic(this, &ThisClass::HandleTileClicked);
+    }
+    else
+    {
+        Hover->OnHoverBegin.RemoveDynamic(this, &ThisClass::HandleTileHoverBegin);
+        Hover->OnHoverEnd.RemoveDynamic(this, &ThisClass::HandleTileHoverEnd);
+        Hover->OnClicked.RemoveDynamic(this, &ThisClass::HandleTileClicked);
+    }
 }
 
 bool UGridHoverSubsystem::IsTileRegistered(const AGridTileBase* Tile) const
@@ -99,9 +131,19 @@ bool UGridHoverSubsystem::IsPieceRegistered(const AGridPieceBase* Piece) const
     return RegisteredPieces.Contains(Piece);
 }
 
-void UGridHoverSubsystem::BroadcastGridTileHoverChanged(AGridTileBase* InTile)
+void UGridHoverSubsystem::HandleTileHoverBegin(UGridHoverComponent* Component)
 {
-    if (OnGridTileHoverChanged.IsBound()) { OnGridTileHoverChanged.Broadcast(InTile); }
+    OnGridTileHoverChanged.Broadcast(Cast<AGridTileBase>(Component->GetOwner()));
+}
+
+void UGridHoverSubsystem::HandleTileHoverEnd(UGridHoverComponent* Component)
+{
+    OnGridTileHoverEnded.Broadcast(Cast<AGridTileBase>(Component->GetOwner()));
+}
+
+void UGridHoverSubsystem::HandleTileClicked(UGridHoverComponent* Component)
+{
+    OnGridTileClicked.Broadcast(Cast<AGridTileBase>(Component->GetOwner()));
 }
 
 void UGridHoverSubsystem::BroadcastGridPieceHoverChanged(AGridPieceBase* InPiece)

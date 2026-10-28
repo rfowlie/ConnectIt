@@ -189,3 +189,63 @@ intro region as the place the base skills are taught.
 - ~~Concept gating~~ -- decided round 3: tags yes, gates hand-specified, validator warns.
 - ~~Node actor placement~~ -- placed in the map, revealed by the load walk (decided round 4).
 - ~~How a secret connection is found~~ -- alternate / hidden win conditions (decided round 3).
+
+## The reveal walk -- where the graph starts and how nodes are activated (Claude, 2026-10-28)
+
+Answering the owner's question against the approved plan ([adventure-hub-plan](adventure-hub-plan.md), Stage 4) and
+what's built (Stages 1-2: `UConnectIt_MapNodeDataAsset` with `Unlocks` and a `NodeId` GUID; the saved
+`FConnectItAdventureProgress` with `CompletedNodes` and `BrokenSeals` as node ids).
+
+**The graph lives in the data assets, not the map.** Each node's data asset lists the nodes it `Unlocks` (soft
+references). The map only supplies the actors (each with a map node component pointing at its data asset).
+
+**Where it starts -- not settled yet.** The plan says "the map's starting node" but not where that's named. Options:
+- **The hub map's World Settings names its start node** (a data asset) -- the same place a map names its board, preset
+  and catalog; one per map, validated. A sub-map's World Settings also names its **exit node**.
+- **A "start" flag on one node component** in the map -- artist-friendly, validated to exactly one.
+
+**The walk, each time the hub map loads** (the hub manager):
+1. **Index the map:** find every map node component; build data asset → actor (validation catches a data asset with
+   two actors, or an actor with none). All node actors start hidden.
+2. **Read progress** from the save: completed node ids, broken seals, shards, seals held.
+3. **Breadth-first from the start node**, with a visited set (so loops can't hang it):
+   - reveal the node's actor;
+   - if it is **completed**, queue every node in its `Unlocks`, and reveal the link line to each;
+   - if it isn't, it's on the **frontier** -- revealed, but its unlocks stay hidden.
+4. **Set each revealed node's state:** completed; **available** (its gate is met, or its seal is broken); **gated**
+   (with what's missing, from the requirement check the subsystem already has).
+5. **Frame the camera** on the revealed nodes (bounds + margin) and **focus** the last-played node (else the start).
+
+**Nothing about the map's state is saved** -- only completed ids and broken seals. The walk derives everything else on
+every load, so a designer adding a node or a link in a later build just shows up for existing saves.
+
+**Live changes in the hub:** breaking a seal updates that node in place (gated → available); finishing a level returns
+to the hub map, which reloads, so the walk runs again and reveals what the win unlocked (the "new nodes appear"
+moment can be animated from the difference between the last walk and this one -- a later polish).
+
+**Edge cases:** an unlock pointing at a node with no actor in this map (another map's node) → warning, skipped; a
+completed node whose data asset was deleted → ignored; the start node missing → error, nothing revealed.
+
+### Decided (owner, 2026-10-28)
+
+- **A map node is a component on any actor**, not an actor class (flexible).
+- **Components register themselves with a subsystem** on start. The subsystem keeps **two maps, inverses of each other:
+  actor → data asset and data asset → actor.**
+- **The start node is a flag on the component** ("Start"). While components register, the subsystem notes the one
+  with the flag; then it runs the walk, enabling each node from the **Adventure progress of the active player file**
+  (held by the game instance).
+- **Edge cases:**
+  - "An unlock with no actor" is mostly prevented: only actors carrying a map node component are nodes.
+  - A deleted node id in the save only matters while testing; a way to override / renew the save comes later.
+  - **Level validation:** a map whose game mode is **`ConnectIt_GameMode_AdventureHub`** with **no** map node component
+    flagged Start → **error**.
+
+### Notes (Claude)
+
+- **Timing:** components that register in `BeginPlay` arrive *after* a world subsystem's `OnWorldBeginPlay`. Either
+  register when the component is **registered with the world** (`OnRegister`, before any `BeginPlay`) and walk on
+  `OnWorldBeginPlay`, or run the walk once registration settles (end of the hub game mode's `StartPlay`, or the next
+  tick). Placed actors register early either way; a node spawned later just registers and is placed by the next walk.
+- **Validation also:** more than one Start flag in a hub map → error; a node data asset used by two components →
+  error; an `Unlocks` entry with no component in this map → warning (it can't be revealed here).
+- **Sub-maps:** an **Exit** flag on the component the same way, validated to exactly one in a sub-map.

@@ -227,6 +227,13 @@ protected:
     void HandleValidSelection(AGridTileBase* Tile);
     virtual void HandleValidSelection_Implementation(AGridTileBase* Tile);
 
+    // A board tile was clicked (UGridHoverSubsystem::OnGridTileClicked, while
+    // the action is active). Default: nothing -- the selection input
+    // (HandleValidSelection) still selects; override for click-only handling.
+    UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "Action|Selection")
+    void HandleTileClicked(AGridTileBase* Tile);
+    virtual void HandleTileClicked_Implementation(AGridTileBase* Tile);
+
     UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "Action|Selection")
     void ClearSelectionState();
     virtual void ClearSelectionState_Implementation();
@@ -283,4 +290,10 @@ private:
 
     UFUNCTION()
     void OnGridTileHoverChanged(AGridTileBase* NewTile);
+
+    UFUNCTION()
+    void OnGridTileHoverEnded(AGridTileBase* Tile);
+
+    UFUNCTION()
+    void OnGridTileClicked(AGridTileBase* Tile);
 };

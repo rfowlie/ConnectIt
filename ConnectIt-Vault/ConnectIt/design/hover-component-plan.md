@@ -14,7 +14,7 @@ decision:
 
 Design: [hover-component](hover-component.md) (settled 2026-10-28); background:
 [editor-notes-2026-10-28](editor-notes-2026-10-28.md). Written 2026-10-28 in a design-only session; **approved by the owner
-2026-10-28**. **Stage 1 built 2026-10-28.**
+2026-10-28**. **Stages 1-2 built 2026-10-28.**
 
 ## Context
 
@@ -64,6 +64,14 @@ stages.
 - `UGridTileComponent`'s cursor delegates: removed if nothing references them (the legacy `Connectit_CursorOverComponent`
   asset under `Content/_Legacy` may; checked first).
 - Tests: registering a tile binds its component; unregistering unbinds; hover end and click reach the relays.
+- **As built (2026-10-28):** the action also handles **hover end** (`OnGridTileHoverEnded`: clears its hovered tile
+  and calls `HandleHoverCleared`) -- needed for "hovering off a tile clears the highlight". `HandleTileClicked` does
+  nothing by default: clicks already select through the selection input (`HandleValidSelection`), so a default would
+  select twice. Pieces: `bBlocksCursorTrace` (default false) + `CursorTraceChannel`; primitives set to ignore it in
+  `PostInitializeComponents` (a Blueprint that resets its collision profile later undoes it -- check in Stage 4). The
+  deprecated piece relay is untouched otherwise (no asset uses it). `UGridTileComponent`'s delegates removed (no
+  asset references the class; the `_Legacy` cursor component uses the tile actor's delegate). `UGridTrackerSubsystem`
+  still binds the tile's old delegate, but nothing registers tiles with it. Tests: `UnrealGridMechanics.Hover.Subsystem`.
 
 ## Stage 3: RefreshFromBoard
 

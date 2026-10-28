@@ -17,6 +17,12 @@ void AGridTileBase::BeginPlay()
 {
 	Super::BeginPlay();
 
+	// The deprecated actor delegate, kept fed for one release
+	if (IsValid(HoverComponent))
+	{
+		HoverComponent->OnHoverBegin.AddDynamic(this, &ThisClass::ForwardHoverBegin);
+	}
+
 	// Tiles no longer self-register -- UGridTileRegistryComponent discovers
 	// and registers them with UGridHoverSubsystem.
 
@@ -24,6 +30,11 @@ void AGridTileBase::BeginPlay()
 	// {
 	// 	Subsystem->RegisterGridTile(this);
 	// }
+}
+
+void AGridTileBase::ForwardHoverBegin(UGridHoverComponent* Component)
+{
+	OnGridTileBeginCursorOver.Broadcast(this);
 }
 
 void AGridTileBase::SendGameplayTag_Implementation(FGameplayTag StateTag)
