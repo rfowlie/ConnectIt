@@ -1,9 +1,9 @@
 ---
 type: plan
-status: not-started
+status: complete
 approved: true
 approved-on: 2026-10-28
-completed-on:
+completed-on: 2026-10-28
 playtested: false
 design: "[editor-notes-2026-10-28](editor-notes-2026-10-28.md)"
 question:
@@ -13,7 +13,7 @@ decision:
 # Plan: World Settings validation by game mode
 
 From [editor-notes-2026-10-28](editor-notes-2026-10-28.md), item 2 (decided 2026-10-28). Written 2026-10-28 in a
-design-only session; **approved by the owner 2026-10-28**. Not built.
+design-only session; **approved by the owner 2026-10-28**. **Built 2026-10-28**; awaiting the owner's editor check.
 
 ## Context
 

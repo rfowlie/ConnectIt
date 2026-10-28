@@ -15,6 +15,10 @@ decision:
 Written 2026-10-21 from the owner's notes; approved and **built** the same day (47/47 tests); PIE pending. Log:
 [_logs/2026-10-21-0145](../_logs/2026-10-21-0145.md).
 
+**2026-10-28:** World Settings validation only warns about missing match data (level config, tile catalog, default
+preset) on a **match map** -- one whose game mode (its override, else the project default) is `AConnectIt_GameMode` or a
+subclass; the hub and menu maps get an info line instead. [world-settings-validation-plan](world-settings-validation-plan.md).
+
 ## Context
 
 The level config holds the board (registries, grid geometry, piece class / pool) -- values likely to be reused across many

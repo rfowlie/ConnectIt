@@ -50,7 +50,10 @@ Design: [phased-levels](../../design/phased-levels.md); decision:
 1. **Make each phase's layout** (skip for phases that keep the board):
    1. Open the sandbox map.
    2. Lay **builder tiles** out and set each one's data (multiplier, active, shiftable, starting piece, power tag).
-      **Preview Tile Catalog** to see it as the catalog's tiles (never saved); **Clear** before editing again.
+      **Preview Tile Catalog** to see it as the catalog's tiles (never saved; each shows in the outliner as
+      "<builder> (preview)"). While previewing, **moving a preview moves its builder**: when the drag ends it snaps to
+      the grid cell under it and the hidden builder goes there too. Deleting a preview leaves its builder; saving the
+      map clears the preview first (press Preview again after). **Clear** before editing builder data.
    3. In the tool: pick or create a `ConnectIt Board Layout` asset (e.g. `CIBL_Tutorial3_Phase2`).
    4. **Capture**.
    5. Frame the view and **Set Camera** (optional).

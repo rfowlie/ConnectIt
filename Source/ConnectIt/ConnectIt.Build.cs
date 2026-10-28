@@ -16,9 +16,6 @@ public class ConnectIt : ModuleRules
 			"InputCore",
 			"EnhancedInput",
 			"UMG",
-			"UMGEditor",
-			"Blutility",
-			"UnrealEd",
 			"DeveloperSettings",
 			"GameplayTags",
 			"GameplayTasks",
@@ -40,8 +37,21 @@ public class ConnectIt : ModuleRules
 			"UnrealGameMechanics",
 			"UnrealGridMechanics",
 			"UnrealGameIntelligence", 
-			"UnrealTurnBasedMechanics", 
+			"UnrealTurnBasedMechanics",
 		});
+
+		// Editor-only modules: linking them unconditionally breaks packaged
+		// game builds. Code that uses them stays inside #if WITH_EDITOR.
+		if (Target.bBuildEditor)
+		{
+			PrivateDependencyModuleNames.AddRange(new string[]
+			{
+				"UnrealEd",
+				"UMGEditor",
+				"Blutility",
+				"EngineSettings",
+			});
+		}
 
 		// Uncomment if you are using Slate UI
 		// PrivateDependencyModuleNames.AddRange(new string[] { "Slate", "SlateCore" });

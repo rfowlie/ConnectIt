@@ -4,9 +4,15 @@
 #include "Framework/Data/ConnectIt_LevelConfigDataAsset.h"
 #include "Framework/Data/ConnectIt_MatchPreset.h"
 #include "Board/Powers/ConnectIt_TileCatalog.h"
+#include "Framework/GameMode/ConnectIt_GameMode.h"
 #include "Engine/Engine.h"
 #include "Engine/World.h"
 #include "Misc/DataValidation.h"
+
+#if WITH_EDITOR
+#include "GameMapsSettings.h"
+#include "Logging/TokenizedMessage.h"
+#endif
 
 
 namespace
@@ -62,11 +68,31 @@ EDataValidationResult AConnectIt_WorldSettings::IsDataValid(FDataValidationConte
 {
     EDataValidationResult Result = Super::IsDataValid(Context);
 
-    // Not invalid: a menu map has no board -- but a match map needs one
+    // The map's game mode: this map's override, else the project default
+    const UClass* GameModeClass = DefaultGameMode.Get();
+    if (!GameModeClass)
+    {
+        const FString ProjectGameMode = UGameMapsSettings::GetGlobalDefaultGameMode();
+        GameModeClass = ProjectGameMode.IsEmpty() ? nullptr : LoadClass<AGameModeBase>(nullptr, *ProjectGameMode);
+    }
+
+    // Match data is only checked on a match map (the hub and the menus have
+    // none; data set on them anyway is harmless)
+    if (!GameModeClass || !GameModeClass->IsChildOf(AConnectIt_GameMode::StaticClass()))
+    {
+        Context.AddMessage(EMessageSeverity::Info, FText::FromString(FString::Printf(TEXT(
+            "ConnectIt_WorldSettings: not a match map (game mode: %s) -- match data not checked."),
+            GameModeClass ? *GameModeClass->GetName() : TEXT("none"))));
+        return Result;
+    }
+
+    Context.AddMessage(EMessageSeverity::Info, FText::FromString(FString::Printf(TEXT(
+        "ConnectIt_WorldSettings: checked as a match map (game mode: %s)."), *GameModeClass->GetName())));
+
     if (!IsValid(LevelConfig))
     {
         Context.AddWarning(FText::FromString(TEXT(
-            "ConnectIt_WorldSettings: No Level Config -- this map has no board (fine for a menu map, not for a match).")));
+            "ConnectIt_WorldSettings: No Level Config -- this match map has no board.")));
     }
 
     // Not invalid: the project default stands in
@@ -77,7 +103,7 @@ EDataValidationResult AConnectIt_WorldSettings::IsDataValid(FDataValidationConte
             "ConnectIt).")));
     }
 
-    // Not invalid: the main menu can choose a preset (a menu-only map)
+    // Not invalid: the main menu can choose a preset
     if (!IsValid(DefaultMatchPreset))
     {
         Context.AddWarning(FText::FromString(TEXT(

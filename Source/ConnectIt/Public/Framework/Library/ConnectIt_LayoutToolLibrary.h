@@ -50,10 +50,17 @@ public:
 
     // Shows each builder tile in this level as Catalog's tile class for its
     // power tag, to see how the level will look: the catalog's actors are
-    // spawned as transient (never saved, hidden from the outliner) and the
-    // builder tiles are hidden with the editor's temporary hide (not saved
-    // either), so nothing here can reach the saved level. Replaces any
-    // preview already showing. Returns how many tiles are previewed.
+    // spawned as transient (never saved; in the outliner as "<builder>
+    // (preview)") and the builder tiles are hidden with the editor's
+    // temporary hide (not saved either), so nothing here can reach the saved
+    // level. Replaces any preview already showing. Returns how many tiles are
+    // previewed.
+    //
+    // Moving a preview moves its builder: when a drag ends (or a transform is
+    // typed in), the preview snaps to the grid cell under it and its builder
+    // tile goes to the same place, still hidden. Deleting a preview leaves its
+    // builder. Saving the level clears the preview first (press Preview again
+    // after).
     UFUNCTION(BlueprintCallable, Category = "ConnectIt|Layout Tool", meta = (WorldContext = "WorldContextObject"))
     static int32 PreviewTileCatalog(const UObject* WorldContextObject, const UConnectIt_TileCatalog* Catalog);
 

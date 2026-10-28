@@ -62,6 +62,9 @@ public:
     static const UConnectIt_TileCatalog* GetWorldTileCatalog(const UObject* WorldContextObject);
 
 #if WITH_EDITOR
+    // Warns about missing match data (level config, tile catalog, default
+    // preset) only when the map's game mode -- its override, else the
+    // project default -- is a ConnectIt match game mode
     virtual EDataValidationResult IsDataValid(FDataValidationContext& Context) const override;
 #endif
 };

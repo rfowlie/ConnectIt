@@ -74,9 +74,11 @@ bool FConnectItAdventureShardTableTest::RunTest(const FString& Parameters)
     FConnectItActionShardCosts Costs;
     Costs.ShardsPerUse = { 5, 3 };
     Falling->Actions.Add(ConnectItAdventureTests::TestAction, Costs);
+#if WITH_EDITOR
     FDataValidationContext Validation;
     TestTrue(TEXT("falling: still valid"), Falling->IsDataValid(Validation) != EDataValidationResult::Invalid);
     TestEqual(TEXT("falling: one warning"), static_cast<int32>(Validation.GetNumWarnings()), 1);
+#endif
     TestEqual(TEXT("falling: 7 shards = 1 use"), Falling->GetPermanentUses(ConnectItAdventureTests::TestAction, 7), 1);
     TestEqual(TEXT("falling: 8 shards = 2 uses"), Falling->GetPermanentUses(ConnectItAdventureTests::TestAction, 8), 2);
     return true;
@@ -141,6 +143,7 @@ bool FConnectItAdventureNodeDataTest::RunTest(const FString& Parameters)
     const UConnectIt_MapNodeDataAsset* Copy = DuplicateObject(Node, GetTransientPackage());
     TestTrue(TEXT("a copy has its own id"), Copy->NodeId.IsValid() && Copy->NodeId != Node->NodeId);
 
+#if WITH_EDITOR
     FDataValidationContext Valid;
     TestTrue(TEXT("a level node: valid"), Node->IsDataValid(Valid) != EDataValidationResult::Invalid);
 
@@ -169,6 +172,7 @@ bool FConnectItAdventureNodeDataTest::RunTest(const FString& Parameters)
     Node->SubMap = TSoftObjectPtr<UWorld>(FSoftObjectPath(TEXT("/Game/Test/TestHub.TestHub")));
     FDataValidationContext Both;
     TestTrue(TEXT("a level and a sub-map: invalid"), Node->IsDataValid(Both) == EDataValidationResult::Invalid);
+#endif
     return true;
 }
 

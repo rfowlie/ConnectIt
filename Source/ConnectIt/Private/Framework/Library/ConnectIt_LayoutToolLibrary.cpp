@@ -15,6 +15,8 @@
 #include "Engine/Engine.h"
 #include "Engine/World.h"
 #include "EngineUtils.h"
+#include "Editor.h"
+#include "UObject/ObjectSaveContext.h"
 
 
 namespace
@@ -46,6 +48,106 @@ namespace
     bool IsPreviewActor(const AActor* Actor)
     {
         return Actor && Actor->HasAnyFlags(RF_Transient) && Actor->ActorHasTag(PreviewActorTag);
+    }
+
+    // --- A preview's builder follows it ---
+    // Each preview is linked to the builder tile it shows. Moving a preview in
+    // the editor snaps it to its grid cell and moves the builder there, so
+    // the level can be laid out in the catalog's look. The links and the
+    // editor hooks live only while a preview shows.
+
+    TMap<TWeakObjectPtr<AActor>, TWeakObjectPtr<AConnectIt_BuilderTile>> PreviewBuilders;
+    FDelegateHandle ActorMovedHandle;
+    FDelegateHandle ActorDeletedHandle;
+    FDelegateHandle PreSaveHandle;
+
+    // A drag ended (or the transform was typed in) on an actor
+    void HandleActorMoved(AActor* Actor)
+    {
+        if (!IsPreviewActor(Actor)) return;
+
+        const TWeakObjectPtr<AConnectIt_BuilderTile>* Linked = PreviewBuilders.Find(Actor);
+        AConnectIt_BuilderTile* Builder = Linked ? Linked->Get() : nullptr;
+        if (!IsValid(Builder))
+        {
+            UE_LOG(LogTemp, Warning,
+                TEXT("ConnectIt_LayoutTool: preview '%s' moved, but its builder tile is gone -- nothing to move"),
+                *Actor->GetActorLabel());
+            return;
+        }
+
+        // Snap to the grid cell under it (its own height kept)
+        FVector Location = Actor->GetActorLocation();
+        if (const UConnectIt_LevelConfigDataAsset* Board = FindToolBoard(Actor, TEXT("moving a preview")))
+        {
+            const FVector Snapped = Board->GridDefinition->GridPositionToWorld(
+                Board->GridDefinition->WorldToGridPosition(Location));
+            Location = FVector(Snapped.X, Snapped.Y, Location.Z);
+            Actor->SetActorLocation(Location);
+        }
+
+        // The builder (the saved tile) goes where the preview is, still hidden
+        Builder->Modify();
+        Builder->SetActorTransform(Actor->GetActorTransform());
+        Builder->SetIsTemporarilyHiddenInEditor(true);
+
+        UE_LOG(LogTemp, Log, TEXT("ConnectIt_LayoutTool: '%s' moved with its preview to (%.0f, %.0f)"),
+            *Builder->GetActorLabel(), Location.X, Location.Y);
+    }
+
+    void HandleActorDeleted(AActor* Actor)
+    {
+        if (!IsPreviewActor(Actor) || !PreviewBuilders.Contains(Actor)) return;
+
+        // Only Clear removes a builder's preview for good; deleting one leaves
+        // its builder (hidden until Clear)
+        const TWeakObjectPtr<AConnectIt_BuilderTile> Builder = PreviewBuilders.FindAndRemoveChecked(Actor);
+        UE_LOG(LogTemp, Log,
+            TEXT("ConnectIt_LayoutTool: preview '%s' deleted -- its builder tile '%s' stays (Clear shows it again)"),
+            *Actor->GetActorLabel(), Builder.IsValid() ? *Builder->GetActorLabel() : TEXT("(gone)"));
+    }
+
+    // Safety net: previews never reach a saved level (they are transient
+    // anyway). They're cleared before the save and come back only by
+    // pressing Preview again.
+    void HandlePreSaveWorld(UWorld* World, FObjectPreSaveContext SaveContext)
+    {
+        if (!IsValid(World)) return;
+
+        bool bHasPreview = false;
+        for (TActorIterator<AGridTileBase> It(World); It; ++It)
+        {
+            if (IsPreviewActor(*It)) { bHasPreview = true; break; }
+        }
+        if (bHasPreview)
+        {
+            UE_LOG(LogTemp, Log, TEXT("ConnectIt_LayoutTool: saving '%s' -- the tile catalog preview is cleared"),
+                *World->GetName());
+            UConnectIt_LayoutToolLibrary::ClearTileCatalogPreview(World);
+        }
+    }
+
+    void StartWatchingPreviews()
+    {
+        if (!GEngine || ActorMovedHandle.IsValid()) return;
+        ActorMovedHandle = GEngine->OnActorMoved().AddStatic(&HandleActorMoved);
+        ActorDeletedHandle = GEngine->OnLevelActorDeleted().AddStatic(&HandleActorDeleted);
+        PreSaveHandle = FEditorDelegates::PreSaveWorldWithContext.AddStatic(&HandlePreSaveWorld);
+    }
+
+    void StopWatchingPreviews()
+    {
+        PreviewBuilders.Reset();
+        if (!ActorMovedHandle.IsValid()) return;
+        if (GEngine)
+        {
+            GEngine->OnActorMoved().Remove(ActorMovedHandle);
+            GEngine->OnLevelActorDeleted().Remove(ActorDeletedHandle);
+        }
+        FEditorDelegates::PreSaveWorldWithContext.Remove(PreSaveHandle);
+        ActorMovedHandle.Reset();
+        ActorDeletedHandle.Reset();
+        PreSaveHandle.Reset();
     }
 }
 
@@ -196,15 +298,17 @@ int32 UConnectIt_LayoutToolLibrary::PreviewTileCatalog(const UObject* WorldConte
             continue;
         }
 
-        // Transient: never saved with the level
+        // Transient: never saved with the level. Shown in the outliner, named
+        // after its builder, so it can be picked out to move.
         FActorSpawnParameters Params;
         Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
         Params.ObjectFlags |= RF_Transient;
-        Params.bHideFromSceneOutliner = true;
         AGridTileBase* Preview = World->SpawnActor<AGridTileBase>(TileClass, Builder->GetActorTransform(), Params);
         if (!IsValid(Preview)) continue;
 
         Preview->Tags.Add(PreviewActorTag);
+        Preview->SetActorLabel(Builder->GetActorLabel() + TEXT(" (preview)"));
+        PreviewBuilders.Add(Preview, Builder);
         if (Preview->Implements<UConnectIt_TileDataProvider>())
         {
             IConnectIt_TileDataProvider::Execute_ApplyLayoutCell(Preview, Builder->TileData, Builder->VisualVariant);
@@ -213,6 +317,11 @@ int32 UConnectIt_LayoutToolLibrary::PreviewTileCatalog(const UObject* WorldConte
         // The editor's temporary hide: not saved either
         Builder->SetIsTemporarilyHiddenInEditor(true);
         Previewed++;
+    }
+
+    if (Previewed > 0)
+    {
+        StartWatchingPreviews();
     }
 
     UE_LOG(LogTemp, Log, TEXT("ConnectIt_LayoutTool: previewing %d builder tile(s) as tile catalog '%s'"),
@@ -224,6 +333,9 @@ void UConnectIt_LayoutToolLibrary::ClearTileCatalogPreview(const UObject* WorldC
 {
     UWorld* World = GetToolWorld(WorldContextObject);
     if (!World) return;
+
+    // Unhooked first: removing the previews here isn't a designer's delete
+    StopWatchingPreviews();
 
     TArray<AActor*> Previews;
     for (TActorIterator<AGridTileBase> It(World); It; ++It)

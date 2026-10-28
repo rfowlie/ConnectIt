@@ -1,9 +1,9 @@
 ---
 type: plan
-status: not-started
+status: complete
 approved: true
 approved-on: 2026-10-28
-completed-on:
+completed-on: 2026-10-28
 playtested: false
 design: "[editor-notes-2026-10-28](editor-notes-2026-10-28.md)"
 question:
@@ -13,7 +13,8 @@ decision:
 # Plan: layout tool -- moving a preview moves its builder
 
 From [editor-notes-2026-10-28](editor-notes-2026-10-28.md), item 6 (decided 2026-10-28: add this behaviour). Written
-2026-10-28 in a design-only session; **approved by the owner 2026-10-28**. Not built.
+2026-10-28 in a design-only session; **approved by the owner 2026-10-28**. **Built 2026-10-28** (previews show in the outliner); awaiting the owner's
+editor check.
 
 ## Context
 

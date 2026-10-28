@@ -3575,6 +3575,7 @@ bool FConnectItTilePowerDataTest::RunTest(const FString& Parameters)
     }
 
     // --- Validation: a catalog entry with no class or effect; level-wide tags named once ---
+#if WITH_EDITOR
     {
         UConnectIt_TileCatalog* Bad = NewObject<UConnectIt_TileCatalog>();
         Bad->Tiles.Add(PowerTag, FConnectItTileCatalogEntry());
@@ -3600,6 +3601,7 @@ bool FConnectItTilePowerDataTest::RunTest(const FString& Parameters)
         TestTrue(TEXT("director validation: a level-wide tag listed twice"), Reported(TEXT("twice")));
         TestTrue(TEXT("director validation: and an empty one"), Reported(TEXT("has no tag")));
     }
+#endif
 
     // --- The turn: the AI's search counts one per ply ---
     {
@@ -4479,8 +4481,10 @@ bool FConnectItPushAndVacuumTest::RunTest(const FString& Parameters)
         Entry.TilePower.Name = FGameplayTag();
         Entry.TilePower.AddTrigger(EPower::PieceEnter);
         Catalog->Tiles.Add(TestPower1, Entry);
+#if WITH_EDITOR
         FDataValidationContext Context;
         TestEqual(TEXT("triggers: Sync with another trigger fails validation"), Catalog->IsDataValid(Context), EDataValidationResult::Invalid);
+#endif
     }
 
     // --- Push: only valid pushes; a single one is always the one ---
