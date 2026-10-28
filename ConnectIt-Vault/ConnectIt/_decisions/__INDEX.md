@@ -8,6 +8,7 @@ Newest first:
 
 | Date | Decision | Status |
 |---|---|---|
+| [2026-10-28-tile-power-effects-own-their-tag](2026-10-28-tile-power-effects-own-their-tag.md) | A tile power's C++ effect names its tag and carries only its own values (the gate on Push / Vacuum / Repel); `FConnectItTilePower` has no `Name`; the tile catalog is an array of entries, looked up by each effect's tag | Active |
 | [2026-10-28-data-asset-classes-end-in-dataasset](2026-10-28-data-asset-classes-end-in-dataasset.md) | Every C++ data asset class ends in `DataAsset` (files to match); six ConnectIt classes renamed with class redirects; property names unchanged | Active |
 | [2026-10-23-player-actions-tile-powers-board-operations](2026-10-23-player-actions-tile-powers-board-operations.md) | One vocabulary, plugin first: Player Action (no "skill"), Tile Power, Board Operation (produced by both); permanent actions are a per-level list (match uses, -1 = unlimited; turn uses always finite); item actions sit in an inventory (max held per action) and spend a per-level item budget, through their own path and turn-end leaf; `UTurnBasedPlayerAction`, `ConnectIt.PlayerAction.*`, `ConnectIt.BoardOperation.*` | Active |
 | [2026-10-23-tile-visuals-use-per-event-hooks](2026-10-23-tile-visuals-use-per-event-hooks.md) | Tile Blueprints react through one hook per event kind (typed, reaction handle), not a generic HandleTilePower(tag); logic stays in C++ in the rules | Active |

@@ -6,6 +6,8 @@ Vault-wide passes go in `_core/_logs/`.
 
 Newest first:
 
+- [2026-10-28-1434](2026-10-28-1434.md) — session — tile-catalog-effects Stages 2-3: the catalog is an array of
+  entries looked up by each effect's tag; decision note; tile power recipe updated. 69/69 tests.
 - [2026-10-28-1430](2026-10-28-1430.md) — session — tile-catalog-effects Stage 1: effects name their power tag and
   carry their own gate; `FConnectItTilePower::Name` / `FireAtMultiplier` removed; floor / ceiling kept (read). 69/69.
 - [2026-10-28-1423](2026-10-28-1423.md) — session — data asset classes end in `DataAsset`: six ConnectIt classes and

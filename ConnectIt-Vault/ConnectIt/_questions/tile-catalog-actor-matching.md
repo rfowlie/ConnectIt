@@ -25,5 +25,10 @@ validates against it), or a decision that this is left to designers and review.
 2026-10-28 (owner): left as a question for later; the priority is that each tag is automatically tied to the right
 effect and only relevant values are exposed. See [editor-notes-2026-10-28](../design/editor-notes-2026-10-28.md).
 
+2026-10-28 (built): the tag ↔ effect half is done. Each catalog entry's tag is its effect's
+([tile-catalog-effects-plan](../design/tile-catalog-effects-plan.md)), so the remaining gap is only tile class ↔ effect.
+That fits the same shape: the class could declare its power tag the way an effect does, and catalog validation could
+compare the two.
+
 ## Resolution
 

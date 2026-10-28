@@ -1,19 +1,19 @@
 ---
 type: plan
-status: in-progress
+status: complete
 approved: true
 approved-on: 2026-10-28
-completed-on:
+completed-on: 2026-10-28
 playtested: false
 design: "[editor-notes-2026-10-28](editor-notes-2026-10-28.md)"
 question: "[tile-catalog-actor-matching](../_questions/tile-catalog-actor-matching.md)"
-decision:
+decision: "[2026-10-28-tile-power-effects-own-their-tag](../_decisions/2026-10-28-tile-power-effects-own-their-tag.md)"
 ---
 
 # Plan: the tile catalog ties each power tag to its effect
 
 From [editor-notes-2026-10-28](editor-notes-2026-10-28.md), item 5 (rounds 3-4, 2026-10-28). Written 2026-10-28 in a
-design-only session; **approved by the owner 2026-10-28**. **Stage 1 built 2026-10-28.**
+design-only session; **approved by the owner 2026-10-28**. **Built 2026-10-28** (all stages); awaiting the owner's editor check.
 
 ## Context
 
@@ -53,6 +53,9 @@ Builders hold a **power tag**; the tag is looked up in the **tile catalog** (`UC
 - Existing catalogs: their entries are set again (owner, editor) -- or a one-off load fix-up copying map entries into the
   array.
 - Tests: lookup by tag; duplicate tags reported.
+- **As built (2026-10-28):** `Entries` (an array); the lookup (`FindEntry`) is built on first use from each entry's
+  effect tag and rebuilt after an edit (`PostEditChangeProperty`); the first entry for a tag wins and a repeat is a
+  validation error. No load fix-up: the old map's entries are set again in the editor (only `CIDTC_Test` had one).
 
 ## Stage 3: vault
 

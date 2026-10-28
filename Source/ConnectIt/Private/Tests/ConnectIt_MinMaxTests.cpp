@@ -3466,8 +3466,8 @@ bool FConnectItTilePowerDataTest::RunTest(const FString& Parameters)
     // A catalog defining two powers
     UConnectIt_TileCatalogDataAsset* Catalog = NewObject<UConnectIt_TileCatalogDataAsset>();
     Catalog->DefaultTileClass = AConnectIt_BuilderTile::StaticClass();
-    Catalog->Tiles.Add(PowerTag, MakeEntry(PowerTag, 5));
-    Catalog->Tiles.Add(OtherTag, MakeEntry(OtherTag, 9));
+    Catalog->Entries.Add(MakeEntry(PowerTag, 5));
+    Catalog->Entries.Add(MakeEntry(OtherTag, 9));
 
     // --- A fresh board and fresh rules have no powers ---
     {
@@ -3486,6 +3486,14 @@ bool FConnectItTilePowerDataTest::RunTest(const FString& Parameters)
         TestTrue(TEXT("catalog: a tag's class"), Catalog->GetTileClassFor(PowerTag) == AConnectIt_TileBase::StaticClass());
         TestTrue(TEXT("catalog: no tag is the default class"), Catalog->GetTileClassFor(FGameplayTag()) == AConnectIt_BuilderTile::StaticClass());
         TestTrue(TEXT("catalog: an undefined tag has none"), Catalog->GetTileClassFor(UndefinedTag) == nullptr);
+        TestTrue(TEXT("catalog: an entry is found by its effect's tag"),
+            Catalog->FindEntry(OtherTag) == &Catalog->Entries[1] && Catalog->Defines(PowerTag) && !Catalog->Defines(UndefinedTag));
+
+        // A repeated tag: the first entry is the one used
+        UConnectIt_TileCatalogDataAsset* Repeated = NewObject<UConnectIt_TileCatalogDataAsset>();
+        Repeated->Entries = { MakeEntry(PowerTag, 1), MakeEntry(PowerTag, 2) };
+        TestEqual(TEXT("catalog: a repeated tag finds the first"), StrengthOf(&Repeated->FindEntry(PowerTag)->TilePower), 1);
+        TestEqual(TEXT("catalog: a repeated tag gives one power"), Repeated->MakeTilePowers().Num(), 1);
 
         const TArray<FConnectItTilePower> Powers = Catalog->MakeTilePowers();
         const FConnectItTilePower* Named = Powers.FindByPredicate([&PowerTag](const FConnectItTilePower& Power) { return Power.GetTag() == PowerTag; });
@@ -3589,11 +3597,12 @@ bool FConnectItTilePowerDataTest::RunTest(const FString& Parameters)
 #if WITH_EDITOR
     {
         UConnectIt_TileCatalogDataAsset* Bad = NewObject<UConnectIt_TileCatalogDataAsset>();
-        Bad->Tiles.Add(PowerTag, FConnectItTileCatalogEntry());
-        Bad->Tiles.Add(OtherTag, MakeEntry(PowerTag, 1));
+        Bad->Entries.Add(FConnectItTileCatalogEntry());
+        Bad->Entries.Add(MakeEntry(PowerTag, 1));
+        Bad->Entries.Add(MakeEntry(PowerTag, 2));
         FDataValidationContext CatalogContext;
         TestEqual(TEXT("catalog validation: fails"), Bad->IsDataValid(CatalogContext), EDataValidationResult::Invalid);
-        TestTrue(TEXT("catalog validation: no class, no effect, an effect for another tag than its key"),
+        TestTrue(TEXT("catalog validation: no class, no effect, a tag defined twice"),
             CatalogContext.GetNumErrors() == 3);
 
         UConnectIt_LevelDirector* Director = NewObject<UConnectIt_LevelDirector>();
@@ -4429,8 +4438,9 @@ bool FConnectItMoveAndMultiplierTest::RunTest(const FString& Parameters)
 
         UConnectIt_TileCatalogDataAsset* Catalog = NewObject<UConnectIt_TileCatalogDataAsset>();
         FConnectItTileCatalogEntry Entry;
+        Entry.TilePower = MakeTestPower(TestPower1, EConnectItTilePowerTrigger::PieceEnter, FConnectItTilePowerEffect_Test());
         Entry.TilePower.MultiplierCeiling = 2.f;
-        Catalog->Tiles.Add(TestPower1, Entry);
+        Catalog->Entries.Add(Entry);
         AConnectIt_BuilderTile* Builder = GetMutableDefault<AConnectIt_BuilderTile>();
         const FConnectItTileInitialData Saved = Builder->TileData;
         ON_SCOPE_EXIT { Builder->TileData = Saved; };
@@ -4508,7 +4518,7 @@ bool FConnectItPushAndVacuumTest::RunTest(const FString& Parameters)
         Entry.TileClass = AConnectIt_TileBase::StaticClass();
         Entry.TilePower = MakeTestPower(TestPower1, EPower::Sync, FConnectItTilePowerEffect_Test());
         Entry.TilePower.AddTrigger(EPower::PieceEnter);
-        Catalog->Tiles.Add(TestPower1, Entry);
+        Catalog->Entries.Add(Entry);
 #if WITH_EDITOR
         FDataValidationContext Context;
         TestEqual(TEXT("triggers: Sync with another trigger fails validation"), Catalog->IsDataValid(Context), EDataValidationResult::Invalid);
@@ -4694,7 +4704,7 @@ bool FConnectItTurnStartTilePowersTest::RunTest(const FString& Parameters)
         UConnectIt_TileCatalogDataAsset* Catalog = NewObject<UConnectIt_TileCatalogDataAsset>();
         FConnectItTileCatalogEntry Entry;
         Entry.TilePower = Repel;
-        Catalog->Tiles.Add(ConnectIt_TilePower_Repel, Entry);
+        Catalog->Entries.Add(Entry);
         AConnectIt_BuilderTile* Builder = GetMutableDefault<AConnectIt_BuilderTile>();
         const FConnectItTileInitialData Saved = Builder->TileData;
         ON_SCOPE_EXIT { Builder->TileData = Saved; };

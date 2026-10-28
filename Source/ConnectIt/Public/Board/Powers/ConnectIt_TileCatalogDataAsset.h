@@ -23,14 +23,15 @@ struct CONNECTIT_API FConnectItTileCatalogEntry
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Tile")
     TSubclassOf<AConnectIt_TileBase> TileClass;
 
-    // Trigger, cooldown, and the effect with its own values. The effect's tag
-    // must be the entry's key.
+    // Trigger, cooldown, and the effect with its own values. The effect names
+    // the entry's power tag.
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Tile")
     FConnectItTilePower TilePower;
 };
 
 // Every kind of tile a level can have, by power tag: the one place a power is
-// defined, and which tile actor shows it. Designers place builder tiles
+// defined, and which tile actor shows it. Each entry's tag is its effect's, so
+// the two can't disagree; one entry per tag. Designers place builder tiles
 // (AConnectIt_BuilderTile) that name a tag; when the match starts each
 // becomes its entry's tile class, and the rules get the entries' powers.
 //
@@ -48,10 +49,13 @@ public:
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Catalog")
     TSubclassOf<AConnectIt_TileBase> DefaultTileClass;
     
-    // One entry per power tag (ConnectIt.TilePower.*)
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Catalog", meta = (Categories = "ConnectIt.TilePower", ForceInlineRow))
-    TMap<FGameplayTag, FConnectItTileCatalogEntry> Tiles;
-    
+    // One entry per power (ConnectIt.TilePower.*), known by its effect's tag
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Catalog")
+    TArray<FConnectItTileCatalogEntry> Entries;
+
+    // The entry for a power tag (by its effect's tag), or null
+    const FConnectItTileCatalogEntry* FindEntry(const FGameplayTag& TilePowerTag) const;
+
     // The tile actor for a tile with this power tag: its entry's class, or
     // the default one for no tag. Null for a tag the catalog doesn't define.
     UFUNCTION(BlueprintPure, Category = "ConnectIt|Tile Catalog")
@@ -59,7 +63,7 @@ public:
 
     // Whether the catalog defines this power tag
     UFUNCTION(BlueprintPure, Category = "ConnectIt|Tile Catalog")
-    bool Defines(FGameplayTag TilePowerTag) const { return Tiles.Contains(TilePowerTag); }
+    bool Defines(FGameplayTag TilePowerTag) const { return FindEntry(TilePowerTag) != nullptr; }
 
     // Every entry's power (each known by its effect's tag): what the rules
     // play with
@@ -74,5 +78,13 @@ public:
 
 #if WITH_EDITOR
     virtual EDataValidationResult IsDataValid(FDataValidationContext& Context) const override;
+    virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
 #endif
+
+private:
+
+    // Tag -> index in Entries, from each entry's effect tag (the first entry
+    // for a tag wins). Built on first use, again after an edit.
+    mutable TMap<FGameplayTag, int32> EntryByTag;
+    mutable bool bEntryByTagBuilt = false;
 };

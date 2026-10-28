@@ -7,7 +7,7 @@ touches:
   - a UConnectIt_TileCatalogDataAsset data asset (the entry -- tile class + power) named by the map's World Settings or Project Settings
   - a tile Blueprint (the catalog's tile class, parent ConnectIt_TileBase; its tile hooks) and builder tiles placed in the level
   - (level-wide) the Level director's Level Wide Powers
-reconciled: 2026-10-23
+reconciled: 2026-10-28
 commit: 54c1284
 ---
 
@@ -34,13 +34,21 @@ and what it does, with its values. Placed tiles only name the tag. Decisions:
 
 1. **The effect (C++)**, if no existing one does what you need. The shipped ones are in `ConnectIt_TilePowerEffects.h`:
    **Push**, **Vacuum**, **Repel**, **Chained**. Add yours there: a struct deriving from `FConnectItTilePowerEffect`.
-   Its `UPROPERTY`s are the power's tunable values. Override `MakeOperations`:
+   Its `UPROPERTY`s are the power's tunable values -- only the ones it uses, since they're all a catalog entry shows for
+   it. Override `GetPowerTag` (its native tag, step 2: the effect *is* the power's identity) and `MakeOperations`; for a
+   multiplier gate, add an `FConnectItMultiplierGate Gate` value and override `PassesGate` to ask it:
    ```cpp
    USTRUCT(BlueprintType, meta = (DisplayName = "Push"))
    struct CONNECTIT_API FConnectItTilePowerEffect_Push : public FConnectItTilePowerEffect
    {
        GENERATED_BODY()
 
+       // The powered tile's multiplier it needs to fire (0 = none)
+       UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Effect")
+       FConnectItMultiplierGate Gate;
+
+       virtual FGameplayTag GetPowerTag() const override;   // { return ConnectIt_TilePower_Push; }
+       virtual bool PassesGate(const FConnectItTilePowerContext& Context) const override { return Gate.Passes(Context); }
        virtual void MakeOperations(const FConnectItTilePowerContext& Context,
            TArray<FInstancedStruct>& OutOperations) const override;
        // Context: Board (as it is now), Position (the powered tile), Faction (whose change set
@@ -57,8 +65,9 @@ and what it does, with its values. Placed tiles only name the tag. Decisions:
      allows, then roll among them with `Context.Random`. A player who sees one valid option can then predict it, and
      the power acts whenever it can. Push, Vacuum and Repel share helpers for this in `ConnectIt_TilePowerEffects.cpp`.
    - Plain data only: it runs in the AI's search on a worker thread (no actors, no UObjects).
-2. **The tag:** `ConnectIt.TilePower.<Name>` (Project Settings > Gameplay Tags, under `ConnectIt.TilePower`). No level
-   suffix.
+2. **The tag:** a native tag `ConnectIt.TilePower.<Name>` in `ConnectIt_GameplayTags.h/.cpp`
+   (`UE_DECLARE_GAMEPLAY_TAG_EXTERN` / `UE_DEFINE_GAMEPLAY_TAG_COMMENT`), returned by the effect's `GetPowerTag`. Native,
+   so the tag always exists for the effect that names it. No level suffix.
 3. **The tile class:** a tile Blueprint deriving from `ConnectIt_TileBase` that shows this kind of tile. Animate it in
    its **tile hooks** (Blueprint events under ConnectIt | Tile Hooks):
    - **On Power Triggered** (its power fired), **On Piece Enter** / **On Piece Exit** (with the event's tag as Cause:
@@ -69,17 +78,16 @@ and what it does, with its values. Placed tiles only name the tag. Decisions:
      chain plays in order. A hook you don't override finishes at once.
    - A Turn Start tile can show its countdown with **Get Power Turns Left (State, Position, Current Turn)**, Current
      Turn being the GameState's Active Turn Number.
-4. **The catalog entry:** in the tile catalog, add an entry to **Tiles**: key = the tag; **Tile Class** = the Blueprint;
-   **Power**:
+4. **The catalog entry:** in the tile catalog, add an entry to **Entries**: **Tile Class** = the Blueprint; **Power**
+   (the entry's tag is its effect's -- there is no key to set, so they can't disagree; validation reports a tag defined
+   twice or an entry with no effect):
    - **Triggers** (one or more): Piece Enter / Piece Exit / Piece Changed / Tile Changed / Scoring / Turn Start, or
      **Sync** on its own.
-   - **Fire At Multiplier:** the gate (0 = none).
    - **Cooldown Turns:** 0 = every time. For **Turn Start** it is the countdown: the power fires every N turns (all
      turns count), starting N turns after the tile joins the board.
    - **Multiplier Floor** (default 1) and **Multiplier Ceiling** (-1 = none; 0 = the tile never adds to a score, though
      it still forms lines): this tile type's limits, applied to scoring, Adjust, Destroy and the starting value.
-   - **Effect:** your effect struct, with its values.
-   - Leave **Name** empty (the key names it).
+   - **Effect:** your effect struct, with its own values (e.g. Push's **Gate > Fire At Multiplier**, 0 = none).
 5. **Put it in a level:** place a builder tile and set its **Tile Power Tag**. In the layout tool, **Preview Tile Catalog**
    shows the level as the catalog's tiles (never saved); **Clear** puts the builders back.
 6. **Level-wide** (every tile has it, on top of its own): add the tag to the Level director's **Level Wide Powers**. It

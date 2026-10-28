@@ -12,21 +12,45 @@
 #endif
 
 
+const FConnectItTileCatalogEntry* UConnectIt_TileCatalogDataAsset::FindEntry(const FGameplayTag& TilePowerTag) const
+{
+    if (!TilePowerTag.IsValid()) return nullptr;
+    if (!bEntryByTagBuilt)
+    {
+        EntryByTag.Reset();
+        for (int32 Index = 0; Index < Entries.Num(); Index++)
+        {
+            const FGameplayTag Tag = Entries[Index].TilePower.GetTag();
+            if (Tag.IsValid() && !EntryByTag.Contains(Tag))
+            {
+                EntryByTag.Add(Tag, Index);
+            }
+        }
+        bEntryByTagBuilt = true;
+    }
+    const int32* Index = EntryByTag.Find(TilePowerTag);
+    return Index && Entries.IsValidIndex(*Index) ? &Entries[*Index] : nullptr;
+}
+
 TSubclassOf<AConnectIt_TileBase> UConnectIt_TileCatalogDataAsset::GetTileClassFor(FGameplayTag TilePowerTag) const
 {
     if (!TilePowerTag.IsValid()) return DefaultTileClass;
-    const FConnectItTileCatalogEntry* Entry = Tiles.Find(TilePowerTag);
+    const FConnectItTileCatalogEntry* Entry = FindEntry(TilePowerTag);
     return Entry ? Entry->TileClass : nullptr;
 }
 
 TArray<FConnectItTilePower> UConnectIt_TileCatalogDataAsset::MakeTilePowers() const
 {
+    // One per tag: the entry the lookup finds (a repeat is a validation error)
     TArray<FConnectItTilePower> Powers;
-    Powers.Reserve(Tiles.Num());
-    for (const TPair<FGameplayTag, FConnectItTileCatalogEntry>& Pair : Tiles)
+    Powers.Reserve(Entries.Num());
+    for (const FConnectItTileCatalogEntry& Entry : Entries)
     {
-        if (!Pair.Key.IsValid()) continue;
-        Powers.Add(Pair.Value.TilePower);
+        const FGameplayTag Tag = Entry.TilePower.GetTag();
+        if (Tag.IsValid() && FindEntry(Tag) == &Entry)
+        {
+            Powers.Add(Entry.TilePower);
+        }
     }
     return Powers;
 }
@@ -69,28 +93,32 @@ EDataValidationResult UConnectIt_TileCatalogDataAsset::IsDataValid(FDataValidati
             "ConnectIt_TileCatalogDataAsset: no Default Tile Class -- tiles with no power have no actor to show them.")));
     }
 
-    for (const TPair<FGameplayTag, FConnectItTileCatalogEntry>& Pair : Tiles)
+    TSet<FGameplayTag> Seen;
+    for (int32 Index = 0; Index < Entries.Num(); Index++)
     {
-        const FString Key = Pair.Key.ToString();
-        if (!Pair.Key.IsValid())
+        const FConnectItTileCatalogEntry& Entry = Entries[Index];
+        const FConnectItTilePower& Power = Entry.TilePower;
+        const FGameplayTag Tag = Power.GetTag();
+        const FString Key = Tag.IsValid() ? Tag.ToString() : FString::Printf(TEXT("Entry %d"), Index);
+        if (!Tag.IsValid())
         {
-            Context.AddError(FText::FromString(TEXT("ConnectIt_TileCatalogDataAsset: an entry has no tag.")));
+            Context.AddError(FText::FromString(FString::Printf(TEXT(
+                "ConnectIt_TileCatalogDataAsset: %s has no Effect (an effect names its power tag)."), *Key)));
             Result = EDataValidationResult::Invalid;
-            continue;
         }
-        if (!Pair.Value.TileClass)
+        else if (Seen.Contains(Tag))
+        {
+            Context.AddError(FText::FromString(FString::Printf(TEXT(
+                "ConnectIt_TileCatalogDataAsset: %s is defined twice (entry %d) -- the first is used."), *Key, Index)));
+            Result = EDataValidationResult::Invalid;
+        }
+        Seen.Add(Tag);
+        if (!Entry.TileClass)
         {
             Context.AddError(FText::FromString(FString::Printf(TEXT(
                 "ConnectIt_TileCatalogDataAsset: %s has no Tile Class."), *Key)));
             Result = EDataValidationResult::Invalid;
         }
-        if (!Pair.Value.TilePower.Effect.IsValid())
-        {
-            Context.AddError(FText::FromString(FString::Printf(TEXT(
-                "ConnectIt_TileCatalogDataAsset: %s's power has no Effect."), *Key)));
-            Result = EDataValidationResult::Invalid;
-        }
-        const FConnectItTilePower& Power = Pair.Value.TilePower;
         if (Power.HasTrigger(EConnectItTilePowerTrigger::Sync) && Power.Triggers != (1 << static_cast<int32>(EConnectItTilePowerTrigger::Sync)))
         {
             Context.AddError(FText::FromString(FString::Printf(TEXT(
@@ -103,14 +131,13 @@ EDataValidationResult UConnectIt_TileCatalogDataAsset::IsDataValid(FDataValidati
                 "ConnectIt_TileCatalogDataAsset: %s has no trigger -- it never fires."), *Key)));
             Result = EDataValidationResult::Invalid;
         }
-        if (Power.Effect.IsValid() && Power.GetTag() != Pair.Key)
-        {
-            Context.AddError(FText::FromString(FString::Printf(TEXT(
-                "ConnectIt_TileCatalogDataAsset: %s's effect is the %s power -- the entry's tag must be its effect's."),
-                *Key, *Power.GetTag().ToString())));
-            Result = EDataValidationResult::Invalid;
-        }
     }
     return Result;
+}
+
+void UConnectIt_TileCatalogDataAsset::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent)
+{
+    Super::PostEditChangeProperty(PropertyChangedEvent);
+    bEntryByTagBuilt = false;
 }
 #endif

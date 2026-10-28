@@ -64,7 +64,8 @@ turn start, one board change at a time. The AI's search doesn't make this change
 start) or a level-wide one (`LevelWidePowers`). It fires only for a trigger in its set (`Triggers`, a bitmask).
 
 - **What can stop it:**
-  - **the gate:** the tile's multiplier below `FireAtMultiplier`;
+  - **the gate:** the effect's `PassesGate` says no (Push, Vacuum, Repel: the tile's multiplier below their
+    `Gate.FireAtMultiplier`);
   - **the cooldown:** the board's `TurnNumber` before its ready turn. For a Turn Start power the cooldown is the
     countdown, and its ready turn starts at the turn it joined the board plus the cooldown;
   - **the once-per-action guard:** this tile and power already fired this action -- the tile is its id, so it survives
