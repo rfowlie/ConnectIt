@@ -21,6 +21,13 @@ struct CONNECTIT_API FConnectItTilePowerEffect_Push : public FConnectItTilePower
 {
     GENERATED_BODY()
 
+    // The powered tile's multiplier it needs to fire (0 = none)
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Effect")
+    FConnectItMultiplierGate Gate;
+
+    virtual FGameplayTag GetPowerTag() const override;
+    virtual bool PassesGate(const FConnectItTilePowerContext& Context) const override { return Gate.Passes(Context); }
+
     virtual void MakeOperations(const FConnectItTilePowerContext& Context, TArray<FInstancedStruct>& OutOperations) const override;
 };
 
@@ -33,6 +40,13 @@ USTRUCT(BlueprintType, meta = (DisplayName = "Vacuum"))
 struct CONNECTIT_API FConnectItTilePowerEffect_Vacuum : public FConnectItTilePowerEffect
 {
     GENERATED_BODY()
+
+    // The powered tile's multiplier it needs to fire (0 = none)
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Effect")
+    FConnectItMultiplierGate Gate;
+
+    virtual FGameplayTag GetPowerTag() const override;
+    virtual bool PassesGate(const FConnectItTilePowerContext& Context) const override { return Gate.Passes(Context); }
 
     virtual void MakeOperations(const FConnectItTilePowerContext& Context, TArray<FInstancedStruct>& OutOperations) const override;
 };
@@ -47,6 +61,13 @@ struct CONNECTIT_API FConnectItTilePowerEffect_Repel : public FConnectItTilePowe
 {
     GENERATED_BODY()
 
+    // The powered tile's multiplier it needs to fire (0 = none)
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Effect")
+    FConnectItMultiplierGate Gate;
+
+    virtual FGameplayTag GetPowerTag() const override;
+    virtual bool PassesGate(const FConnectItTilePowerContext& Context) const override { return Gate.Passes(Context); }
+
     virtual void MakeOperations(const FConnectItTilePowerContext& Context, TArray<FInstancedStruct>& OutOperations) const override;
 };
 
@@ -60,6 +81,8 @@ USTRUCT(BlueprintType, meta = (DisplayName = "Chained"))
 struct CONNECTIT_API FConnectItTilePowerEffect_Chained : public FConnectItTilePowerEffect
 {
     GENERATED_BODY()
+
+    virtual FGameplayTag GetPowerTag() const override;
 
     virtual void MakeOperations(const FConnectItTilePowerContext& Context, TArray<FInstancedStruct>& OutOperations) const override;
 };

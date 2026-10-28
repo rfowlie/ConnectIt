@@ -49,17 +49,27 @@ namespace ConnectItMinMaxTests
     UE_DEFINE_GAMEPLAY_TAG_STATIC(TestPower4, "ConnectIt.TilePower.Test.4");
     UE_DEFINE_GAMEPLAY_TAG_STATIC(TestPower5, "ConnectIt.TilePower.Test.5");
 
-    // A test power: Name, Trigger and Effect (a test effect struct)
+    // A test power: Name, Trigger and Effect. A test effect is given Name and
+    // the gate; a shipped effect names its own tag (Name must be it)
     template<typename TEffect>
     FConnectItTilePower MakeTestPower(FGameplayTag Name, EConnectItTilePowerTrigger Trigger, const TEffect& Effect,
         int32 CooldownTurns = 0, float FireAtMultiplier = 0.f)
     {
+        TEffect Named = Effect;
+        if constexpr (std::is_base_of_v<FConnectItTilePowerEffect_TestBase, TEffect>)
+        {
+            Named.TestTag = Name;
+            Named.Gate.FireAtMultiplier = FireAtMultiplier;
+        }
+        else
+        {
+            check(Named.GetPowerTag() == Name && FireAtMultiplier == 0.f);
+        }
+
         FConnectItTilePower Power;
-        Power.Name = Name;
         Power.SetTrigger(Trigger);
         Power.CooldownTurns = CooldownTurns;
-        Power.FireAtMultiplier = FireAtMultiplier;
-        Power.Effect = TInstancedStruct<FConnectItTilePowerEffect>::Make<TEffect>(Effect);
+        Power.Effect = TInstancedStruct<FConnectItTilePowerEffect>::Make<TEffect>(Named);
         return Power;
     }
 
@@ -3441,12 +3451,13 @@ bool FConnectItTilePowerDataTest::RunTest(const FString& Parameters)
         const FConnectItTilePowerEffect_Test* Effect = Power ? Power->Effect.GetPtr<FConnectItTilePowerEffect_Test>() : nullptr;
         return Effect ? Effect->Strength : INDEX_NONE;
     };
-    const auto MakeEntry = [](int32 Strength)
+    const auto MakeEntry = [](FGameplayTag Tag, int32 Strength)
     {
         FConnectItTileCatalogEntry Entry;
         Entry.TileClass = AConnectIt_TileBase::StaticClass();
         Entry.TilePower.CooldownTurns = 2;
         FConnectItTilePowerEffect_Test Effect;
+        Effect.TestTag = Tag;
         Effect.Strength = Strength;
         Entry.TilePower.Effect = TInstancedStruct<FConnectItTilePowerEffect>::Make<FConnectItTilePowerEffect_Test>(Effect);
         return Entry;
@@ -3455,8 +3466,8 @@ bool FConnectItTilePowerDataTest::RunTest(const FString& Parameters)
     // A catalog defining two powers
     UConnectIt_TileCatalogDataAsset* Catalog = NewObject<UConnectIt_TileCatalogDataAsset>();
     Catalog->DefaultTileClass = AConnectIt_BuilderTile::StaticClass();
-    Catalog->Tiles.Add(PowerTag, MakeEntry(5));
-    Catalog->Tiles.Add(OtherTag, MakeEntry(9));
+    Catalog->Tiles.Add(PowerTag, MakeEntry(PowerTag, 5));
+    Catalog->Tiles.Add(OtherTag, MakeEntry(OtherTag, 9));
 
     // --- A fresh board and fresh rules have no powers ---
     {
@@ -3477,8 +3488,8 @@ bool FConnectItTilePowerDataTest::RunTest(const FString& Parameters)
         TestTrue(TEXT("catalog: an undefined tag has none"), Catalog->GetTileClassFor(UndefinedTag) == nullptr);
 
         const TArray<FConnectItTilePower> Powers = Catalog->MakeTilePowers();
-        const FConnectItTilePower* Named = Powers.FindByPredicate([&PowerTag](const FConnectItTilePower& Power) { return Power.Name == PowerTag; });
-        TestTrue(TEXT("catalog: each power named by its key, with its values"),
+        const FConnectItTilePower* Named = Powers.FindByPredicate([&PowerTag](const FConnectItTilePower& Power) { return Power.GetTag() == PowerTag; });
+        TestTrue(TEXT("catalog: each power known by its effect's tag, with its values"),
             Powers.Num() == 2 && Named && StrengthOf(Named) == 5 && Named->CooldownTurns == 2);
     }
 
@@ -3579,12 +3590,10 @@ bool FConnectItTilePowerDataTest::RunTest(const FString& Parameters)
     {
         UConnectIt_TileCatalogDataAsset* Bad = NewObject<UConnectIt_TileCatalogDataAsset>();
         Bad->Tiles.Add(PowerTag, FConnectItTileCatalogEntry());
-        FConnectItTileCatalogEntry Misnamed = MakeEntry(1);
-        Misnamed.TilePower.Name = PowerTag;
-        Bad->Tiles.Add(OtherTag, Misnamed);
+        Bad->Tiles.Add(OtherTag, MakeEntry(PowerTag, 1));
         FDataValidationContext CatalogContext;
         TestEqual(TEXT("catalog validation: fails"), Bad->IsDataValid(CatalogContext), EDataValidationResult::Invalid);
-        TestTrue(TEXT("catalog validation: no class, no effect, a power named other than its key"),
+        TestTrue(TEXT("catalog validation: no class, no effect, an effect for another tag than its key"),
             CatalogContext.GetNumErrors() == 3);
 
         UConnectIt_LevelDirector* Director = NewObject<UConnectIt_LevelDirector>();
@@ -4450,6 +4459,26 @@ bool FConnectItPushAndVacuumTest::RunTest(const FString& Parameters)
     FConnectItRuleSet Rules;
     Rules.SetTilePowers({ Push, Vacuum }, {});
 
+    // --- Each shipped effect names its own tag; the gate is the effect's ---
+    {
+        TestEqual(TEXT("tags: Push"), FConnectItTilePowerEffect_Push().GetPowerTag(), FGameplayTag(ConnectIt_TilePower_Push));
+        TestEqual(TEXT("tags: Vacuum"), FConnectItTilePowerEffect_Vacuum().GetPowerTag(), FGameplayTag(ConnectIt_TilePower_Vacuum));
+        TestEqual(TEXT("tags: Repel"), FConnectItTilePowerEffect_Repel().GetPowerTag(), FGameplayTag(ConnectIt_TilePower_Repel));
+        TestEqual(TEXT("tags: Chained"), FConnectItTilePowerEffect_Chained().GetPowerTag(), FGameplayTag(ConnectIt_TilePower_Chained));
+        TestEqual(TEXT("tags: a power is known by its effect's"), Push.GetTag(), FGameplayTag(ConnectIt_TilePower_Push));
+        TestFalse(TEXT("tags: no effect, no power"), FConnectItTilePower().IsSet());
+
+        FConnectItBoardState GateBoard = MakeBoard(3);
+        FRandomStream Stream(0);
+        const FConnectItTilePowerContext AtTile{ GateBoard, FGridPosition(0, 0), 0, Stream, nullptr };
+        FConnectItTilePowerEffect_Push Gated;
+        TestTrue(TEXT("gate: none by default"), Gated.PassesGate(AtTile));
+        Gated.Gate.FireAtMultiplier = 2.f;
+        TestFalse(TEXT("gate: Push at x2, the tile at x1: closed"), Gated.PassesGate(AtTile));
+        GateBoard.GetTileDataMutable(FGridPosition(0, 0))->Multiplier = 2.f;
+        TestTrue(TEXT("gate: the tile at x2: open"), Gated.PassesGate(AtTile));
+    }
+
     // The operations an effect wants on Board at Position (seed Seed)
     const auto MovesFrom = [&Rules](const FConnectItTilePowerEffect& Effect, const FConnectItBoardState& Board, FGridPosition Position, int32 Seed)
     {
@@ -4478,7 +4507,6 @@ bool FConnectItPushAndVacuumTest::RunTest(const FString& Parameters)
         FConnectItTileCatalogEntry Entry;
         Entry.TileClass = AConnectIt_TileBase::StaticClass();
         Entry.TilePower = MakeTestPower(TestPower1, EPower::Sync, FConnectItTilePowerEffect_Test());
-        Entry.TilePower.Name = FGameplayTag();
         Entry.TilePower.AddTrigger(EPower::PieceEnter);
         Catalog->Tiles.Add(TestPower1, Entry);
 #if WITH_EDITOR

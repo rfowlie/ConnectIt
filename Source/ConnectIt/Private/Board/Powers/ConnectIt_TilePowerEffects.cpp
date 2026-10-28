@@ -4,6 +4,7 @@
 #include "Board/Operations/ConnectIt_BoardOperations.h"
 #include "ConnectIt_Structs.h"
 #include "Board/Rules/ConnectIt_RuleSet.h"
+#include "ConnectIt_GameplayTags.h"
 
 
 namespace
@@ -35,6 +36,18 @@ namespace
         return FGridPosition(From.X + Direction.X * Steps, From.Y + Direction.Y * Steps);
     }
 }
+
+bool FConnectItMultiplierGate::Passes(const FConnectItTilePowerContext& Context) const
+{
+    if (FireAtMultiplier <= 0.f) return true;
+    const FConnectItTileData* Tile = Context.Board.GetTileData(Context.Position);
+    return Tile && Tile->Multiplier >= FireAtMultiplier;
+}
+
+FGameplayTag FConnectItTilePowerEffect_Push::GetPowerTag() const { return ConnectIt_TilePower_Push; }
+FGameplayTag FConnectItTilePowerEffect_Vacuum::GetPowerTag() const { return ConnectIt_TilePower_Vacuum; }
+FGameplayTag FConnectItTilePowerEffect_Repel::GetPowerTag() const { return ConnectIt_TilePower_Repel; }
+FGameplayTag FConnectItTilePowerEffect_Chained::GetPowerTag() const { return ConnectIt_TilePower_Chained; }
 
 void FConnectItTilePowerEffect_Push::MakeOperations(
     const FConnectItTilePowerContext& Context, TArray<FInstancedStruct>& OutOperations) const

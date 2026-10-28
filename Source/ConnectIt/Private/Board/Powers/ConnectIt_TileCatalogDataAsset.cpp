@@ -26,8 +26,7 @@ TArray<FConnectItTilePower> UConnectIt_TileCatalogDataAsset::MakeTilePowers() co
     for (const TPair<FGameplayTag, FConnectItTileCatalogEntry>& Pair : Tiles)
     {
         if (!Pair.Key.IsValid()) continue;
-        FConnectItTilePower& Power = Powers.Add_GetRef(Pair.Value.TilePower);
-        Power.Name = Pair.Key;
+        Powers.Add(Pair.Value.TilePower);
     }
     return Powers;
 }
@@ -104,11 +103,11 @@ EDataValidationResult UConnectIt_TileCatalogDataAsset::IsDataValid(FDataValidati
                 "ConnectIt_TileCatalogDataAsset: %s has no trigger -- it never fires."), *Key)));
             Result = EDataValidationResult::Invalid;
         }
-        if (Pair.Value.TilePower.Name.IsValid() && Pair.Value.TilePower.Name != Pair.Key)
+        if (Power.Effect.IsValid() && Power.GetTag() != Pair.Key)
         {
             Context.AddError(FText::FromString(FString::Printf(TEXT(
-                "ConnectIt_TileCatalogDataAsset: %s's power is named %s -- leave Name empty or the same as the entry's tag."),
-                *Key, *Pair.Value.TilePower.Name.ToString())));
+                "ConnectIt_TileCatalogDataAsset: %s's effect is the %s power -- the entry's tag must be its effect's."),
+                *Key, *Power.GetTag().ToString())));
             Result = EDataValidationResult::Invalid;
         }
     }

@@ -156,10 +156,27 @@ protected:
     }
 };
 
+// Every test effect's base: unlike a shipped effect, a test sets the power
+// tag it reports (one test effect serves several test tags) and its gate
+USTRUCT(meta = (Hidden))
+struct FConnectItTilePowerEffect_TestBase : public FConnectItTilePowerEffect
+{
+    GENERATED_BODY()
+
+    UPROPERTY()
+    FGameplayTag TestTag;
+
+    UPROPERTY()
+    FConnectItMultiplierGate Gate;
+
+    virtual FGameplayTag GetPowerTag() const override { return TestTag; }
+    virtual bool PassesGate(const FConnectItTilePowerContext& Context) const override { return Gate.Passes(Context); }
+};
+
 // Test-only tile power effect (ConnectIt.Board.TilePowerData): does nothing;
 // Strength is its one tunable value. Not meant for real levels.
 USTRUCT(meta = (Hidden, DisplayName = "(Test) Do Nothing"))
-struct FConnectItTilePowerEffect_Test : public FConnectItTilePowerEffect
+struct FConnectItTilePowerEffect_Test : public FConnectItTilePowerEffect_TestBase
 {
     GENERATED_BODY()
 
@@ -172,7 +189,7 @@ struct FConnectItTilePowerEffect_Test : public FConnectItTilePowerEffect
 
 // Force places a piece (for the power's faction) at each offset from the powered tile
 USTRUCT(meta = (Hidden, DisplayName = "(Test) Place At Offsets"))
-struct FConnectItTilePowerEffect_TestPlace : public FConnectItTilePowerEffect
+struct FConnectItTilePowerEffect_TestPlace : public FConnectItTilePowerEffect_TestBase
 {
     GENERATED_BODY()
 
@@ -193,7 +210,7 @@ struct FConnectItTilePowerEffect_TestPlace : public FConnectItTilePowerEffect
 // "Moves" the piece at From to To (offsets from the powered tile): removes it
 // and places one for the power's faction -- there is no move operation yet
 USTRUCT(meta = (Hidden, DisplayName = "(Test) Move A Neighbour"))
-struct FConnectItTilePowerEffect_TestMove : public FConnectItTilePowerEffect
+struct FConnectItTilePowerEffect_TestMove : public FConnectItTilePowerEffect_TestBase
 {
     GENERATED_BODY()
 
@@ -220,7 +237,7 @@ struct FConnectItTilePowerEffect_TestMove : public FConnectItTilePowerEffect
 
 // Places a piece on an empty tile picked at random (the board's seeded stream)
 USTRUCT(meta = (Hidden, DisplayName = "(Test) Place At Random"))
-struct FConnectItTilePowerEffect_TestRandomPlace : public FConnectItTilePowerEffect
+struct FConnectItTilePowerEffect_TestRandomPlace : public FConnectItTilePowerEffect_TestBase
 {
     GENERATED_BODY()
 
@@ -242,7 +259,7 @@ struct FConnectItTilePowerEffect_TestRandomPlace : public FConnectItTilePowerEff
 // A Sync power: the powered tile can't hold a piece while the tile at Watch
 // (an offset) has none -- it removes its own piece whenever that is so
 USTRUCT(meta = (Hidden, DisplayName = "(Test) Sync: Clear While Watched Tile Empty"))
-struct FConnectItTilePowerEffect_TestSyncClear : public FConnectItTilePowerEffect
+struct FConnectItTilePowerEffect_TestSyncClear : public FConnectItTilePowerEffect_TestBase
 {
     GENERATED_BODY()
 

@@ -64,13 +64,13 @@ void FConnectItRuleSet::SetTilePowers(const TArray<FConnectItTilePower>& Powers,
         const FConnectItTilePower& Power = Powers[Index];
         if (!Power.IsSet())
         {
-            UE_LOG(LogTemp, Warning, TEXT("ConnectIt_RuleSet: tile power %d has no name -- skipped"), Index);
+            UE_LOG(LogTemp, Warning, TEXT("ConnectIt_RuleSet: tile power %d has no effect (so no tag) -- skipped"), Index);
             continue;
         }
-        if (FindTilePower(Power.Name))
+        if (FindTilePower(Power.GetTag()))
         {
             UE_LOG(LogTemp, Warning, TEXT("ConnectIt_RuleSet: tile power %s is defined twice -- the second skipped"),
-                *Power.Name.ToString());
+                *Power.GetTag().ToString());
             continue;
         }
         TilePowers.Add(Power);
@@ -130,7 +130,7 @@ float FConnectItBoardChanges::ClampMultiplier(const FConnectItTileData& Tile, fl
 const FConnectItTilePower* FConnectItRuleSet::FindTilePower(const FGameplayTag& Name) const
 {
     return Name.IsValid()
-        ? TilePowers.FindByPredicate([&Name](const FConnectItTilePower& Power) { return Power.Name == Name; })
+        ? TilePowers.FindByPredicate([&Name](const FConnectItTilePower& Power) { return Power.GetTag() == Name; })
         : nullptr;
 }
 

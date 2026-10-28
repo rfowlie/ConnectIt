@@ -60,16 +60,41 @@ struct FConnectItTilePowerContext
     const FConnectItRuleSet* Rules = nullptr;
 };
 
+// A multiplier gate: the powered tile's multiplier must be at least
+// FireAtMultiplier for the power to fire. A value for the effects that can be
+// gated (each one's PassesGate asks it).
+USTRUCT(BlueprintType)
+struct CONNECTIT_API FConnectItMultiplierGate
+{
+    GENERATED_BODY()
+
+    // 0 = no gate
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gate", meta = (ClampMin = 0))
+    float FireAtMultiplier = 0.f;
+
+    bool Passes(const FConnectItTilePowerContext& Context) const;
+};
+
 // What a power does: picks its targets and returns the board operations to
 // carry out (the same operations player actions send). Subclass it for each
-// kind of effect; its UPROPERTYs are the power's tunable values. Plain data,
-// no UObject references -- it runs in the AI's search, on a worker thread.
+// kind of effect; its UPROPERTYs are the power's tunable values -- only the
+// ones it uses. Each effect names its power tag, so a power's tag can't
+// disagree with what it does. Plain data, no UObject references -- it runs in
+// the AI's search, on a worker thread.
 USTRUCT(BlueprintType)
 struct CONNECTIT_API FConnectItTilePowerEffect
 {
     GENERATED_BODY()
 
     virtual ~FConnectItTilePowerEffect() = default;
+
+    // The power's tag (ConnectIt.TilePower.*, a native tag): what tiles,
+    // catalogs and the rules know it by. Empty = no power.
+    virtual FGameplayTag GetPowerTag() const { return FGameplayTag(); }
+
+    // Whether the power may fire now, before its cooldown is checked (e.g. a
+    // multiplier gate). Default: always.
+    virtual bool PassesGate(const FConnectItTilePowerContext& Context) const { return true; }
 
     // Adds the operations this power carries out now (each board operation
     // struct, e.g. FConnectItBoardOperation_RemovePiece). Each is checked
@@ -80,29 +105,19 @@ struct CONNECTIT_API FConnectItTilePowerEffect
 
 // One tile power: what sets it off, what stops it, and what it does. Defined
 // once per tag, in the level's tile catalog (UConnectIt_TileCatalogDataAsset), and
-// copied into the rules when the match starts. A tile names its power by tag
-// only (FConnectItTileData::TilePowerTag); level-wide powers are named by tag
-// on the Level director. Plain data.
+// copied into the rules when the match starts. Its tag is its effect's
+// (GetTag). A tile names its power by tag only
+// (FConnectItTileData::TilePowerTag); level-wide powers are named by tag on the
+// Level director. Plain data.
 USTRUCT(BlueprintType)
 struct CONNECTIT_API FConnectItTilePower
 {
     GENERATED_BODY()
 
-    // The power's identity (ConnectIt.TilePower.*, e.g.
-    // ConnectIt.TilePower.Push). In a catalog it is the entry's key. Empty =
-    // no power.
-    UPROPERTY(BlueprintReadWrite, Category = "Power", meta = (Categories = "ConnectIt.TilePower"))
-    FGameplayTag Name;
-
     // What sets it off: one or more triggers (a Vacuum tile: Piece Exit and
     // Scoring). Sync stays on its own -- a Sync power has no other trigger.
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Power", meta = (Bitmask, BitmaskEnum = "/Script/ConnectIt.EConnectItTilePowerTrigger"))
     int32 Triggers = 1 << static_cast<int32>(EConnectItTilePowerTrigger::PieceEnter);
-
-    // The gate: the tile's multiplier must be at least this for the power to
-    // fire. 0 = no gate.
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Power", meta = (ClampMin = 0))
-    float FireAtMultiplier = 0.f;
 
     // --- This kind of tile's multiplier (it is the tile type's, not the
     // power's: a tile type is its power tag) ---
@@ -120,11 +135,24 @@ struct CONNECTIT_API FConnectItTilePower
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Power", meta = (ClampMin = 0))
     int32 CooldownTurns = 0;
 
-    // What it does, with its values
-    UPROPERTY(BlueprintReadWrite, Category = "Power", meta = (ExcludeBaseStruct))
+    // What it does, with its values; it names the power's tag
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Power", meta = (ExcludeBaseStruct))
     TInstancedStruct<FConnectItTilePowerEffect> Effect;
 
-    bool IsSet() const { return Name.IsValid(); }
+    // The power's tag: its effect's (empty with no effect)
+    FGameplayTag GetTag() const
+    {
+        const FConnectItTilePowerEffect* Ptr = Effect.GetPtr();
+        return Ptr ? Ptr->GetPowerTag() : FGameplayTag();
+    }
+
+    bool IsSet() const { return GetTag().IsValid(); }
+
+    bool PassesGate(const FConnectItTilePowerContext& Context) const
+    {
+        const FConnectItTilePowerEffect* Ptr = Effect.GetPtr();
+        return !Ptr || Ptr->PassesGate(Context);
+    }
 
     bool HasTrigger(EConnectItTilePowerTrigger Trigger) const
     {

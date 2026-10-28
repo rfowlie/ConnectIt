@@ -1,6 +1,6 @@
 ---
 type: plan
-status: not-started
+status: in-progress
 approved: true
 approved-on: 2026-10-28
 completed-on:
@@ -13,7 +13,7 @@ decision:
 # Plan: the tile catalog ties each power tag to its effect
 
 From [editor-notes-2026-10-28](editor-notes-2026-10-28.md), item 5 (rounds 3-4, 2026-10-28). Written 2026-10-28 in a
-design-only session; **approved by the owner 2026-10-28**. Not built.
+design-only session; **approved by the owner 2026-10-28**. **Stage 1 built 2026-10-28.**
 
 ## Context
 
@@ -38,6 +38,10 @@ Builders hold a **power tag**; the tag is looked up in the **tile catalog** (`UC
 - `FConnectItTilePower` keeps **`Triggers`** (exposed, as asked), **`CooldownTurns`** (generic) and **`Effect`**; its
   **`Name`** is removed -- the tag is the effect's.
 - Tests: each effect reports its tag; the gate on an effect stops / allows firing as before.
+- **As built (2026-10-28):** `MultiplierFloor` / `MultiplierCeiling` turned out to be read (`ClampMultiplier`: scoring,
+  Adjust Multiplier, tiles added) and apply to every tile type, so they **stay on `FConnectItTilePower`**. The gate
+  (`FConnectItMultiplierGate Gate`) is on Push, Vacuum and Repel, not Chained (a Sync power). `Effect` is `EditAnywhere`
+  again (it had lost it in d599c93, so no entry could pick an effect).
 
 ## Stage 2: the catalog keys by the effect's tag
 

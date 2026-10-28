@@ -203,8 +203,11 @@ bool FConnectItTilePowerChain::TryFire(const FGridPosition& Position, const FCon
     FConnectItTileData* Tile = Board.GetTileDataMutable(Position);
     if (!Tile) return false;
 
-    // The gate
-    if (Power.FireAtMultiplier > 0.f && Tile->Multiplier < Power.FireAtMultiplier) return false;
+    // The gate (the effect's own, if it has one). The stream is only rolled
+    // by the effect, below.
+    FRandomStream Random(Board.RandomSeed);
+    const FConnectItTilePowerContext Context{ Board, Position, Faction, Random, &Rules };
+    if (!Power.PassesGate(Context)) return false;
 
     const bool bSync = Power.HasTrigger(EConnectItTilePowerTrigger::Sync);
     int32 ReadyTurn = Tile->TilePowerReadyTurn;
@@ -239,8 +242,7 @@ bool FConnectItTilePowerChain::TryFire(const FGridPosition& Position, const FCon
     TArray<FInstancedStruct> Operations;
     if (const FConnectItTilePowerEffect* Effect = Power.Effect.GetPtr())
     {
-        FRandomStream Random(Board.RandomSeed);
-        Effect->MakeOperations(FConnectItTilePowerContext{ Board, Position, Faction, Random, &Rules }, Operations);
+        Effect->MakeOperations(Context, Operations);
         Board.RandomSeed = Random.GetCurrentSeed();
     }
 
@@ -250,7 +252,7 @@ bool FConnectItTilePowerChain::TryFire(const FGridPosition& Position, const FCon
         FConnectItBoardEvent_TilePowerTriggered Triggered;
         Triggered.CauseIndex     = Cause;
         Triggered.Position       = Position;
-        Triggered.TilePowerName      = Power.Name;
+        Triggered.TilePowerName  = Power.GetTag();
         Triggered.Faction        = Faction;
         Triggered.LevelWideIndex = LevelWideIndex;
         Triggered.ReadyTurn      = ReadyTurn;
@@ -265,7 +267,7 @@ bool FConnectItTilePowerChain::TryFire(const FGridPosition& Position, const FCon
         if (!Operation)
         {
             UE_LOG(LogTemp, Warning, TEXT("ConnectIt_TilePowerChain: power %s gave something that isn't a board operation (%s)"),
-                *Power.Name.ToString(), *GetNameSafe(Entry.GetScriptStruct()));
+                *Power.GetTag().ToString(), *GetNameSafe(Entry.GetScriptStruct()));
             continue;
         }
 
