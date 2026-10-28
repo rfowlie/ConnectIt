@@ -62,8 +62,6 @@ flowchart TD
 - **Only registered actors relay hover.** If a piece isn't showing hover, check it was
   `RetrievePiece`'d (registered), not just pool-activated.
 - The subsystem doesn't hit-test or debounce — it forwards whatever the actors send.
-- `UGridTrackerSubsystem` overlaps this subsystem's responsibility (known rough edge) —
-  don't assume one is the sole source of hover state.
 - Registration state lives in `TSet`s cleared on `Deinitialize` (world teardown).
 
 ## Cross-impact

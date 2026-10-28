@@ -40,6 +40,11 @@ public:
 	UPROPERTY(BlueprintReadOnly, Category = "ConnectIt|Piece")
 	FGridPosition OccupiedPosition;
 
+	// IGridBoardActor: takes its position from the piece registry and its
+	// faction from the display board there; a changed faction updates the
+	// visuals (OnFactionVisualUpdate)
+	virtual void RefreshFromBoard_Implementation() override;
+
 	// IActorPoolInterface
 	// Blueprint implements the actual visual setup/teardown
 	UFUNCTION(BlueprintImplementableEvent, BlueprintCallable)

@@ -13,6 +13,8 @@
 #include "Board/Rules/ConnectIt_RuleSet.h"
 #include "Tile/GridTileBase.h"
 #include "Tile/GridTileRegistryBase.h"
+#include "Framework/Library/ConnectIt_BoardEventLibrary.h"
+#include "Algo/Compare.h"
 
 
 UConnectIt_BoardStateComponent::UConnectIt_BoardStateComponent()
@@ -175,11 +177,13 @@ void UConnectIt_BoardStateComponent::InitialiseBoardState(
     bDisplayBoardStarted = true;
 
     // The board is built from the builder tiles: now they become the tile
-    // catalog's actors, before anything plays on them
+    // catalog's actors, before anything plays on them -- each set from the
+    // board
     if (UConnectIt_TileRegistry* ConnectItTiles = Cast<UConnectIt_TileRegistry>(TileRegistry))
     {
         ConnectItTiles->SwapBuilderTiles();
     }
+    RefreshDisplayActors(nullptr);
 
     EnqueueBoardEventTags();
 }
@@ -315,6 +319,7 @@ void UConnectIt_BoardStateComponent::OnRep_BoardSnapshot()
         {
             ConnectItTiles->SwapBuilderTiles();
         }
+        RefreshDisplayActors(nullptr);
     }
 
     // Previous and current both arrived atomically
@@ -390,8 +395,10 @@ void UConnectIt_BoardStateComponent::HandleQueueEntryComplete(FGameplayTag Tag)
     const FConnectItBoardEvent* Event = GameEventSubsystem->GetActivePayload().GetPtr<FConnectItBoardEvent>();
     if (!Event) return;
 
+    const FConnectItBoardState Before = DisplayBoard;
     Event->ApplyTo(DisplayBoard);
     PendingDisplayEvents--;
+    RefreshDisplayActors(&Before);
 
     if (PendingDisplayEvents == 0)
     {
@@ -399,6 +406,27 @@ void UConnectIt_BoardStateComponent::HandleQueueEntryComplete(FGameplayTag Tag)
         return;
     }
     OnDisplayBoardChanged.Broadcast();
+}
+
+void UConnectIt_BoardStateComponent::RefreshDisplayActors(const FConnectItBoardState* Before) const
+{
+    // Every position when there is no before, or the tiles themselves changed
+    // (a layout change); else only the positions whose tile data differs
+    TArray<FGridPosition> Positions;
+    const bool bSameTiles = Before && Before->NumTiles() == DisplayBoard.NumTiles()
+        && Algo::Compare(Before->TilePositions, DisplayBoard.TilePositions);
+    for (int32 Index = 0; Index < DisplayBoard.NumTiles(); Index++)
+    {
+        if (!bSameTiles || !FConnectItTileData::StaticStruct()->CompareScriptStruct(
+            &Before->GetTileDataAt(Index), &DisplayBoard.GetTileDataAt(Index), PPF_None))
+        {
+            Positions.Add(DisplayBoard.GetPositionAt(Index));
+        }
+    }
+    if (!Positions.IsEmpty())
+    {
+        UConnectIt_BoardEventLibrary::RefreshActorsAt(this, Positions);
+    }
 }
 
 void UConnectIt_BoardStateComponent::CatchDisplayBoardUp()
@@ -410,6 +438,8 @@ void UConnectIt_BoardStateComponent::CatchDisplayBoardUp()
                  "board after its events played -- snapping to it (a snapshot was missed, or an event doesn't "
                  "carry its whole change)"));
     }
+    const FConnectItBoardState Before = DisplayBoard;
     DisplayBoard = BoardSnapshot.CurrentState;
+    RefreshDisplayActors(&Before);
     OnDisplayBoardChanged.Broadcast();
 }

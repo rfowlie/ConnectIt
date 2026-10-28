@@ -228,6 +228,20 @@ void UGridPieceRegistryBase::DespawnPieceAt(FGridPosition Position)
     PieceMap.Remove(Position);
 }
 
+bool UGridPieceRegistryBase::FindPositionOfPiece(const AGridPieceBase* Piece, FGridPosition& OutPosition) const
+{
+    if (!IsValid(Piece)) return false;
+    for (const TPair<FGridPosition, TObjectPtr<AGridPieceBase>>& Pair : PieceMap)
+    {
+        if (Pair.Value == Piece)
+        {
+            OutPosition = Pair.Key;
+            return true;
+        }
+    }
+    return false;
+}
+
 AGridPieceBase* UGridPieceRegistryBase::GetPieceAtPosition(const FGridPosition& Position)
 {
     if (PieceMap.Contains(Position))

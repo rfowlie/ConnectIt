@@ -137,6 +137,14 @@ public:
         meta = (WorldContext = "WorldContextObject", ExpandBoolAsExecs = "ReturnValue"))
     static bool GetActiveGameWonEvent(const UObject* WorldContextObject, FConnectItBoardEvent_GameWon& OutEvent);
 
+    // Has the tile and piece actors at Positions refresh themselves from the
+    // display board (IGridBoardActor::RefreshFromBoard). Never creates a
+    // piece. The board state component calls it as the display board moves
+    // on (the positions an event changed; every position on seed and layout
+    // changes), so visuals rarely need to.
+    UFUNCTION(BlueprintCallable, Category = "ConnectIt|Board Events", meta = (WorldContext = "WorldContextObject"))
+    static void RefreshActorsAt(const UObject* WorldContextObject, const TArray<FGridPosition>& Positions);
+
     // C++ form: the board event being played if it is a TEvent, else null
     // (no error logged). The pointer is only good for the duration of the
     // listener call.

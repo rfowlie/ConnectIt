@@ -2,6 +2,9 @@
 
 #include "Board/Actor/ConnectIt_TileBase.h"
 #include "Board/ConnectIt_TileReaction.h"
+#include "Board/ConnectIt_BoardStateComponent.h"
+#include "Framework/Library/ConnectIt_GameUtilityLibrary.h"
+#include "Tile/GridTileRegistryBase.h"
 
 
 namespace
@@ -47,4 +50,16 @@ void AConnectIt_TileBase::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
     FinishPendingReactions();
     Super::EndPlay(EndPlayReason);
+}
+
+void AConnectIt_TileBase::RefreshFromBoard_Implementation()
+{
+    const UConnectIt_BoardStateComponent* BoardState = UConnectIt_GameUtilityLibrary::GetBoardStateComponent(this);
+    const UGridTileRegistryBase* Tiles = UConnectIt_GameUtilityLibrary::GetTileRegistry(this);
+    if (!BoardState || !Tiles) return;
+
+    if (const FConnectItTileData* Data = BoardState->GetDisplayBoard().GetTileData(Tiles->GetPositionOfTile(this)))
+    {
+        OnRefreshedFromBoard(*Data);
+    }
 }

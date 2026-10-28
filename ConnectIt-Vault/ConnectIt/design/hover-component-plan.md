@@ -14,7 +14,7 @@ decision:
 
 Design: [hover-component](hover-component.md) (settled 2026-10-28); background:
 [editor-notes-2026-10-28](editor-notes-2026-10-28.md). Written 2026-10-28 in a design-only session; **approved by the owner
-2026-10-28**. **Stages 1-2 built 2026-10-28.**
+2026-10-28**. **Stages 1-3 built 2026-10-28.**
 
 ## Context
 
@@ -83,6 +83,16 @@ stages.
 - **Visualizers** call it for the positions an event touched once the event applies to the display board, and for every
   actor on board seed / layout changes -- one helper (`RefreshActorsAt(Positions)`) on the board event library.
 - Tests: none without a world; checked in PIE.
+- **As built (2026-10-28):** `IGridBoardActor` (`Public/Interface/GridBoardActor.h`). **The display board calls it, not
+  the visualizers:** `UConnectIt_BoardStateComponent` refreshes the actors where the display board moved on --
+  after each event is applied (positions whose tile data differs; every position if the tiles themselves changed),
+  on the catch-up to Current, and on seed / a client's first snapshot (every position, after the builder swap) -- so
+  no visualizer has to. `RefreshActorsAt` (board event library) is also Blueprint-callable. The tile finds its
+  position through the tile registry, the piece through a new `UGridPieceRegistryBase::FindPositionOfPiece` (a
+  piece's own `GridPosition` went stale on moves; the refresh now keeps it in step); refresh never creates a piece
+  (`GetPieceAtPosition`, not `GetPiece`). The tile hands Blueprint `OnRefreshedFromBoard(TileData)` (a hook; nothing
+  happens until a tile Blueprint implements it). **Also (owner, 2026-10-28): `UGridTrackerSubsystem` removed** --
+  nothing read it; `AGridUnitBase` no longer registers with it.
 
 ## Stage 4: ConnectIt clean-up (owner, editor)
 

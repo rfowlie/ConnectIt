@@ -4,7 +4,6 @@
 #include "Tile/GridTileBase.h"
 #include "GameplayTagContainer.h"
 #include "GridMechanics_GridLibrary.h"
-#include "Subsystem/GridTrackerSubsystem.h"
 #include "Hover/GridHoverComponent.h"
 
 
@@ -23,13 +22,8 @@ void AGridTileBase::BeginPlay()
 		HoverComponent->OnHoverBegin.AddDynamic(this, &ThisClass::ForwardHoverBegin);
 	}
 
-	// Tiles no longer self-register -- UGridTileRegistryComponent discovers
-	// and registers them with UGridHoverSubsystem.
-
-	// if (UGridTrackerSubsystem* Subsystem = GetWorld()->GetSubsystem<UGridTrackerSubsystem>())
-	// {
-	// 	Subsystem->RegisterGridTile(this);
-	// }
+	// Tiles don't self-register -- UGridTileRegistryComponent discovers and
+	// registers them with UGridHoverSubsystem.
 }
 
 void AGridTileBase::ForwardHoverBegin(UGridHoverComponent* Component)

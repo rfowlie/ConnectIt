@@ -26,7 +26,6 @@ Domain overview: [[UnrealGridMechanics/CLAUDE|CLAUDE.md]].
 | Shift types (`FShiftOperation`, `FShiftResult`, `FTileShiftInstruction`, `EShiftAxis`, `EShiftDirection`) | USTRUCT / UENUM | Board/Shift | primary (data) | `Board/Shift/GridShiftTypes.h` | covered in UBoardShiftComponent |
 | UBoardStateComponentBase (`FTileData`, `OnBoardStateChanged`) | UCLASS (abstract component) | Board | primary | `Board/BoardStateComponentBase.h` | stub |
 | UGridHoverSubsystem | UCLASS (UWorldSubsystem) | Subsystem | primary | `Subsystem/GridHoverSubsystem.{h,cpp}` | covered in systems/hover-relay |
-| UGridTrackerSubsystem | UCLASS (UWorldSubsystem) | Subsystem | internal (overlaps hover) | `Subsystem/GridTrackerSubsystem.h` | stub |
 | Registry bases (`UGridTileRegistryBase`, `UGridPieceRegistryBase`) -- tiles spawned at runtime register and map by position; `UnregisterTile` for tiles leaving (2026-10-22, phased levels) | UCLASS (UObject) | Tile / Piece | primary (the variant ConnectIt subclasses) | `Tile/GridTileRegistryBase.h`, `Piece/GridPieceRegistryBase.h` | stub |
 | [[UnrealGridMechanics/code/UGridDefinition\|UGridDefinition]] | UCLASS (UObject) | Registry | primary (grid geometry, shared by both registry bases above — extracted 2026-09-18) | `Registry/GridDefinition.{h,cpp}` | current |
 | AGridTileBase / UGridTileComponent | UCLASS | Tile | primary | `Tile/GridTileBase.h`, `Tile/GridTileComponent.h` | stub |
@@ -56,7 +55,6 @@ Domain overview: [[UnrealGridMechanics/CLAUDE|CLAUDE.md]].
 - **`Subsystem/`** — `UGridHoverSubsystem` relays cursor-over for **registered** tiles/
   pieces only (pooled-inactive pieces don't fire). See
   [[UnrealGridMechanics/code/systems/hover-relay|systems/hover-relay]].
-  `UGridTrackerSubsystem` overlaps it (rough edge).
 - **`Board/`** — `UBoardStateComponentBase` (a replicated tile-data container consumers
   subclass) and **`Board/Shift/`**: compute-then-animate row/column wraparound. See
   [[UnrealGridMechanics/code/systems/board-shift|systems/board-shift]].

@@ -2,6 +2,9 @@
 
 
 #include "Board/Actor/ConnectIt_PieceBase.h"
+#include "Board/ConnectIt_BoardStateComponent.h"
+#include "Framework/Library/ConnectIt_GameUtilityLibrary.h"
+#include "Piece/GridPieceRegistryBase.h"
 
 
 AConnectIt_PieceBase::AConnectIt_PieceBase()
@@ -20,6 +23,25 @@ void AConnectIt_PieceBase::InitialisePiece(
 	GridPosition     = InGridPosition;
 
 	OnFactionVisualUpdate(FactionID);
+}
+
+void AConnectIt_PieceBase::RefreshFromBoard_Implementation()
+{
+	const UConnectIt_BoardStateComponent* BoardState = UConnectIt_GameUtilityLibrary::GetBoardStateComponent(this);
+	const UGridPieceRegistryBase* Pieces = UConnectIt_GameUtilityLibrary::GetPieceRegistry(this);
+	FGridPosition Position;
+	if (!BoardState || !Pieces || !Pieces->FindPositionOfPiece(this, Position)) return;
+
+	// The registry's position is the true one (moves, shifts and swaps keep it)
+	OccupiedPosition = Position;
+	GridPosition     = Position;
+
+	const FConnectItTileData* Data = BoardState->GetDisplayBoard().GetTileData(Position);
+	if (Data && Data->bIsOccupied && Data->FactionPiece != FactionID)
+	{
+		FactionID = Data->FactionPiece;
+		OnFactionVisualUpdate(FactionID);
+	}
 }
 
 void AConnectIt_PieceBase::OnFactionVisualUpdate_Implementation(int32 InFactionID)

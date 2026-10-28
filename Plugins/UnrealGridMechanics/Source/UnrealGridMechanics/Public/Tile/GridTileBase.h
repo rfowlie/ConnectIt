@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
 #include "GameplayTagContainer.h"
+#include "Interface/GridBoardActor.h"
 #include "GridTileBase.generated.h"
 
 class AGridPieceBase;
@@ -14,7 +15,7 @@ class UGridHoverComponent;
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FGridTileBaseBeginCursorOver, AGridTileBase*, GridTileBase);
 
 UCLASS()
-class UNREALGRIDMECHANICS_API AGridTileBase : public AActor
+class UNREALGRIDMECHANICS_API AGridTileBase : public AActor, public IGridBoardActor
 {
 	GENERATED_BODY()
 
@@ -36,6 +37,9 @@ public:
 
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "Grid Tile")
 	void SendGameplayTag(FGameplayTag StateTag);
+
+	// IGridBoardActor: nothing here -- a game's tile reads its own board data
+	virtual void RefreshFromBoard_Implementation() override {}
 
 protected:
 	virtual void BeginPlay() override;

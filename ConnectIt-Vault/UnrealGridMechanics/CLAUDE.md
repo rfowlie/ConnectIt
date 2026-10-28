@@ -32,7 +32,8 @@ interfaces. A separate editor module adds asset validation.
 
 - Orphaned `IBoardStateInterface` (dead forward-decl); removed `IGridBoardManagerInterface`
   and the interpreter-registry indirection on board state.
-- `UGridTrackerSubsystem` / `UGridHoverSubsystem` responsibilities overlap.
+- ~~`UGridTrackerSubsystem` / `UGridHoverSubsystem` responsibilities overlap~~ -- `UGridTrackerSubsystem` removed
+  2026-10-28 (nothing read it).
 - Two non-functional editor validation checks in `GridValidatorBase.cpp` (commented-out
   `ValidateTileAlignment()` body; broken `BoardActor` loop ~line 26) — shared root cause.
 - No `operator+=` on `EGridDirection`.

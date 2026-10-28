@@ -4,6 +4,12 @@
 #include "GameEvent/GameEventTaskSubsystem.h"
 #include "Engine/Engine.h"
 #include "Engine/World.h"
+#include "Framework/Library/ConnectIt_GameUtilityLibrary.h"
+#include "Interface/GridBoardActor.h"
+#include "Piece/GridPieceBase.h"
+#include "Piece/GridPieceRegistryBase.h"
+#include "Tile/GridTileBase.h"
+#include "Tile/GridTileRegistryBase.h"
 
 bool UConnectIt_BoardEventLibrary::GetActivePiecePlacedEvent(
     const UObject* WorldContextObject, FConnectItBoardEvent_PiecePlaced& OutEvent)
@@ -142,6 +148,26 @@ const FInstancedStruct* UConnectIt_BoardEventLibrary::GetActiveBoardEvent(const 
 
     const FInstancedStruct& Payload = GameEventSubsystem->GetActivePayload();
     return Payload.IsValid() ? &Payload : nullptr;
+}
+
+void UConnectIt_BoardEventLibrary::RefreshActorsAt(const UObject* WorldContextObject, const TArray<FGridPosition>& Positions)
+{
+    const UGridTileRegistryBase* Tiles = UConnectIt_GameUtilityLibrary::GetTileRegistry(WorldContextObject);
+    UGridPieceRegistryBase* Pieces = UConnectIt_GameUtilityLibrary::GetPieceRegistry(WorldContextObject);
+
+    for (const FGridPosition& Position : Positions)
+    {
+        AGridTileBase* Tile = Tiles ? Tiles->GetTileAtPosition(Position) : nullptr;
+        if (IsValid(Tile))
+        {
+            IGridBoardActor::Execute_RefreshFromBoard(Tile);
+        }
+        AGridPieceBase* Piece = Pieces ? Pieces->GetPieceAtPosition(Position) : nullptr;
+        if (IsValid(Piece))
+        {
+            IGridBoardActor::Execute_RefreshFromBoard(Piece);
+        }
+    }
 }
 
 void UConnectIt_BoardEventLibrary::LogMismatch(const TCHAR* FunctionName, const FInstancedStruct* Active)

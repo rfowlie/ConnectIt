@@ -6,6 +6,9 @@ Vault-wide passes go in `_core/_logs/`.
 
 Newest first:
 
+- [2026-10-28-1508](2026-10-28-1508.md) — session — hover-component Stage 3: `IGridBoardActor::RefreshFromBoard`
+  (ConnectIt tiles and pieces read the display board; the board state component refreshes what changed);
+  `UGridTrackerSubsystem` removed. 71/71 tests.
 - [2026-10-28-1452](2026-10-28-1452.md) — session — hover-component Stage 2: the hover subsystem relays tile
   components (begin / end / click); actions get hover end and `HandleTileClicked`; pieces ignore the cursor; old
   delegates deprecated. 71/71 tests.

@@ -6,6 +6,7 @@
 #include "GridMechanicsBaseStructs.h"
 #include "GameFramework/Actor.h"
 #include "Pooling/ActorPoolInterface.h"
+#include "Interface/GridBoardActor.h"
 #include "GridPieceBase.generated.h"
 
 class AGridPieceBase;
@@ -17,7 +18,7 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FGridPieceBaseBeginCursorOver, AGrid
  * An actor that is considered a piece but does not use GAS
  */
 UCLASS(BlueprintType, Blueprintable)
-class UNREALGRIDMECHANICS_API AGridPieceBase : public AActor, public IActorPoolInterface
+class UNREALGRIDMECHANICS_API AGridPieceBase : public AActor, public IActorPoolInterface, public IGridBoardActor
 {
 	GENERATED_BODY()
 
@@ -26,6 +27,9 @@ public:
 
 	UFUNCTION(BlueprintPure, Category = "Grid")
 	FGridPosition GetGridPosition() const { return GridPosition; }
+
+	// IGridBoardActor: nothing here -- a game's piece reads its own board data
+	virtual void RefreshFromBoard_Implementation() override {}
 
 	// Deprecated (kept working for one release): pieces aren't hovered -- the
 	// piece on a tile is found through the hovered tile. Was broadcast from

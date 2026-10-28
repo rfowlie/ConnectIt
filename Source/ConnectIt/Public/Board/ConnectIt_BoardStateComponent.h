@@ -219,4 +219,9 @@ private:
 
     // DisplayBoard = Current, warning when the tiles or scores differ
     void CatchDisplayBoardUp();
+
+    // Has the tile and piece actors refresh themselves from DisplayBoard
+    // (UConnectIt_BoardEventLibrary::RefreshActorsAt): where it differs from
+    // Before, or everywhere (null Before, or the tiles themselves changed)
+    void RefreshDisplayActors(const FConnectItBoardState* Before) const;
 };

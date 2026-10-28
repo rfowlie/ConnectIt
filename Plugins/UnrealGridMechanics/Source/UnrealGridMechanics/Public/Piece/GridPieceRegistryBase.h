@@ -107,6 +107,11 @@ public:
     UFUNCTION(BlueprintPure, BlueprintCallable, Category = "Grid|Registry")
     AGridPieceBase* GetPieceAtPosition(const FGridPosition& Position);
 
+    // Where Piece is mapped (false if it isn't): the registry's position,
+    // kept in step as pieces move -- not the piece's own GridPosition
+    UFUNCTION(BlueprintPure, Category = "Grid|Registry")
+    bool FindPositionOfPiece(const AGridPieceBase* Piece, FGridPosition& OutPosition) const;
+
 protected:
     
     UPROPERTY(BlueprintReadWrite, Category = "Grid|Registry")

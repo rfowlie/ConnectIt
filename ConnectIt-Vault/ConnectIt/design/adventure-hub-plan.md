@@ -170,6 +170,10 @@ stages.
 
 ## Stage 4: the hub level
 
+> **Moved to its own plan (2026-10-28): [adventure-hub-map-plan](adventure-hub-map-plan.md)** -- node components,
+> registration, the reveal walk with its gotchas, the hub game mode and validation, interaction, links, sub-maps. The
+> text below is kept for the record.
+
 - *Revised 2026-10-28 ([editor-notes-2026-10-28](editor-notes-2026-10-28.md), item 3): components, not a base actor
   (re-approved by the owner 2026-10-28).*
 - **`UConnectIt_MapNodeComponent`** (replaces `AConnectIt_MapNodeActor`): added to **any** actor an artist dresses;

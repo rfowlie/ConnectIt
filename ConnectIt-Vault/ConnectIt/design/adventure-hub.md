@@ -1,7 +1,7 @@
 # Adventure hub: the node map, currencies and regions
 
 Design note (2026-10-23), the owner's look-and-feel ideas for Adventure mode. **Settled over five rounds the same day;
-nothing built.** Plan: [adventure-hub-plan](adventure-hub-plan.md) (**approved 2026-10-23**, not built). Builds on [adventure-modules-and-progression](adventure-modules-and-progression.md) (level
+nothing built.** Plans: [adventure-hub-plan](adventure-hub-plan.md); the hub map: [adventure-hub-map-plan](adventure-hub-map-plan.md) (**approved 2026-10-28**, not built) (**approved 2026-10-23**, not built). Builds on [adventure-modules-and-progression](adventure-modules-and-progression.md) (level
 types, the tutorial module, gating, the shard economy) and [adventure-mode](adventure-mode.md) (what a level can do).
 
 ## Owner's direction
@@ -246,6 +246,14 @@ completed node whose data asset was deleted → ignored; the start node missing 
   register when the component is **registered with the world** (`OnRegister`, before any `BeginPlay`) and walk on
   `OnWorldBeginPlay`, or run the walk once registration settles (end of the hub game mode's `StartPlay`, or the next
   tick). Placed actors register early either way; a node spawned later just registers and is placed by the next walk.
+- **Decided (owner, 2026-10-28): register in `OnRegister`, walk on `OnWorldBeginPlay`.** Guards that make it safe:
+  - `OnRegister` also runs **in editor worlds** -- register only when `GetWorld()->IsGameWorld()` (or the subsystem only
+    exists in game worlds of the hub game mode).
+  - `OnRegister` can run **more than once** for one component (re-registration, construction scripts): registering is
+    add-or-update, and `OnUnregister` removes it.
+  - **Late arrivals** (a node spawned at runtime, a streamed sub-level) register after the walk: the subsystem applies
+    that node's state on registration when the walk has already run.
+  - The **player file's progress must be loaded** by the game instance before the hub map's `OnWorldBeginPlay`.
 - **Validation also:** more than one Start flag in a hub map → error; a node data asset used by two components →
   error; an `Unlocks` entry with no component in this map → warning (it can't be revealed here).
 - **Sub-maps:** an **Exit** flag on the component the same way, validated to exactly one in a sub-map.

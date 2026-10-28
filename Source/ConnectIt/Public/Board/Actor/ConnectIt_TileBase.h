@@ -58,6 +58,19 @@ public:
     UFUNCTION(BlueprintNativeEvent, Category = "ConnectIt|Tile Hooks")
     void OnChainPartnerChanged(const FConnectItBoardEvent_ChainPartnerChanged& Event, UConnectIt_TileReaction* Reaction);
 
+    // The tile caught up with the board: its data on the display board (what
+    // the player has seen so far), once a change touching it has played, and
+    // when the board is seeded or its layout changes. Set the tile's look
+    // from it (multiplier, active, lock, chain, power) -- not timed effects,
+    // which belong in the hooks above.
+    UFUNCTION(BlueprintImplementableEvent, Category = "ConnectIt|Tile Hooks")
+    void OnRefreshedFromBoard(const FConnectItTileData& TileData);
+
+    // IGridBoardActor: reads this tile's data from the display board at its
+    // position and passes it to OnRefreshedFromBoard (nothing if it isn't on
+    // the board)
+    virtual void RefreshFromBoard_Implementation() override;
+
     // Finishes every reaction this tile still holds -- call when the tile
     // leaves play (returned to a pool); leaving the world does it too
     UFUNCTION(BlueprintCallable, Category = "ConnectIt|Tile Hooks")

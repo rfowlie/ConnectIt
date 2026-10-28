@@ -173,8 +173,7 @@ re-reported.
   Kept on purpose as the future home for UI (owner, 2026-10-23).
 - See also [[UnrealGridMechanics/CLAUDE|UnrealGridMechanics]] /
   [[UnrealGameMechanics/CLAUDE|UnrealGameMechanics]] rough edges for the plugin-side
-  overlap entries (`UGridTrackerSubsystem` vs `UGridHoverSubsystem`;
-  `UGameMechanicsStateBase` vs `…Simple`; `IGridTileSelector` deprecating
+  overlap entries (`UGameMechanicsStateBase` vs `…Simple`; `IGridTileSelector` deprecating
   `UGridTileSelectorComponent`; dead commented-out blocks).
 
 ### Fixed
