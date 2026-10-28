@@ -58,7 +58,8 @@ be cleanly removed back to the pool.
 
 - `PieceRegistry->GetPiece(Pos)` returns the piece after placement, `nullptr` after
   `ReleasePiece` / `DespawnPieceAt`.
-- Hover works on the placed piece (it was `RegisterPiece`'d) and stops after removal.
+- The piece doesn't block hover on its tile (pieces ignore the cursor trace); the piece is found through the hovered
+  tile. (`RegisterPiece` still happens, for the deprecated piece relay.)
 - Pool counts (`UActorPool::GetActive/InactivePoolCount`) move by 1 on
   place / remove — the actor is reused, not spawned/destroyed.
 - `GetAllPiecesOfFaction(FactionId)` includes it once its faction is set.

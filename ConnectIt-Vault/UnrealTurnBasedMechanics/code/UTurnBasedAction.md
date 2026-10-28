@@ -56,7 +56,10 @@ Blueprint).
   on any more — each `FInputTagBinding` carries its own `InputActionDelegate`, dispatched
   directly per-binding by `InputTagBinder`. `bRequiresSelection` auto-calls `BindInput()`
   from `Activate_Internal`.
-- **Grid:** `UGridHoverSubsystem` drives `OnGridTileHoverChanged` → the hover hooks;
+- **Grid:** `UGridHoverSubsystem` drives `OnGridTileHoverChanged` → the hover hooks, `OnGridTileHoverEnded` →
+  `HandleHoverCleared` (the tile it holds as hovered), `OnGridTileClicked` → `HandleTileClicked` (no-op by default:
+  the selection input selects) -- 2026-10-28, see
+  [[UnrealGridMechanics/code/systems/hover-relay|hover-relay]];
   `AGridTileBase` is the hover/selection unit (from `UnrealGridMechanics`).
 - **Fires:** `OnChangeRequested(+_Native)` (`const FTurnActionRequest&`),
   `OnActionCompleted` / `OnActionCancelled` (typed, + `_Native`),

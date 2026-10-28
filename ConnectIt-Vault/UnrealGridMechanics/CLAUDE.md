@@ -3,7 +3,7 @@
 A generic 2D grid/board framework with no game-specific rules: core coordinate/direction
 value types, pure-math Blueprint libraries for grid geometry and N-in-a-row / shape
 analysis, tile and piece actors, registry objects that derive board dimensions from actual
-tile placement, hover/cursor tracking subsystems, a replicated board-state container, a
+tile placement, a hover component + relay subsystem (tiles only), a replicated board-state container, a
 compute-and-animate row/column "shift with wraparound" system, and narrow query
 interfaces. A separate editor module adds asset validation.
 

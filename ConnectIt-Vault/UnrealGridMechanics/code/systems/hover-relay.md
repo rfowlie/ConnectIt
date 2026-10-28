@@ -3,78 +3,79 @@ schema: systems
 spans:
   - Plugins/UnrealGridMechanics/Source/UnrealGridMechanics/Public/Subsystem/GridHoverSubsystem.h
   - Plugins/UnrealGridMechanics/Source/UnrealGridMechanics/Private/Subsystem/GridHoverSubsystem.cpp
+  - Plugins/UnrealGridMechanics/Source/UnrealGridMechanics/Public/Hover/GridHoverComponent.h
+  - Plugins/UnrealGridMechanics/Source/UnrealGridMechanics/Public/Tile/GridTileBase.h
   - Plugins/UnrealGridMechanics/Source/UnrealGridMechanics/Public/Tile/GridTileRegistryComponent.h
-  - Plugins/UnrealGridMechanics/Source/UnrealGridMechanics/Public/Piece/GridPieceRegistryComponent.h
-reconciled: 2026-10-22
-commit: 9830b97
+  - Plugins/UnrealTurnBasedMechanics/Source/UnrealTurnBasedMechanics/Public/Action/TurnBasedPlayerAction.h
+reconciled: 2026-10-28
+commit: c599a0b
 ---
 
 # Hover relay
 
 ## What happens
 
-`UGridHoverSubsystem` gives consumers a **single** `OnGridTileHoverChanged` /
-`OnGridPieceHoverChanged` delegate to bind, instead of every actor's own "Begin Cursor
-Over". It does **no hit-testing** — each registered tile/piece broadcasts its own native
-cursor-over event, and the subsystem chains those into the one relay delegate.
-Registration is driven **only** by the registry components
-([[UnrealGridMechanics/code/UGridTileRegistryComponent|tile]] /
-[[UnrealGridMechanics/code/UGridPieceRegistryComponent|piece]]), never by the actors — so
-a pooled, inactive piece is not registered and cannot fire hover.
+Each tile's [[UnrealGridMechanics/code/UGridHoverComponent|UGridHoverComponent]] turns the tile's cursor events into
+hover begin / end / click **in C++**. `UGridHoverSubsystem` binds the components of **registered** tiles only, and
+chains them into three relays: `OnGridTileHoverChanged` (begin), `OnGridTileHoverEnded` and `OnGridTileClicked`.
+Registration is driven by the tile registry, never by the actors, so only board tiles report. The listeners (the
+player actions) decide what a hover or click means; tiles don't react to hover on their own. **Only tiles are hovered:**
+pieces ignore the cursor trace, and the piece on a tile is found through the hovered tile.
 
 ## Diagram
 
 ```mermaid
 flowchart TD
     subgraph Registration
-        TR[UGridTileRegistryComponent<br/>BeginPlay: DiscoverTiles] -->|RegisterTile| S[UGridHoverSubsystem]
-        PR[UGridPieceRegistryComponent<br/>RetrievePiece] -->|RegisterPiece| S
-        PR -->|ReleasePiece| U1[UnregisterPiece]
-        U1 --> S
+        TR[Tile registry<br/>discovers / spawns tiles] -->|RegisterTile: bind + enable| S[UGridHoverSubsystem]
+        TR -->|UnregisterTile: disable, end hover, unbind| S
     end
     subgraph Runtime
-        Tile[AGridTileBase<br/>native Begin Cursor Over] -->|OnGridTileBeginCursorOver| S
-        S -->|BroadcastGridTileHoverChanged| D1[OnGridTileHoverChanged]
-        Piece[AGridPieceBase<br/>native Begin Cursor Over] -->|OnGridPieceBeginCursorOver| S
-        S -->|BroadcastGridPieceHoverChanged| D2[OnGridPieceHoverChanged]
-        D1 --> C[consumers: cursor manager,<br/>UTurnBasedAction selection, UI]
-        D2 --> C
+        Cur[Tile's native cursor events] --> HC[UGridHoverComponent<br/>enabled? CanHover?]
+        HC -->|OnHoverBegin / OnHoverEnd / OnClicked| S
+        S --> R1[OnGridTileHoverChanged]
+        S --> R2[OnGridTileHoverEnded]
+        S --> R3[OnGridTileClicked]
+        R1 & R2 & R3 --> A[UTurnBasedPlayerAction<br/>HandleValidHover / HandleHoverCleared / HandleTileClicked]
+        A -->|bespoke, or defers to| T[the tile]
     end
 ```
 
 ## Steps
 
-1. **Register tiles:** `UGridTileRegistryComponent::BeginPlay` → `DiscoverTiles` →
-   `UGridHoverSubsystem::RegisterTile` for each (and for later-spawned ones via the
-   `OnActorSpawned` handler).
-2. **Register pieces:** `UGridPieceRegistryComponent::RetrievePiece` calls
-   `RegisterPiece`; `ReleasePiece` calls `UnregisterPiece`. Inactive pooled pieces are
-   never registered.
-3. **Hover:** a registered actor's native "Begin Cursor Over" fires its own
-   `OnGrid{Tile,Piece}BeginCursorOver`; the subsystem's `Broadcast…` UFUNCTION relays it
-   as `OnGrid{Tile,Piece}HoverChanged`.
-4. **Consume:** bind once to the subsystem delegate — e.g.
-   [[UnrealTurnBasedMechanics/code/UTurnBasedAction|UTurnBasedAction]]'s selection
-   pipeline, the cursor manager, tooltip UI.
+1. **Register:** the tile registry calls `UGridHoverSubsystem::RegisterTile`. That binds the tile's `HoverComponent`
+   (`BindTile`) and enables it. `UnregisterTile` first disables the component (a hover on it ends, and the end is still
+   relayed), then unbinds it.
+2. **Hover:** the tile's Begin / End Cursor Over and Clicked reach the component (bound in its `BeginPlay`), which
+   broadcasts them if it is enabled and `CanHover` allows. The subsystem relays them with the tile.
+3. **Consume:** an active `UTurnBasedPlayerAction` with selection binds the three relays:
+   - **begin** → `HandleHoverCleared` on the previous tile, then `HandleValidHover` if `IsValidHoverTile`;
+   - **end** (for the tile it holds as hovered) → `HandleHoverCleared`;
+   - **click** → `HandleTileClicked`, which does nothing by default because the selection input already selects
+     (`HandleValidSelection`).
 
 ## Gotchas
 
-- **Only registered actors relay hover.** If a piece isn't showing hover, check it was
-  `RetrievePiece`'d (registered), not just pool-activated.
-- The subsystem doesn't hit-test or debounce — it forwards whatever the actors send.
-- Registration state lives in `TSet`s cleared on `Deinitialize` (world teardown).
+- **Only registered tiles relay.** A tile that isn't hovered: is it registered? Does a primitive block the cursor trace
+  (map check warns)?
+- **A piece over a tile:** pieces set their primitives to ignore the cursor channel in `PostInitializeComponents`
+  (`AGridPieceBase::bBlocksCursorTrace`, default false). A Blueprint that sets a collision profile later undoes that.
+- The subsystem doesn't hit-test or decide. It forwards what the components raise.
+- **Deprecated, kept for one release:**
+  - `AGridTileBase::OnGridTileBeginCursorOver`, forwarded from the component;
+  - the piece relay (`RegisterPiece`, `OnGridPieceHoverChanged`, `AGridPieceBase::OnGridPieceBeginCursorOver`).
+  Neither reaches the tile relays.
+- Registration state lives in `TSet`s; `Deinitialize` unbinds whatever is left.
 
 ## Cross-impact
 
-Changing the relay delegate signatures touches the cursor managers, `UTurnBasedAction`
-selection, and any UI bound to hover. Registration timing is coupled to the pool
-lifecycle — see
-[[UnrealGameMechanics/code/systems/actor-pooling-lifecycle|actor-pooling-lifecycle]].
+Changing the relay signatures touches `UTurnBasedPlayerAction` (`BindGridSubsystem`), the cursor manager
+(`AGridCursorManagerBase`, unused here) and any UI bound to hover. Changing the component's delegates touches
+`UGridHoverSubsystem::BindTile` and `AGridTileBase`.
 
 ## See also
 
-- [[UnrealGridMechanics/code/UGridTileRegistryComponent|UGridTileRegistryComponent]],
-  [[UnrealGridMechanics/code/UGridPieceRegistryComponent|UGridPieceRegistryComponent]] —
-  the only registrars for the relay.
-- [[UnrealGridMechanics/CLAUDE|UnrealGridMechanics overview]] → hover / tracker subsystems
-  (and their overlap).
+- [[UnrealGridMechanics/code/UGridHoverComponent|UGridHoverComponent]],
+  [[UnrealGridMechanics/code/UGridTileRegistryComponent|UGridTileRegistryComponent]]
+- Decision: [[ConnectIt/_decisions/2026-10-28-hover-through-a-component|hover through a component]]
+- Tests: `UnrealGridMechanics.Hover.Component`, `UnrealGridMechanics.Hover.Subsystem`

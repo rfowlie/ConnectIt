@@ -73,6 +73,13 @@ and what it does, with its values. Placed tiles only name the tag. Decisions:
    - **On Power Triggered** (its power fired), **On Piece Enter** / **On Piece Exit** (with the event's tag as Cause:
      placed, swapped, captured, moved, removed), **On Multiplier Changed**, **On Lock Changed**, **On Active Changed**,
      **On Chain Partner Changed**.
+   - **On Refreshed From Board** (no reaction): the tile's data on the display board, after any change that touched it
+     has played and at match start. Set the tile's resting look from it (multiplier, lock, chain, power) -- not timed
+     effects, which belong in the hooks above.
+   - **Hover is not the tile's job.** It needs nothing in the graph (the hover component raises it), and the player
+     actions decide what a hover means (`HandleValidHover` / `HandleHoverCleared`), possibly calling a function on the
+     tile. Don't broadcast *On Grid Tile Begin Cursor Over* (deprecated). Keep a collision that blocks the cursor
+     trace (Visibility).
    - **Each hook is passed a Reaction. Call Reaction > Finish when the animation ends** (cache it in a variable if the
      animation is a timeline or a delay). The event queue waits until every reaction of the event has finished, so a
      chain plays in order. A hook you don't override finishes at once.

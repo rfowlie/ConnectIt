@@ -6,6 +6,8 @@ Vault-wide passes go in `_core/_logs/`.
 
 Newest first:
 
+- [2026-10-28-1511](2026-10-28-1511.md) — session — hover-component Stage 5: `UGridHoverComponent` page, hover-relay
+  rewritten, decision note; plan complete.
 - [2026-10-28-1508](2026-10-28-1508.md) — session — hover-component Stage 3: `IGridBoardActor::RefreshFromBoard`
   (ConnectIt tiles and pieces read the display board; the board state component refreshes what changed);
   `UGridTrackerSubsystem` removed. 71/71 tests.

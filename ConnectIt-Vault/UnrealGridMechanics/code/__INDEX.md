@@ -25,14 +25,15 @@ Domain overview: [[UnrealGridMechanics/CLAUDE|CLAUDE.md]].
 | UGridMechanics_GridShiftLibrary | UCLASS (UBlueprintFunctionLibrary) | Board/Shift | primary (pure math) | `Board/Shift/GridMechanics_GridShiftLibrary.{h,cpp}` | covered in UBoardShiftComponent |
 | Shift types (`FShiftOperation`, `FShiftResult`, `FTileShiftInstruction`, `EShiftAxis`, `EShiftDirection`) | USTRUCT / UENUM | Board/Shift | primary (data) | `Board/Shift/GridShiftTypes.h` | covered in UBoardShiftComponent |
 | UBoardStateComponentBase (`FTileData`, `OnBoardStateChanged`) | UCLASS (abstract component) | Board | primary | `Board/BoardStateComponentBase.h` | stub |
-| UGridHoverSubsystem | UCLASS (UWorldSubsystem) | Subsystem | primary | `Subsystem/GridHoverSubsystem.{h,cpp}` | covered in systems/hover-relay |
-| Registry bases (`UGridTileRegistryBase`, `UGridPieceRegistryBase`) -- tiles spawned at runtime register and map by position; `UnregisterTile` for tiles leaving (2026-10-22, phased levels) | UCLASS (UObject) | Tile / Piece | primary (the variant ConnectIt subclasses) | `Tile/GridTileRegistryBase.h`, `Piece/GridPieceRegistryBase.h` | stub |
+| [[UnrealGridMechanics/code/UGridHoverComponent\|UGridHoverComponent]] | UCLASS (component) | Hover | primary (on every tile; C++ hover / end / click) | `Hover/GridHoverComponent.{h,cpp}` | current |
+| UGridHoverSubsystem | UCLASS (UWorldSubsystem) | Subsystem | primary (relays registered tiles' hover / end / click; piece relay deprecated) | `Subsystem/GridHoverSubsystem.{h,cpp}` | covered in systems/hover-relay |
+| Registry bases (`UGridTileRegistryBase`, `UGridPieceRegistryBase`) -- tiles spawned at runtime register and map by position; `UnregisterTile` for tiles leaving (2026-10-22, phased levels); `FindPositionOfPiece` (2026-10-28) | UCLASS (UObject) | Tile / Piece | primary (the variant ConnectIt subclasses) | `Tile/GridTileRegistryBase.h`, `Piece/GridPieceRegistryBase.h` | stub |
 | [[UnrealGridMechanics/code/UGridDefinition\|UGridDefinition]] | UCLASS (UObject) | Registry | primary (grid geometry, shared by both registry bases above — extracted 2026-09-18) | `Registry/GridDefinition.{h,cpp}` | current |
-| AGridTileBase / UGridTileComponent | UCLASS | Tile | primary | `Tile/GridTileBase.h`, `Tile/GridTileComponent.h` | stub |
-| AGridPieceBase / AGridUnitBase (GAS) | UCLASS | Piece | primary | `Piece/GridPieceBase.h`, `Piece/Unit/GridUnitBase.h` | stub |
+| AGridTileBase / UGridTileComponent -- the tile has a `HoverComponent` and implements `IGridBoardActor` (2026-10-28); `UGridTileComponent` is now empty | UCLASS | Tile | primary | `Tile/GridTileBase.h`, `Tile/GridTileComponent.h` | stub |
+| AGridPieceBase / AGridUnitBase (GAS) -- pieces ignore the cursor trace (`bBlocksCursorTrace`) and implement `IGridBoardActor` (2026-10-28) | UCLASS | Piece | primary | `Piece/GridPieceBase.h`, `Piece/Unit/GridUnitBase.h` | stub |
 | AGridCursorManagerBase / AGridCursorSimpleBase | UCLASS | Cursor | **unused in this project** (hover is tag-based) | `Cursor/GridCursor*.h` | stub |
 | ABoardManagerBase / AGameBoard | UCLASS | Board | prototype (unused) | `Board/BoardManagerBase.h`, `Board/GameBoard.h` | stub |
-| Interfaces (`IGridFactionInterface`, `IGridLevelInterface`, `IGridPieceHandler`, `IGridTileHandler`, `IGridShiftInterface`, `IGridTileSelector`, `IBoardStateInterface`) | UINTERFACE ×7 | Interface / Board | mixed — `IGridFactionInterface` / `IGridShiftInterface` primary; `IBoardStateInterface` orphaned | `Interface/*.h`, `Board/BoardStateInterface.h`, `Tile/Selector/GridTileSelector.h` | stub |
+| Interfaces (`IGridBoardActor` -- `RefreshFromBoard`, 2026-10-28; `IGridFactionInterface`, `IGridLevelInterface`, `IGridPieceHandler`, `IGridTileHandler`, `IGridShiftInterface`, `IGridTileSelector`, `IBoardStateInterface`) | UINTERFACE ×8 | Interface / Board | mixed — `IGridFactionInterface` / `IGridShiftInterface` primary; `IBoardStateInterface` orphaned | `Interface/*.h`, `Board/BoardStateInterface.h`, `Tile/Selector/GridTileSelector.h` | stub |
 | UGridTileSelectorComponent | UCLASS (component) | Tile/Selector | deprecated (use `IGridTileSelector`) | `Tile/Selector/GridTileSelectorComponent.h` | stub |
 | UGridValidatorBase | UCLASS | Editor/Validator | primary (asset validation) | `UnrealGridMechanicsEditor/Public/Validator/GridValidatorBase.h` | stub |
 | Module classes | class (IModuleInterface) | Top-level | internal | `UnrealGridMechanics.h`, `UnrealGridMechanicsEditor.h` | stub |
@@ -52,9 +53,12 @@ Domain overview: [[UnrealGridMechanics/CLAUDE|CLAUDE.md]].
   **registries** (actor↔position tracking, board dimensions from placement, piece pool
   retrieval + hover registration). The `…RegistryBase` (UObject) variant is what ConnectIt
   subclasses; the `…RegistryComponent` variant is older.
-- **`Subsystem/`** — `UGridHoverSubsystem` relays cursor-over for **registered** tiles/
-  pieces only (pooled-inactive pieces don't fire). See
-  [[UnrealGridMechanics/code/systems/hover-relay|systems/hover-relay]].
+- **`Hover/` + `Subsystem/`** — each tile's
+  [[UnrealGridMechanics/code/UGridHoverComponent|UGridHoverComponent]] raises hover begin / end / click in C++;
+  `UGridHoverSubsystem` relays them for **registered** tiles only. Only tiles are hovered (pieces ignore the cursor).
+  See [[UnrealGridMechanics/code/systems/hover-relay|systems/hover-relay]].
+- **`Interface/`** — narrow query interfaces; `IGridBoardActor::RefreshFromBoard` lets visuals have a tile or piece
+  update itself from the board without knowing its type (each game implements it).
 - **`Board/`** — `UBoardStateComponentBase` (a replicated tile-data container consumers
   subclass) and **`Board/Shift/`**: compute-then-animate row/column wraparound. See
   [[UnrealGridMechanics/code/systems/board-shift|systems/board-shift]].

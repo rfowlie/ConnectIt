@@ -6,6 +6,7 @@
       {
         "id": "4e56845dee73299d",
         "type": "tabs",
+        "dimension": 45.17045454545455,
         "children": [
           {
             "id": "7e9d793cb5121f8b",
@@ -44,6 +45,7 @@
       {
         "id": "0c2e707b52e053aa",
         "type": "tabs",
+        "dimension": 54.82954545454546,
         "children": [
           {
             "id": "d21229c17b1e2e8b",
@@ -51,12 +53,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "_core/_clippings/UE5 SplineMesh Tutorial Part01 Setting Up and Creating a Panning Material.md",
+                "file": "ConnectIt/design/adventure-hub-map-plan.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "UE5 SplineMesh Tutorial Part01 Setting Up and Creating a Panning Material"
+              "title": "adventure-hub-map-plan"
             }
           }
         ]
@@ -226,14 +228,19 @@
   },
   "active": "d21229c17b1e2e8b",
   "lastOpenFiles": [
+    "ConnectIt/design/adventure-hub-plan.md",
+    "ConnectIt/_logs/2026-10-28-1511.md",
+    "ConnectIt/_decisions/2026-10-28-hover-through-a-component.md",
+    "UnrealGridMechanics/code/UGridHoverComponent.md",
+    "ConnectIt/design/adventure-hub.md",
+    "ConnectIt/_decisions/2026-10-28-tile-power-effects-own-their-tag.md",
+    "_core/_clippings/UE5 SplineMesh Tutorial Part01 Setting Up and Creating a Panning Material.md",
     "ConnectIt/_logs/2026-10-28-1508.md",
     "ConnectIt/design/adventure-hub-map-plan.md",
     "ConnectIt/_logs/2026-10-28-1452.md",
     "ConnectIt/_logs/2026-10-28-1443.md",
     "_core/_clippings/Unreal Engine 5 Mana Drain UI - Create Professional VFX Materials Like a Pro.md",
-    "_core/_clippings/UE5 SplineMesh Tutorial Part01 Setting Up and Creating a Panning Material.md",
     "ConnectIt/_logs/2026-10-28-1434.md",
-    "ConnectIt/_decisions/2026-10-28-tile-power-effects-own-their-tag.md",
     "ConnectIt/_logs/2026-10-28-1430.md",
     "_core/_clippings/Unreal Engine 5 Mist Particle System.md",
     "ConnectIt/_logs/2026-10-28-1423.md",
@@ -247,11 +254,6 @@
     "ConnectIt/design/hover-component-plan.md",
     "ConnectIt/_questions/tile-catalog-actor-matching.md",
     "ConnectIt/design/hover-component.md",
-    "ConnectIt/_logs/2026-10-28-1250.md",
-    "ConnectIt/design/editor-notes-2026-10-28.md",
-    "ConnectIt/design/adventure-editor-checklist.md",
-    "ConnectIt/_logs/2026-10-25-1157.md",
-    "ConnectIt/_logs/2026-10-25-1155.md",
     "ConnectIt/design/level-outcomes-plan.md.tmp.7932.7141aac2726e",
     "ConnectIt/_logs/2026-10-24-1444.md.tmp.16900.05a8d2b10900",
     "ConnectIt/_logs/2026-10-24-1331.md.tmp.16900.98a1017df2d0",

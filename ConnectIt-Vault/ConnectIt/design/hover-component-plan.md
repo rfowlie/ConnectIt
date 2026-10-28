@@ -1,20 +1,20 @@
 ---
 type: plan
-status: in-progress
+status: complete
 approved: true
 approved-on: 2026-10-28
-completed-on:
+completed-on: 2026-10-28
 playtested: false
 design: "[hover-component](hover-component.md)"
 question:
-decision:
+decision: "[2026-10-28-hover-through-a-component](../_decisions/2026-10-28-hover-through-a-component.md)"
 ---
 
 # Plan: the grid hover component and RefreshFromBoard
 
 Design: [hover-component](hover-component.md) (settled 2026-10-28); background:
 [editor-notes-2026-10-28](editor-notes-2026-10-28.md). Written 2026-10-28 in a design-only session; **approved by the owner
-2026-10-28**. **Stages 1-3 built 2026-10-28.**
+2026-10-28**. **Built 2026-10-28** (all stages; Stage 4 by the owner).
 
 ## Context
 
