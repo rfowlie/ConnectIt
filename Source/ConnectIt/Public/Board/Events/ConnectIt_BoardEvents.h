@@ -10,7 +10,7 @@
 #include "Board/ConnectIt_BoardLayoutCell.h"
 #include "ConnectIt_BoardEvents.generated.h"
 
-class UConnectIt_MatchConditionAsset;
+class UConnectIt_MatchConditionDataAsset;
 
 // One thing that happened to the board, as its own small struct holding only
 // what describes it. A board change (FConnectItBoardChangeEvent) is an
@@ -520,7 +520,7 @@ struct CONNECTIT_API FConnectItBoardEvent_WinCheckpointReached : public FConnect
 
     // The goal reached: its win condition asset (null for a group built in code)
     UPROPERTY(BlueprintReadOnly, Category = "Event")
-    TObjectPtr<UConnectIt_MatchConditionAsset> Asset = nullptr;
+    TObjectPtr<UConnectIt_MatchConditionDataAsset> Asset = nullptr;
 
     // That group's Name (the asset's name)
     UPROPERTY(BlueprintReadOnly, Category = "Event")
@@ -542,7 +542,7 @@ struct CONNECTIT_API FConnectItBoardEvent_LoseConditionMet : public FConnectItBo
 
     // The lose condition met: its asset (null for one built in code)
     UPROPERTY(BlueprintReadOnly, Category = "Event")
-    TObjectPtr<UConnectIt_MatchConditionAsset> Asset = nullptr;
+    TObjectPtr<UConnectIt_MatchConditionDataAsset> Asset = nullptr;
 
     // Its name (the asset's name)
     UPROPERTY(BlueprintReadOnly, Category = "Event")

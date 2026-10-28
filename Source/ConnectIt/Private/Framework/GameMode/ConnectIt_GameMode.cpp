@@ -9,9 +9,9 @@
 #include "Framework/Controller/ConnectIt_AIController.h"
 #include "Action/ActionLoadoutDataAsset.h"
 #include "Framework/Data/ConnectIt_LevelConfigDataAsset.h"
-#include "Board/Powers/ConnectIt_TileCatalog.h"
+#include "Board/Powers/ConnectIt_TileCatalogDataAsset.h"
 #include "Framework/Data/ConnectIt_WorldSettings.h"
-#include "Framework/Data/ConnectIt_MatchPreset.h"
+#include "Framework/Data/ConnectIt_MatchPresetDataAsset.h"
 #include "Framework/Subsystem/ConnectIt_MatchSetupSubsystem.h"
 #include "Framework/GameState/ConnectIt_GameState.h"
 #include "Framework/GameState/TurnBasedGameState.h"
@@ -28,8 +28,8 @@
 #include "Board/Events/ConnectIt_BoardEvents.h"
 #include "Board/Operations/ConnectIt_BoardOperation.h"
 #include "Board/Operations/ConnectIt_BoardOperations.h"
-#include "Board/Rules/Conditions/ConnectIt_MatchConditionAsset.h"
-#include "Framework/Data/ConnectIt_BoardLayout.h"
+#include "Board/Rules/Conditions/ConnectIt_MatchConditionDataAsset.h"
+#include "Framework/Data/ConnectIt_BoardLayoutDataAsset.h"
 #include "TimerManager.h"
 
 
@@ -134,7 +134,7 @@ void AConnectIt_GameMode::EnsureMatchSetupResolved()
     // How this match is played: the preset chosen in the menu, else the map's
     // own default (its World Settings). Read here, once, and nowhere else for
     // these values.
-    const UConnectIt_MatchPreset* Preset =
+    const UConnectIt_MatchPresetDataAsset* Preset =
         bHasMatchSettings && IsValid(MatchSettings.MatchPreset) ? MatchSettings.MatchPreset.Get()
         : AConnectIt_WorldSettings::FindDefaultMatchPreset(this);
 
@@ -161,7 +161,7 @@ void AConnectIt_GameMode::EnsureMatchSetupResolved()
         LevelDefaults->PlayerLoseConditions, LevelDefaults->AILoseConditions);
 
     // Every tile power the level's tile catalog defines, and which apply level-wide
-    const UConnectIt_TileCatalog* TileCatalog = UConnectIt_TileCatalog::FindFor(this);
+    const UConnectIt_TileCatalogDataAsset* TileCatalog = UConnectIt_TileCatalogDataAsset::FindFor(this);
     Rules.SetTilePowers(TileCatalog ? TileCatalog->MakeTilePowers() : TArray<FConnectItTilePower>(),
         LevelDefaults->LevelWideTilePowers);
 
@@ -620,20 +620,20 @@ bool AConnectIt_GameMode::SetScoringRule(const FInstancedStruct& ScoringRule, EC
 }
 
 void AConnectIt_GameMode::SetConditions(EConnectItRole Side, bool bWinGoals,
-    const TArray<UConnectIt_MatchConditionAsset*>& Conditions, EConnectItChangeTiming Timing)
+    const TArray<UConnectIt_MatchConditionDataAsset*>& Conditions, EConnectItChangeTiming Timing)
 {
     FConnectItLevelChange Change;
     Change.bHasGoals = true;
     Change.bGoalsForAI = Side == EConnectItRole::AI;
     Change.bWinGoals = bWinGoals;
-    for (UConnectIt_MatchConditionAsset* Condition : Conditions)
+    for (UConnectIt_MatchConditionDataAsset* Condition : Conditions)
     {
         Change.Goals.Add(Condition);
     }
     QueueLevelChange(Change, Timing);
 }
 
-void AConnectIt_GameMode::SetLayout(UConnectIt_BoardLayout* Layout, EConnectItChangeTiming Timing)
+void AConnectIt_GameMode::SetLayout(UConnectIt_BoardLayoutDataAsset* Layout, EConnectItChangeTiming Timing)
 {
     if (!IsValid(Layout))
     {
@@ -806,7 +806,7 @@ void AConnectIt_GameMode::ApplyLevelChange(const FConnectItLevelChange& Change)
 
 void AConnectIt_GameMode::ApplyLayoutChange(const FConnectItLevelChange& Change)
 {
-    const UConnectIt_BoardLayout* Layout = Change.Layout.Get();
+    const UConnectIt_BoardLayoutDataAsset* Layout = Change.Layout.Get();
     const UConnectIt_BoardStateComponent* BoardState = UConnectIt_GameUtilityLibrary::GetBoardStateComponent(this);
     if (!IsValid(Layout) || !IsValid(BoardState) || !IsValid(BoardRequestMediator))
     {
@@ -837,8 +837,8 @@ void AConnectIt_GameMode::ApplyGoalsChange(const FConnectItLevelChange& Change)
 
     // An asset gone since it was asked for resolves as an empty entry
     // (skipped, with a warning)
-    TArray<TObjectPtr<UConnectIt_MatchConditionAsset>> Conditions;
-    for (const TWeakObjectPtr<UConnectIt_MatchConditionAsset>& Goal : Change.Goals)
+    TArray<TObjectPtr<UConnectIt_MatchConditionDataAsset>> Conditions;
+    for (const TWeakObjectPtr<UConnectIt_MatchConditionDataAsset>& Goal : Change.Goals)
     {
         Conditions.Add(Goal.Get());
     }

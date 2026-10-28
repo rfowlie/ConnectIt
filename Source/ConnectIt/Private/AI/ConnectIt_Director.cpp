@@ -7,7 +7,7 @@
 #include "Algo/StableSort.h"
 #include "Engine/World.h"
 #include "Framework/GameMode/ConnectIt_GameMode.h"
-#include "Board/Rules/Conditions/ConnectIt_MatchConditionAsset.h"
+#include "Board/Rules/Conditions/ConnectIt_MatchConditionDataAsset.h"
 #include "Board/Rules/ConnectIt_RuleSet.h"
 #include "Misc/DataValidation.h"
 
@@ -68,12 +68,12 @@ TArray<UConnectIt_Director*> UConnectIt_Director::InDispatchOrder(
 
 #if WITH_EDITOR
 void UConnectIt_Director::ValidateConditionList(const UObject* Owner, const TCHAR* ListName,
-    const TArray<TObjectPtr<UConnectIt_MatchConditionAsset>>& List,
+    const TArray<TObjectPtr<UConnectIt_MatchConditionDataAsset>>& List,
     FDataValidationContext& Context, EDataValidationResult& Result)
 {
     for (int32 Index = 0; Index < List.Num(); Index++)
     {
-        const UConnectIt_MatchConditionAsset* Asset = List[Index];
+        const UConnectIt_MatchConditionDataAsset* Asset = List[Index];
         if (!IsValid(Asset))
         {
             Context.AddWarning(FText::FromString(FString::Printf(TEXT(
@@ -90,12 +90,12 @@ void UConnectIt_Director::ValidateConditionList(const UObject* Owner, const TCHA
 }
 
 void UConnectIt_Director::AddConditionListRuleWarnings(const UObject* Owner, const TCHAR* ListName,
-    const TArray<TObjectPtr<UConnectIt_MatchConditionAsset>>& List,
+    const TArray<TObjectPtr<UConnectIt_MatchConditionDataAsset>>& List,
     const FConnectItRuleSet& Rules, FDataValidationContext& Context)
 {
     for (int32 Index = 0; Index < List.Num(); Index++)
     {
-        const UConnectIt_MatchConditionAsset* Asset = List[Index];
+        const UConnectIt_MatchConditionDataAsset* Asset = List[Index];
         if (!IsValid(Asset)) continue;
 
         for (const TInstancedStruct<FConnectItMatchCondition>& Entry : Asset->Conditions)

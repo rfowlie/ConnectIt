@@ -59,7 +59,7 @@ data. Replaces the previous home of these registries: per-machine properties on
   `HandleBoardPieceRemoved` stubs (marked TODO — undecided whether they're useful).
 - **A phased level's tiles** (`UConnectIt_TileRegistry`, BlueprintCallable, called from the Tiles Added / Tiles Removed
   handlers on every machine): `SpawnLayoutTiles(Cells)` spawns the tile catalog's class for each cell's power tag
-  (`UConnectIt_TileCatalog::FindFor`; the level config's `DefaultTileClass` only when there is no catalog) at its grid
+  (`UConnectIt_TileCatalogDataAsset::FindFor`; the level config's `DefaultTileClass` only when there is no catalog) at its grid
   position -- each registers itself; tiles implementing the tile data interface get `ApplyLayoutCell` -- and returns
   them in cell order; `UnregisterTilesAt(Positions)` stops tracking those tiles and returns their actors to animate
   out and destroy.

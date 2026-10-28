@@ -1,13 +1,13 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 #include "Adventure/ConnectIt_MapNodeDataAsset.h"
-#include "Adventure/ConnectIt_ActionShardTable.h"
+#include "Adventure/ConnectIt_ActionShardTableDataAsset.h"
 #include "AI/ConnectIt_PlayerDirector.h"
-#include "Framework/Data/ConnectIt_MatchPreset.h"
+#include "Framework/Data/ConnectIt_MatchPresetDataAsset.h"
 #include "Misc/DataValidation.h"
 
 FConnectItNodeRequirementCheck UConnectIt_MapNodeDataAsset::CheckRequirements(
-    const FConnectItAdventureProgress& Progress, const UConnectIt_ActionShardTable* Table) const
+    const FConnectItAdventureProgress& Progress, const UConnectIt_ActionShardTableDataAsset* Table) const
 {
     FConnectItNodeRequirementCheck Check;
 
@@ -86,7 +86,7 @@ EDataValidationResult UConnectIt_MapNodeDataAsset::IsDataValid(FDataValidationCo
     // A closed node plays its preset's loadout, so the preset must have one
     if (bHasLevel && ActionDesign == EConnectItActionDesign::Closed)
     {
-        const UConnectIt_MatchPreset* Preset = MatchPreset.LoadSynchronous();
+        const UConnectIt_MatchPresetDataAsset* Preset = MatchPreset.LoadSynchronous();
         if (!Preset)
         {
             Context.AddWarning(FText::FromString(FString::Printf(TEXT(

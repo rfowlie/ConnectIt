@@ -11,7 +11,7 @@
 
 
 // The match conditions ConnectIt ships (FConnectItMatchCondition subtypes),
-// one family in one file: a condition asset (UConnectIt_MatchConditionAsset)
+// one family in one file: a condition asset (UConnectIt_MatchConditionDataAsset)
 // lists any of them. A new kind of condition goes here, next to the others.
 
 // ---------------------------------------------------------------------------

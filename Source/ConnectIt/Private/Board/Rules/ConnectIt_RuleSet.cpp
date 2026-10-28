@@ -4,7 +4,7 @@
 #include "Board/Rules/Scoring/ConnectIt_LineScoringRule.h"
 #include "Board/Events/ConnectIt_BoardEvents.h"
 #include "Board/Operations/ConnectIt_BoardOperation.h"
-#include "Board/Rules/Conditions/ConnectIt_MatchConditionAsset.h"
+#include "Board/Rules/Conditions/ConnectIt_MatchConditionDataAsset.h"
 #include "Board/Powers/ConnectIt_TilePowerChain.h"
 
 
@@ -12,12 +12,12 @@ namespace
 {
     // Condition assets -> the plain groups the match plays with, in order
     void ResolveGroups(const TCHAR* Side,
-        const TArray<TObjectPtr<UConnectIt_MatchConditionAsset>>& Assets, TArray<FConnectItMatchConditionGroup>& OutGroups)
+        const TArray<TObjectPtr<UConnectIt_MatchConditionDataAsset>>& Assets, TArray<FConnectItMatchConditionGroup>& OutGroups)
     {
         OutGroups.Reset();
         for (int32 Index = 0; Index < Assets.Num(); Index++)
         {
-            UConnectIt_MatchConditionAsset* Asset = Assets[Index];
+            UConnectIt_MatchConditionDataAsset* Asset = Assets[Index];
             if (!IsValid(Asset))
             {
                 UE_LOG(LogTemp, Warning,
@@ -45,10 +45,10 @@ FConnectItRuleSet::FConnectItRuleSet()
 }
 
 void FConnectItRuleSet::ResolveConditionGroups(
-    const TArray<TObjectPtr<UConnectIt_MatchConditionAsset>>& PlayerWinConditions,
-    const TArray<TObjectPtr<UConnectIt_MatchConditionAsset>>& AIWinConditions,
-    const TArray<TObjectPtr<UConnectIt_MatchConditionAsset>>& PlayerLoseConditions,
-    const TArray<TObjectPtr<UConnectIt_MatchConditionAsset>>& AILoseConditions)
+    const TArray<TObjectPtr<UConnectIt_MatchConditionDataAsset>>& PlayerWinConditions,
+    const TArray<TObjectPtr<UConnectIt_MatchConditionDataAsset>>& AIWinConditions,
+    const TArray<TObjectPtr<UConnectIt_MatchConditionDataAsset>>& PlayerLoseConditions,
+    const TArray<TObjectPtr<UConnectIt_MatchConditionDataAsset>>& AILoseConditions)
 {
     SetConditionGroups(false, true, PlayerWinConditions);
     SetConditionGroups(true, true, AIWinConditions);
@@ -135,7 +135,7 @@ const FConnectItTilePower* FConnectItRuleSet::FindTilePower(const FGameplayTag& 
 }
 
 void FConnectItRuleSet::SetConditionGroups(bool bForAI, bool bWinGoals,
-    const TArray<TObjectPtr<UConnectIt_MatchConditionAsset>>& Conditions)
+    const TArray<TObjectPtr<UConnectIt_MatchConditionDataAsset>>& Conditions)
 {
     TArray<FConnectItMatchConditionGroup>& Groups = bForAI
         ? (bWinGoals ? AIWinGroups : AILoseGroups)

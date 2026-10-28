@@ -6,7 +6,7 @@ touches:
   - Source/ConnectIt/Public/Board/Rules/Scoring/ConnectIt_LineScoringRule.h (the reference rule, Lines)
   - Source/ConnectIt/Public/Board/ConnectIt_BoardChanges.h (what a pass reports: ScoredThrough, tile changes, ClampMultiplier)
   - Source/ConnectIt/Public/Board/Rules/ConnectIt_RuleSet.h (ScoringRule; SetScoringRuleFrom)
-  - Source/ConnectIt/Public/Framework/Data/ConnectIt_MatchPreset.h (the preset's Rules > Scoring Rule)
+  - Source/ConnectIt/Public/Framework/Data/ConnectIt_MatchPresetDataAsset.h (the preset's Rules > Scoring Rule)
   - (mid-match) the Level director Blueprint's Set Scoring Rule
 reconciled: 2026-10-23
 commit: 54c1284

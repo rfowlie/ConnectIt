@@ -1,13 +1,13 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
-#include "Framework/Data/ConnectIt_BoardLayout.h"
+#include "Framework/Data/ConnectIt_BoardLayoutDataAsset.h"
 #include "ConnectIt_Structs.h"
 #include "Misc/DataValidation.h"
-#include "Board/Powers/ConnectIt_TileCatalog.h"
+#include "Board/Powers/ConnectIt_TileCatalogDataAsset.h"
 #include "ConnectIt_GameplayTags.h"
 
 
-const FConnectItBoardLayoutCell* UConnectIt_BoardLayout::FindCell(const FGridPosition& Position) const
+const FConnectItBoardLayoutCell* UConnectIt_BoardLayoutDataAsset::FindCell(const FGridPosition& Position) const
 {
     return Cells.FindByPredicate([&Position](const FConnectItBoardLayoutCell& Cell)
     {
@@ -15,12 +15,12 @@ const FConnectItBoardLayoutCell* UConnectIt_BoardLayout::FindCell(const FGridPos
     });
 }
 
-FConnectItBoardLayoutDiff UConnectIt_BoardLayout::DiffFrom(const FConnectItBoardState& Board) const
+FConnectItBoardLayoutDiff UConnectIt_BoardLayoutDataAsset::DiffFrom(const FConnectItBoardState& Board) const
 {
     return FConnectItBoardLayoutDiff::Between(Board.TilePositions, Cells);
 }
 
-FConnectItBoardLayoutDiff UConnectIt_BoardLayout::DiffFrom(const UConnectIt_BoardLayout& Other) const
+FConnectItBoardLayoutDiff UConnectIt_BoardLayoutDataAsset::DiffFrom(const UConnectIt_BoardLayoutDataAsset& Other) const
 {
     TArray<FGridPosition> OtherPositions;
     OtherPositions.Reserve(Other.Cells.Num());
@@ -31,7 +31,7 @@ FConnectItBoardLayoutDiff UConnectIt_BoardLayout::DiffFrom(const UConnectIt_Boar
     return FConnectItBoardLayoutDiff::Between(OtherPositions, Cells);
 }
 
-FConnectItBoardOperation_ChangeLayout UConnectIt_BoardLayout::MakeChangeFrom(const FConnectItBoardState& Board) const
+FConnectItBoardOperation_ChangeLayout UConnectIt_BoardLayoutDataAsset::MakeChangeFrom(const FConnectItBoardState& Board) const
 {
     FConnectItBoardOperation_ChangeLayout Change;
     Change.SetDiff(DiffFrom(Board));
@@ -42,20 +42,20 @@ FConnectItBoardOperation_ChangeLayout UConnectIt_BoardLayout::MakeChangeFrom(con
 }
 
 #if WITH_EDITOR
-EDataValidationResult UConnectIt_BoardLayout::IsDataValid(FDataValidationContext& Context) const
+EDataValidationResult UConnectIt_BoardLayoutDataAsset::IsDataValid(FDataValidationContext& Context) const
 {
     EDataValidationResult Result = Super::IsDataValid(Context);
 
     if (Cells.IsEmpty())
     {
         Context.AddWarning(FText::FromString(TEXT(
-            "ConnectIt_BoardLayout: No Cells -- changing to this layout removes every tile.")));
+            "ConnectIt_BoardLayoutDataAsset: No Cells -- changing to this layout removes every tile.")));
     }
 
     // Every match today has two factions (AConnectIt_GameMode::NumFactions)
     constexpr int32 MatchFactions = 2;
 
-    const UConnectIt_TileCatalog* Catalog = UConnectIt_TileCatalog::GetProjectDefault();
+    const UConnectIt_TileCatalogDataAsset* Catalog = UConnectIt_TileCatalogDataAsset::GetProjectDefault();
     TSet<FGridPosition> Seen;
     for (int32 Index = 0; Index < Cells.Num(); Index++)
     {
@@ -66,7 +66,7 @@ EDataValidationResult UConnectIt_BoardLayout::IsDataValid(FDataValidationContext
         if (bDuplicate)
         {
             Context.AddError(FText::FromString(FString::Printf(TEXT(
-                "ConnectIt_BoardLayout: cell %d repeats position (%d,%d) -- one tile per position."),
+                "ConnectIt_BoardLayoutDataAsset: cell %d repeats position (%d,%d) -- one tile per position."),
                 Index, Cell.Position.X, Cell.Position.Y)));
             Result = EDataValidationResult::Invalid;
         }
@@ -76,7 +76,7 @@ EDataValidationResult UConnectIt_BoardLayout::IsDataValid(FDataValidationContext
         if (Catalog && Cell.TileData.TilePowerTag.IsValid() && !Catalog->Defines(Cell.TileData.TilePowerTag))
         {
             Context.AddError(FText::FromString(FString::Printf(TEXT(
-                "ConnectIt_BoardLayout: cell (%d,%d) names power %s, which tile catalog '%s' doesn't define."),
+                "ConnectIt_BoardLayoutDataAsset: cell (%d,%d) names power %s, which tile catalog '%s' doesn't define."),
                 Cell.Position.X, Cell.Position.Y, *Cell.TileData.TilePowerTag.ToString(), *Catalog->GetName())));
             Result = EDataValidationResult::Invalid;
         }
@@ -88,20 +88,20 @@ EDataValidationResult UConnectIt_BoardLayout::IsDataValid(FDataValidationContext
             if (Cell.TileData.TilePowerTag != ConnectIt_TilePower_Chained)
             {
                 Context.AddWarning(FText::FromString(FString::Printf(TEXT(
-                    "ConnectIt_BoardLayout: cell (%d,%d) has a chain partner but isn't Chained -- it is ignored."),
+                    "ConnectIt_BoardLayoutDataAsset: cell (%d,%d) has a chain partner but isn't Chained -- it is ignored."),
                     Cell.Position.X, Cell.Position.Y)));
             }
             else if (!Partner || Partner == &Cell)
             {
                 Context.AddWarning(FText::FromString(FString::Printf(TEXT(
-                    "ConnectIt_BoardLayout: cell (%d,%d)'s chain partner (%d,%d) isn't another cell of this layout -- it "
+                    "ConnectIt_BoardLayoutDataAsset: cell (%d,%d)'s chain partner (%d,%d) isn't another cell of this layout -- it "
                     "will have no partner."),
                     Cell.Position.X, Cell.Position.Y, Cell.TileData.ChainPartner.X, Cell.TileData.ChainPartner.Y)));
             }
             else if (Partner->TileData.TilePowerTag == ConnectIt_TilePower_Chained)
             {
                 Context.AddWarning(FText::FromString(FString::Printf(TEXT(
-                    "ConnectIt_BoardLayout: cell (%d,%d)'s chain partner is Chained too -- a chain of chains isn't "
+                    "ConnectIt_BoardLayoutDataAsset: cell (%d,%d)'s chain partner is Chained too -- a chain of chains isn't "
                     "tested yet."), Cell.Position.X, Cell.Position.Y)));
             }
         }
@@ -109,7 +109,7 @@ EDataValidationResult UConnectIt_BoardLayout::IsDataValid(FDataValidationContext
         if (Cell.TileData.StartingFactionPiece >= MatchFactions)
         {
             Context.AddWarning(FText::FromString(FString::Printf(TEXT(
-                "ConnectIt_BoardLayout: cell (%d,%d) starts with a piece for faction %d, but matches have %d "
+                "ConnectIt_BoardLayoutDataAsset: cell (%d,%d) starts with a piece for faction %d, but matches have %d "
                 "factions -- the tile would start empty."),
                 Cell.Position.X, Cell.Position.Y, Cell.TileData.StartingFactionPiece, MatchFactions)));
         }

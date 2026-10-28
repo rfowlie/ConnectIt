@@ -250,7 +250,7 @@ stages.
 ## Stage 5: Adventure conforms
 
 - **Renames:**
-  - `UConnectIt_SkillShardTable` → **`UConnectIt_ActionShardTable`** (shard costs only: item caps are the plugin's
+  - `UConnectIt_SkillShardTable` → **`UConnectIt_ActionShardTableDataAsset`** (shard costs only: item caps are the plugin's
     item inventory asset, after the Stage 3 revision);
   - `RequiredSkills` / `RecommendedSkills` → `RequiredActions` / `RecommendedActions`;
   - "numbered uses" → "permanent uses" (`GetPermanentUses`);
@@ -266,7 +266,7 @@ stages.
 - **Tests:** the Stage 1 Adventure tests renamed.
 - *As built (2026-10-25; 69/69 tests; Throughput 370k nodes/s):*
   - **Renames** (in the 8 Adventure files; no asset used them, so no redirects):
-    - `UConnectIt_ActionShardTable` (moved with `git mv`), `FConnectItActionShardCosts`, its `Actions` map;
+    - `UConnectIt_ActionShardTableDataAsset` (moved with `git mv`), `FConnectItActionShardCosts`, its `Actions` map;
     - `GetPermanentUses`; the project setting `ActionShardTable` ("Action Shard Table");
     - `RequiredActions` / `RecommendedActions` / `MissingActions`;
     - **"skill design" → `EConnectItActionDesign` / `ActionDesign`** (not in the plan's list; it was the last

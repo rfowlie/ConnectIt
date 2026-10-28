@@ -10,7 +10,7 @@
 class UGridPieceRegistryBase;
 class UGridTileRegistryBase;
 class AGridTileBase;
-class UConnectIt_TileCatalog;
+class UConnectIt_TileCatalogDataAsset;
 struct FConnectItRuleSet;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnConnectItDisplayBoardChanged);
@@ -71,7 +71,7 @@ public:
     // with InitialMultiplier. A power tag Catalog (if given) doesn't define
     // is dropped, with a warning. Logs what doesn't fit.
     static FConnectItTileData MakeTileData(const AGridTileBase* Tile, int32 NumFactions,
-        float InitialMultiplier = 1.0f, const UConnectIt_TileCatalog* Catalog = nullptr);
+        float InitialMultiplier = 1.0f, const UConnectIt_TileCatalogDataAsset* Catalog = nullptr);
 
     // Captures current as previous, applies new state, and stores what
     // specifically changed (ChangeEvent) so it replicates atomically

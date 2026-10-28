@@ -11,7 +11,7 @@ class AConnectIt_GameMode;
 class UConnectIt_LevelDirector;
 class UConnectIt_PlayerDirector;
 class UConnectIt_AIDirector;
-class UConnectIt_MatchConditionAsset;
+class UConnectIt_MatchConditionDataAsset;
 struct FConnectItRuleSet;
 
 // What every director shares. A match has three kinds, each the script and
@@ -64,14 +64,14 @@ public:
     // asset reached -- compare against your own asset references. GroupIndex:
     // its position in that side's goal list; GroupName: the asset's name.
     UFUNCTION(BlueprintNativeEvent, Category = "Director")
-    void OnWinCheckpointReached(int32 Faction, bool bIsMine, UConnectIt_MatchConditionAsset* Goal, int32 GroupIndex, FName GroupName);
-    virtual void OnWinCheckpointReached_Implementation(int32 Faction, bool bIsMine, UConnectIt_MatchConditionAsset* Goal, int32 GroupIndex, FName GroupName) {}
+    void OnWinCheckpointReached(int32 Faction, bool bIsMine, UConnectIt_MatchConditionDataAsset* Goal, int32 GroupIndex, FName GroupName);
+    virtual void OnWinCheckpointReached_Implementation(int32 Faction, bool bIsMine, UConnectIt_MatchConditionDataAsset* Goal, int32 GroupIndex, FName GroupName) {}
 
     // Faction met one of its lose conditions (Condition: the asset), so it has
     // lost; On Match Won for the other side follows
     UFUNCTION(BlueprintNativeEvent, Category = "Director")
-    void OnLoseConditionMet(int32 Faction, bool bIsMine, UConnectIt_MatchConditionAsset* Condition);
-    virtual void OnLoseConditionMet_Implementation(int32 Faction, bool bIsMine, UConnectIt_MatchConditionAsset* Condition) {}
+    void OnLoseConditionMet(int32 Faction, bool bIsMine, UConnectIt_MatchConditionDataAsset* Condition);
+    virtual void OnLoseConditionMet_Implementation(int32 Faction, bool bIsMine, UConnectIt_MatchConditionDataAsset* Condition) {}
 
     // A phased level moved to Phase (a ConnectIt.Phase.* tag: the Level
     // director's Begin Phase). What a phase changes is up to each director's
@@ -132,12 +132,12 @@ protected:
     // A list of condition assets: an empty entry is skipped (warning); an
     // asset with no conditions can never be met (invalid)
     static void ValidateConditionList(const UObject* Owner, const TCHAR* ListName,
-        const TArray<TObjectPtr<UConnectIt_MatchConditionAsset>>& List,
+        const TArray<TObjectPtr<UConnectIt_MatchConditionDataAsset>>& List,
         FDataValidationContext& Context, EDataValidationResult& Result);
 
     // Each listed condition's own warnings given a match's rules
     static void AddConditionListRuleWarnings(const UObject* Owner, const TCHAR* ListName,
-        const TArray<TObjectPtr<UConnectIt_MatchConditionAsset>>& List,
+        const TArray<TObjectPtr<UConnectIt_MatchConditionDataAsset>>& List,
         const FConnectItRuleSet& Rules, FDataValidationContext& Context);
 #endif
 };

@@ -6,7 +6,7 @@
 #include "Engine/DataAsset.h"
 #include "StructUtils/InstancedStruct.h"
 #include "Board/Rules/Conditions/ConnectIt_MatchCondition.h"
-#include "ConnectIt_MatchConditionAsset.generated.h"
+#include "ConnectIt_MatchConditionDataAsset.generated.h"
 
 
 // One goal of a match, as an asset: one or more conditions that must ALL
@@ -23,7 +23,7 @@
 // itself only travels along as the goal's identity (e.g. on the
 // WinCheckpointReached event).
 UCLASS(BlueprintType)
-class CONNECTIT_API UConnectIt_MatchConditionAsset : public UPrimaryDataAsset
+class CONNECTIT_API UConnectIt_MatchConditionDataAsset : public UPrimaryDataAsset
 {
     GENERATED_BODY()
 

@@ -1,16 +1,16 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
-#include "Framework/Data/ConnectIt_MatchPreset.h"
+#include "Framework/Data/ConnectIt_MatchPresetDataAsset.h"
 #include "Action/ActionLoadoutDataAsset.h"
 #include "AI/ConnectIt_AIDirector.h"
 #include "AI/ConnectIt_PlayerDirector.h"
 #include "AI/ConnectIt_LevelDirector.h"
-#include "Board/Rules/Conditions/ConnectIt_MatchConditionAsset.h"
+#include "Board/Rules/Conditions/ConnectIt_MatchConditionDataAsset.h"
 #include "Misc/DataValidation.h"
 
 
 #if WITH_EDITOR
-EDataValidationResult UConnectIt_MatchPreset::IsDataValid(
+EDataValidationResult UConnectIt_MatchPresetDataAsset::IsDataValid(
     FDataValidationContext& Context) const
 {
     EDataValidationResult Result = Super::IsDataValid(Context);
@@ -19,7 +19,7 @@ EDataValidationResult UConnectIt_MatchPreset::IsDataValid(
     if (!PlayerDirectorClass)
     {
         Context.AddError(FText::FromString(TEXT(
-            "ConnectIt_MatchPreset: No Player Director Class -- players would have no actions.")));
+            "ConnectIt_MatchPresetDataAsset: No Player Director Class -- players would have no actions.")));
         Result = EDataValidationResult::Invalid;
     }
     else if (GetDefault<UConnectIt_PlayerDirector>(PlayerDirectorClass)->IsDataValid(Context) == EDataValidationResult::Invalid)
@@ -31,7 +31,7 @@ EDataValidationResult UConnectIt_MatchPreset::IsDataValid(
     if (!AIDirectorClass)
     {
         Context.AddWarning(FText::FromString(TEXT(
-            "ConnectIt_MatchPreset: No AI Director Class -- played against the AI, this "
+            "ConnectIt_MatchPresetDataAsset: No AI Director Class -- played against the AI, this "
             "preset gets the default director, which has no loadout.")));
     }
     else if (GetDefault<UConnectIt_AIDirector>(AIDirectorClass)->IsDataValid(Context) == EDataValidationResult::Invalid)
@@ -43,7 +43,7 @@ EDataValidationResult UConnectIt_MatchPreset::IsDataValid(
     if (!LevelDirectorClass)
     {
         Context.AddError(FText::FromString(TEXT(
-            "ConnectIt_MatchPreset: No Level Director Class -- the match has no goals (the Level director holds "
+            "ConnectIt_MatchPresetDataAsset: No Level Director Class -- the match has no goals (the Level director holds "
             "both sides' win and lose conditions). Use a generic one for a standard way of playing.")));
         Result = EDataValidationResult::Invalid;
     }

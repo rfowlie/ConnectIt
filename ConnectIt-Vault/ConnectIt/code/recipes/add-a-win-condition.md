@@ -2,7 +2,7 @@
 schema: recipes
 task: Set up a match's conditions -- each side's goals (in order) and ways to lose, plus the level's triggers -- as condition assets on the directors, react when one is met, and (C++) add a new kind of condition or make a kind of move answer "any legal move?".
 touches:
-  - Source/ConnectIt/Public/Board/Rules/Conditions/ConnectIt_MatchConditionAsset.h (a condition asset per condition, Content Browser)
+  - Source/ConnectIt/Public/Board/Rules/Conditions/ConnectIt_MatchConditionDataAsset.h (a condition asset per condition, Content Browser)
   - Source/ConnectIt/Public/AI/ConnectIt_LevelDirector.h (the Level director Blueprint: Player / AI Win and Lose Conditions, Triggers; Set Win / Lose Conditions mid-match)
   - Source/ConnectIt/Public/AI/ConnectIt_Director.h (reacting: the directors' events)
   - Source/ConnectIt/Public/Board/Rules/Conditions/ConnectIt_MatchConditions.h (new condition type, C++: a struct deriving FConnectItMatchCondition)
@@ -47,7 +47,7 @@ directors stay reusable loadout and AI setup ([conditions on the Level director]
 
 ## Steps
 
-1. Content Browser: **Data Asset** of class `ConnectIt_MatchConditionAsset` (e.g. `CIWC_Score20`, `CIWC_ClearBoard`).
+1. Content Browser: **Data Asset** of class `ConnectIt_MatchConditionDataAsset` (e.g. `CIWC_Score20`, `CIWC_ClearBoard`).
 2. **Display Name**: what UI shows ("Score 20"). **Conditions**: add one or more and pick each type; **all of them must hold at
    the same time** (Piece Count Equal 0 + Score Threshold 4 = clear the board, having scored 4).
 3. Open the **Level director** Blueprint's Class Defaults (**Level|Conditions**): **Player Win Conditions** = the player's

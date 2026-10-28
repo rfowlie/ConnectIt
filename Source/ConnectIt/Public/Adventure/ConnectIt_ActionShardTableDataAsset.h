@@ -5,7 +5,7 @@
 #include "CoreMinimal.h"
 #include "Engine/DataAsset.h"
 #include "GameplayTagContainer.h"
-#include "ConnectIt_ActionShardTable.generated.h"
+#include "ConnectIt_ActionShardTableDataAsset.generated.h"
 
 
 // One action's shard costs: how many more shards each permanent use takes --
@@ -33,7 +33,7 @@ struct CONNECTIT_API FConnectItActionShardCosts
 // Shard Table (Get). Place Piece needs no entry: it is everyone's from the
 // start.
 UCLASS(BlueprintType)
-class CONNECTIT_API UConnectIt_ActionShardTable : public UDataAsset
+class CONNECTIT_API UConnectIt_ActionShardTableDataAsset : public UDataAsset
 {
     GENERATED_BODY()
 
@@ -49,7 +49,7 @@ public:
     int32 GetPermanentUses(FGameplayTag Action, int32 Shards) const;
 
     // The project's table (Project Settings), or null
-    static const UConnectIt_ActionShardTable* Get();
+    static const UConnectIt_ActionShardTableDataAsset* Get();
 
 #if WITH_EDITOR
     virtual EDataValidationResult IsDataValid(FDataValidationContext& Context) const override;

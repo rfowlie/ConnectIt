@@ -33,7 +33,7 @@ public:
     UFUNCTION(BlueprintImplementableEvent, Category = "ConnectIt|Board")
     void HandleGameEventComplete(FGameplayTag EventTag);
 
-    // --- A phased level's tiles coming and going (see UConnectIt_BoardLayout) ---
+    // --- A phased level's tiles coming and going (see UConnectIt_BoardLayoutDataAsset) ---
     // The bookkeeping half of following the board: call these from the
     // handlers of the Tiles Added / Tiles Removed board events, on every
     // machine (tile actors are local, not replicated). How tiles appear and
@@ -42,7 +42,7 @@ public:
     // piece; Spawn Piece At for each added cell with a starting piece.
 
     // Spawns a tile actor for each cell -- the tile catalog's class for the
-    // cell's power tag (UConnectIt_TileCatalog::FindFor), else the level
+    // cell's power tag (UConnectIt_TileCatalogDataAsset::FindFor), else the level
     // config's Default Tile Class when there is no catalog -- at its grid
     // position. Each registers itself (queries, hover), and a tile
     // implementing the tile data interface gets its cell's values and Visual

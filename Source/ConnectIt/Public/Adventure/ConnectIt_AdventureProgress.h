@@ -6,7 +6,7 @@
 #include "GameplayTagContainer.h"
 #include "ConnectIt_AdventureProgress.generated.h"
 
-class UConnectIt_ActionShardTable;
+class UConnectIt_ActionShardTableDataAsset;
 
 
 // A player's Adventure progress: what the save holds. Nodes are named by their
@@ -59,7 +59,7 @@ struct CONNECTIT_API FConnectItAdventureProgress
 
     // The permanent uses of Action the shards give, through Table (0 with no
     // table)
-    int32 GetPermanentUses(const FGameplayTag& Action, const UConnectIt_ActionShardTable* Table) const;
+    int32 GetPermanentUses(const FGameplayTag& Action, const UConnectIt_ActionShardTableDataAsset* Table) const;
 };
 
 // What a node still needs before it can be started (UConnectIt_MapNodeDataAsset::

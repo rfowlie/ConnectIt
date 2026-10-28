@@ -5,7 +5,7 @@
 #include "CoreMinimal.h"
 #include "Engine/DataAsset.h"
 #include "Board/Rules/ConnectIt_RuleSet.h"
-#include "ConnectIt_MatchPreset.generated.h"
+#include "ConnectIt_MatchPresetDataAsset.generated.h"
 
 class UConnectIt_LevelDirector;
 class UConnectIt_PlayerDirector;
@@ -24,7 +24,7 @@ class UConnectIt_AIDirector;
 // match starts and plays on its own copy, so changes during a match never
 // touch this asset.
 UCLASS(BlueprintType)
-class CONNECTIT_API UConnectIt_MatchPreset : public UDataAsset
+class CONNECTIT_API UConnectIt_MatchPresetDataAsset : public UDataAsset
 {
     GENERATED_BODY()
 

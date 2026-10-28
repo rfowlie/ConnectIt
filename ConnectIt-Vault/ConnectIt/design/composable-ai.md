@@ -65,7 +65,7 @@ Built in four stages, each built and tested before the next.
   random and for re-scoring with `Simulate Operation`.
 
 ## Stage 4 -- Match director
-- `UConnectIt_AIDirector` (abstract, Blueprintable, EditInlineNew), instanced on `UConnectIt_MatchPreset::AIDirector`
+- `UConnectIt_AIDirector` (abstract, Blueprintable, EditInlineNew), instanced on `UConnectIt_MatchPresetDataAsset::AIDirector`
   (optional). Server-only. Events (BlueprintNativeEvent): `OnAITurnStarted`, `OnAITurnEnded` (the place to set the
   next turn's loadout, for tells), `OnWinCheckpointReached(Faction, GroupIndex, GroupName)` (either side).
 - Its only actions: `SetAILoadout(Loadout)` and `SetAIStrategy(Strategy)` on the controller it belongs to.

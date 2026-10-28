@@ -5,7 +5,7 @@
 #include "NativeGameplayTags.h"
 #include "Adventure/ConnectIt_AdventureProgress.h"
 #include "Adventure/ConnectIt_MapNodeDataAsset.h"
-#include "Adventure/ConnectIt_ActionShardTable.h"
+#include "Adventure/ConnectIt_ActionShardTableDataAsset.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
 
@@ -21,9 +21,9 @@ namespace ConnectItAdventureTests
 
     // A table where TestAction's uses cost 3, 5 and 8 shards: uses at 3, 8 and
     // 16 shards in all
-    UConnectIt_ActionShardTable* MakeTable()
+    UConnectIt_ActionShardTableDataAsset* MakeTable()
     {
-        UConnectIt_ActionShardTable* Table = NewObject<UConnectIt_ActionShardTable>();
+        UConnectIt_ActionShardTableDataAsset* Table = NewObject<UConnectIt_ActionShardTableDataAsset>();
         FConnectItActionShardCosts Costs;
         Costs.ShardsPerUse = { 3, 5, 8 };
         Table->Actions.Add(TestAction, Costs);
@@ -49,7 +49,7 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(FConnectItAdventureShardTableTest,
 
 bool FConnectItAdventureShardTableTest::RunTest(const FString& Parameters)
 {
-    const UConnectIt_ActionShardTable* Table = ConnectItAdventureTests::MakeTable();
+    const UConnectIt_ActionShardTableDataAsset* Table = ConnectItAdventureTests::MakeTable();
 
     TestEqual(TEXT("0 shards: no use"), Table->GetPermanentUses(ConnectItAdventureTests::TestAction, 0), 0);
     TestEqual(TEXT("2 shards: no use"), Table->GetPermanentUses(ConnectItAdventureTests::TestAction, 2), 0);
@@ -70,7 +70,7 @@ bool FConnectItAdventureShardTableTest::RunTest(const FString& Parameters)
     TestEqual(TEXT("progress: more shards, more uses"), Progress.GetPermanentUses(ConnectItAdventureTests::TestAction, Table), 2);
 
     // Falling costs are only a warning, and still count: 5 then 3 = uses at 5 and 8
-    UConnectIt_ActionShardTable* Falling = NewObject<UConnectIt_ActionShardTable>();
+    UConnectIt_ActionShardTableDataAsset* Falling = NewObject<UConnectIt_ActionShardTableDataAsset>();
     FConnectItActionShardCosts Costs;
     Costs.ShardsPerUse = { 5, 3 };
     Falling->Actions.Add(ConnectItAdventureTests::TestAction, Costs);
@@ -90,7 +90,7 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(FConnectItAdventureNodeRequirementsTest,
 
 bool FConnectItAdventureNodeRequirementsTest::RunTest(const FString& Parameters)
 {
-    const UConnectIt_ActionShardTable* Table = ConnectItAdventureTests::MakeTable();
+    const UConnectIt_ActionShardTableDataAsset* Table = ConnectItAdventureTests::MakeTable();
     const UConnectIt_MapNodeDataAsset* Node = ConnectItAdventureTests::MakeGatedNode();
 
     FConnectItAdventureProgress Progress;

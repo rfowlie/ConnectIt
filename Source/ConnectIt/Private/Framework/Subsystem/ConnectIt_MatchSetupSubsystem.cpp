@@ -1,8 +1,8 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 #include "Framework/Subsystem/ConnectIt_MatchSetupSubsystem.h"
-#include "Framework/Data/ConnectIt_MatchPreset.h"
-#include "Framework/Data/ConnectIt_LevelCatalog.h"
+#include "Framework/Data/ConnectIt_MatchPresetDataAsset.h"
+#include "Framework/Data/ConnectIt_LevelCatalogDataAsset.h"
 #include "Engine/GameInstance.h"
 #include "Engine/World.h"
 #include "Kismet/GameplayStatics.h"

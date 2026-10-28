@@ -3,12 +3,12 @@
 #include "Framework/Library/ConnectIt_LayoutToolLibrary.h"
 
 #if WITH_EDITOR
-#include "Framework/Data/ConnectIt_BoardLayout.h"
+#include "Framework/Data/ConnectIt_BoardLayoutDataAsset.h"
 #include "Framework/Data/ConnectIt_LevelConfigDataAsset.h"
 #include "Framework/Data/ConnectIt_WorldSettings.h"
 #include "Board/ConnectIt_TileDataProvider.h"
 #include "Board/Actor/ConnectIt_BuilderTile.h"
-#include "Board/Powers/ConnectIt_TileCatalog.h"
+#include "Board/Powers/ConnectIt_TileCatalogDataAsset.h"
 #include "Framework/Data/ConnectIt_ProjectSettings.h"
 #include "Registry/GridDefinition.h"
 #include "Tile/GridTileBase.h"
@@ -151,7 +151,7 @@ namespace
     }
 }
 
-int32 UConnectIt_LayoutToolLibrary::CaptureLayoutFromLevel(const UObject* WorldContextObject, UConnectIt_BoardLayout* Layout)
+int32 UConnectIt_LayoutToolLibrary::CaptureLayoutFromLevel(const UObject* WorldContextObject, UConnectIt_BoardLayoutDataAsset* Layout)
 {
     UWorld* World = GetToolWorld(WorldContextObject);
     const UConnectIt_LevelConfigDataAsset* Board = FindToolBoard(WorldContextObject, TEXT("CaptureLayoutFromLevel"));
@@ -210,7 +210,7 @@ int32 UConnectIt_LayoutToolLibrary::CaptureLayoutFromLevel(const UObject* WorldC
 }
 
 int32 UConnectIt_LayoutToolLibrary::LoadLayoutIntoLevel(
-    const UObject* WorldContextObject, UConnectIt_BoardLayout* Layout, bool bClearLevelTiles)
+    const UObject* WorldContextObject, UConnectIt_BoardLayoutDataAsset* Layout, bool bClearLevelTiles)
 {
     UWorld* World = GetToolWorld(WorldContextObject);
     const UConnectIt_LevelConfigDataAsset* Board = FindToolBoard(WorldContextObject, TEXT("LoadLayoutIntoLevel"));
@@ -276,7 +276,7 @@ int32 UConnectIt_LayoutToolLibrary::LoadLayoutIntoLevel(
     return Placed;
 }
 
-int32 UConnectIt_LayoutToolLibrary::PreviewTileCatalog(const UObject* WorldContextObject, const UConnectIt_TileCatalog* Catalog)
+int32 UConnectIt_LayoutToolLibrary::PreviewTileCatalog(const UObject* WorldContextObject, const UConnectIt_TileCatalogDataAsset* Catalog)
 {
     UWorld* World = GetToolWorld(WorldContextObject);
     if (!World || !IsValid(Catalog)) return 0;
@@ -353,7 +353,7 @@ void UConnectIt_LayoutToolLibrary::ClearTileCatalogPreview(const UObject* WorldC
     }
 }
 
-void UConnectIt_LayoutToolLibrary::SetLayoutCamera(UConnectIt_BoardLayout* Layout, bool bHasCamera, const FTransform& CameraTransform)
+void UConnectIt_LayoutToolLibrary::SetLayoutCamera(UConnectIt_BoardLayoutDataAsset* Layout, bool bHasCamera, const FTransform& CameraTransform)
 {
     if (!IsValid(Layout)) return;
 

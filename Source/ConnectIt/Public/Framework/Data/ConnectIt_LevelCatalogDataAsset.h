@@ -4,9 +4,9 @@
 
 #include "CoreMinimal.h"
 #include "Engine/DataAsset.h"
-#include "ConnectIt_LevelCatalog.generated.h"
+#include "ConnectIt_LevelCatalogDataAsset.generated.h"
 
-class UConnectIt_MatchPreset;
+class UConnectIt_MatchPresetDataAsset;
 class UTexture2D;
 
 
@@ -36,7 +36,7 @@ struct FConnectItLevelCatalogEntry
 // Easy" and "Classic Hard" are two presets). Referenced directly by the main menu
 // (its widget holds the catalog asset).
 UCLASS(BlueprintType)
-class CONNECTIT_API UConnectIt_LevelCatalog : public UDataAsset
+class CONNECTIT_API UConnectIt_LevelCatalogDataAsset : public UDataAsset
 {
     GENERATED_BODY()
 
@@ -47,5 +47,5 @@ public:
 
     // Presets the menu offers to play any level as (any level with any preset)
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Catalog")
-    TArray<TObjectPtr<UConnectIt_MatchPreset>> MatchPresets;
+    TArray<TObjectPtr<UConnectIt_MatchPresetDataAsset>> MatchPresets;
 };

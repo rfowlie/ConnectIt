@@ -6,7 +6,7 @@
 #include "Engine/DataAsset.h"
 #include "Board/ConnectIt_BoardLayoutCell.h"
 #include "Board/Operations/ConnectIt_BoardOperations.h"
-#include "ConnectIt_BoardLayout.generated.h"
+#include "ConnectIt_BoardLayoutDataAsset.generated.h"
 
 struct FConnectItBoardState;
 
@@ -16,7 +16,7 @@ struct FConnectItBoardState;
 // Built in the editor (a sandbox level and the layout tool) or by hand here:
 // every cell's gameplay values are visible and editable in this asset.
 UCLASS(BlueprintType)
-class CONNECTIT_API UConnectIt_BoardLayout : public UDataAsset
+class CONNECTIT_API UConnectIt_BoardLayoutDataAsset : public UDataAsset
 {
     GENERATED_BODY()
 
@@ -40,7 +40,7 @@ public:
     FConnectItBoardLayoutDiff DiffFrom(const FConnectItBoardState& Board) const;
 
     // What changes to turn Other's tiles into this layout
-    FConnectItBoardLayoutDiff DiffFrom(const UConnectIt_BoardLayout& Other) const;
+    FConnectItBoardLayoutDiff DiffFrom(const UConnectIt_BoardLayoutDataAsset& Other) const;
 
     // The one board change that turns Board into this layout: Change Layout
     // with the diff, this layout's name and its camera. Made when the change

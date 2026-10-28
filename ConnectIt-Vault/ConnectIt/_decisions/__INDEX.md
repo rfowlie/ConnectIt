@@ -8,6 +8,7 @@ Newest first:
 
 | Date | Decision | Status |
 |---|---|---|
+| [2026-10-28-data-asset-classes-end-in-dataasset](2026-10-28-data-asset-classes-end-in-dataasset.md) | Every C++ data asset class ends in `DataAsset` (files to match); six ConnectIt classes renamed with class redirects; property names unchanged | Active |
 | [2026-10-23-player-actions-tile-powers-board-operations](2026-10-23-player-actions-tile-powers-board-operations.md) | One vocabulary, plugin first: Player Action (no "skill"), Tile Power, Board Operation (produced by both); permanent actions are a per-level list (match uses, -1 = unlimited; turn uses always finite); item actions sit in an inventory (max held per action) and spend a per-level item budget, through their own path and turn-end leaf; `UTurnBasedPlayerAction`, `ConnectIt.PlayerAction.*`, `ConnectIt.BoardOperation.*` | Active |
 | [2026-10-23-tile-visuals-use-per-event-hooks](2026-10-23-tile-visuals-use-per-event-hooks.md) | Tile Blueprints react through one hook per event kind (typed, reaction handle), not a generic HandleTilePower(tag); logic stays in C++ in the rules | Active |
 | [2026-10-23-the-first-tile-powers](2026-10-23-the-first-tile-powers.md) | The first powers: Move Piece and Adjust Multiplier operations; multiplier floor and ceiling per tile type (gate renamed `FireAtMultiplier`); trigger sets; a Turn Start countdown trigger committed as its own change at turn start; Push, Vacuum, Repel pick at random among moves the rules allow; tile hooks with reaction handles the visualizer waits on (no wrapper) | Active |

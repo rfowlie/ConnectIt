@@ -6,8 +6,8 @@
 #include "Subsystems/GameInstanceSubsystem.h"
 #include "ConnectIt_MatchSetupSubsystem.generated.h"
 
-class UConnectIt_MatchPreset;
-class UConnectIt_LevelCatalog;
+class UConnectIt_MatchPresetDataAsset;
+class UConnectIt_LevelCatalogDataAsset;
 
 
 // What the player chose in the main menu for the next match.
@@ -24,7 +24,7 @@ struct FConnectItMatchSettings
     // = the map's own Default Match Preset (its World Settings). The values below are tweaks
     // applied on top of whichever preset plays.
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Match")
-    TObjectPtr<UConnectIt_MatchPreset> MatchPreset = nullptr;
+    TObjectPtr<UConnectIt_MatchPresetDataAsset> MatchPreset = nullptr;
 
     // Score needed to win; 0 = the level's own win condition value
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Match", meta = (ClampMin = 0.0))

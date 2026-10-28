@@ -9,8 +9,8 @@
 #include "Action/ActionConfig.h"
 #include "ConnectIt_MapNodeDataAsset.generated.h"
 
-class UConnectIt_MatchPreset;
-class UConnectIt_ActionShardTable;
+class UConnectIt_MatchPresetDataAsset;
+class UConnectIt_ActionShardTableDataAsset;
 class UTexture2D;
 class UWorld;
 
@@ -118,7 +118,7 @@ public:
     // How Level is played; unset = the level's own Default Match Preset. Soft:
     // loaded when the node is started, not with the hub.
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Play")
-    TSoftObjectPtr<UConnectIt_MatchPreset> MatchPreset;
+    TSoftObjectPtr<UConnectIt_MatchPresetDataAsset> MatchPreset;
 
     // Another hub map this node stands for (a region); complete when that
     // map's exit node is. Leave empty for a level node.
@@ -172,7 +172,7 @@ public:
     // seals not held
     UFUNCTION(BlueprintPure, Category = "ConnectIt|Adventure")
     FConnectItNodeRequirementCheck CheckRequirements(
-        const FConnectItAdventureProgress& Progress, const UConnectIt_ActionShardTable* Table) const;
+        const FConnectItAdventureProgress& Progress, const UConnectIt_ActionShardTableDataAsset* Table) const;
 
     virtual void PostInitProperties() override;
     virtual void PostDuplicate(bool bDuplicateForPIE) override;

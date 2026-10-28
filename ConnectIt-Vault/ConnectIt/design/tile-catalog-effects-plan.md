@@ -17,7 +17,7 @@ design-only session; **approved by the owner 2026-10-28**. Not built.
 
 ## Context
 
-Builders hold a **power tag**; the tag is looked up in the **tile catalog** (`UConnectIt_TileCatalog`, a
+Builders hold a **power tag**; the tag is looked up in the **tile catalog** (`UConnectIt_TileCatalogDataAsset`, a
 `TMap<FGameplayTag, FConnectItTileCatalogEntry>`; an entry = tile class + `FConnectItTilePower`). Problems: the power's
 `Name` tag repeats the map key (they can disagree), and every entry shows every field (`FireAtMultiplier`,
 `MultiplierFloor`, `MultiplierCeiling`...) whether or not the power uses it. Decided:

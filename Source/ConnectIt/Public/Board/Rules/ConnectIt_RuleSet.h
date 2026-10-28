@@ -11,7 +11,7 @@
 #include "ConnectIt_RuleSet.generated.h"
 
 struct FConnectItBoardOperation;
-class UConnectIt_MatchConditionAsset;
+class UConnectIt_MatchConditionDataAsset;
 
 
 // The rules of one match: how pieces score and how the match is won.
@@ -91,10 +91,10 @@ struct CONNECTIT_API FConnectItRuleSet
     // groups, in order (empty entries skipped, with a warning). Game thread,
     // once per match, before the rules are used -- the GameMode does it.
     void ResolveConditionGroups(
-        const TArray<TObjectPtr<UConnectIt_MatchConditionAsset>>& PlayerWinConditions,
-        const TArray<TObjectPtr<UConnectIt_MatchConditionAsset>>& AIWinConditions,
-        const TArray<TObjectPtr<UConnectIt_MatchConditionAsset>>& PlayerLoseConditions = {},
-        const TArray<TObjectPtr<UConnectIt_MatchConditionAsset>>& AILoseConditions = {});
+        const TArray<TObjectPtr<UConnectIt_MatchConditionDataAsset>>& PlayerWinConditions,
+        const TArray<TObjectPtr<UConnectIt_MatchConditionDataAsset>>& AIWinConditions,
+        const TArray<TObjectPtr<UConnectIt_MatchConditionDataAsset>>& PlayerLoseConditions = {},
+        const TArray<TObjectPtr<UConnectIt_MatchConditionDataAsset>>& AILoseConditions = {});
 
     // Copies Powers into TilePowers and LevelWide into LevelWideTilePowers. A
     // power with no name or a second one with the same name, and a
@@ -119,7 +119,7 @@ struct CONNECTIT_API FConnectItRuleSet
     // keeps for them is the caller's to restart (the GameMode commits a
     // Change Goals operation).
     void SetConditionGroups(bool bForAI, bool bWinGoals,
-        const TArray<TObjectPtr<UConnectIt_MatchConditionAsset>>& Conditions);
+        const TArray<TObjectPtr<UConnectIt_MatchConditionDataAsset>>& Conditions);
 
     // One side's win goals (bWinGoals) or lose conditions, in order
     const TArray<FConnectItMatchConditionGroup>& GetConditionGroups(bool bForAI, bool bWinGoals) const;

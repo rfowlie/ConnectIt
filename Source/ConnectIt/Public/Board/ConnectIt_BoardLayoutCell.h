@@ -11,7 +11,7 @@
 
 class AGridTileBase;
 
-// One tile of a board layout (UConnectIt_BoardLayout): where it is and what
+// One tile of a board layout (UConnectIt_BoardLayoutDataAsset): where it is and what
 // it starts with, power tag included. The values (TileData) are copied into
 // the board's own tile data when the tile is added. Which tile actor shows it
 // is the tile catalog's to say (by its power tag); the variant is only for

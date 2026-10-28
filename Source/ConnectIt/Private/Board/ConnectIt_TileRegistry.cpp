@@ -9,7 +9,7 @@
 #include "Tile/GridTileBase.h"
 #include "Board/ConnectIt_TileDataProvider.h"
 #include "Board/Actor/ConnectIt_BuilderTile.h"
-#include "Board/Powers/ConnectIt_TileCatalog.h"
+#include "Board/Powers/ConnectIt_TileCatalogDataAsset.h"
 #include "Engine/World.h"
 
 
@@ -31,7 +31,7 @@ TArray<AGridTileBase*> UConnectIt_TileRegistry::SpawnLayoutTiles(const TArray<FC
         return Spawned;
     }
 
-    const UConnectIt_TileCatalog* Catalog = UConnectIt_TileCatalog::FindFor(this);
+    const UConnectIt_TileCatalogDataAsset* Catalog = UConnectIt_TileCatalogDataAsset::FindFor(this);
     const UConnectIt_LevelConfigDataAsset* LevelConfig = AConnectIt_WorldSettings::FindLevelConfig(this);
     const TSubclassOf<AGridTileBase> DefaultClass = LevelConfig ? LevelConfig->DefaultTileClass : nullptr;
 
@@ -104,7 +104,7 @@ int32 UConnectIt_TileRegistry::SwapBuilderTiles()
     if (Builders.IsEmpty()) return 0;
 
     UWorld* World = GetWorld();
-    const UConnectIt_TileCatalog* Catalog = UConnectIt_TileCatalog::FindFor(this);
+    const UConnectIt_TileCatalogDataAsset* Catalog = UConnectIt_TileCatalogDataAsset::FindFor(this);
     if (!World || !Catalog)
     {
         UE_LOG(LogTemp, Error,

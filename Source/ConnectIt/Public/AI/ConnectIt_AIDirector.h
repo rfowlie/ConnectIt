@@ -13,7 +13,7 @@ class UConnectIt_AISelector;
 struct FConnectItRuleSet;
 
 // The AI opponent of a match, and how it changes as the match goes on. Named
-// by class on the match preset (UConnectIt_MatchPreset::AIDirectorClass) and
+// by class on the match preset (UConnectIt_MatchPresetDataAsset::AIDirectorClass) and
 // configured in its Blueprint's Class Defaults: one subclass per adventure
 // level, or per way of playing against the AI (e.g. a Classic director; "Easy"
 // and "Hard" are two small subclasses). See UConnectIt_Director for the

@@ -9,7 +9,7 @@
 #include "AI/ConnectIt_PlayerDirector.h"
 #include "AI/ConnectIt_LevelDirector.h"
 #include "AI/ConnectIt_AISelector.h"
-#include "Board/Rules/Conditions/ConnectIt_MatchConditionAsset.h"
+#include "Board/Rules/Conditions/ConnectIt_MatchConditionDataAsset.h"
 #include "Board/Operations/ConnectIt_BoardOperations.h"
 #include "Board/Powers/ConnectIt_TilePower.h"
 #include "ConnectIt_MinMaxTestTerms.generated.h"
@@ -115,12 +115,12 @@ protected:
     {
         Log += FString::Printf(TEXT("end %d %s %d; "), Faction, bIsMine ? TEXT("mine") : TEXT("theirs"), TurnNumber);
     }
-    virtual void OnWinCheckpointReached_Implementation(int32 Faction, bool bIsMine, UConnectIt_MatchConditionAsset* Goal, int32 GroupIndex, FName GroupName) override
+    virtual void OnWinCheckpointReached_Implementation(int32 Faction, bool bIsMine, UConnectIt_MatchConditionDataAsset* Goal, int32 GroupIndex, FName GroupName) override
     {
         Log += FString::Printf(TEXT("checkpoint %d %s %s %d %s; "),
             Faction, bIsMine ? TEXT("mine") : TEXT("theirs"), *GetNameSafe(Goal), GroupIndex, *GroupName.ToString());
     }
-    virtual void OnLoseConditionMet_Implementation(int32 Faction, bool bIsMine, UConnectIt_MatchConditionAsset* Condition) override
+    virtual void OnLoseConditionMet_Implementation(int32 Faction, bool bIsMine, UConnectIt_MatchConditionDataAsset* Condition) override
     {
         Log += FString::Printf(TEXT("lost %d %s %s; "), Faction, bIsMine ? TEXT("mine") : TEXT("theirs"), *GetNameSafe(Condition));
     }
@@ -142,11 +142,11 @@ public:
     FString Log;
 
     // Re-arm this trigger from inside its own reaction
-    TObjectPtr<UConnectIt_MatchConditionAsset> RearmOnFire = nullptr;
+    TObjectPtr<UConnectIt_MatchConditionDataAsset> RearmOnFire = nullptr;
 
 protected:
 
-    virtual void OnTriggerFired_Implementation(UConnectIt_MatchConditionAsset* Condition, int32 Faction) override
+    virtual void OnTriggerFired_Implementation(UConnectIt_MatchConditionDataAsset* Condition, int32 Faction) override
     {
         Log += FString::Printf(TEXT("%s %d; "), *GetNameSafe(Condition), Faction);
         if (Condition == RearmOnFire)

@@ -2,8 +2,8 @@
 
 #include "Framework/Data/ConnectIt_WorldSettings.h"
 #include "Framework/Data/ConnectIt_LevelConfigDataAsset.h"
-#include "Framework/Data/ConnectIt_MatchPreset.h"
-#include "Board/Powers/ConnectIt_TileCatalog.h"
+#include "Framework/Data/ConnectIt_MatchPresetDataAsset.h"
+#include "Board/Powers/ConnectIt_TileCatalogDataAsset.h"
 #include "Framework/GameMode/ConnectIt_GameMode.h"
 #include "Engine/Engine.h"
 #include "Engine/World.h"
@@ -36,7 +36,7 @@ UConnectIt_LevelConfigDataAsset* AConnectIt_WorldSettings::FindLevelConfig(const
     return WorldSettings ? WorldSettings->LevelConfig.Get() : nullptr;
 }
 
-UConnectIt_MatchPreset* AConnectIt_WorldSettings::FindDefaultMatchPreset(const UObject* WorldContextObject)
+UConnectIt_MatchPresetDataAsset* AConnectIt_WorldSettings::FindDefaultMatchPreset(const UObject* WorldContextObject)
 {
     const UWorld* World = GetContextWorld(WorldContextObject);
     if (!World) return nullptr;
@@ -53,7 +53,7 @@ UConnectIt_MatchPreset* AConnectIt_WorldSettings::FindDefaultMatchPreset(const U
     return nullptr;
 }
 
-const UConnectIt_TileCatalog* AConnectIt_WorldSettings::GetWorldTileCatalog(const UObject* WorldContextObject)
+const UConnectIt_TileCatalogDataAsset* AConnectIt_WorldSettings::GetWorldTileCatalog(const UObject* WorldContextObject)
 {
     const UWorld* World = GEngine && IsValid(WorldContextObject)
         ? GEngine->GetWorldFromContextObject(WorldContextObject, EGetWorldErrorMode::ReturnNull)

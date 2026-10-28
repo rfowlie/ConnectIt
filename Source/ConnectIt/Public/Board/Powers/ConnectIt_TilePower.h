@@ -79,7 +79,7 @@ struct CONNECTIT_API FConnectItTilePowerEffect
 };
 
 // One tile power: what sets it off, what stops it, and what it does. Defined
-// once per tag, in the level's tile catalog (UConnectIt_TileCatalog), and
+// once per tag, in the level's tile catalog (UConnectIt_TileCatalogDataAsset), and
 // copied into the rules when the match starts. A tile names its power by tag
 // only (FConnectItTileData::TilePowerTag); level-wide powers are named by tag
 // on the Level director. Plain data.

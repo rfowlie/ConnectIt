@@ -10,8 +10,8 @@
 #include "Board/Rules/ConnectIt_RuleSet.h"
 #include "ConnectIt_LevelDirector.generated.h"
 
-class UConnectIt_MatchConditionAsset;
-class UConnectIt_BoardLayout;
+class UConnectIt_MatchConditionDataAsset;
+class UConnectIt_BoardLayoutDataAsset;
 struct FConnectItBoardState;
 struct FConnectItRuleSet;
 
@@ -36,7 +36,7 @@ struct CONNECTIT_API FConnectItLevelTrigger
     // Met when all of its conditions hold (e.g. Score Threshold 10: "the
     // player has reached 10 points")
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Trigger")
-    TObjectPtr<UConnectIt_MatchConditionAsset> Condition = nullptr;
+    TObjectPtr<UConnectIt_MatchConditionDataAsset> Condition = nullptr;
 
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Trigger")
     EConnectItTriggerSide Side = EConnectItTriggerSide::Player;
@@ -78,7 +78,7 @@ public:
     // that isn't the last is a checkpoint, completing the last is the win.
     // Also every faction's goals in a match with no AI.
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Level|Conditions")
-    TArray<TObjectPtr<UConnectIt_MatchConditionAsset>> PlayerWinConditions;
+    TArray<TObjectPtr<UConnectIt_MatchConditionDataAsset>> PlayerWinConditions;
 
     // Ways the player LOSES: if any one holds after a move (all of its
     // conditions at once), the player loses and the other side wins -- unless
@@ -86,16 +86,16 @@ public:
     // a match with an AI (ignored online for now). E.g. Not Enough Pieces To
     // Score, No Legal Move: Swap Pieces on an exhaustion level.
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Level|Conditions")
-    TArray<TObjectPtr<UConnectIt_MatchConditionAsset>> PlayerLoseConditions;
+    TArray<TObjectPtr<UConnectIt_MatchConditionDataAsset>> PlayerLoseConditions;
 
     // The AI's goals, in order. Set them: the AI never borrows the player's,
     // and none means it can't win.
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Level|Conditions")
-    TArray<TObjectPtr<UConnectIt_MatchConditionAsset>> AIWinConditions;
+    TArray<TObjectPtr<UConnectIt_MatchConditionDataAsset>> AIWinConditions;
 
     // Ways the AI loses (as Player Lose Conditions)
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Level|Conditions")
-    TArray<TObjectPtr<UConnectIt_MatchConditionAsset>> AILoseConditions;
+    TArray<TObjectPtr<UConnectIt_MatchConditionDataAsset>> AILoseConditions;
 
     // --- Tile powers ---
 
@@ -114,17 +114,17 @@ public:
     // A trigger's condition held: Condition is the trigger's asset, Faction the
     // side it held for. The trigger is now disarmed.
     UFUNCTION(BlueprintNativeEvent, Category = "Level|Triggers")
-    void OnTriggerFired(UConnectIt_MatchConditionAsset* Condition, int32 Faction);
-    virtual void OnTriggerFired_Implementation(UConnectIt_MatchConditionAsset* Condition, int32 Faction) {}
+    void OnTriggerFired(UConnectIt_MatchConditionDataAsset* Condition, int32 Faction);
+    virtual void OnTriggerFired_Implementation(UConnectIt_MatchConditionDataAsset* Condition, int32 Faction) {}
 
     // Arms again every trigger using Condition, so it can fire again the next
     // time its condition holds after a board change
     UFUNCTION(BlueprintCallable, Category = "Level|Triggers")
-    void RearmTrigger(UConnectIt_MatchConditionAsset* Condition);
+    void RearmTrigger(UConnectIt_MatchConditionDataAsset* Condition);
 
     // Whether the trigger using Condition is armed (false if none uses it)
     UFUNCTION(BlueprintPure, Category = "Level|Triggers")
-    bool IsTriggerArmed(UConnectIt_MatchConditionAsset* Condition) const;
+    bool IsTriggerArmed(UConnectIt_MatchConditionDataAsset* Condition) const;
 
     // Checks every armed trigger against a committed board and the match's
     // rules, firing the ones that hold. Called by the GameMode after each
@@ -165,14 +165,14 @@ protected:
     // already meet. Set them before changing the layout in the same moment, so
     // the new layout is checked against the new goals.
     UFUNCTION(BlueprintCallable, Category = "Level|Changes")
-    void SetWinConditions(EConnectItRole Side, const TArray<UConnectIt_MatchConditionAsset*>& Conditions,
+    void SetWinConditions(EConnectItRole Side, const TArray<UConnectIt_MatchConditionDataAsset*>& Conditions,
         EConnectItChangeTiming Timing = EConnectItChangeTiming::Immediately);
 
     // Replaces Side's lose conditions (any one met = that side loses; only in
     // a match with an AI). A board change, with a Goals Changed event and the
     // usual win check.
     UFUNCTION(BlueprintCallable, Category = "Level|Changes")
-    void SetLoseConditions(EConnectItRole Side, const TArray<UConnectIt_MatchConditionAsset*>& Conditions,
+    void SetLoseConditions(EConnectItRole Side, const TArray<UConnectIt_MatchConditionDataAsset*>& Conditions,
         EConnectItChangeTiming Timing = EConnectItChangeTiming::Immediately);
 
     // Moves the level to Phase (a ConnectIt.Phase.* tag). A board change: the
@@ -192,7 +192,7 @@ protected:
     // win check, on the final board. Worked out against the board when it is
     // applied, so a layout queued behind other changes still lands right.
     UFUNCTION(BlueprintCallable, Category = "Level|Changes")
-    void SetLayout(UConnectIt_BoardLayout* Layout,
+    void SetLayout(UConnectIt_BoardLayoutDataAsset* Layout,
         EConnectItChangeTiming Timing = EConnectItChangeTiming::Immediately);
 
     // The match's rules as they are now (a copy) -- including each side's
@@ -205,5 +205,5 @@ private:
     // Indices into Triggers that have fired and not been re-armed
     TSet<int32> FiredTriggers;
 
-    TArray<TObjectPtr<UConnectIt_MatchConditionAsset>> GetTriggerConditions() const;
+    TArray<TObjectPtr<UConnectIt_MatchConditionDataAsset>> GetTriggerConditions() const;
 };

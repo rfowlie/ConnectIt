@@ -1,7 +1,7 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 #include "Board/Actor/ConnectIt_BuilderTile.h"
-#include "Board/Powers/ConnectIt_TileCatalog.h"
+#include "Board/Powers/ConnectIt_TileCatalogDataAsset.h"
 #include "Framework/Data/ConnectIt_LevelConfigDataAsset.h"
 #include "Framework/Data/ConnectIt_WorldSettings.h"
 #include "Registry/GridDefinition.h"
@@ -42,9 +42,9 @@ EDataValidationResult AConnectIt_BuilderTile::IsDataValid(FDataValidationContext
     // class's own defaults are checked against the project default)
     if (TileData.TilePowerTag.IsValid())
     {
-        const UConnectIt_TileCatalog* Catalog = GetWorld()
-            ? UConnectIt_TileCatalog::FindFor(this)
-            : UConnectIt_TileCatalog::GetProjectDefault();
+        const UConnectIt_TileCatalogDataAsset* Catalog = GetWorld()
+            ? UConnectIt_TileCatalogDataAsset::FindFor(this)
+            : UConnectIt_TileCatalogDataAsset::GetProjectDefault();
         if (Catalog && !Catalog->Defines(TileData.TilePowerTag))
         {
             Context.AddError(FText::FromString(FString::Printf(TEXT(

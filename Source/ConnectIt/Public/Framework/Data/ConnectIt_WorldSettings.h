@@ -7,8 +7,8 @@
 #include "ConnectIt_WorldSettings.generated.h"
 
 class UConnectIt_LevelConfigDataAsset;
-class UConnectIt_MatchPreset;
-class UConnectIt_TileCatalog;
+class UConnectIt_MatchPresetDataAsset;
+class UConnectIt_TileCatalogDataAsset;
 
 // A ConnectIt map's own setup, in its World Settings: which board it is played
 // on, how it plays by default, and which tile catalog its tiles come from. The map is the one thing that is truly per
@@ -36,14 +36,14 @@ public:
     // How this map plays when the main menu chooses nothing else (its
     // Adventure setup, or what opening the map directly in the editor plays)
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "ConnectIt")
-    TObjectPtr<UConnectIt_MatchPreset> DefaultMatchPreset = nullptr;
+    TObjectPtr<UConnectIt_MatchPresetDataAsset> DefaultMatchPreset = nullptr;
 
     // Every kind of tile this map's builder tiles can name: each power tag's
-    // definition and the tile actor that shows it (UConnectIt_TileCatalog --
-    // read through UConnectIt_TileCatalog::FindFor). None = the project
+    // definition and the tile actor that shows it (UConnectIt_TileCatalogDataAsset --
+    // read through UConnectIt_TileCatalogDataAsset::FindFor). None = the project
     // default (Project Settings > Game > ConnectIt).
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "ConnectIt")
-    TObjectPtr<UConnectIt_TileCatalog> TileCatalog = nullptr;
+    TObjectPtr<UConnectIt_TileCatalogDataAsset> TileCatalog = nullptr;
 
     // The level config (board) of the map WorldContextObject is in; null if
     // its World Settings name none (or aren't ConnectIt's) -- callers that
@@ -56,10 +56,10 @@ public:
     // How the map WorldContextObject is in plays when the main menu chooses
     // nothing; null, with a warning, if its World Settings name none. Read by
     // the GameMode at match setup.
-    static UConnectIt_MatchPreset* FindDefaultMatchPreset(const UObject* WorldContextObject);
+    static UConnectIt_MatchPresetDataAsset* FindDefaultMatchPreset(const UObject* WorldContextObject);
 
     UFUNCTION(BlueprintCallable, Category = "ConnectIt | WorldSettings")
-    static const UConnectIt_TileCatalog* GetWorldTileCatalog(const UObject* WorldContextObject);
+    static const UConnectIt_TileCatalogDataAsset* GetWorldTileCatalog(const UObject* WorldContextObject);
 
 #if WITH_EDITOR
     // Warns about missing match data (level config, tile catalog, default

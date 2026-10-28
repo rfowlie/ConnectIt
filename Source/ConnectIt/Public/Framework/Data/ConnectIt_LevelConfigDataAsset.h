@@ -17,7 +17,7 @@ class UGridDefinition;
 // World Settings (AConnectIt_WorldSettings::LevelConfig).
 //
 // How a match on it is played (rules, directors) is not here: that is a
-// UConnectIt_MatchPreset, which the map names as its default in its World
+// UConnectIt_MatchPresetDataAsset, which the map names as its default in its World
 // Settings too; the main menu can choose a different one, so a level built for
 // Adventure can also be played as a versus match with other rules.
 UCLASS(BlueprintType)

@@ -114,7 +114,7 @@ stages.
   - **Tests:** new `ConnectIt.Adventure.ShardTable`, `.NodeRequirements`, `.NodeData` (in
     `Tests/ConnectIt_AdventureTests.cpp`).
   - **Renamed 2026-10-25** (player actions plan, Stage 5):
-    - `UConnectIt_SkillShardTable` → `UConnectIt_ActionShardTable` (`ConnectIt_ActionShardTable.h/.cpp`; `Actions`
+    - `UConnectIt_SkillShardTable` → `UConnectIt_ActionShardTableDataAsset` (`ConnectIt_ActionShardTableDataAsset.h/.cpp`; `Actions`
       map; `FConnectItActionShardCosts`), with the Project Settings field **Action Shard Table**;
     - `GetNumberedUses` → `GetPermanentUses`;
     - `RequiredSkills` / `RecommendedSkills` / `MissingSkills` → `...Actions`;

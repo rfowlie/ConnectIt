@@ -10,7 +10,7 @@ spans:
   - Source/ConnectIt/Public/AI/ConnectIt_AISelector.h
   - Source/ConnectIt/Public/AI/ConnectIt_AIStrategy_MinMax.h
   - Source/ConnectIt/Public/AI/ConnectIt_MinMaxSearch.h
-  - Source/ConnectIt/Public/Framework/Data/ConnectIt_MatchPreset.h
+  - Source/ConnectIt/Public/Framework/Data/ConnectIt_MatchPresetDataAsset.h
   - Source/ConnectIt/Public/Framework/GameMode/ConnectIt_GameMode.h
   - Source/ConnectIt/Public/Board/ConnectIt_BoardRequestMediator.h
   - Plugins/UnrealTurnBasedMechanics/Source/UnrealTurnBasedMechanics/Public/Framework/Controller/TurnBasedAIController.h

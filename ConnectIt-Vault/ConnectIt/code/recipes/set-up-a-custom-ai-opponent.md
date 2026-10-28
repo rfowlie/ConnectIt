@@ -3,7 +3,7 @@ schema: recipes
 task: Give a match an AI opponent that plays the way you designed -- a tuned built-in one, a Blueprint-made strategy, several strategies with a selector, or a Blueprint AI controller -- through an AI director Blueprint named by the match preset.
 touches:
   - Source/ConnectIt/Public/AI/ConnectIt_AIDirector.h (a Blueprint subclass: its Class Defaults are the AI's setup)
-  - Source/ConnectIt/Public/Framework/Data/ConnectIt_MatchPreset.h (the match preset: AI Director Class, Player Director Class)
+  - Source/ConnectIt/Public/Framework/Data/ConnectIt_MatchPresetDataAsset.h (the match preset: AI Director Class, Player Director Class)
   - Source/ConnectIt/Public/Framework/Data/ConnectIt_WorldSettings.h (the map's World Settings: Level Config, Default Match Preset)
   - Source/ConnectIt/Public/Framework/GameMode/ConnectIt_GameMode.h (the level's GameMode: Match Type, AI Controller Class)
   - Source/ConnectIt/Public/AI/ConnectIt_AIStrategy.h (a Blueprint subclass, only for a bespoke strategy)
@@ -40,7 +40,7 @@ director, not from the controller class.
 ## Prerequisites
 
 - A level whose match is played as **Adventure** (the GameMode's `Match Type` is Adventure, which is what spawns the AI).
-- A **match preset** for it (Data Asset of class `ConnectIt_MatchPreset`; the map's **World Settings > ConnectIt > Default
+- A **match preset** for it (Data Asset of class `ConnectIt_MatchPresetDataAsset`; the map's **World Settings > ConnectIt > Default
   Match Preset** names it, next to its **Level Config**, the board).
 - An **action loadout** for the AI (an asset like a player's): the AI may only do what its loadout's actions allow, and the server
   holds it to that exactly like a human. A Place Piece action to place, a Swap action to swap, and so on, with the per-turn

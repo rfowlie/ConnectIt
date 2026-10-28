@@ -4,15 +4,15 @@
 #include "MinMax/ConnectIt_MinMaxRules.h"
 #include "AI/ConnectIt_AIStrategy_MinMax.h"
 #include "AI/ConnectIt_AIDirector.h"
-#include "Framework/Data/ConnectIt_MatchPreset.h"
-#include "Framework/Data/ConnectIt_BoardLayout.h"
+#include "Framework/Data/ConnectIt_MatchPresetDataAsset.h"
+#include "Framework/Data/ConnectIt_BoardLayoutDataAsset.h"
 #include "AI/ConnectIt_AICoordinator.h"
 #include "Framework/GameMode/ConnectIt_LevelChange.h"
 #include "AI/ConnectIt_MinMaxSearch.h"
 #include "AI/ConnectIt_AISelector.h"
 #include "ConnectIt_MinMaxTestTerms.h"
 #include "Board/Rules/ConnectIt_RuleSet.h"
-#include "Board/Rules/Conditions/ConnectIt_MatchConditionAsset.h"
+#include "Board/Rules/Conditions/ConnectIt_MatchConditionDataAsset.h"
 #include "Framework/Library/ConnectIt_BoardStateLibrary.h"
 #include "Board/Rules/Scoring/ConnectIt_LineScoringRule.h"
 #include "Board/Rules/Conditions/ConnectIt_MatchConditions.h"
@@ -23,7 +23,7 @@
 #include "Misc/ScopeExit.h"
 #include "Board/ConnectIt_BoardStateComponent.h"
 #include "Board/Actor/ConnectIt_BuilderTile.h"
-#include "Board/Powers/ConnectIt_TileCatalog.h"
+#include "Board/Powers/ConnectIt_TileCatalogDataAsset.h"
 #include "Board/Powers/ConnectIt_TilePowerEffects.h"
 #include "Board/ConnectIt_TileReaction.h"
 #include "Board/ConnectIt_TileVisualizer.h"
@@ -619,11 +619,11 @@ bool FConnectItLoseConditionsTest::RunTest(const FString& Parameters)
 {
     // The player wins by clearing the board having scored; loses when stuck
     // with fewer pieces than a line needs. The AI wins at 12 points.
-    UConnectIt_MatchConditionAsset* Clear = NewObject<UConnectIt_MatchConditionAsset>(GetTransientPackage(), TEXT("WC_Test_LoseClear"));
+    UConnectIt_MatchConditionDataAsset* Clear = NewObject<UConnectIt_MatchConditionDataAsset>(GetTransientPackage(), TEXT("WC_Test_LoseClear"));
     Clear->Conditions.Add(TInstancedStruct<FConnectItMatchCondition>::Make<FConnectItMatchCondition_PieceCount>(PiecesIs(EConnectItPieceCountComparison::Equal, 0)));
-    UConnectIt_MatchConditionAsset* Stuck = NewObject<UConnectIt_MatchConditionAsset>(GetTransientPackage(), TEXT("WC_Test_LoseStuck"));
+    UConnectIt_MatchConditionDataAsset* Stuck = NewObject<UConnectIt_MatchConditionDataAsset>(GetTransientPackage(), TEXT("WC_Test_LoseStuck"));
     Stuck->Conditions.Add(TInstancedStruct<FConnectItMatchCondition>::Make<FConnectItMatchCondition_NotEnoughPiecesToScore>());
-    UConnectIt_MatchConditionAsset* AIScore = NewObject<UConnectIt_MatchConditionAsset>(GetTransientPackage(), TEXT("WC_Test_LoseAIScore"));
+    UConnectIt_MatchConditionDataAsset* AIScore = NewObject<UConnectIt_MatchConditionDataAsset>(GetTransientPackage(), TEXT("WC_Test_LoseAIScore"));
     AIScore->Conditions.Add(TInstancedStruct<FConnectItMatchCondition>::Make<FConnectItMatchCondition_ScoreThreshold>(ScoreAtLeast(12.f)));
 
     FConnectItRuleSet Rules;
@@ -2317,10 +2317,10 @@ bool FConnectItMatchConditionAssetsTest::RunTest(const FString& Parameters)
 {
     // Goals as assets: the rule set copies their conditions out at match
     // start, in order, and a checkpoint names the asset reached
-    UConnectIt_MatchConditionAsset* ScoreGoal = NewObject<UConnectIt_MatchConditionAsset>(
+    UConnectIt_MatchConditionDataAsset* ScoreGoal = NewObject<UConnectIt_MatchConditionDataAsset>(
         GetTransientPackage(), TEXT("WC_Test_Score4"));
     ScoreGoal->Conditions.Add(TInstancedStruct<FConnectItMatchCondition>::Make<FConnectItMatchCondition_ScoreThreshold>(ScoreAtLeast(4.f)));
-    UConnectIt_MatchConditionAsset* ClearGoal = NewObject<UConnectIt_MatchConditionAsset>(
+    UConnectIt_MatchConditionDataAsset* ClearGoal = NewObject<UConnectIt_MatchConditionDataAsset>(
         GetTransientPackage(), TEXT("WC_Test_Clear"));
     ClearGoal->Conditions.Add(TInstancedStruct<FConnectItMatchCondition>::Make<FConnectItMatchCondition_PieceCount>(PiecesIs(EConnectItPieceCountComparison::Equal, 0)));
 
@@ -2600,7 +2600,7 @@ bool FConnectItAIDirectorTest::RunTest(const FString& Parameters)
     TestNull(TEXT("no controller, no loadout"), Director->TryGetLoadout());
 
     // A match preset names the three director classes
-    UConnectIt_MatchPreset* Preset = NewObject<UConnectIt_MatchPreset>();
+    UConnectIt_MatchPresetDataAsset* Preset = NewObject<UConnectIt_MatchPresetDataAsset>();
     Preset->AIDirectorClass = UConnectIt_TestAIDirector::StaticClass();
     Preset->PlayerDirectorClass = UConnectIt_PlayerDirector::StaticClass();
     Preset->LevelDirectorClass = UConnectIt_LevelDirector::StaticClass();
@@ -2623,10 +2623,10 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(FConnectItDirectorConditionsTest,
 bool FConnectItDirectorConditionsTest::RunTest(const FString& Parameters)
 {
     // Both sides' goals live on the Level director
-    UConnectIt_MatchConditionAsset* ScoreGoal = NewObject<UConnectIt_MatchConditionAsset>(
+    UConnectIt_MatchConditionDataAsset* ScoreGoal = NewObject<UConnectIt_MatchConditionDataAsset>(
         GetTransientPackage(), TEXT("WC_Test_DirectorScore"));
     ScoreGoal->Conditions.Add(TInstancedStruct<FConnectItMatchCondition>::Make<FConnectItMatchCondition_ScoreThreshold>(ScoreAtLeast(4.f)));
-    UConnectIt_MatchConditionAsset* EmptyGoal = NewObject<UConnectIt_MatchConditionAsset>(
+    UConnectIt_MatchConditionDataAsset* EmptyGoal = NewObject<UConnectIt_MatchConditionDataAsset>(
         GetTransientPackage(), TEXT("WC_Test_DirectorEmpty"));
 
     UConnectIt_LevelDirector* Level = NewObject<UConnectIt_LevelDirector>();
@@ -2680,7 +2680,7 @@ bool FConnectItBoardLayoutTest::RunTest(const FString& Parameters)
     // shared positions untouched
     const auto MakeLayout = [](std::initializer_list<FGridPosition> Positions)
     {
-        UConnectIt_BoardLayout* Layout = NewObject<UConnectIt_BoardLayout>();
+        UConnectIt_BoardLayoutDataAsset* Layout = NewObject<UConnectIt_BoardLayoutDataAsset>();
         for (const FGridPosition& Position : Positions)
         {
             FConnectItBoardLayoutCell& Cell = Layout->Cells.AddDefaulted_GetRef();
@@ -2693,14 +2693,14 @@ bool FConnectItBoardLayoutTest::RunTest(const FString& Parameters)
         return Positions.Contains(FGridPosition(X, Y));
     };
 
-    const UConnectIt_BoardLayout* Row = MakeLayout({ {0, 0}, {1, 0}, {2, 0}, {3, 0} });
-    const UConnectIt_BoardLayout* Square = MakeLayout({ {0, 0}, {1, 0}, {0, 1}, {1, 1} });
+    const UConnectIt_BoardLayoutDataAsset* Row = MakeLayout({ {0, 0}, {1, 0}, {2, 0}, {3, 0} });
+    const UConnectIt_BoardLayoutDataAsset* Square = MakeLayout({ {0, 0}, {1, 0}, {0, 1}, {1, 1} });
 
     // Identical: nothing changes
     TestTrue(TEXT("identical: no change"), Row->DiffFrom(*Row).IsEmpty());
 
     // Grow: a 4x1 row to a 4x4 square -- only the new tiles come
-    UConnectIt_BoardLayout* Big = NewObject<UConnectIt_BoardLayout>();
+    UConnectIt_BoardLayoutDataAsset* Big = NewObject<UConnectIt_BoardLayoutDataAsset>();
     for (int32 X = 0; X < 4; X++)
     {
         for (int32 Y = 0; Y < 4; Y++)
@@ -2732,7 +2732,7 @@ bool FConnectItBoardLayoutTest::RunTest(const FString& Parameters)
         && FromBoard.Added.Num() == 2);
 
     // A cell keeps its data on the way through
-    UConnectIt_BoardLayout* Charged = MakeLayout({ {5, 5} });
+    UConnectIt_BoardLayoutDataAsset* Charged = MakeLayout({ {5, 5} });
     Charged->Cells[0].TileData.Multiplier = 3.f;
     Charged->Cells[0].TileData.StartingFactionPiece = 1;
     const FConnectItBoardLayoutDiff Carry = Charged->DiffFrom(Board);
@@ -2746,12 +2746,12 @@ bool FConnectItBoardLayoutTest::RunTest(const FString& Parameters)
         FDataValidationContext Fine;
         TestTrue(TEXT("a plain layout is valid"), Square->IsDataValid(Fine) != EDataValidationResult::Invalid);
 
-        UConnectIt_BoardLayout* Twice = MakeLayout({ {0, 0}, {0, 0} });
+        UConnectIt_BoardLayoutDataAsset* Twice = MakeLayout({ {0, 0}, {0, 0} });
         FDataValidationContext Duplicate;
         TestTrue(TEXT("a repeated position is invalid"), Twice->IsDataValid(Duplicate) == EDataValidationResult::Invalid);
         TestTrue(TEXT("...and the diff keeps one"), Twice->DiffFrom(*Row).Added.IsEmpty() && Twice->DiffFrom(*Row).Removed.Num() == 3);
 
-        UConnectIt_BoardLayout* ThirdSide = MakeLayout({ {0, 0} });
+        UConnectIt_BoardLayoutDataAsset* ThirdSide = MakeLayout({ {0, 0} });
         ThirdSide->Cells[0].TileData.StartingFactionPiece = 2;
         FDataValidationContext Faction;
         ThirdSide->IsDataValid(Faction);
@@ -2931,7 +2931,7 @@ bool FConnectItPhasesAndLayoutsTest::RunTest(const FString& Parameters)
     TestFalse(TEXT("begin: no phase is refused"), NoPhase.CanApply(Board));
 
     // --- Set Layout's change: worked out against the board it will change ---
-    UConnectIt_BoardLayout* Layout = NewObject<UConnectIt_BoardLayout>(GetTransientPackage(), TEXT("CIBL_TestRow"));
+    UConnectIt_BoardLayoutDataAsset* Layout = NewObject<UConnectIt_BoardLayoutDataAsset>(GetTransientPackage(), TEXT("CIBL_TestRow"));
     for (int32 X = 0; X < 4; X++)
     {
         Layout->Cells.AddDefaulted_GetRef().Position = FGridPosition(X, 0);
@@ -2969,9 +2969,9 @@ bool FConnectItChangeGoalsTest::RunTest(const FString& Parameters)
 {
     // The board's side of a goals change: progress restarts, score stays,
     // and the win check that follows measures the new goals
-    UConnectIt_MatchConditionAsset* Score4 = NewObject<UConnectIt_MatchConditionAsset>(GetTransientPackage(), TEXT("WC_Test_Goals4"));
+    UConnectIt_MatchConditionDataAsset* Score4 = NewObject<UConnectIt_MatchConditionDataAsset>(GetTransientPackage(), TEXT("WC_Test_Goals4"));
     Score4->Conditions.Add(TInstancedStruct<FConnectItMatchCondition>::Make<FConnectItMatchCondition_ScoreThreshold>(ScoreAtLeast(4.f)));
-    UConnectIt_MatchConditionAsset* Score20 = NewObject<UConnectIt_MatchConditionAsset>(GetTransientPackage(), TEXT("WC_Test_Goals20"));
+    UConnectIt_MatchConditionDataAsset* Score20 = NewObject<UConnectIt_MatchConditionDataAsset>(GetTransientPackage(), TEXT("WC_Test_Goals20"));
     Score20->Conditions.Add(TInstancedStruct<FConnectItMatchCondition>::Make<FConnectItMatchCondition_ScoreThreshold>(ScoreAtLeast(20.f)));
 
     FConnectItRuleSet Rules;
@@ -3034,9 +3034,9 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(FConnectItLevelTriggersTest,
 
 bool FConnectItLevelTriggersTest::RunTest(const FString& Parameters)
 {
-    UConnectIt_MatchConditionAsset* Score4 = NewObject<UConnectIt_MatchConditionAsset>(GetTransientPackage(), TEXT("WC_Test_Trigger4"));
+    UConnectIt_MatchConditionDataAsset* Score4 = NewObject<UConnectIt_MatchConditionDataAsset>(GetTransientPackage(), TEXT("WC_Test_Trigger4"));
     Score4->Conditions.Add(TInstancedStruct<FConnectItMatchCondition>::Make<FConnectItMatchCondition_ScoreThreshold>(ScoreAtLeast(4.f)));
-    UConnectIt_MatchConditionAsset* Score8 = NewObject<UConnectIt_MatchConditionAsset>(GetTransientPackage(), TEXT("WC_Test_Trigger8"));
+    UConnectIt_MatchConditionDataAsset* Score8 = NewObject<UConnectIt_MatchConditionDataAsset>(GetTransientPackage(), TEXT("WC_Test_Trigger8"));
     Score8->Conditions.Add(TInstancedStruct<FConnectItMatchCondition>::Make<FConnectItMatchCondition_ScoreThreshold>(ScoreAtLeast(8.f)));
 
     FConnectItRuleSet Rules;
@@ -3344,7 +3344,7 @@ bool FConnectItEventsReplayTest::RunTest(const FString& Parameters)
         TestTrue(TEXT("add tiles: the starting piece is counted on the replayed board too"),
             Replayed.StartingPieces == After.StartingPieces);
 
-        UConnectIt_BoardLayout* Layout = NewObject<UConnectIt_BoardLayout>(GetTransientPackage(), TEXT("CIBL_TestReplay"));
+        UConnectIt_BoardLayoutDataAsset* Layout = NewObject<UConnectIt_BoardLayoutDataAsset>(GetTransientPackage(), TEXT("CIBL_TestReplay"));
         for (int32 X = 0; X < 4; X++)
         {
             FConnectItBoardLayoutCell& Cell = Layout->Cells.AddDefaulted_GetRef();
@@ -3370,9 +3370,9 @@ bool FConnectItEventsReplayTest::RunTest(const FString& Parameters)
     // Game Won event carries it, and the display board copies it from Current
     // once the queue drains.)
     {
-        UConnectIt_MatchConditionAsset* Score4 = NewObject<UConnectIt_MatchConditionAsset>(GetTransientPackage(), TEXT("WC_Test_Replay4"));
+        UConnectIt_MatchConditionDataAsset* Score4 = NewObject<UConnectIt_MatchConditionDataAsset>(GetTransientPackage(), TEXT("WC_Test_Replay4"));
         Score4->Conditions.Add(TInstancedStruct<FConnectItMatchCondition>::Make<FConnectItMatchCondition_ScoreThreshold>(ScoreAtLeast(4.f)));
-        UConnectIt_MatchConditionAsset* Score20 = NewObject<UConnectIt_MatchConditionAsset>(GetTransientPackage(), TEXT("WC_Test_Replay20"));
+        UConnectIt_MatchConditionDataAsset* Score20 = NewObject<UConnectIt_MatchConditionDataAsset>(GetTransientPackage(), TEXT("WC_Test_Replay20"));
         Score20->Conditions.Add(TInstancedStruct<FConnectItMatchCondition>::Make<FConnectItMatchCondition_ScoreThreshold>(ScoreAtLeast(20.f)));
 
         FConnectItRuleSet GoalRules;
@@ -3453,7 +3453,7 @@ bool FConnectItTilePowerDataTest::RunTest(const FString& Parameters)
     };
 
     // A catalog defining two powers
-    UConnectIt_TileCatalog* Catalog = NewObject<UConnectIt_TileCatalog>();
+    UConnectIt_TileCatalogDataAsset* Catalog = NewObject<UConnectIt_TileCatalogDataAsset>();
     Catalog->DefaultTileClass = AConnectIt_BuilderTile::StaticClass();
     Catalog->Tiles.Add(PowerTag, MakeEntry(5));
     Catalog->Tiles.Add(OtherTag, MakeEntry(9));
@@ -3577,7 +3577,7 @@ bool FConnectItTilePowerDataTest::RunTest(const FString& Parameters)
     // --- Validation: a catalog entry with no class or effect; level-wide tags named once ---
 #if WITH_EDITOR
     {
-        UConnectIt_TileCatalog* Bad = NewObject<UConnectIt_TileCatalog>();
+        UConnectIt_TileCatalogDataAsset* Bad = NewObject<UConnectIt_TileCatalogDataAsset>();
         Bad->Tiles.Add(PowerTag, FConnectItTileCatalogEntry());
         FConnectItTileCatalogEntry Misnamed = MakeEntry(1);
         Misnamed.TilePower.Name = PowerTag;
@@ -4418,7 +4418,7 @@ bool FConnectItMoveAndMultiplierTest::RunTest(const FString& Parameters)
         TestEqual(TEXT("add: a capped tile starts at its ceiling"), TileAt(Board, 3, 0).Multiplier, 2.f);
         TestTrue(TEXT("add: before + events = after"), ReplaysTo(Before, Events, Board));
 
-        UConnectIt_TileCatalog* Catalog = NewObject<UConnectIt_TileCatalog>();
+        UConnectIt_TileCatalogDataAsset* Catalog = NewObject<UConnectIt_TileCatalogDataAsset>();
         FConnectItTileCatalogEntry Entry;
         Entry.TilePower.MultiplierCeiling = 2.f;
         Catalog->Tiles.Add(TestPower1, Entry);
@@ -4474,7 +4474,7 @@ bool FConnectItPushAndVacuumTest::RunTest(const FString& Parameters)
     TestTrue(TEXT("triggers: Vacuum has Exit and Scoring, not Enter"),
         Vacuum.HasTrigger(EPower::PieceExit) && Vacuum.HasTrigger(EPower::Scoring) && !Vacuum.HasTrigger(EPower::PieceEnter));
     {
-        UConnectIt_TileCatalog* Catalog = NewObject<UConnectIt_TileCatalog>();
+        UConnectIt_TileCatalogDataAsset* Catalog = NewObject<UConnectIt_TileCatalogDataAsset>();
         FConnectItTileCatalogEntry Entry;
         Entry.TileClass = AConnectIt_TileBase::StaticClass();
         Entry.TilePower = MakeTestPower(TestPower1, EPower::Sync, FConnectItTilePowerEffect_Test());
@@ -4663,7 +4663,7 @@ bool FConnectItTurnStartTilePowersTest::RunTest(const FString& Parameters)
         TestEqual(TEXT("join: added at turn 5, first fires at turn 8"), TileAt(Board, 3, 0).TilePowerReadyTurn, 8);
         TestTrue(TEXT("join: before + events = after"), ReplaysTo(Before, Events, Board));
 
-        UConnectIt_TileCatalog* Catalog = NewObject<UConnectIt_TileCatalog>();
+        UConnectIt_TileCatalogDataAsset* Catalog = NewObject<UConnectIt_TileCatalogDataAsset>();
         FConnectItTileCatalogEntry Entry;
         Entry.TilePower = Repel;
         Catalog->Tiles.Add(ConnectIt_TilePower_Repel, Entry);

@@ -3,11 +3,11 @@ schema: recipes
 task: Script an adventure level -- set both sides' goals, react to the match (turns, checkpoints, triggers you define), change the board, the scoring rule or a side's goals on the level's behalf, and work with the Player and AI directors -- through a Level director Blueprint.
 touches:
   - Source/ConnectIt/Public/AI/ConnectIt_LevelDirector.h (a Blueprint subclass, named by the match preset's Level Director Class -- required)
-  - Source/ConnectIt/Public/Board/Rules/Conditions/ConnectIt_MatchConditionAsset.h (condition assets for its goals and triggers)
+  - Source/ConnectIt/Public/Board/Rules/Conditions/ConnectIt_MatchConditionDataAsset.h (condition assets for its goals and triggers)
   - Source/ConnectIt/Public/Board/Operations/ConnectIt_BoardOperations.h (board changes: board operation structs)
   - Source/ConnectIt/Public/Board/Rules/Scoring/ConnectIt_ScoringRule.h (rule changes: scoring rule structs)
   - Source/ConnectIt/Public/Board/Actor/ConnectIt_BuilderTile.h (tiles: builder tiles placed in the level)
-  - Source/ConnectIt/Public/Board/Powers/ConnectIt_TileCatalog.h (the map's tile catalog, in World Settings; level-wide powers: Level Wide Powers)
+  - Source/ConnectIt/Public/Board/Powers/ConnectIt_TileCatalogDataAsset.h (the map's tile catalog, in World Settings; level-wide powers: Level Wide Powers)
 reconciled: 2026-10-23
 commit: 54c1284
 ---

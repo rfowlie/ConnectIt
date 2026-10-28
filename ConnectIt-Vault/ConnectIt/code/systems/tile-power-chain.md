@@ -7,7 +7,7 @@ spans:
   - Source/ConnectIt/Private/Board/Powers/ConnectIt_PowerChain.cpp
   - Source/ConnectIt/Public/Board/Powers/ConnectIt_TilePower.h
   - Source/ConnectIt/Public/Board/Powers/ConnectIt_TilePowerEffects.h
-  - Source/ConnectIt/Public/Board/Powers/ConnectIt_TileCatalog.h
+  - Source/ConnectIt/Public/Board/Powers/ConnectIt_TileCatalogDataAsset.h
   - Source/ConnectIt/Public/Board/ConnectIt_BoardChanges.h
   - Source/ConnectIt/Private/Board/Rules/Scoring/ConnectIt_LineScoringRule.cpp
   - Source/ConnectIt/Public/Board/Events/ConnectIt_BoardEvents.h

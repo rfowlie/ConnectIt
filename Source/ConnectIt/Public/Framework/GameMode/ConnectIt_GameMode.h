@@ -18,8 +18,8 @@ class UConnectIt_AIDirector;
 class UConnectIt_LevelDirector;
 class UConnectIt_PlayerDirector;
 class UConnectIt_Director;
-class UConnectIt_MatchConditionAsset;
-class UConnectIt_BoardLayout;
+class UConnectIt_MatchConditionDataAsset;
+class UConnectIt_BoardLayoutDataAsset;
 class UTurnBasedParticipantManagerComponent;
 class UConnectIt_BoardRequestMediator;
 
@@ -177,11 +177,11 @@ public:
     // says so, and the win check measures the new goals (one already met
     // completes at once). Score carries over.
     void SetConditions(EConnectItRole Side, bool bWinGoals,
-        const TArray<UConnectIt_MatchConditionAsset*>& Conditions, EConnectItChangeTiming Timing);
+        const TArray<UConnectIt_MatchConditionDataAsset*>& Conditions, EConnectItChangeTiming Timing);
 
     // Changes the board's tiles to Layout at Timing, as one board change
     // (Change Layout, worked out against the board when it is applied)
-    void SetLayout(UConnectIt_BoardLayout* Layout, EConnectItChangeTiming Timing);
+    void SetLayout(UConnectIt_BoardLayoutDataAsset* Layout, EConnectItChangeTiming Timing);
 
     // The same for one player (what a Player director calls for its own player)
     void SetLoadoutForPlayer(ATurnBasedPlayerState* PlayerState, UActionLoadoutDataAsset* Loadout,

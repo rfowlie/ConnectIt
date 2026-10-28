@@ -17,13 +17,13 @@ GameMode owns and replicates the live values. This plan widens that override fro
 
 ## Plan
 
-1. **New asset `UConnectIt_MatchPreset`** (`Framework/Data/`): `DisplayName`, `Description`, `Rules`,
+1. **New asset `UConnectIt_MatchPresetDataAsset`** (`Framework/Data/`): `DisplayName`, `Description`, `Rules`,
    `PlayerLoadout`, `AIProfile`. A designer-authored "way to play" ("Adventure: Puzzle Swap", "Versus Classic"...).
 2. **Level config keeps the stage** and gains `DefaultMatchPreset`: what the level plays as when the menu chooses
    nothing (Adventure, or opening the level directly in the editor). `Rules` / `PlayerLoadout` / `AIProfile` leave the
    level config (migration below).
 3. **Menu chooses a preset.** `FConnectItMatchSettings` gains `MatchPreset` (null = the level's default). The existing
-   `AIProfile` and `TargetScore` stay as tweaks applied on top. `UConnectIt_LevelCatalog` gains a `MatchPresets` list
+   `AIProfile` and `TargetScore` stay as tweaks applied on top. `UConnectIt_LevelCatalogDataAsset` gains a `MatchPresets` list
    for the menu to offer, next to its `AIProfiles`.
 4. **GameMode** (`EnsureMatchSetupResolved`): preset = the menu's (if set for this level) else the level config's
    default; copy rules / loadout / AI profile from it; then apply the tweaks. No preset at all = empty rule set plus a
@@ -53,9 +53,9 @@ presets and pastes them in. Until a level config is re-saved its old values are 
 
 ## Status (2026-10-14): written, NOT yet built (on purpose)
 
-- All code is in the working tree: `UConnectIt_MatchPreset` (with the rules / loadout / AI validation that used to be
+- All code is in the working tree: `UConnectIt_MatchPresetDataAsset` (with the rules / loadout / AI validation that used to be
   on the level config), the level config's `DefaultMatchPreset`, `FConnectItMatchSettings::MatchPreset`,
-  `UConnectIt_LevelCatalog::MatchPresets`, and the GameMode resolving the preset.
+  `UConnectIt_LevelCatalogDataAsset::MatchPresets`, and the GameMode resolving the preset.
 - Not built yet, so the owner can copy the two configs' old values out with the current build first.
 - Decision: [stage and match preset](../_decisions/2026-10-14-stage-and-match-preset.md).
 

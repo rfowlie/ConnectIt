@@ -1,6 +1,6 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
-#include "Board/Powers/ConnectIt_TileCatalog.h"
+#include "Board/Powers/ConnectIt_TileCatalogDataAsset.h"
 #include "Framework/Data/ConnectIt_ProjectSettings.h"
 #include "Framework/Data/ConnectIt_WorldSettings.h"
 #include "Board/Actor/ConnectIt_TileBase.h"
@@ -12,14 +12,14 @@
 #endif
 
 
-TSubclassOf<AConnectIt_TileBase> UConnectIt_TileCatalog::GetTileClassFor(FGameplayTag TilePowerTag) const
+TSubclassOf<AConnectIt_TileBase> UConnectIt_TileCatalogDataAsset::GetTileClassFor(FGameplayTag TilePowerTag) const
 {
     if (!TilePowerTag.IsValid()) return DefaultTileClass;
     const FConnectItTileCatalogEntry* Entry = Tiles.Find(TilePowerTag);
     return Entry ? Entry->TileClass : nullptr;
 }
 
-TArray<FConnectItTilePower> UConnectIt_TileCatalog::MakeTilePowers() const
+TArray<FConnectItTilePower> UConnectIt_TileCatalogDataAsset::MakeTilePowers() const
 {
     TArray<FConnectItTilePower> Powers;
     Powers.Reserve(Tiles.Num());
@@ -32,13 +32,13 @@ TArray<FConnectItTilePower> UConnectIt_TileCatalog::MakeTilePowers() const
     return Powers;
 }
 
-const UConnectIt_TileCatalog* UConnectIt_TileCatalog::GetProjectDefault()
+const UConnectIt_TileCatalogDataAsset* UConnectIt_TileCatalogDataAsset::GetProjectDefault()
 {
     const UConnectIt_ProjectSettings* Settings = GetDefault<UConnectIt_ProjectSettings>();
     return Settings ? Settings->DefaultTileCatalog.LoadSynchronous() : nullptr;
 }
 
-const UConnectIt_TileCatalog* UConnectIt_TileCatalog::FindFor(const UObject* WorldContextObject)
+const UConnectIt_TileCatalogDataAsset* UConnectIt_TileCatalogDataAsset::FindFor(const UObject* WorldContextObject)
 {
     const UWorld* World = GEngine && IsValid(WorldContextObject)
         ? GEngine->GetWorldFromContextObject(WorldContextObject, EGetWorldErrorMode::ReturnNull)
@@ -49,25 +49,25 @@ const UConnectIt_TileCatalog* UConnectIt_TileCatalog::FindFor(const UObject* Wor
         return WorldSettings->TileCatalog;
     }
 
-    const UConnectIt_TileCatalog* Default = GetProjectDefault();
+    const UConnectIt_TileCatalogDataAsset* Default = GetProjectDefault();
     if (!Default)
     {
         UE_LOG(LogTemp, Warning,
-            TEXT("ConnectIt_TileCatalog: no tile catalog -- the map's World Settings name none and Project Settings > "
+            TEXT("ConnectIt_TileCatalogDataAsset: no tile catalog -- the map's World Settings name none and Project Settings > "
                  "ConnectIt has no Default Tile Catalog. Tiles have no powers and builder tiles aren't swapped."));
     }
     return Default;
 }
 
 #if WITH_EDITOR
-EDataValidationResult UConnectIt_TileCatalog::IsDataValid(FDataValidationContext& Context) const
+EDataValidationResult UConnectIt_TileCatalogDataAsset::IsDataValid(FDataValidationContext& Context) const
 {
     EDataValidationResult Result = Super::IsDataValid(Context);
 
     if (!DefaultTileClass)
     {
         Context.AddWarning(FText::FromString(TEXT(
-            "ConnectIt_TileCatalog: no Default Tile Class -- tiles with no power have no actor to show them.")));
+            "ConnectIt_TileCatalogDataAsset: no Default Tile Class -- tiles with no power have no actor to show them.")));
     }
 
     for (const TPair<FGameplayTag, FConnectItTileCatalogEntry>& Pair : Tiles)
@@ -75,39 +75,39 @@ EDataValidationResult UConnectIt_TileCatalog::IsDataValid(FDataValidationContext
         const FString Key = Pair.Key.ToString();
         if (!Pair.Key.IsValid())
         {
-            Context.AddError(FText::FromString(TEXT("ConnectIt_TileCatalog: an entry has no tag.")));
+            Context.AddError(FText::FromString(TEXT("ConnectIt_TileCatalogDataAsset: an entry has no tag.")));
             Result = EDataValidationResult::Invalid;
             continue;
         }
         if (!Pair.Value.TileClass)
         {
             Context.AddError(FText::FromString(FString::Printf(TEXT(
-                "ConnectIt_TileCatalog: %s has no Tile Class."), *Key)));
+                "ConnectIt_TileCatalogDataAsset: %s has no Tile Class."), *Key)));
             Result = EDataValidationResult::Invalid;
         }
         if (!Pair.Value.TilePower.Effect.IsValid())
         {
             Context.AddError(FText::FromString(FString::Printf(TEXT(
-                "ConnectIt_TileCatalog: %s's power has no Effect."), *Key)));
+                "ConnectIt_TileCatalogDataAsset: %s's power has no Effect."), *Key)));
             Result = EDataValidationResult::Invalid;
         }
         const FConnectItTilePower& Power = Pair.Value.TilePower;
         if (Power.HasTrigger(EConnectItTilePowerTrigger::Sync) && Power.Triggers != (1 << static_cast<int32>(EConnectItTilePowerTrigger::Sync)))
         {
             Context.AddError(FText::FromString(FString::Printf(TEXT(
-                "ConnectIt_TileCatalog: %s is Sync and has other triggers -- a Sync power has only Sync."), *Key)));
+                "ConnectIt_TileCatalogDataAsset: %s is Sync and has other triggers -- a Sync power has only Sync."), *Key)));
             Result = EDataValidationResult::Invalid;
         }
         if (Power.Triggers == 0)
         {
             Context.AddError(FText::FromString(FString::Printf(TEXT(
-                "ConnectIt_TileCatalog: %s has no trigger -- it never fires."), *Key)));
+                "ConnectIt_TileCatalogDataAsset: %s has no trigger -- it never fires."), *Key)));
             Result = EDataValidationResult::Invalid;
         }
         if (Pair.Value.TilePower.Name.IsValid() && Pair.Value.TilePower.Name != Pair.Key)
         {
             Context.AddError(FText::FromString(FString::Printf(TEXT(
-                "ConnectIt_TileCatalog: %s's power is named %s -- leave Name empty or the same as the entry's tag."),
+                "ConnectIt_TileCatalogDataAsset: %s's power is named %s -- leave Name empty or the same as the entry's tag."),
                 *Key, *Pair.Value.TilePower.Name.ToString())));
             Result = EDataValidationResult::Invalid;
         }

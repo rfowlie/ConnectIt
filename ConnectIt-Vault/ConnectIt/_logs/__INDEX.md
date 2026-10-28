@@ -6,6 +6,8 @@ Vault-wide passes go in `_core/_logs/`.
 
 Newest first:
 
+- [2026-10-28-1423](2026-10-28-1423.md) — session — data asset classes end in `DataAsset`: six ConnectIt classes and
+  their files renamed, with class redirects. 69/69 tests.
 - [2026-10-28-1410](2026-10-28-1410.md) — session — layout tool: moving a preview moves its builder; editor-only
   modules only in editor builds (Game target builds); World Settings match warnings only on match maps. 69/69 tests.
 - [2026-10-28-1250](2026-10-28-1250.md) — session — owner's editor notes filed with takes; hover bug cause found (tile hover only broadcast from Blueprint).

@@ -6,12 +6,12 @@
 #include "Kismet/BlueprintFunctionLibrary.h"
 #include "ConnectIt_LayoutToolLibrary.generated.h"
 
-class UConnectIt_BoardLayout;
-class UConnectIt_TileCatalog;
+class UConnectIt_BoardLayoutDataAsset;
+class UConnectIt_TileCatalogDataAsset;
 
 // The building blocks of the board layout tool: an editor utility widget,
 // used in a sandbox level, that lays builder tiles out and saves them as a
-// UConnectIt_BoardLayout (and loads one back to edit), and previews a tile
+// UConnectIt_BoardLayoutDataAsset (and loads one back to edit), and previews a tile
 // catalog over a level's builder tiles. Editor only. The sandbox map needs a
 // level config in its World Settings: positions convert through that board's
 // grid definition.
@@ -37,7 +37,7 @@ public:
     // column. Returns how many cells were captured (-1 if the level has no
     // board to convert positions with).
     UFUNCTION(BlueprintCallable, Category = "ConnectIt|Layout Tool", meta = (WorldContext = "WorldContextObject"))
-    static int32 CaptureLayoutFromLevel(const UObject* WorldContextObject, UConnectIt_BoardLayout* Layout);
+    static int32 CaptureLayoutFromLevel(const UObject* WorldContextObject, UConnectIt_BoardLayoutDataAsset* Layout);
 
     // Places Layout's tiles in this level to edit, as builder tiles (Project
     // Settings > ConnectIt > Builder Tile Class) at their grid positions,
@@ -45,7 +45,7 @@ public:
     // removes the level's tiles first (and any catalog preview). Returns how
     // many tiles were placed.
     UFUNCTION(BlueprintCallable, Category = "ConnectIt|Layout Tool", meta = (WorldContext = "WorldContextObject"))
-    static int32 LoadLayoutIntoLevel(const UObject* WorldContextObject, UConnectIt_BoardLayout* Layout,
+    static int32 LoadLayoutIntoLevel(const UObject* WorldContextObject, UConnectIt_BoardLayoutDataAsset* Layout,
         bool bClearLevelTiles = true);
 
     // Shows each builder tile in this level as Catalog's tile class for its
@@ -62,7 +62,7 @@ public:
     // builder. Saving the level clears the preview first (press Preview again
     // after).
     UFUNCTION(BlueprintCallable, Category = "ConnectIt|Layout Tool", meta = (WorldContext = "WorldContextObject"))
-    static int32 PreviewTileCatalog(const UObject* WorldContextObject, const UConnectIt_TileCatalog* Catalog);
+    static int32 PreviewTileCatalog(const UObject* WorldContextObject, const UConnectIt_TileCatalogDataAsset* Catalog);
 
     // Removes the catalog preview's actors and shows the builder tiles again
     UFUNCTION(BlueprintCallable, Category = "ConnectIt|Layout Tool", meta = (WorldContext = "WorldContextObject"))
@@ -70,6 +70,6 @@ public:
 
     // Sets (bHasCamera) or clears Layout's camera
     UFUNCTION(BlueprintCallable, Category = "ConnectIt|Layout Tool")
-    static void SetLayoutCamera(UConnectIt_BoardLayout* Layout, bool bHasCamera, const FTransform& CameraTransform);
+    static void SetLayoutCamera(UConnectIt_BoardLayoutDataAsset* Layout, bool bHasCamera, const FTransform& CameraTransform);
 #endif
 };

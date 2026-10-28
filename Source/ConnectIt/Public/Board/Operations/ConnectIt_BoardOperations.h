@@ -333,7 +333,7 @@ struct CONNECTIT_API FConnectItBoardOperation_AddTiles : public FConnectItBoardO
 // change means one win check, on the final board -- no in-between board is
 // ever checked against the goals or shown. Shared positions are untouched
 // (pieces and multipliers stay). Usually built from a layout's diff
-// (UConnectIt_BoardLayout::DiffFrom).
+// (UConnectIt_BoardLayoutDataAsset::DiffFrom).
 USTRUCT(BlueprintType, meta = (DisplayName = "Change Layout"))
 struct CONNECTIT_API FConnectItBoardOperation_ChangeLayout : public FConnectItBoardOperation
 {

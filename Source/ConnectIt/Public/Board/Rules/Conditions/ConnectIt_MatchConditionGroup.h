@@ -7,9 +7,9 @@
 #include "Board/Rules/Conditions/ConnectIt_MatchCondition.h"
 #include "ConnectIt_MatchConditionGroup.generated.h"
 
-class UConnectIt_MatchConditionAsset;
+class UConnectIt_MatchConditionDataAsset;
 
-// One goal during a match: the copy of a UConnectIt_MatchConditionAsset's
+// One goal during a match: the copy of a UConnectIt_MatchConditionDataAsset's
 // conditions that the rule set plays with (FConnectItRuleSet::ResolveConditionGroups
 // makes it). One or more win conditions that must ALL hold at the same time. A
 // group with no conditions is never satisfied -- "nothing to satisfy" is not a
@@ -38,7 +38,7 @@ struct CONNECTIT_API FConnectItMatchConditionGroup
 
     // The asset the conditions were copied from (null for a group built in code)
     UPROPERTY(BlueprintReadOnly, Category = "Conditions")
-    TObjectPtr<UConnectIt_MatchConditionAsset> Source = nullptr;
+    TObjectPtr<UConnectIt_MatchConditionDataAsset> Source = nullptr;
 
     bool IsEmpty() const { return Conditions.IsEmpty(); }
 

@@ -1,15 +1,15 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 #include "AI/ConnectIt_LevelDirector.h"
-#include "Board/Rules/Conditions/ConnectIt_MatchConditionAsset.h"
+#include "Board/Rules/Conditions/ConnectIt_MatchConditionDataAsset.h"
 #include "Board/Rules/ConnectIt_RuleSet.h"
 #include "Misc/DataValidation.h"
-#include "Board/Powers/ConnectIt_TileCatalog.h"
+#include "Board/Powers/ConnectIt_TileCatalogDataAsset.h"
 #include "Framework/GameMode/ConnectIt_GameMode.h"
 #include "Board/Operations/ConnectIt_BoardOperations.h"
 
 
-void UConnectIt_LevelDirector::RearmTrigger(UConnectIt_MatchConditionAsset* Condition)
+void UConnectIt_LevelDirector::RearmTrigger(UConnectIt_MatchConditionDataAsset* Condition)
 {
     for (int32 Index = 0; Index < Triggers.Num(); Index++)
     {
@@ -20,7 +20,7 @@ void UConnectIt_LevelDirector::RearmTrigger(UConnectIt_MatchConditionAsset* Cond
     }
 }
 
-bool UConnectIt_LevelDirector::IsTriggerArmed(UConnectIt_MatchConditionAsset* Condition) const
+bool UConnectIt_LevelDirector::IsTriggerArmed(UConnectIt_MatchConditionDataAsset* Condition) const
 {
     for (int32 Index = 0; Index < Triggers.Num(); Index++)
     {
@@ -42,7 +42,7 @@ void UConnectIt_LevelDirector::CheckTriggers(const FConnectItBoardState& Board, 
         if (FiredTriggers.Contains(Index)) continue;
 
         const FConnectItLevelTrigger& Trigger = Triggers[Index];
-        const UConnectIt_MatchConditionAsset* Asset = Trigger.Condition;
+        const UConnectIt_MatchConditionDataAsset* Asset = Trigger.Condition;
         if (!IsValid(Asset) || Asset->Conditions.IsEmpty()) continue;
 
         for (int32 Faction = 0; Faction < Board.ScoreBoard.Num(); Faction++)
@@ -91,7 +91,7 @@ bool UConnectIt_LevelDirector::SetScoringRule(const FInstancedStruct& ScoringRul
 }
 
 void UConnectIt_LevelDirector::SetWinConditions(
-    EConnectItRole Side, const TArray<UConnectIt_MatchConditionAsset*>& Conditions, EConnectItChangeTiming Timing)
+    EConnectItRole Side, const TArray<UConnectIt_MatchConditionDataAsset*>& Conditions, EConnectItChangeTiming Timing)
 {
     if (AConnectIt_GameMode* GameMode = GetGameMode())
     {
@@ -104,7 +104,7 @@ void UConnectIt_LevelDirector::SetWinConditions(
 }
 
 void UConnectIt_LevelDirector::SetLoseConditions(
-    EConnectItRole Side, const TArray<UConnectIt_MatchConditionAsset*>& Conditions, EConnectItChangeTiming Timing)
+    EConnectItRole Side, const TArray<UConnectIt_MatchConditionDataAsset*>& Conditions, EConnectItChangeTiming Timing)
 {
     if (AConnectIt_GameMode* GameMode = GetGameMode())
     {
@@ -129,7 +129,7 @@ void UConnectIt_LevelDirector::BeginPhase(FGameplayTag Phase, EConnectItChangeTi
     ApplyBoardOperation(FInstancedStruct::Make(Operation), INDEX_NONE, Timing);
 }
 
-void UConnectIt_LevelDirector::SetLayout(UConnectIt_BoardLayout* Layout, EConnectItChangeTiming Timing)
+void UConnectIt_LevelDirector::SetLayout(UConnectIt_BoardLayoutDataAsset* Layout, EConnectItChangeTiming Timing)
 {
     if (AConnectIt_GameMode* GameMode = GetGameMode())
     {
@@ -147,9 +147,9 @@ FConnectItRuleSet UConnectIt_LevelDirector::GetMatchRules() const
     return IsValid(GameMode) ? GameMode->GetRules() : FConnectItRuleSet();
 }
 
-TArray<TObjectPtr<UConnectIt_MatchConditionAsset>> UConnectIt_LevelDirector::GetTriggerConditions() const
+TArray<TObjectPtr<UConnectIt_MatchConditionDataAsset>> UConnectIt_LevelDirector::GetTriggerConditions() const
 {
-    TArray<TObjectPtr<UConnectIt_MatchConditionAsset>> Conditions;
+    TArray<TObjectPtr<UConnectIt_MatchConditionDataAsset>> Conditions;
     for (const FConnectItLevelTrigger& Trigger : Triggers)
     {
         Conditions.Add(Trigger.Condition);
@@ -185,7 +185,7 @@ EDataValidationResult UConnectIt_LevelDirector::IsDataValid(FDataValidationConte
 
     // Level-wide powers: each named once, each one the catalog defines (the
     // project default's -- a director isn't tied to one level)
-    const UConnectIt_TileCatalog* Catalog = UConnectIt_TileCatalog::GetProjectDefault();
+    const UConnectIt_TileCatalogDataAsset* Catalog = UConnectIt_TileCatalogDataAsset::GetProjectDefault();
     TSet<FGameplayTag> PowerNames;
     for (int32 Index = 0; Index < LevelWideTilePowers.Num(); Index++)
     {

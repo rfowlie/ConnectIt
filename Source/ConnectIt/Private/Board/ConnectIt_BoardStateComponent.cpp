@@ -9,7 +9,7 @@
 #include "Net/UnrealNetwork.h"
 #include "Board/ConnectIt_TileDataProvider.h"
 #include "Board/ConnectIt_TileRegistry.h"
-#include "Board/Powers/ConnectIt_TileCatalog.h"
+#include "Board/Powers/ConnectIt_TileCatalogDataAsset.h"
 #include "Board/Rules/ConnectIt_RuleSet.h"
 #include "Tile/GridTileBase.h"
 #include "Tile/GridTileRegistryBase.h"
@@ -22,7 +22,7 @@ UConnectIt_BoardStateComponent::UConnectIt_BoardStateComponent()
 }
 
 FConnectItTileData UConnectIt_BoardStateComponent::MakeTileData(
-    const AGridTileBase* Tile, int32 NumFactions, float InitialMultiplier, const UConnectIt_TileCatalog* Catalog)
+    const AGridTileBase* Tile, int32 NumFactions, float InitialMultiplier, const UConnectIt_TileCatalogDataAsset* Catalog)
 {
     FConnectItTileData TileData;
     TileData.SetFactionPiece(-1);
@@ -87,7 +87,7 @@ void UConnectIt_BoardStateComponent::InitialiseBoardState(
     TArray<int32> StartingPiecesPerFaction;
     StartingPiecesPerFaction.Init(0, NumFactions);
 
-    const UConnectIt_TileCatalog* Catalog = UConnectIt_TileCatalog::FindFor(this);
+    const UConnectIt_TileCatalogDataAsset* Catalog = UConnectIt_TileCatalogDataAsset::FindFor(this);
     int32 PoweredTiles = 0;
 
     // Chain partners by position, linked once every tile has its id

@@ -6,9 +6,9 @@
 #include "Engine/DeveloperSettings.h"
 #include "ConnectIt_ProjectSettings.generated.h"
 
-class UConnectIt_TileCatalog;
+class UConnectIt_TileCatalogDataAsset;
 class AConnectIt_BuilderTile;
-class UConnectIt_ActionShardTable;
+class UConnectIt_ActionShardTableDataAsset;
 
 
 // Project-wide ConnectIt settings (Project Settings > Game > ConnectIt)
@@ -21,7 +21,7 @@ public:
 
     // The tile catalog a map uses when its World Settings name none
     UPROPERTY(Config, EditAnywhere, Category = "Tiles")
-    TSoftObjectPtr<UConnectIt_TileCatalog> DefaultTileCatalog;
+    TSoftObjectPtr<UConnectIt_TileCatalogDataAsset> DefaultTileCatalog;
 
     // The builder tile the layout tool places when it loads a layout into a
     // level (a Blueprint of AConnectIt_BuilderTile with its blockout look)
@@ -30,7 +30,7 @@ public:
 
     // How each action's shards become permanent uses in Adventure mode
     UPROPERTY(Config, EditAnywhere, Category = "Adventure")
-    TSoftObjectPtr<UConnectIt_ActionShardTable> ActionShardTable;
+    TSoftObjectPtr<UConnectIt_ActionShardTableDataAsset> ActionShardTable;
 
     virtual FName GetCategoryName() const override { return TEXT("Game"); }
 };

@@ -3,8 +3,8 @@ schema: recipes
 task: Script a phased level -- a level that, when something happens (a checkpoint, a trigger), moves to its next phase and changes any of its board layout, goals, scoring rule and loadouts mid-match -- with board layout assets, the layout tool and the Level director.
 touches:
   - Source/ConnectIt/Public/AI/ConnectIt_LevelDirector.h (the Level director Blueprint: Begin Phase, Set Win / Lose Conditions, Set Layout, On Phase Changed)
-  - Source/ConnectIt/Public/Framework/Data/ConnectIt_BoardLayout.h (UConnectIt_BoardLayout data assets, one per layout, made with the layout tool in a sandbox level)
-  - Source/ConnectIt/Public/Board/Powers/ConnectIt_TileCatalog.h (the map's tile catalog, in World Settings: which tile actor shows each power tag; its Default Tile Class for none)
+  - Source/ConnectIt/Public/Framework/Data/ConnectIt_BoardLayoutDataAsset.h (UConnectIt_BoardLayoutDataAsset data assets, one per layout, made with the layout tool in a sandbox level)
+  - Source/ConnectIt/Public/Board/Powers/ConnectIt_TileCatalogDataAsset.h (the map's tile catalog, in World Settings: which tile actor shows each power tag; its Default Tile Class for none)
   - Source/ConnectIt/Public/Board/Actor/ConnectIt_BuilderTile.h (builder tiles: what the layout tool places and captures)
   - Source/ConnectIt/Public/Board/ConnectIt_TileDataProvider.h (the catalog's tile Blueprints: Apply Layout Cell)
   - Source/ConnectIt/Public/Framework/Library/ConnectIt_BoardEventLibrary.h (the visual handlers for Tiles Removed / Tiles Added / Layout Changed / Phase Changed, once per project)

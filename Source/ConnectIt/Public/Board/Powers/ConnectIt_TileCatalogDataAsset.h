@@ -7,7 +7,7 @@
 #include "GameplayTagContainer.h"
 #include "Templates/SubclassOf.h"
 #include "Board/Powers/ConnectIt_TilePower.h"
-#include "ConnectIt_TileCatalog.generated.h"
+#include "ConnectIt_TileCatalogDataAsset.generated.h"
 
 class AConnectIt_TileBase;
 
@@ -38,7 +38,7 @@ struct CONNECTIT_API FConnectItTileCatalogEntry
 // (Project Settings > Game > ConnectIt > Default Tile Catalog). Trying another skin
 // or look is a copy of a catalog with other tile classes slotted in.
 UCLASS(BlueprintType)
-class CONNECTIT_API UConnectIt_TileCatalog : public UDataAsset
+class CONNECTIT_API UConnectIt_TileCatalogDataAsset : public UDataAsset
 {
     GENERATED_BODY()
 
@@ -66,10 +66,10 @@ public:
 
     // The catalog WorldContextObject's map uses: its World Settings', else
     // the project default. Null (with a warning) if neither is set.
-    static const UConnectIt_TileCatalog* FindFor(const UObject* WorldContextObject);
+    static const UConnectIt_TileCatalogDataAsset* FindFor(const UObject* WorldContextObject);
 
     // The project default (Project Settings > ConnectIt), or null
-    static const UConnectIt_TileCatalog* GetProjectDefault();
+    static const UConnectIt_TileCatalogDataAsset* GetProjectDefault();
 
 #if WITH_EDITOR
     virtual EDataValidationResult IsDataValid(FDataValidationContext& Context) const override;
