@@ -26,6 +26,7 @@ public class UnrealGridMechanics : ModuleRules
 			new string[]
 			{
 				"Core",
+				"InputCore",
 				"GameplayTags",
 				"GameplayTasks",
 				"GameplayAbilities",

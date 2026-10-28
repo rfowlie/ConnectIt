@@ -5,10 +5,12 @@
 #include "GameplayTagContainer.h"
 #include "GridMechanics_GridLibrary.h"
 #include "Subsystem/GridTrackerSubsystem.h"
+#include "Hover/GridHoverComponent.h"
 
 
 AGridTileBase::AGridTileBase()
 {
+	HoverComponent = CreateDefaultSubobject<UGridHoverComponent>(TEXT("HoverComponent"));
 }
 
 void AGridTileBase::BeginPlay()

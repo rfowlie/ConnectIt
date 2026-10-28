@@ -1,6 +1,6 @@
 ---
 type: plan
-status: not-started
+status: in-progress
 approved: true
 approved-on: 2026-10-28
 completed-on:
@@ -14,7 +14,7 @@ decision:
 
 Design: [hover-component](hover-component.md) (settled 2026-10-28); background:
 [editor-notes-2026-10-28](editor-notes-2026-10-28.md). Written 2026-10-28 in a design-only session; **approved by the owner
-2026-10-28**. Not built -- building happens in its own session.
+2026-10-28**. **Stage 1 built 2026-10-28.**
 
 ## Context
 
@@ -44,6 +44,11 @@ stages.
   primitive component of the owner blocks the cursor trace channel.
 - **`AGridTileBase`** creates one in its constructor (`CreateDefaultSubobject`), so every tile class has it.
 - Tests: a component with hover disabled doesn't relay; `CanHover` false vetoes (unit-level, no world where possible).
+- **As built (2026-10-28):** `Public/Hover/GridHoverComponent.h`. Also: `IsHovered`; public `NotifyHoverBegin` /
+  `NotifyHoverEnd` / `NotifyClicked` (what the owner's cursor events call -- other input, and the tests, use the same path);
+  disabling during a hover ends it; `HoverCategory` tag; `CursorTraceChannel` (default Visibility) for the check, which is
+  the component's map check (`CheckForErrors`). The grid plugin's first tests: `UnrealGridMechanics.Hover.Component`
+  (run with `Automation RunTests ConnectIt+UnrealGridMechanics`). `InputCore` added to the plugin's public dependencies.
 
 ## Stage 2: the subsystem binds components
 

@@ -51,12 +51,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "_core/_clippings/Unreal Engine 5 Mana Drain UI - Create Professional VFX Materials Like a Pro.md",
+                "file": "_core/_clippings/UE5 SplineMesh Tutorial Part01 Setting Up and Creating a Panning Material.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "Unreal Engine 5 Mana Drain UI - Create Professional VFX Materials Like a Pro"
+              "title": "UE5 SplineMesh Tutorial Part01 Setting Up and Creating a Panning Material"
             }
           }
         ]
@@ -226,11 +226,13 @@
   },
   "active": "d21229c17b1e2e8b",
   "lastOpenFiles": [
+    "ConnectIt/_logs/2026-10-28-1443.md",
+    "_core/_clippings/Unreal Engine 5 Mana Drain UI - Create Professional VFX Materials Like a Pro.md",
+    "_core/_clippings/UE5 SplineMesh Tutorial Part01 Setting Up and Creating a Panning Material.md",
     "ConnectIt/_logs/2026-10-28-1434.md",
     "ConnectIt/_decisions/2026-10-28-tile-power-effects-own-their-tag.md",
     "ConnectIt/_logs/2026-10-28-1430.md",
     "_core/_clippings/Unreal Engine 5 Mist Particle System.md",
-    "_core/_clippings/Unreal Engine 5 Mana Drain UI - Create Professional VFX Materials Like a Pro.md",
     "ConnectIt/_logs/2026-10-28-1423.md",
     "ConnectIt/_decisions/2026-10-28-data-asset-classes-end-in-dataasset.md",
     "BRAIN DUMP.md",
@@ -251,8 +253,6 @@
     "ConnectIt/design/level-outcomes-plan.md",
     "ConnectIt/design/level-outcomes-plan.md.tmp.7932.7141aac2726e",
     "ConnectIt/_logs/2026-10-24-1529.md",
-    "ConnectIt/design/adventure-content-definitions.md",
-    "ConnectIt/_logs/2026-10-24-1507.md",
     "ConnectIt/_logs/2026-10-24-1444.md.tmp.16900.05a8d2b10900",
     "ConnectIt/_logs/2026-10-24-1331.md.tmp.16900.98a1017df2d0",
     "UnrealUnsorted",

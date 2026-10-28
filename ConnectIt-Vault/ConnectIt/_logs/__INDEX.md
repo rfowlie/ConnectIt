@@ -6,6 +6,8 @@ Vault-wide passes go in `_core/_logs/`.
 
 Newest first:
 
+- [2026-10-28-1443](2026-10-28-1443.md) — session — hover-component Stage 1: `UGridHoverComponent` (C++ cursor
+  events → hover begin / end / click; enable, veto, category; map check) on every `AGridTileBase`. 70/70 tests.
 - [2026-10-28-1434](2026-10-28-1434.md) — session — tile-catalog-effects Stages 2-3: the catalog is an array of
   entries looked up by each effect's tag; decision note; tile power recipe updated. 69/69 tests.
 - [2026-10-28-1430](2026-10-28-1430.md) — session — tile-catalog-effects Stage 1: effects name their power tag and

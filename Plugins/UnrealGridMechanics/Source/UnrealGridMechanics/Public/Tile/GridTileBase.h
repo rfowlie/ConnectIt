@@ -8,6 +8,7 @@
 #include "GridTileBase.generated.h"
 
 class AGridPieceBase;
+class UGridHoverComponent;
 
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FGridTileBaseBeginCursorOver, AGridTileBase*, GridTileBase);
@@ -19,6 +20,11 @@ class UNREALGRIDMECHANICS_API AGridTileBase : public AActor
 
 public:
 	AGridTileBase();
+
+	// Raises hover begin / end and click from the tile's cursor events, in
+	// C++ (no Blueprint wiring). Every tile class has one.
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Grid Tile")
+	TObjectPtr<UGridHoverComponent> HoverComponent;
 
 	// allow for grid actors to customize what triggers the cursor over
 	UPROPERTY(BlueprintAssignable, BlueprintCallable)
