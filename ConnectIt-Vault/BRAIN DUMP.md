@@ -22,6 +22,21 @@
 	- https://www.youtube.com/watch?v=pzIORuULNfo
 
 
+## Other Notes
+
+-  Data Assets should always postfix DataAsset in C++ for clarity
+- Tile Catalog
+	- Tile power struct has redundant gameplay tag parameter.
+		- Seems to be needed for later, to what extent I'm not super sure
+	- Feels awkward using the gameplay tag for the map key, but then having to specify the effect in the tile power. 
+		- Could cause some mismatch problems.
+		- We should just enforce in C++ (when a power is made a tag will be made for it in C++ so it will be available and auto enforced)
+	- Why are we setting all these values in the first place?
+- It would be great if editing a previewed grid tile effects the grid builder tile placement. It's annoying having to flip back and forth to move then check. 
+	- Might be easier if we make the grid builder tile visually robust depending on the power tag it possesses
+- Made new tile in BP and it is not getting picked up for highlighting or placement through player action but AI can place there fine
+
+
 ## Free Plugin Integration
 
 - Lots of great free plugins that could be helpful or that we should decide to incorporate into the ChimearGameFramework (unreal game mechanics)

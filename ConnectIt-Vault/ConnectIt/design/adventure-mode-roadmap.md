@@ -5,6 +5,8 @@ Design note (2026-10-24), from a gap review with the owner. Plan for the level o
 designing and a proposed order for building Adventure mode. Builds on [adventure-hub](adventure-hub.md),
 [adventure-modules-and-progression](adventure-modules-and-progression.md) and the plans in this folder.
 
+> Owner's in-editor checklist for the start of Adventure: [adventure-editor-checklist](adventure-editor-checklist.md).
+
 ## Where things stand (2026-10-24)
 
 - **Complete (9 plans):** AI director pipeline, conditions and legal moves, three directors, level world settings, one

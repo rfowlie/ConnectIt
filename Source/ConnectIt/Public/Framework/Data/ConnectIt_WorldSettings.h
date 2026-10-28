@@ -58,6 +58,9 @@ public:
     // the GameMode at match setup.
     static UConnectIt_MatchPreset* FindDefaultMatchPreset(const UObject* WorldContextObject);
 
+    UFUNCTION(BlueprintCallable, Category = "ConnectIt | WorldSettings")
+    static const UConnectIt_TileCatalog* GetWorldTileCatalog(const UObject* WorldContextObject);
+
 #if WITH_EDITOR
     virtual EDataValidationResult IsDataValid(FDataValidationContext& Context) const override;
 #endif

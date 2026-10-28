@@ -16,12 +16,15 @@ public class ConnectIt : ModuleRules
 			"InputCore",
 			"EnhancedInput",
 			"UMG",
+			"UMGEditor",
+			"Blutility",
+			"UnrealEd",
 			"DeveloperSettings",
 			"GameplayTags",
 			"GameplayTasks",
 			"GameplayAbilities",
 			"AIModule",
-			//
+			// add ons
 			"UnrealGameMechanics",
 			"UnrealGridMechanics",
 			"UnrealGameIntelligence",
@@ -32,6 +35,7 @@ public class ConnectIt : ModuleRules
 		{
 			"DeveloperSettings",
 			"AIModule",
+			// add ons
 			"UnrealCodingUtils",
 			"UnrealGameMechanics",
 			"UnrealGridMechanics",

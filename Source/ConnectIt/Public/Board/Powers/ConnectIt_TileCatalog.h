@@ -44,14 +44,14 @@ class CONNECTIT_API UConnectIt_TileCatalog : public UDataAsset
 
 public:
 
-    // One entry per power tag (ConnectIt.TilePower.*)
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Catalog", meta = (Categories = "ConnectIt.TilePower", ForceInlineRow))
-    TMap<FGameplayTag, FConnectItTileCatalogEntry> Tiles;
-
     // The tile actor for a tile with no power tag
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Catalog")
     TSubclassOf<AConnectIt_TileBase> DefaultTileClass;
-
+    
+    // One entry per power tag (ConnectIt.TilePower.*)
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Catalog", meta = (Categories = "ConnectIt.TilePower", ForceInlineRow))
+    TMap<FGameplayTag, FConnectItTileCatalogEntry> Tiles;
+    
     // The tile actor for a tile with this power tag: its entry's class, or
     // the default one for no tag. Null for a tag the catalog doesn't define.
     UFUNCTION(BlueprintPure, Category = "ConnectIt|Tile Catalog")

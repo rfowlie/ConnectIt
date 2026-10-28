@@ -91,7 +91,7 @@ struct CONNECTIT_API FConnectItTilePower
     // The power's identity (ConnectIt.TilePower.*, e.g.
     // ConnectIt.TilePower.Push). In a catalog it is the entry's key. Empty =
     // no power.
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Power", meta = (Categories = "ConnectIt.TilePower"))
+    UPROPERTY(BlueprintReadWrite, Category = "Power", meta = (Categories = "ConnectIt.TilePower"))
     FGameplayTag Name;
 
     // What sets it off: one or more triggers (a Vacuum tile: Piece Exit and
@@ -121,7 +121,7 @@ struct CONNECTIT_API FConnectItTilePower
     int32 CooldownTurns = 0;
 
     // What it does, with its values
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Power", meta = (ExcludeBaseStruct))
+    UPROPERTY(BlueprintReadWrite, Category = "Power", meta = (ExcludeBaseStruct))
     TInstancedStruct<FConnectItTilePowerEffect> Effect;
 
     bool IsSet() const { return Name.IsValid(); }

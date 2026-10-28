@@ -8,6 +8,7 @@ playtested: false
 design: "[adventure-hub](adventure-hub.md)"
 question:
 decision:
+requires: "[hover-component-plan](hover-component-plan.md)"
 ---
 
 # Plan: the adventure hub (node map, progress, currencies)
@@ -169,9 +170,20 @@ stages.
 
 ## Stage 4: the hub level
 
-- **`AConnectIt_MapNodeActor`**: holds its `MapNodeDataAsset`; hidden by default; a visual **state** (available,
-  gated, completed, the "you were here" focus) set by the hub, shown in Blueprint; hover and select events.
-- **The hub manager** (the hub map's GameMode or a world subsystem): on load, finds every node actor in the map
+- *Revised 2026-10-28 ([editor-notes-2026-10-28](editor-notes-2026-10-28.md), item 3): components, not a base actor
+  (re-approved by the owner 2026-10-28).*
+- **`UConnectIt_MapNodeComponent`** (replaces `AConnectIt_MapNodeActor`): added to **any** actor an artist dresses;
+  holds its `MapNodeDataAsset`; hides its owner by default; a visual **state** (available, gated, completed, the
+  "you were here" focus) set by the hub and exposed to Blueprint.
+- **Hover / select** through the **grid hover component** ([hover-component-plan](hover-component-plan.md)) added to
+  the node actor with a `Hover.MapNode` category; the hub's listener (the hub manager, or a component on the player
+  controller) handles node hovers and clicks -- nodes don't react on their own.
+- **Scale on hover:** a small **transform-lerp component** (start / end transform, time, forward / reverse) in
+  `UnrealGameMechanics/Animation/`, beside the existing `UActorLerpComponent` (which only moves locations along
+  waypoints); the listener plays it on hover / unhover.
+- **Lines between nodes:** a **spline mesh** actor per unlock link (node to node, a repeating mesh or ribbon
+  material), revealed with its destination node by the reveal walk.
+- **The hub manager** (the hub map's GameMode or a world subsystem): on load, finds every node component in the map
   (data asset → actor), walks the graph from the map's **starting node** -- reveal the start; for each completed node,
   reveal its unlocks; recurse -- sets each revealed actor's state, then focuses the last-played node.
 - **Camera** (owner's ported logic): top-down, pan with drag / wheel / mouse at the screen edge, **bounded** to the

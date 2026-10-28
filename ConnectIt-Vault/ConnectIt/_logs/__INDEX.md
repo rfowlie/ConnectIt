@@ -6,6 +6,8 @@ Vault-wide passes go in `_core/_logs/`.
 
 Newest first:
 
+- [2026-10-28-1250](2026-10-28-1250.md) — session — owner's editor notes filed with takes; hover bug cause found (tile hover only broadcast from Blueprint).
+
 - [2026-10-25-1157](2026-10-25-1157.md) — session — level-outcomes plan approved.
 
 - [2026-10-25-1155](2026-10-25-1155.md) — session — player actions Stage 5: Adventure conforms ("skill" → "action",

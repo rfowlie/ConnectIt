@@ -47,6 +47,16 @@ UConnectIt_MatchPreset* AConnectIt_WorldSettings::FindDefaultMatchPreset(const U
     return nullptr;
 }
 
+const UConnectIt_TileCatalog* AConnectIt_WorldSettings::GetWorldTileCatalog(const UObject* WorldContextObject)
+{
+    const UWorld* World = GEngine && IsValid(WorldContextObject)
+        ? GEngine->GetWorldFromContextObject(WorldContextObject, EGetWorldErrorMode::ReturnNull)
+        : nullptr;
+    if (!World) return nullptr;
+    const AConnectIt_WorldSettings* WorldSettings = World ? Cast<AConnectIt_WorldSettings>(World->GetWorldSettings()) : nullptr;
+    return WorldSettings && IsValid(WorldSettings->TileCatalog) ? WorldSettings->TileCatalog : nullptr;
+}
+
 #if WITH_EDITOR
 EDataValidationResult AConnectIt_WorldSettings::IsDataValid(FDataValidationContext& Context) const
 {
