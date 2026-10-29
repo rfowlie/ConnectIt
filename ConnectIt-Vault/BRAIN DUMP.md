@@ -12,17 +12,31 @@
 - We need to create some sort of catalog somewhere that explains what plugins are in the framework, what they do, can be used for so that we do not have a bunch of things for solving the same problems. We should try to use a single plugin or set of code for accomplishing specific tasks
 
 
-## Notes
+## Updating Outdated BP
 
-- Tile and Piece registries return GridTileBase so you have to cast to get the ConnectIt_GridTileBase. Should we make connectIt classes for the registrys or should we utilize interfaces for calling desired functions like OnTilePowerTriggered()?
-- Visualizer is too rigid. It's trying to capture all possibilities, but in reality it's limiting because it only calls the C++ only On functions for pieces and tiles. This is not ideal, we want visualizers to be artist and designer entry points into creating visual intrigue for the game.
-	- Visualizers should handle the important game event syncing by binding to all tags set in a tag container.
-	- Or perhaps we bind to tags on the visualizer based on interfaces? If it implements it then we bind in C++ to the correct game event. This way in BP we can ensure we are always getting the correct struct?
-	- But it might be messy if we allow for numerous visualizers per level. Might make sense to still only incorporate one per map, could set in same place as registerys (on data asset). In this case we would make all the functions blueprint implementable, one for each board operation that uses the correct struct (just like interface idea)
-		- Again because this is heavily artist and designer facing
-	- Visualizers will want access to creating and destroying other visual effects potentially...
-	- Visualizer MakeReaction() - do not love the random count indicating when to stop or go. Should be like the game event system where we are tracking from the overall event that happened. Otherwise it looks like we can take in numerous events at once and erase by accident?
-		- I suppose because Game Event is doing the heavy lifting in terms of gating events this is probably fine
-	- See example HandlePlacePiece(), Dispatch() still checks for each payload but then we pass it to the blueprint event so that BP can handle it
-		- The visualizer might often call the pieces On functions for events so that that grid actor can do it's own personal visuals, but we still want to ensure we have a way to add additional or alternate visuals for board events
+- find and replace deprecated pathways
+- CI_GridTileBase listens to it's own mouse hover instead of utilizing the OnTileHovered virtual function
+
+## Visualizer Framework
+
+- the new setup is to have one visualizer per level that then becomes responsible for handling all misc. visualizations for all possible board reactions and operations. 
+- This feels a bit monolithic and daunting.
+- It might be easier down the line to add flexibility by creating single visualizers. The concept would be that you have a base visualizer (the C++ default for example). Then a list of single visualizers that override one board operation each. This way we can more easily swap out behaviors. 
+	- Should be a map with Operation tag and Visualizer Actor (single)
+
+## Hover Framework
+- Right now actions tell tiles and pieces if they are being hovered over and generally expect them to handle what that visually looks like
+- Do we want to utilize what we did in the other project where there is a cursor actor that moves from tile to tile instead of tiles adjusting their visuals?
+	- Easily accomplished using actor pooling
+- Can we devise a way to incorporate both of these for maximum flexibility?
+	- As well this should remove complexity as each tile does not need to know how to visually handle each possible situation if it does not want. Instead it can rely on actions to change the cursor look
+- Example hovering over a lava tile, we grab the generic hover actor and move it to that tile, but then the tile is notified being hovered over and causes some sort of lava burst effect at the same time
+- Things to consider
+	- Tile has hover effects
+	- Cursors for different tiles potentially
+	- Cursors for different player actions
+		- Swap for example might want a different cursor for self tile selection and then for opponent tile selection
+	- How can we reconcile an action wanting a certain cursor and the tile actor wanting a certain cursor? Do actions override tiles?
+
+
 

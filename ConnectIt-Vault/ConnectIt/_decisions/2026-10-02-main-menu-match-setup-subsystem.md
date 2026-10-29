@@ -6,6 +6,7 @@ tags:
   - ui
   - match-setup
   - architecture
+summary: 'Main-menu choices (level, AI profile, target score) travel in a GameInstance subsystem, offered by a level catalog asset, applied only to the matching level; rules now duplicated per match'
 ---
 ## Decision
 

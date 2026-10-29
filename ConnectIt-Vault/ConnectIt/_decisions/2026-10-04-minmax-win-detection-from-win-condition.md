@@ -6,6 +6,7 @@ tags:
   - ai
   - minmax
   - rules
+summary: 'The MinMax search learns when the game is over from the level''s own win condition (a thread-safe FConnectItWinCheck it provides); EvaluateTerminalState scores finished games, EvaluateState only unfinished ones'
 ---
 ## Decision
 

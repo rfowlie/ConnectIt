@@ -6,6 +6,7 @@ tags:
   - turn-end
   - loadout
   - unreal
+summary: 'Turn-end requirement tree uses Instanced UObject nodes (Leaf/Group), not the recursive struct — UHT rejects structs containing arrays of themselves'
 ---
 ## Decision
 

@@ -6,6 +6,7 @@ tags:
   - ui
   - scope
   - white-box
+summary: 'Build the faction-visuals subsystem, then remove it — stay white-box'
 ---
 
 ## Decision

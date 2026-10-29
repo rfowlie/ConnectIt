@@ -6,6 +6,7 @@ tags:
   - ai
   - minmax
   - architecture
+summary: 'What the MinMax AI values is editor data: weighted evaluation + ordering term structs on the MinMax strategy; the rules object (FConnectItMinMaxRules) is an internal fixed game model, not subclassed'
 ---
 ## Decision
 

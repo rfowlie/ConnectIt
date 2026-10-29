@@ -6,6 +6,7 @@ tags:
   - architecture
   - win-conditions
   - level-design
+summary: 'Both sides'' win / lose conditions live on the Level director (a preset needs one); only it changes them mid-match (Set Win / Lose Conditions -- a board change: goal progress restarts, score carries over)'
 ---
 ## Decision
 

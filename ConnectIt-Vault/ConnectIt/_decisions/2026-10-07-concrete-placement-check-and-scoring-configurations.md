@@ -6,6 +6,7 @@ tags:
   - architecture
   - board
   - rules
+summary: 'Placement is one concrete function on the Place Piece operation (the swappable placement rule is removed); the change event reports scoring as a list of FConnectItScoringConfiguration (who, points, tiles) and the event tag is ConnectIt.Event.Scored'
 ---
 ## Decision
 

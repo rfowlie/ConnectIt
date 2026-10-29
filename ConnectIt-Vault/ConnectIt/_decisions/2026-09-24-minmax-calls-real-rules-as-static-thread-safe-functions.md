@@ -7,6 +7,7 @@ tags:
   - minmax
   - scoring
   - architecture
+summary: 'Classic MinMax''s search calls the real scoring algorithm as an extracted public static function (no UObject/BlueprintNativeEvent dispatch) so the background-threaded search never risks running Blueprint VM code off the game thread'
 ---
 ## Decision
 

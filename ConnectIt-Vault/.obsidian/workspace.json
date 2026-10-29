@@ -4,48 +4,8 @@
     "type": "split",
     "children": [
       {
-        "id": "4e56845dee73299d",
-        "type": "tabs",
-        "dimension": 45.17045454545455,
-        "children": [
-          {
-            "id": "7e9d793cb5121f8b",
-            "type": "leaf",
-            "pinned": true,
-            "state": {
-              "type": "markdown",
-              "state": {
-                "file": "BRAIN DUMP.md",
-                "mode": "source",
-                "source": false
-              },
-              "pinned": true,
-              "icon": "lucide-file",
-              "title": "BRAIN DUMP"
-            }
-          },
-          {
-            "id": "9529f203626984cd",
-            "type": "leaf",
-            "pinned": true,
-            "state": {
-              "type": "markdown",
-              "state": {
-                "file": "ConnectIt/_tasks/active.md",
-                "mode": "source",
-                "source": false
-              },
-              "pinned": true,
-              "icon": "lucide-file",
-              "title": "active"
-            }
-          }
-        ]
-      },
-      {
         "id": "0c2e707b52e053aa",
         "type": "tabs",
-        "dimension": 54.82954545454546,
         "children": [
           {
             "id": "d21229c17b1e2e8b",
@@ -53,7 +13,7 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "ConnectIt/code/__INDEX.md",
+                "file": "ConnectIt/design/__INDEX.md",
                 "mode": "source",
                 "source": false
               },
@@ -228,10 +188,23 @@
   },
   "active": "d21229c17b1e2e8b",
   "lastOpenFiles": [
-    "ConnectIt/design/__README.md",
-    "ConnectIt/design/board-visualizer-plan.md",
-    "ConnectIt/design/adventure-hub-map-plan.md",
+    "ConnectIt/_logs/2026-10-29-1400.md",
+    "_core/__PLUGINS.md",
+    "ConnectIt/_decisions/decsum.pl",
+    "ConnectIt/_tasks/active.md",
     "BRAIN DUMP.md",
+    "ConnectIt/design/__INDEX.md",
+    "ConnectIt/_logs/2026-10-29-1115.md",
+    "ConnectIt/_decisions/2026-10-29-one-board-visualizer-per-map.md",
+    "ConnectIt/code/recipes/add-visuals-for-a-board-event.md",
+    "ConnectIt/design/player-actions-and-items-plan.md",
+    "ConnectIt/_logs/2026-10-29-1215.md",
+    "ConnectIt/_logs/2026-10-29-1130.md",
+    "ConnectIt/_logs/2026-10-29-1052.md",
+    "ConnectIt/design/board-visualizer-plan.md",
+    "ConnectIt/code/__INDEX.md",
+    "ConnectIt/design/__README.md",
+    "ConnectIt/design/adventure-hub-map-plan.md",
     "ConnectIt/_logs/2026-10-29-1040.md",
     "ConnectIt/_logs/2026-10-29-1039.md",
     "ConnectIt/design/board-visualizer.md",
@@ -242,18 +215,6 @@
     "ConnectIt/design/adventure-hub-plan.md",
     "ConnectIt/_logs/2026-10-28-1511.md",
     "ConnectIt/_decisions/2026-10-28-hover-through-a-component.md",
-    "UnrealGridMechanics/code/UGridHoverComponent.md",
-    "ConnectIt/design/adventure-hub.md",
-    "ConnectIt/_decisions/2026-10-28-tile-power-effects-own-their-tag.md",
-    "_core/_clippings/UE5 SplineMesh Tutorial Part01 Setting Up and Creating a Panning Material.md",
-    "ConnectIt/_logs/2026-10-28-1508.md",
-    "ConnectIt/_logs/2026-10-28-1452.md",
-    "ConnectIt/_logs/2026-10-28-1443.md",
-    "_core/_clippings/Unreal Engine 5 Mana Drain UI - Create Professional VFX Materials Like a Pro.md",
-    "ConnectIt/_logs/2026-10-28-1434.md",
-    "ConnectIt/_logs/2026-10-28-1430.md",
-    "_core/_clippings/Unreal Engine 5 Mist Particle System.md",
-    "ConnectIt/_logs/2026-10-28-1423.md",
     "ConnectIt/design/level-outcomes-plan.md.tmp.7932.7141aac2726e",
     "ConnectIt/_logs/2026-10-24-1444.md.tmp.16900.05a8d2b10900",
     "ConnectIt/_logs/2026-10-24-1331.md.tmp.16900.98a1017df2d0",
@@ -263,7 +224,6 @@
     "ConnectIt/design/tile-power-setup.md.tmp.23744.981cbff5cdd4",
     "ConnectIt/code/recipes/add-a-win-condition.md.tmp.34052.e14f2c7b1e47",
     "ConnectIt/_logs/__INDEX.md.tmp.34052.2de11e748db5",
-    "ConnectIt/design/tile-powers-plan.md.tmp.15804.23692694f3f3",
     "Untitled.canvas"
   ]
 }

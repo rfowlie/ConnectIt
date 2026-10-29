@@ -2,6 +2,7 @@
 source: <skill or process name>
 run: <YYYY-MM-DD-HHMM>
 scope: <domain, or "vault">
+summary: <one line: what was done -- shown in the Dataview index>
 tags:
   - log
 ---

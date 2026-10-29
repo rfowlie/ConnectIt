@@ -9,6 +9,7 @@ touches:
   - Source/ConnectIt/Public/Board/Operations/ConnectIt_BoardOperation.h (legal-move support, C++: FConnectItBoardOperation::HasAnyLegalInstance on an operation type)
 reconciled: 2026-10-23
 commit: 54c1284
+status: 'current'
 ---
 
 # Recipe: set up match conditions

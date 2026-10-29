@@ -6,6 +6,7 @@ tags:
   - grid
   - board-shift
   - convention
+summary: '(Superseded same day) X = row, Y = column with the direction table rewritten — a misreading of the map layout'
 ---
 ## Decision
 

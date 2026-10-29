@@ -9,6 +9,7 @@ touches:
   - (level-wide) the Level director's Level Wide Powers
 reconciled: 2026-10-28
 commit: 54c1284
+status: 'current'
 ---
 
 # Recipe: add a tile power
@@ -80,9 +81,10 @@ and what it does, with its values. Placed tiles only name the tag. Decisions:
      actions decide what a hover means (`HandleValidHover` / `HandleHoverCleared`), possibly calling a function on the
      tile. Don't broadcast *On Grid Tile Begin Cursor Over* (deprecated). Keep a collision that blocks the cursor
      trace (Visibility).
-   - **Each hook is passed a Reaction. Call Reaction > Finish when the animation ends** (cache it in a variable if the
-     animation is a timeline or a delay). The event queue waits until every reaction of the event has finished, so a
-     chain plays in order. A hook you don't override finishes at once.
+   - **Each hook is passed the event's Handle. Call Handle > Hold when an animation starts and Handle > Release when
+     it ends.** The event queue waits for every hold, so a chain plays in order. A hook that holds nothing lets the
+     event go on at once, and a forgotten Release is logged after the board visualizer's timeout. A board-wide visual
+     for the power (an effect, a sound) can go on the map's board visualizer instead ([[add-visuals-for-a-board-event]]).
    - A Turn Start tile can show its countdown with **Get Power Turns Left (State, Position, Current Turn)**, Current
      Turn being the GameState's Active Turn Number.
 4. **The catalog entry:** in the tile catalog, add an entry to **Entries**: **Tile Class** = the Blueprint; **Power**

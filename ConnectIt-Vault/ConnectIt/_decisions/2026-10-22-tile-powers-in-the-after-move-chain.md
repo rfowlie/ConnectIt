@@ -6,6 +6,7 @@ tags:
   - architecture
   - board
   - tile-powers
+summary: 'Tile powers run in ResolveBoardChange as one chain per action: settle (Sync, then Enter / Exit / Changed / Tile Changed, until quiet) and scoring (find all lines then apply; Scoring powers after); ends at the first pass with no lines; effects are board operations applied in the chain; once per tile per action; events apply themselves and record their cause; visuals read a display board'
 ---
 ## Decision
 

@@ -6,6 +6,7 @@ tags:
   - architecture
   - board
   - ai
+summary: 'A kind of move is a thread-safe FConnectItBoardOperation in the rule set (Place, Swap): it owns which moves exist and how one changes the board; scoring is a separate ResolveBoardChange step; the Mediator and the MinMax search run the same operations; the search is given Place only for now'
 ---
 ## Decision
 

@@ -7,6 +7,7 @@ tags:
   - turn-end
   - loadout
   - removal
+summary: 'Stage 3: legacy Actions/bIsRequired/per-action caps/RequiredActionTagA/B/SWAP budget deleted; the Mediator gate is now mandatory and seeding failures are loud'
 ---
 ## Decision
 

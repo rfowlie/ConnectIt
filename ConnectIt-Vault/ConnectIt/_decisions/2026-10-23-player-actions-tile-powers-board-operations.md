@@ -7,6 +7,7 @@ tags:
   - conventions
   - actions
   - adventure
+summary: 'One vocabulary, plugin first: Player Action (no "skill"), Tile Power, Board Operation (produced by both); permanent actions are a per-level list (match uses, -1 = unlimited; turn uses always finite); item actions sit in an inventory (max held per action) and spend a per-level item budget, through their own path and turn-end leaf; UTurnBasedPlayerAction, ConnectIt.PlayerAction.*, ConnectIt.BoardOpe'
 ---
 ## Decision
 

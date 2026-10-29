@@ -6,6 +6,7 @@ tags:
   - rules
   - win-conditions
   - adventure
+summary: 'Win conditions can be asked per faction (HasFactionWon); new No Pieces condition; (the Per Faction composite was dropped for separate player/AI conditions)'
 ---
 > Item 3 (the Per Faction composite) was removed the same day: the rule set has separate player and AI win
 > conditions ([decision](2026-10-08-player-and-ai-win-conditions-on-rules.md)). Item 2 (No Pieces) became **Piece Count**

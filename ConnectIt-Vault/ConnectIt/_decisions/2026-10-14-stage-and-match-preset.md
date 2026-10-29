@@ -6,6 +6,7 @@ tags:
   - architecture
   - level-design
   - match-setup
+summary: 'A level config is the stage only; how a match is played (rules, player loadout, AI) is a UConnectIt_MatchPreset; a level names its default preset and the main menu can pick another for the same level'
 ---
 ## Decision
 

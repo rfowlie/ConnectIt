@@ -2,8 +2,11 @@
 type: plan
 status: not-started
 approved: true
-approved-on: 2026-10-25
-completed-on:
+approved_on: 2026-10-25
+completed_on:
+started:                       # YYYY-MM-DD, when the first stage was built (blank until then)
+stages: 6              # how many stages the plan has
+current_stage: not started   # the first stage not yet built ("complete" / "not started")
 playtested: false
 design: "[adventure-mode-roadmap](adventure-mode-roadmap.md)"
 question: "[full-board-outcome](../_questions/full-board-outcome.md); [out-of-uses-condition](../_questions/out-of-uses-condition.md)"

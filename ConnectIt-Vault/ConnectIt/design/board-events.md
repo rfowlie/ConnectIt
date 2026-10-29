@@ -1,5 +1,12 @@
 # Board events: one struct per event, in an ordered list, each carried through the event queue
 
+> **Update 2026-10-29:** board events are played by one **board visualizer** actor per map
+> (`AConnectIt_BoardVisualizer`): a Blueprint-native function per event struct, registry bookkeeping in C++, and a
+> Hold / Release handle per event. It replaces `CI_PieceVisualHandler` and the tile visualizer named below. Each
+> queued event also knows its place in its change, so its cause can be read while it plays. See
+> [board-visualizer-plan](board-visualizer-plan.md) and the recipe
+> [add-visuals-for-a-board-event](../code/recipes/add-visuals-for-a-board-event.md).
+
 ## Context
 `FConnectItBoardChangeEvent` is one flat struct with a bool and a few fields for every kind of thing that can happen
 to the board. It grows with every new operation, mixes what a player's operation did (piece placed, board shifted)

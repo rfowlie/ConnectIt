@@ -6,10 +6,11 @@ touches:
   - Source/ConnectIt/Public/Board/Events/ConnectIt_BoardEvents.h (a FConnectItBoardEvent subtype with ApplyTo)
   - Source/ConnectIt/Public/ConnectIt_GameplayTags.h (a ConnectIt.BoardOperation.* operation tag + a ConnectIt.Event.* event tag)
   - Source/ConnectIt/Public/Framework/Library/ConnectIt_BoardEventLibrary.h (GetActive<Name>Event)
-  - (if it concerns tiles) Source/ConnectIt/Public/Board/ConnectIt_TileVisualizer.h (the tile hooks it calls)
+  - Source/ConnectIt/Public/Board/ConnectIt_BoardVisualizer.h (its event function, bookkeeping and default hooks)
   - a UTurnBasedPlayerAction subclass that builds and sends it (ProducesRequestType), if players make it
 reconciled: 2026-10-23
 commit: 56d6946
+status: 'current'
 ---
 
 # Recipe: add a board request type
@@ -52,8 +53,15 @@ Nothing in the Mediator changes for a new kind.
    - Plain data: no UObject references -- the AI's search applies it on a worker thread.
 4. **The Blueprint getter** (`UConnectIt_BoardEventLibrary`): `GetActive<Name>Event(WorldContext, OutEvent)` →
    `TryGetActiveBoardEvent`, so a listener for your event tag reads the event that is playing.
-5. **Tile visuals**, if it changes tiles: add its tag to `UConnectIt_TileVisualizer`'s handled tags and call the
-   tile hooks it implies (e.g. `OnPieceExit` at From, `OnPieceEnter` at To).
+5. **Visuals:** the board visualizer binds the new event by itself (reflection), sending it to `OnBoardEvent` until it
+   has a function of its own. To give it one, on `AConnectIt_BoardVisualizer`:
+   - add `On<Name>(Event, Handle)` (Blueprint-native) and its `Dispatch` line;
+   - add any **registry bookkeeping** it needs to `BeginBookkeeping` / `FinishBookkeeping` (pieces or tiles that
+     move, arrive or leave);
+   - make the default call the actor hooks it implies (e.g. `OnPieceExit` at From, `OnPieceEnter` at To, the piece's
+     `OnMoved`).
+
+   Raise the expected count in `ConnectIt.Visuals.Events`. See [[add-visuals-for-a-board-event]].
 6. **Who makes it:**
    - **A player:** a `UTurnBasedPlayerAction` subclass (like `UConnectIt_PlacePieceAction`) builds the operation and calls
      `RequestBoardChange(FInstancedStruct::Make(Operation))`, and overrides `ProducesRequestType` to say yes to your

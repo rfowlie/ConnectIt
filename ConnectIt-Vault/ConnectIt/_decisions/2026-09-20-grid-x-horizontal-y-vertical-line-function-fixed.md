@@ -6,6 +6,7 @@ tags:
   - grid
   - board-shift
   - convention
+summary: '(Superseded) Grid convention X = left-right, Y = up-down; GetTilesByDirection fixed for that picture'
 ---
 ## Decision
 

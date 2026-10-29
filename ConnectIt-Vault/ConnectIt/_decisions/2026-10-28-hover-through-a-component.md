@@ -7,6 +7,7 @@ tags:
   - input
   - hover
   - grid
+summary: 'Hover / click come from a C++ component on every tile (pieces ignore the cursor), relayed by the hover subsystem to the player actions, which decide; tiles don''t react on their own; IGridBoardActor::RefreshFromBoard lets actors update themselves from the board; old delegates deprecated one release'
 ---
 ## Decision
 

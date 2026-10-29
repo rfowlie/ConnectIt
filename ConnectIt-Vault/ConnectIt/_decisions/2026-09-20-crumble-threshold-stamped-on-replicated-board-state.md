@@ -7,6 +7,7 @@ tags:
   - crumble
   - replication
   - visuals
+summary: 'Crumble threshold is stamped onto replicated board state (TargetScore precedent) so client crack visuals are state-driven; Crumble itself is a per-level board reaction'
 ---
 ## Decision
 

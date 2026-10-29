@@ -5,6 +5,7 @@ superseded by:
 tags:
   - ai
   - minmax
+summary: 'What the MinMax AI values is two structs of named float weights on the strategy; the logic they scale is handwritten in FConnectItMinMaxRules (EvaluateState, EvaluateMove, plain helpers); the polymorphic term structs and their editor lists are removed'
 ---
 ## Decision
 

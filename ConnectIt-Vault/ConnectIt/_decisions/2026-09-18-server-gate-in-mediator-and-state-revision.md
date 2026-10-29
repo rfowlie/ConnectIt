@@ -7,6 +7,7 @@ tags:
   - server-authority
   - mediator
   - replication
+summary: 'Per-action gate/spend lives in the Mediator''s ProcessRequest; PlayerState gains an ActionStateRevision for exact limbo ordering; ProducesRequestType validates the client-supplied ActionTag'
 ---
 ## Decision
 

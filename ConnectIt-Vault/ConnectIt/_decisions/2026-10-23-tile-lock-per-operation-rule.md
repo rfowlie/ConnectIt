@@ -6,6 +6,7 @@ tags:
   - architecture
   - board
   - tile-lock
+summary: 'A locked tile is in play but not placeable; each operation declares whether it may act on locked tiles, checked once by FConnectItRuleSet::CanCarryOut for players, the level, powers and simulation; Set Tile Locked; the AI treats an empty locked tile as blocking'
 ---
 ## Decision
 

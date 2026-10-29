@@ -2,6 +2,7 @@
 Date: <YYYY-MM-DD>
 status: Active
 superseded by:
+summary: <one line: what was decided -- shown in the Dataview index>
 tags:
   - Schema
 ---

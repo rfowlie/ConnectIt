@@ -7,6 +7,7 @@ tags:
   - skins
   - plugins
   - debugging
+summary: 'Skin plugin ships a generic code-built debug panel (SkinMechanics.ToggleDebug) plus GetSkinResolution / GetConfigurationIssues — catalog validation delivered'
 ---
 ## Decision
 

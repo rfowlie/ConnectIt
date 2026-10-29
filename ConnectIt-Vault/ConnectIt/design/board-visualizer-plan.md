@@ -1,9 +1,12 @@
 ---
 type: plan
-status: not-started
+status: in-progress
 approved: true
-approved-on: 2026-10-29
-completed-on:
+approved_on: 2026-10-29
+completed_on:
+started:             2026-10-29          # YYYY-MM-DD, when the first stage was built (blank until then)
+stages: 7              # how many stages the plan has
+current_stage: "2: the completion handle (Stage 1 built 2026-10-29)"   # the first stage not yet built ("complete" / "not started")
 playtested: false
 design: "[board-visualizer](board-visualizer.md)"
 question:
@@ -13,7 +16,7 @@ decision:
 # Plan: the board visualizer (one per map, a function per event, completion handles)
 
 Design: [board-visualizer](board-visualizer.md) (decided 2026-10-29). Written 2026-10-29 in a design-only session;
-**approved by the owner 2026-10-29**. Not built -- building happens in its own session.
+**approved by the owner 2026-10-29**. **Stages 1-5 and 7 built 2026-10-29**; Stage 6 is the owner's (editor).
 
 ## Context
 
@@ -43,6 +46,12 @@ stages.
 - Replace casts in ConnectIt code that only exist to reach these (visualizer, actions, layout tool) with the typed
   getters.
 - Tests: none without a world; existing tests pass.
+- **As built (2026-10-29):** `GetTileAt` / `GetTilesAt` on the tile registry, `GetPieceAt` on the piece registry
+  (never creates a piece, unlike Get Piece). Also: `UConnectIt_GameUtilityLibrary::GetTileRegistry` /
+  `GetPieceRegistry` now return the ConnectIt registries (the subsystem already held them typed), so neither C++ nor
+  Blueprint casts to reach the typed lookups. Casts replaced: the tile visualizer's tile lookup, the board state
+  component's registry cast on a client's first snapshot. The actions and the layout tool only use base-class calls
+  (no casts to replace).
 
 ## Stage 2: the completion handle
 
@@ -91,6 +100,25 @@ From [editor-notes-2026-10-28](editor-notes-2026-10-28.md): `GetActiveBoardEvent
 (the active event's cause, typed like the other getters) in `UConnectIt_BoardEventLibrary`, and on the visualizer as
 convenience -- so e.g. `OnPieceMoved` can ask whether a tile power caused it.
 - Tests: a power's Piece Moved reports its Tile Power Triggered as the cause; the action's own event has none.
+
+- **As built (Stages 2-5, 2026-10-29):**
+  - `UConnectIt_VisualHandle`: `Hold(Holder)` / `Release(Holder)` (the holder is self from Blueprint, for the log and
+    `ReleaseAllBy`), `Seal`, timeout.
+  - `AConnectIt_BoardVisualizer`: 22 event functions + `OnBoardEvent`; `GetAllEventStructs` (reflection);
+    bookkeeping in `BeginBookkeeping` / `FinishBookkeeping`:
+    - pieces spawned from the level config's `PieceActorClass`, placed at `GetPieceLocation` (tile + `PieceOffset`);
+    - leaving pieces / tiles kept until the visuals finish;
+    - moved tiles snapped to their cells, then pieces onto their tiles.
+  - Blueprint helpers: `GetArrivingPieces`, `GetLeavingPieces`, `GetLeavingTiles`.
+  - Piece registry: `MapPiece`, `UnmapPiece`, `SwapPieceActors`, `ShiftPieceActors` (the unused `HandleBoard*` stubs
+    removed). The piece's `SetBoardPosition`.
+  - Level config: `VisualizerClass`. Tile hooks take the handle; `FinishPendingReactions` → `ReleaseVisualHolds`.
+    Pieces have the six hooks.
+  - Stage 5: `FConnectItBoardEvent::PlayIndex` / `PlayChangeId` (local, stamped at queue time), `FindCause`, the board
+    state component's playing changes, and the library's `GetActiveBoardEventIndex` / `GetBoardEventCause` /
+    `GetBoardEventCauseTag` / `GetBoardEventCauseAs<T>`.
+  - Tests: `ConnectIt.Visuals.Handle`, `.Events`, `.HookDefaults`, and cause checks in `ConnectIt.Board.TilePowerChain`.
+    The old `ConnectIt.Board.TileHooks` was removed (73/73).
 
 ## Stage 6: content migration (owner, editor)
 

@@ -6,6 +6,7 @@ tags:
   - ai
   - architecture
   - designer-tools
+summary: 'The AI is composable: side-effect-free strategies return ranked candidate lists the controller tries in order; MinMax is a search tool (Blueprint node); a coordinator strategy combines children; an AI director on the match preset changes the AI''s loadout / strategy during a match'
 ---
 ## Decision
 

@@ -6,6 +6,7 @@ tags:
   - architecture
   - replication
   - match-setup
+summary: 'The level config is only a starting template; the GameMode resolves and owns the live match setup and publishes it (rules + AI profile → replicated GameState mirror, loadouts → PlayerStates); clients build actions from their PlayerState; GetLevelConfig removed in favour of narrow accessors'
 ---
 ## Decision
 

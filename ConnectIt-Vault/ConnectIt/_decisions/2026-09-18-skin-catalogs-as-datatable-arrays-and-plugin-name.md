@@ -7,6 +7,7 @@ tags:
   - skins
   - plugins
   - developer-settings
+summary: 'Skin plugin is UnrealSkinMechanics; skins/presets are arrays of DataTables in USkinSettings (row name = stable ID); per-category payloads stay typed data assets'
 ---
 ## Decision
 

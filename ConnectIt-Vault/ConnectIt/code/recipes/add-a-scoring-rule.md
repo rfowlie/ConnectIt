@@ -10,6 +10,7 @@ touches:
   - (mid-match) the Level director Blueprint's Set Scoring Rule
 reconciled: 2026-10-23
 commit: 54c1284
+status: 'current'
 ---
 
 # Recipe: add a scoring rule

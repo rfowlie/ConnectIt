@@ -6,6 +6,7 @@ tags:
   - rules
   - win-conditions
   - adventure
+summary: 'The rule set has separate player and AI win conditions (no default for the player''s); the GameMode sets AIFaction after registering the AI. Replaces the Per Faction composite'
 ---
 > Later the same day each field became a **list that must all hold**, and the AI's fallback to the player's condition was
 > removed ([decision](2026-10-08-win-condition-groups-and-piece-count.md)). The split into player and AI conditions, `AIFaction`

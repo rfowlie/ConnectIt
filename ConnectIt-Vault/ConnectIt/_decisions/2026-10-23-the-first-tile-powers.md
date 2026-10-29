@@ -6,6 +6,7 @@ tags:
   - architecture
   - board
   - tile-powers
+summary: 'The first powers: Move Piece and Adjust Multiplier operations; multiplier floor and ceiling per tile type (gate renamed FireAtMultiplier); trigger sets; a Turn Start countdown trigger committed as its own change at turn start; Push, Vacuum, Repel pick at random among moves the rules allow; tile hooks with reaction handles the visualizer waits on (no wrapper)'
 ---
 ## Decision
 

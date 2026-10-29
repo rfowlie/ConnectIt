@@ -6,6 +6,7 @@ tags:
   - rules
   - win-conditions
   - adventure
+summary: 'Each side lists its win condition groups in order (PlayerWinGroups / AIWinGroups); completing a group is a checkpoint (OnWinCheckpointReached), completing the last is the win (OnMatchWon); progress lives on the board; the pre-commit hook and SetWinConditions were removed'
 ---
 ## Decision
 

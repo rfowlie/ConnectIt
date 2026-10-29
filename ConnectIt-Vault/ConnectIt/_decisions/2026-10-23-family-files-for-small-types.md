@@ -5,6 +5,7 @@ superseded by:
 tags:
   - code-organisation
   - conventions
+summary: 'Small same-shaped struct families (operations, events, power effects, match conditions) live one family per file beside a separate base header; systems with real logic keep their own files; a family with several files gets a subfolder (Board/Rules/Conditions/)'
 ---
 ## Decision
 

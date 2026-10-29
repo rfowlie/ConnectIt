@@ -6,6 +6,7 @@ tags:
   - turn-end
   - actionscomponent
   - requirements
+summary: 'UConnectIt_TurnBasedActionsComponent::CanAutoEndTurn_Implementation''s current hardcoded two-tag OR pair (RequiredActionTagA/RequiredActionTagB, used for SWAP''s alternate-turn-end logic) needs to generalize into a configurable structure that supports both OR (any one of a group of tags satisfies turn-end, today''s SWAP case) and AND (all tags in a group must be satisfied) — an array of requirement'
 ---
 
 ## Decision

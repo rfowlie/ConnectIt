@@ -6,6 +6,7 @@ tags:
   - naming
   - conventions
   - data-assets
+summary: 'Every C++ data asset class ends in DataAsset (files to match); six ConnectIt classes renamed with class redirects; property names unchanged'
 ---
 ## Decision
 

@@ -7,6 +7,7 @@ tags:
   - playerstate
   - actionscomponent
   - architecture
+summary: 'Action state (type — permanent/temporary, uses-per-turn, etc.) will live on PlayerState as pure replicated data with no behavior.'
 ---
 
 ## Decision

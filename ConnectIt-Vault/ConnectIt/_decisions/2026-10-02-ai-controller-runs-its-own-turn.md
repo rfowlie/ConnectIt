@@ -6,6 +6,7 @@ tags:
   - ai
   - turn-based
   - architecture
+summary: 'AI controllers have no actions component/coordinator; the ConnectIt AI controller handles turn start/end and pause itself; turn-end requirements evaluated on the PlayerState for humans and AI'
 ---
 ## Decision
 

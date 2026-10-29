@@ -5,6 +5,7 @@ superseded by: "[2026-10-16-ai-director-pipeline](2026-10-16-ai-director-pipelin
 tags:
   - ai
   - data
+summary: 'An AI opponent is one UConnectIt_AIProfile asset (loadout + inline strategy), referenced by the level config and overridable from the menu'
 ---
 ## Decision
 

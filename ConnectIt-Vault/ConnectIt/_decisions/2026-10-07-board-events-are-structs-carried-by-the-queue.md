@@ -6,6 +6,7 @@ tags:
   - architecture
   - board
   - events
+summary: 'What happens to the board is one small struct per event (operation events / result events); the change event is an ordered list of them, appended by whoever causes each; each is queued with its own data as payload on the game event queue and played one at a time'
 ---
 ## Decision
 

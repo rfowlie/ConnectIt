@@ -2,8 +2,11 @@
 type: plan
 status: in-progress
 approved: true
-approved-on: 2026-10-23
-completed-on:
+approved_on: 2026-10-23
+completed_on:
+started:             2026-10-24          # YYYY-MM-DD, when the first stage was built (blank until then)
+stages: 7              # how many stages the plan has
+current_stage: "6: content (owner, editor); Stages 1-5 and 7 built"   # the first stage not yet built ("complete" / "not started")
 playtested: false
 design: "[adventure-hub](adventure-hub.md)"
 question:

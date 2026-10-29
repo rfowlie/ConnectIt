@@ -2,8 +2,11 @@
 type: plan
 status: complete
 approved: true
-approved-on: 2026-10-21
-completed-on: 2026-10-22
+approved_on: 2026-10-21
+completed_on: 2026-10-22
+started:             2026-10-21          # YYYY-MM-DD, when the first stage was built (blank until then)
+stages: 7              # how many stages the plan has
+current_stage: complete   # the first stage not yet built ("complete" / "not started")
 playtested: false
 design: "[phased-levels](phased-levels.md)"
 question: "[phased-levels-runtime-change](../_questions/phased-levels-runtime-change.md)"

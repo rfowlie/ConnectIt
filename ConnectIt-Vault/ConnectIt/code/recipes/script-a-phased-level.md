@@ -7,9 +7,10 @@ touches:
   - Source/ConnectIt/Public/Board/Powers/ConnectIt_TileCatalogDataAsset.h (the map's tile catalog, in World Settings: which tile actor shows each power tag; its Default Tile Class for none)
   - Source/ConnectIt/Public/Board/Actor/ConnectIt_BuilderTile.h (builder tiles: what the layout tool places and captures)
   - Source/ConnectIt/Public/Board/ConnectIt_TileDataProvider.h (the catalog's tile Blueprints: Apply Layout Cell)
-  - Source/ConnectIt/Public/Framework/Library/ConnectIt_BoardEventLibrary.h (the visual handlers for Tiles Removed / Tiles Added / Layout Changed / Phase Changed, once per project)
+  - Source/ConnectIt/Public/Board/ConnectIt_BoardVisualizer.h (the board visualizer's On Tiles Removed / On Tiles Added / On Layout Changed / On Phase Changed, once per look)
 reconciled: 2026-10-23
 commit: 54c1284
+status: 'current'
 ---
 
 # Recipe: script a phased level
@@ -35,11 +36,13 @@ Design: [phased-levels](../../design/phased-levels.md); decision:
     and the Visual Variant's look).
   - **A builder tile Blueprint** (`ConnectIt_BuilderTile`), set as Project Settings > Game > ConnectIt > **Builder Tile
     Class**: the layout tool places these.
-  - **Visual handlers** for the board events, on every machine:
-    - **Tiles Removed:** Unregister Tiles At; animate out; Destroy Actor; Despawn Piece At where Piece Factions isn't -1.
-    - **Tiles Added:** Spawn Layout Tiles; appear; Spawn Piece At for cells with a starting piece.
-    - **Layout Changed:** the camera moves to its transform.
-    - **Phase Changed** (optional): a banner.
+  - **Visuals** on the map's board visualizer Blueprint ([[add-visuals-for-a-board-event]]). The registry bookkeeping is
+    already done in C++: tiles and their pieces leave and arrive, are spawned and destroyed. Only add the look:
+    - **On Tiles Removed:** animate **Get Leaving Tiles** / **Get Leaving Pieces** out, holding the handle (they are
+      destroyed / pooled once it is released).
+    - **On Tiles Added:** an appear animation on the new tiles (**Get Tile At**) and **Get Arriving Pieces**.
+    - **On Layout Changed:** the camera moves to its transform.
+    - **On Phase Changed** (optional): a banner.
   - **The layout tool:** an editor utility widget over `Capture Layout From Level` / `Load Layout Into Level` / `Set Layout
     Camera` / `Preview Tile Catalog` / `Clear Tile Catalog Preview`, plus `Save Loaded Asset`; and a **sandbox map** whose
     World Settings name the board's level config. A captured cell keeps its builder tile's **Is Locked** and **Chain

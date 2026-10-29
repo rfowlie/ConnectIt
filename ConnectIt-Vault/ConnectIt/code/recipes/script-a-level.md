@@ -10,6 +10,7 @@ touches:
   - Source/ConnectIt/Public/Board/Powers/ConnectIt_TileCatalogDataAsset.h (the map's tile catalog, in World Settings; level-wide powers: Level Wide Powers)
 reconciled: 2026-10-23
 commit: 54c1284
+status: 'current'
 ---
 
 # Recipe: script a level

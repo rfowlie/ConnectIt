@@ -6,6 +6,7 @@ tags:
   - actions-ui
   - hud
   - root-action
+summary: 'The Actions selection UI is owned and shown by AConnectIt_HUD, not by a "Root" action instance on the action stack.'
 ---
 
 ## Decision

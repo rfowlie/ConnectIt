@@ -7,6 +7,7 @@ tags:
   - skins
   - plugins
   - architecture
+summary: 'Skin plugin defines no skin/catalog types — one project-defined DataTable per category (row name = ID), one tiny preset base row, subsystem + save slot resolve selection; level-forced runtime-only'
 ---
 ## Decision
 

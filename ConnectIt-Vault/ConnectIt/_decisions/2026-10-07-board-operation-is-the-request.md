@@ -6,6 +6,7 @@ tags:
   - architecture
   - board
   - requests
+summary: 'A FConnectItBoardOperation is one specific board change carrying its own data and is the request payload itself; all eight request types are operations and the Mediator has a single path (type check, faction stamp, CanApply, Apply, resolve, commit); request structs, the move value and the rule set''s operation list removed'
 ---
 ## Decision
 

@@ -6,6 +6,7 @@ tags:
   - bug-fix
   - registries
   - gameevent
+summary: 'PieceMap re-keys from FConnectItBoardChangeEvent''s own positions, not actor transforms — the obvious UpdateMappings() rebuild would read stale pre-lerp data'
 ---
 ## Decision
 

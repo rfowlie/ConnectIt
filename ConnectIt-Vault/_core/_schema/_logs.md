@@ -24,6 +24,7 @@ Frontmatter:
 - `run:` — the `YYYY-MM-DD-HHMM` timestamp.
 - `scope:` — `vault`, or the domain name.
 - `tags:` — at least `log`.
+- `summary:` — one line on what was done. The `_logs/__INDEX.md` list is a Dataview query over `run` and `summary`.
 
 Body (see [`TSchemaLogs`](../_templates/TSchemaLogs.md)): **Request** (one line — what was asked for) · **Overview**
 (what was actually done, and why) · **Created** (`[[wikilinks]]` to new notes/files) ·

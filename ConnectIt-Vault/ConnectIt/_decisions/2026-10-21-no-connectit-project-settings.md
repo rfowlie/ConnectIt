@@ -5,6 +5,7 @@ superseded by: "[2026-10-22-tile-catalog-and-builder-tiles](2026-10-22-tile-cata
 tags:
   - architecture
   - data
+summary: 'The ConnectIt project settings are deleted: maps name their board / default preset in World Settings with no project fallback; the menu references its catalog directly'
 ---
 ## Decision
 

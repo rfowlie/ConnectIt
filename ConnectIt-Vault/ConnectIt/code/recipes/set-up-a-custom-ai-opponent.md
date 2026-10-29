@@ -10,6 +10,7 @@ touches:
   - Source/ConnectIt/Public/Framework/Controller/ConnectIt_AIController.h (a Blueprint subclass, only if you need one; see C)
 reconciled: 2026-10-23
 commit: 2f74abd
+status: 'current'
 ---
 
 # Recipe: set up a custom AI opponent

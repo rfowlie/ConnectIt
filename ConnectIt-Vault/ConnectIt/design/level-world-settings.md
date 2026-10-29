@@ -2,8 +2,11 @@
 type: plan
 status: complete
 approved: true
-approved-on: 2026-10-21
-completed-on: 2026-10-21
+approved_on: 2026-10-21
+completed_on: 2026-10-21
+started:             2026-10-21          # YYYY-MM-DD, when the first stage was built (blank until then)
+stages: 2              # how many stages the plan has
+current_stage: complete   # the first stage not yet built ("complete" / "not started")
 playtested: false
 design:
 question:

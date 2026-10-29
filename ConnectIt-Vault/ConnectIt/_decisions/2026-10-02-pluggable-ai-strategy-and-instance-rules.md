@@ -6,6 +6,7 @@ tags:
   - ai
   - minmax
   - architecture
+summary: 'AI move-picking is a per-level Instanced UConnectIt_AIStrategy (MinMax is one subclass); the controller is strategy-agnostic. The MinMax search takes a const rules instance whose virtual functions variants override; eval weights are editor data. Refines the 09-24 bespoke-controllers call'
 ---
 ## Decision
 

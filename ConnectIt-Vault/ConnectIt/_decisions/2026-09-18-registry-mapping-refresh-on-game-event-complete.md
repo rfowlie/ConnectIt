@@ -6,6 +6,7 @@ tags:
   - bug-fix
   - registries
   - game-event
+summary: 'TileRegistry/PieceRegistry subscribe to GameEvent completion and recompute position→actor mappings, fixing a confirmed post-shift desync bug'
 ---
 ## Decision
 

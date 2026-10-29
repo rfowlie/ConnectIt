@@ -6,6 +6,7 @@ tags:
   - action-state
   - loadout
   - turn-end
+summary: 'Action config and turn-end leaves reference TSubclassOf<UTurnBasedAction>; the tag is derived from the class default object, not authored twice'
 ---
 ## Decision
 

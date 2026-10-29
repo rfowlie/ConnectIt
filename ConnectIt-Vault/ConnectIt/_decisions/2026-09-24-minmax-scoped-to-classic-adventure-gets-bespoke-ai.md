@@ -7,6 +7,7 @@ tags:
   - minmax
   - adventure-mode
   - scope
+summary: 'MinMax stays scoped to Classic ConnectIt (place-piece-only); Adventure-mode levels get bespoke, per-level AI controllers aiming for an interesting fight, not optimal play'
 ---
 ## Decision
 

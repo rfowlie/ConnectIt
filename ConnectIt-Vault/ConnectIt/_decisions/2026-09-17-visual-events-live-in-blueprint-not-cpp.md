@@ -6,6 +6,7 @@ tags:
   - visuals
   - blueprint
   - game-event
+summary: 'Visual reactions to gameplay events (tile/piece animation, VFX) live in Blueprint, not C++ — C++ exposes data + reusable tools only'
 ---
 
 ## Decision

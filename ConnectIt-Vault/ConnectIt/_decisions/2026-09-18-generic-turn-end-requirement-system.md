@@ -6,6 +6,7 @@ tags:
   - action-state
   - turn-end
   - loadout
+summary: 'Recursive FTurnEndRequirementNode tree + split permanent/numbered action config replaces RequiredActionTagA/B and the base plugin''s AND-everything model'
 ---
 ## Decision
 

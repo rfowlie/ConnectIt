@@ -6,6 +6,7 @@ tags:
   - board-shift
   - actions
   - balance
+summary: 'A Board Shift moves its line Steps places (counted in shiftable tiles, one use, one slide); N is fixed per action and the server rejects a request whose Steps differs from the action''s ShiftSteps'
 ---
 ## Decision
 

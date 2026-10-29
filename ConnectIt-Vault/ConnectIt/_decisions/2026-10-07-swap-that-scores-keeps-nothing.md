@@ -6,6 +6,7 @@ tags:
   - game-design
   - balance
   - scoring
+summary: 'A swap that scores keeps nothing (balance trial): operations say whether their arriving pieces survive scoring, passed through the resolve step; Scored events list ClearedPositions for visuals'
 ---
 ## Decision
 

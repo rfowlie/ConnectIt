@@ -7,6 +7,7 @@ tags:
   - mediator
   - architecture
   - crumble
+summary: 'Board changes layered as primitives / 1:1 request objects paired to actions / one shared mediator pipeline / BoardReactions array on LevelConfig (design only)'
 ---
 ## Decision
 

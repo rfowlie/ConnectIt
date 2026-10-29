@@ -12,6 +12,8 @@ spans:
   - Source/ConnectIt/Public/Board/ConnectIt_BoardStateComponent.h
 reconciled: 2026-10-23
 commit: 54c1284
+status: 'current'
+summary: 'Board-change request: client busy check → server turn / settled / loadout gates → commit → gated visual sequence → outcome back to client; one board change at a time (lock until its visuals finish)'
 ---
 
 # Board-change request (server-authoritative)

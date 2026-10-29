@@ -5,6 +5,7 @@ superseded by:
 tags:
   - conventions
   - suite
+summary: 'Cross-cutting conventions for the plugin suite (tags, delegates, RPCs, extension hook)'
 ---
 
 ## Decision

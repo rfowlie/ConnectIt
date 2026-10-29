@@ -6,6 +6,7 @@ tags:
   - architecture
   - tile-powers
   - tile-catalog
+summary: 'A tile power''s C++ effect names its tag and carries only its own values (the gate on Push / Vacuum / Repel); FConnectItTilePower has no Name; the tile catalog is an array of entries, looked up by each effect''s tag'
 ---
 ## Decision
 

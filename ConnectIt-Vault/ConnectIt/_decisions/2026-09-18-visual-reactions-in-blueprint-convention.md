@@ -6,6 +6,7 @@ tags:
   - visuals
   - blueprint
   - convention
+summary: 'Visual-event reactions in Blueprint, never C++, elevated from the board-shift case to a standing project convention'
 ---
 ## Decision
 

@@ -39,8 +39,9 @@ data. Replaces the previous home of these registries: per-machine properties on
   reference to the duplicated `GridDefinition` before its own `InitialiseRegistry()` runs
   (`DiscoverExisting` needs it already assigned). Also binds **both** `TileRegistry` and `PieceRegistry` to
   [[UnrealGameMechanics/code/UGameEventTaskSubsystem\|UGameEventTaskSubsystem]]`::OnAnyTagComplete`
-  here, once. Then creates the **`UConnectIt_TileVisualizer`** (`Initialise(TileRegistry)`), which calls the tile
-  actors' hooks as board events play, on every machine ([[tile-power-chain]]). No board on the map → a warning ("fine
+  here, once. Then spawns the **board visualizer** (`AConnectIt_BoardVisualizer`, the level config's Visualizer
+  Class or the C++ base; `Initialise()`), which plays every board event on the actors on every machine
+  ([[add-visuals-for-a-board-event]]). `GetBoardVisualizer()` returns it. No board on the map → a warning ("fine
   for a menu map") and no registries; missing template → logged error per registry.
 - `Deinitialize()` — unbinds both registries from `OnAnyTagComplete`, then calls
   `ShutdownRegistry()` on both.

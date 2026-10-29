@@ -8,6 +8,7 @@ touches:
   - Source/ConnectIt/Public/Board/Operations/ConnectIt_BoardOperation.h (CanOperateOnLockedTiles, GetTargetPositions)
 reconciled: 2026-10-23
 commit: 54c1284
+status: 'current'
 ---
 
 # Recipe: lock a tile, or chain tiles

@@ -18,6 +18,7 @@ place for the decision's full context — that lives in the area's main referenc
   append-only, never rewritten.
 - A superseded note is marked `Status: superseded by [[<newer-slug>]]` — not deleted.
 - One decision per file. If a session settles three things, that's three notes.
+- Frontmatter carries `summary:` (one line). The `_decisions/__INDEX.md` table is a Dataview query over `Date`, `status` and `summary`.
 - Optional: a `_decisions/__INDEX.md` (per [[TIndex]]) may carry a dated table of every
   decision for quick scanning.
 

@@ -7,6 +7,7 @@ tags:
   - networking
   - security
   - requests
+summary: 'A board-change request is { ActionTag, Payload }; actions hand over just the payload; the requester''s faction comes from the sending controller on the server (closing a hole where a client could act as the opponent); request type comes from the payload operation'
 ---
 ## Decision
 

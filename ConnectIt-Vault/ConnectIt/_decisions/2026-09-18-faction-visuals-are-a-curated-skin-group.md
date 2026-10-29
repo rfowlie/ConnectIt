@@ -7,6 +7,7 @@ tags:
   - skins
   - adventure-mode
   - factions
+summary: 'Faction visuals are not a bespoke subsystem — they''re a curated skin group (a skin keyed by faction slot); skin groups are how adventure mode forces a look per level'
 ---
 ## Decision
 

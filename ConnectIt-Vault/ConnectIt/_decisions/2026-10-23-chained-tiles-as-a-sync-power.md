@@ -7,6 +7,7 @@ tags:
   - board
   - tile-powers
   - tile-lock
+summary: 'A Chained tile is locked exactly while its partner has no piece: a Sync tile power (catalog entry), one-sided, linked by the partner''s tile id; partner picked on the builder tile, Set Chain Partner mid-match; the seeded board is settled once so chains start right'
 ---
 ## Decision
 

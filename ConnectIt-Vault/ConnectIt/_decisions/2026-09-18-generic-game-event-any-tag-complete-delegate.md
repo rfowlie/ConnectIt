@@ -6,6 +6,7 @@ tags:
   - architecture
   - gameevent
   - unrealgamemechanics
+summary: 'GameEventTaskSubsystem gains OnAnyTagComplete — one generic completion delegate instead of a BindOnTagComplete call per tag'
 ---
 ## Decision
 

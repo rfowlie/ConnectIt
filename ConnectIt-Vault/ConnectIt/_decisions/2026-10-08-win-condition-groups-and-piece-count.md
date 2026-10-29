@@ -6,6 +6,7 @@ tags:
   - rules
   - win-conditions
   - adventure
+summary: 'A group of win conditions that must ALL hold (empty never wins); no AI fallback to the player''s; No Pieces became Piece Count (comparison + count, progress from the board''s starting counts); (one group per side and the pre-commit hook were replaced by ordered groups)'
 ---
 > Items 1 (a single group per side) and 4 (the `OnWinConditionsMet` hook, `SetWinConditions`) were replaced on 2026-10-13: each
 > side now lists its groups in order, with checkpoint and win delegates

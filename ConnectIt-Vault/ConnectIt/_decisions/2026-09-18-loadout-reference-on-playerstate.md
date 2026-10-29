@@ -6,6 +6,7 @@ tags:
   - action-state
   - playerstate
   - loadout
+summary: 'PlayerState holds one shared Loadout reference (no per-player duplication); ActionsComponent stays the sole action-instance builder'
 ---
 ## Decision
 

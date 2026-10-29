@@ -7,6 +7,7 @@ tags:
   - architecture
   - designer-tools
   - win-conditions
+summary: 'The AI director owns the AI setup (loadout, strategies, selector, think times) on the match preset; the AI profile is removed; the coordinator is a fixed pipeline pulling strategies'' best-so-far answers at the deadline; selectors pick (mistake chance lives there); win conditions are data assets copied out at match start'
 ---
 ## Decision
 

@@ -7,6 +7,7 @@ tags:
   - skins
   - networking
   - pooling
+summary: 'Skin choices are local-only (not replicated); a skin is data applied to a fixed actor class, never a class swap, so pools stay valid'
 ---
 ## Decision
 

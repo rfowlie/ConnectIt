@@ -6,6 +6,7 @@ tags:
   - action-state
   - loadout
   - numbered-actions
+summary: 'Numbered actions start at 0 uses and can be granted mid-match, capped by MaxHeldUses; runtime state split into permanent/numbered structs'
 ---
 ## Decision
 

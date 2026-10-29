@@ -6,6 +6,7 @@ tags:
   - ai
   - minmax
   - architecture
+summary: 'Classic MinMax uses an on-demand negamax + alpha-beta search with iterative deepening (generic search in UnrealGameIntelligence, alongside the old templates), evaluated from the side to move; direct Mediator submission kept; per-level difficulty = depth + time budget + optional mistakes; 2 factions, 1 placement per turn'
 ---
 ## Decision
 

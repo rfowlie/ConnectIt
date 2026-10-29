@@ -4,6 +4,8 @@ spans:                   # the source paths / types this flow crosses
   - <repo-relative path>
 reconciled: <YYYY-MM-DD>
 commit: <short SHA>
+status: current                 # current | retired
+summary: <one line: what the flow does -- shown in the Dataview index>
 ---
 
 # <flow name>

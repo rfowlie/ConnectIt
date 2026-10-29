@@ -5,6 +5,7 @@ superseded by:
 tags:
   - tile-powers
   - visuals
+summary: 'Tile Blueprints react through one hook per event kind (typed, reaction handle), not a generic HandleTilePower(tag); logic stays in C++ in the rules'
 ---
 ## Decision
 

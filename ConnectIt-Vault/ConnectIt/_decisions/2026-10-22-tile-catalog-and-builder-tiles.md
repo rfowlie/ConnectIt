@@ -7,6 +7,7 @@ tags:
   - board
   - tile-powers
   - level-design
+summary: 'A tile''s power is defined once per tag in a tile catalog (tag -> tile class + power; named in the map''s World Settings, else the project default in ConnectIt project settings); designers place builder tiles naming a tag; an editor preview never saved; swapped to catalog classes at match start; the board carries only the tag (per-tile values cost ~17% search speed)'
 ---
 ## Decision
 

@@ -7,6 +7,7 @@ tags:
   - skins
   - plugins
   - developer-settings
+summary: 'Skin system lives in a new dedicated plugin; available skins/presets are explicit UDeveloperSettings lists (Asset Manager scan deferred)'
 ---
 ## Decision
 

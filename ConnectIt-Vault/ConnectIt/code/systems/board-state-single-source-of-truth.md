@@ -9,6 +9,8 @@ spans:
   - Source/ConnectIt/Public/Framework/GameMode/ConnectIt_GameMode.h
 reconciled: 2026-10-23
 commit: 4c9625c
+status: 'current'
+summary: 'One replicated snapshot (prev + current + change event) drives every visual system on server and client'
 ---
 
 # Board state — single source of truth
@@ -79,9 +81,12 @@ flowchart TD
 2. `SetBoardState(NewState, ChangeEvent)`: current -> `PreviousState`, `NewState` applied, `ChangeEvent` stored in the
    one snapshot.
 3. The server broadcasts at once; clients get the snapshot and broadcast from `OnRep_BoardSnapshot`.
-4. Both machines: `EnqueueBoardEventTags()` queues each event (its tag, the event as payload). A listener reads the
-   event that is playing through `UConnectIt_BoardEventLibrary`, even if a newer snapshot has arrived. When the entry
-   completes, the event applies itself to the display board.
+4. Both machines: `EnqueueBoardEventTags()` queues each event (its tag, the event as payload), each copy stamped with
+   its change and index (`PlayChangeId` / `PlayIndex`, local); the change is kept until its events have played, so a
+   listener can ask an event's cause (`GetBoardEventCause`). A listener reads the event that is playing through
+   `UConnectIt_BoardEventLibrary`, even if a newer snapshot has arrived. The map's **board visualizer** plays every
+   event on the actors ([[add-visuals-for-a-board-event]]). When the entry completes, the event applies itself to the
+   display board, and the actors whose tiles changed refresh themselves (`RefreshFromBoard`).
 5. Server only: `OnBoardChangeCommitted`, then the completion marker. The GameMode lifts the lock when it completes
    (or after `BoardChangeTimeoutSeconds`), and mirrors "busy" on the GameState (`IsBoardChangeResolving`) for UI.
 

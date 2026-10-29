@@ -6,6 +6,7 @@ tags:
   - architecture
   - board
   - level-design
+summary: 'A phased level changes the match through events and data, each a board change: Begin Phase (a shared ConnectIt.Phase.* tag on the board; On Phase Changed to every director), layouts as data assets made with a layout tool, Set Layout as one Change Layout (one win check); tile actors follow the board on every machine'
 ---
 ## Decision
 

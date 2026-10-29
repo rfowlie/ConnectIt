@@ -1,6 +1,7 @@
 ---
 schema: recipes
 task: <one-line statement of the goal>
+status: current                 # current | stub | retired
 touches:                 # files / types a correct implementation edits — also the cross-impact list
   - <repo-relative path or type name>
 reconciled: <YYYY-MM-DD>

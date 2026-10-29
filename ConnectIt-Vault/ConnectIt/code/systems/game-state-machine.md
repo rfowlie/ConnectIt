@@ -9,6 +9,8 @@ spans:
   - Source/ConnectIt/Public/Framework/Game State Machine/ConnectIt_State_UpdateGameBoard.h
 reconciled: 2026-09-10
 commit: eddd631
+status: 'retired'
+summary: 'Removed 2026-10-23 — the old non-networked per-turn phase machine; kept as history'
 ---
 
 # Game state machine (removed 2026-10-23)

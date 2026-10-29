@@ -7,6 +7,7 @@ touches:
   - Plugins/UnrealTurnBasedMechanics/Source/UnrealTurnBasedMechanics/Public/Framework/PlayerState/TurnBasedPlayerState.h (for tells: a visual manager Blueprint listening to the AI PlayerState's On Loadout Changed)
 reconciled: 2026-10-23
 commit: dc7c2b3
+status: 'current'
 ---
 
 # Recipe: direct the AI during a match

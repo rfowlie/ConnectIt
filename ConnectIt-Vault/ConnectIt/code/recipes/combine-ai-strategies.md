@@ -7,6 +7,7 @@ touches:
   - Source/ConnectIt/Public/AI/ConnectIt_AISelector.h (a Blueprint subclass, only for your own way of picking)
 reconciled: 2026-10-23
 commit: dc7c2b3
+status: 'current'
 ---
 
 # Recipe: choose strategies and a selector

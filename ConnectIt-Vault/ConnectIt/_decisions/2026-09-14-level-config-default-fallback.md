@@ -5,6 +5,7 @@ superseded by: "[2026-10-21-no-connectit-project-settings](2026-10-21-no-connect
 tags:
   - level-config
   - robustness
+summary: 'GetLevelConfig falls back to a DefaultLevelConfig + warns, instead of erroring to null, when a level isn''t registered'
 ---
 
 ## Decision

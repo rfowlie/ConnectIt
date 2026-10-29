@@ -6,6 +6,7 @@ tags:
   - rules
   - ai
   - architecture
+summary: 'The match''s rules are plain thread-safe C++ structs in one FConnectItRuleSet (level config template → per-match copy on the GameMode → Mediator and AI search run the same code); rule interfaces, UConnectIt_BoardRules and the search-only bridges removed; no Blueprint-authored rule logic'
 ---
 ## Decision
 

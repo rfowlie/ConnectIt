@@ -7,6 +7,7 @@ tags:
   - architecture
   - designer-tools
   - win-conditions
+summary: 'The three directors as built: preset names the classes; GameMode hub sends every director the same events (Level -> Players by slot -> AI); its checkpoint / match-won delegates removed; win / lose conditions on the side directors; level triggers on the Level director; level board / scoring-rule changes with timing'
 ---
 ## Decision
 

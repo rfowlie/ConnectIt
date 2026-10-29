@@ -7,6 +7,7 @@ tags:
   - architecture
   - designer-tools
   - win-conditions
+summary: 'Built: MinMax default time budget; "match condition" rename; conditions get a context; Not Enough Pieces To Score, No Legal Move; per-move legality, AI pass. Designed: Level / Player / AI directors owning their conditions (authored in directors, evaluated in the rules), lose conditions'
 ---
 ## Decision
 

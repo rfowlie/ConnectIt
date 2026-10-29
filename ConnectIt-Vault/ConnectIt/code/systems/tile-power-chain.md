@@ -12,10 +12,12 @@ spans:
   - Source/ConnectIt/Private/Board/Rules/Scoring/ConnectIt_LineScoringRule.cpp
   - Source/ConnectIt/Public/Board/Events/ConnectIt_BoardEvents.h
   - Source/ConnectIt/Public/Board/ConnectIt_BoardStateComponent.h
-  - Source/ConnectIt/Public/Board/ConnectIt_TileVisualizer.h
+  - Source/ConnectIt/Public/Board/ConnectIt_BoardVisualizer.h
   - Source/ConnectIt/Private/Framework/GameMode/ConnectIt_GameMode.cpp
 reconciled: 2026-10-23
 commit: 54c1284
+status: 'current'
+summary: 'What follows a board change: settle (Turn Start powers on a turn start, Sync, then Enter / Exit / Changed / Tile Changed powers until quiet) → score (find all lines, then apply) → Scoring powers → back to settle, until a pass finds no lines; firing one power (trigger set, gate, cooldown, once per action, effects as operations); the GameMode''s Turn Start change; tile hooks waiting on reaction'
 ---
 
 # Tile power chain -- what follows a board change
@@ -83,14 +85,18 @@ start) or a level-wide one (`LevelWideTilePowers`). It fires only for a trigger 
 ([[board-state-single-source-of-truth]]). Each applies itself to the **display board** as it finishes playing, so visuals
 read the board as far as the player has seen it. The change record stays on the server: clients only get the events.
 
-**Tile hooks.** `UConnectIt_TileVisualizer` has a gated task on each event that concerns tiles (12 tags). When one
-plays:
+**Tile hooks.** The map's board visualizer (`AConnectIt_BoardVisualizer`) has a gated task on every board event. When
+one plays:
 
-- it finds the tile actors at the event's positions;
-- it calls each one's hook (`AConnectIt_TileBase::OnTilePowerTriggered`, `OnPieceEnter`, ...) with a fresh
-  `UConnectIt_TileReaction`;
-- the queue moves on only once every reaction has called **Finish**, so a chain plays in order;
-- with no actor, or if every hook finished at once, it completes on the next tick.
+- it does the registry bookkeeping;
+- it calls the event's function (`OnTilePowerTriggered`, `OnPieceMoved`...) with a `UConnectIt_VisualHandle`; the
+  default calls the actors' hooks (`AConnectIt_TileBase::OnTilePowerTriggered`, `OnPieceEnter`, the piece's
+  `OnMoved`...) with that handle;
+- the queue moves on only once every **Hold** is **Released** (or the timeout), so a chain plays in order;
+- with nothing held, it completes on the next tick.
+
+A power's own events name it as their cause: `GetBoardEventCause` while they play.
+[[add-visuals-for-a-board-event]].
 
 ## Diagram
 

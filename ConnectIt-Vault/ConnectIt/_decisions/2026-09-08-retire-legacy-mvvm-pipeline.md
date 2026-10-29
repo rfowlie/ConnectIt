@@ -6,6 +6,7 @@ tags:
   - legacy
   - cleanup
   - networking
+summary: 'Keep the non-networked state-machine / facade / view-model pipeline as dead code, don''t build on it'
 ---
 
 ## Decision

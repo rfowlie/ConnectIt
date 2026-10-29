@@ -17,6 +17,8 @@ spans:
   - Plugins/UnrealGameIntelligence/Source/UnrealGameIntelligence/Public/Search/MinMax/GI_MinMaxAlphaBeta.h
 reconciled: 2026-10-23
 commit: 0dc7767
+status: 'current'
+summary: 'How the AI opponent is assembled (AI director: loadout, strategies, selector) and takes a turn: waits for a settled board → coordinator → selector → Mediator gate → end turn'
 ---
 
 # AI turn: who the opponent is, and how it takes a move

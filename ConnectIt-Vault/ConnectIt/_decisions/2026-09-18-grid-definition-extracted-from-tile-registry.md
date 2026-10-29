@@ -6,6 +6,7 @@ tags:
   - architecture
   - registries
   - unrealgridmechanics
+summary: 'Grid geometry extracted off UGridTileRegistryBase into its own UGridDefinition, shared by both registries as siblings'
 ---
 ## Decision
 

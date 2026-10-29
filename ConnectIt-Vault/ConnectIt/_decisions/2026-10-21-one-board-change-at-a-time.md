@@ -6,6 +6,7 @@ tags:
   - architecture
   - networking
   - board
+summary: 'One board change at a time: the server''s GameMode locks from a change until its visuals have played out (a completion marker on the event queue); requests are refused until the board settles, level changes queue and play one by one, the AI decides only from a settled board; the GameState mirrors "busy" for UI'
 ---
 ## Decision
 

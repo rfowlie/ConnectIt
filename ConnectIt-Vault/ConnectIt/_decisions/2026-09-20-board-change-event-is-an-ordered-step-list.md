@@ -7,6 +7,7 @@ tags:
   - events
   - replication
   - crumble
+summary: 'ChangeEvent becomes an ordered list of semantic, flat steps; the game-event queue carries a step index; steps describe every position they touched'
 ---
 ## Decision
 

@@ -6,6 +6,7 @@ tags:
   - board-state
   - level-design
   - tiles
+summary: 'Designer-set tile values (multiplier, active, shiftable, starting piece) reach board state through an interface the tile Blueprint implements; starting pieces get visuals from a one-shot BoardSeeded event'
 ---
 ## Decision
 

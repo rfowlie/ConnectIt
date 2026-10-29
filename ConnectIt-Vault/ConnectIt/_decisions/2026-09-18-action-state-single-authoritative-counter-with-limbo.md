@@ -7,6 +7,7 @@ tags:
   - playerstate
   - turn-end
   - replication
+summary: 'Per-action use counts live only on the plugin ATurnBasedPlayerState; after a confirmed action completes the component enters limbo until OnActionRuntimeStateUpdated, then checks auto-end'
 ---
 ## Decision
 

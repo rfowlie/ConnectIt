@@ -6,6 +6,7 @@ tags:
   - action-state
   - playerstate
   - ui
+summary: 'An action''s effective per-turn cap is runtime state (seeded once from config, not reset per turn), read by the gate and the UI; modifier machinery deferred'
 ---
 ## Decision
 

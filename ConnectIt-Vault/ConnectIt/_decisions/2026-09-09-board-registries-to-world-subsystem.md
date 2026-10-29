@@ -6,6 +6,7 @@ tags:
   - board
   - registries
   - subsystem
+summary: 'Tile/piece registries live on a UWorldSubsystem, duplicated per world from level-config templates'
 ---
 
 ## Decision

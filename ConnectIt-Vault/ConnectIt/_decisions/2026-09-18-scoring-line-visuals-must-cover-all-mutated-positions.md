@@ -7,6 +7,7 @@ tags:
   - visuals
   - swap
   - convention
+summary: 'Any action that can complete a scoring line must feed the scoring-line visual update every position it mutated — a swap-completed line once hid the completing piece while board state kept it'
 ---
 ## Decision
 

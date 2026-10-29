@@ -6,6 +6,7 @@ tags:
   - board
   - architecture
   - networking
+summary: 'Retire AConnectIt_BoardManager; split its jobs across GameMode / GameState / config'
 ---
 
 ## Decision

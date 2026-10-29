@@ -6,6 +6,7 @@ tags:
   - grid
   - board-shift
   - convention
+summary: 'Grid axes follow UE: +X forward (Up), +Y right; direction table swapped, UpLeft corrected, GetTilesByDirection flipped to match (vertical line holds Y fixed)'
 ---
 ## Decision
 

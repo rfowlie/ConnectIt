@@ -7,6 +7,7 @@ tags:
   - visuals
   - skins
   - architecture
+summary: 'Skins: tag categories → skin assets → presets → ID-based player selection → UGameInstanceSubsystem resolver (level-forced > override > preset > default); consumers pull + OnSkinChanged'
 ---
 ## Decision
 

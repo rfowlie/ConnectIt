@@ -5,6 +5,7 @@ superseded by:
 tags:
   - architecture
   - data
+summary: 'Each map names its board (level config) and default match preset in its World Settings; the level config is a reusable board; the project''s name-keyed LevelConfigs registry is gone (defaults remain as fallbacks)'
 ---
 ## Decision
 
