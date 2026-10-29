@@ -185,6 +185,31 @@ written -- **all approved by the owner 2026-10-28** (with the hub Stage 4 revisi
 - The adventure hub plan's **Stage 4 revised** (map node component, hover via the grid hover component, transform lerp,
   spline links) -- [adventure-hub-plan](adventure-hub-plan.md); it now `requires` the hover plan.
 
+## Testing Push: reading a power's events (owner question, answered by Claude)
+
+**Owner:** when the board resolves, the queue plays `ConnectIt.Event.TilePowerTriggered` then
+`ConnectIt.Event.PieceMoved` -- how do we tell it was Push, and which piece and tiles?
+
+**How it works today (checked in code):** each queued tag carries its event as payload; a listener reads it with the
+typed getters in `UConnectIt_BoardEventLibrary`:
+
+- **`GetActiveTilePowerTriggeredEvent`** → `TilePowerName` (e.g. `ConnectIt.TilePower.Push`), `Position` (the Push
+  tile), `Faction`, `bNoEffect`, `ReadyTurn` (cooldown), `LevelWideIndex`.
+- **`GetActivePieceMovedEvent`** → `From`, `To`, `Faction` (the piece moved, and where).
+- Every event also has **`CauseIndex`**: the index, in the same change's event list, of the event that set it off -- the
+  Piece Moved's cause is the Tile Power Triggered before it.
+
+**How a visualizer should use it:** route by event, not by power --
+- on Tile Power Triggered: find the tile actor at `Position` and let **it** play its "fired" effect (it knows it's a
+  Push tile -- the visualizer doesn't need to);
+- on Piece Moved: move the piece actor `From` → `To` (the same handler works for Push, Repel, Vacuum or a player's
+  Nudge).
+
+**Gap found:** Blueprint can read `CauseIndex` but can't follow it -- there is no way to get the active event's own
+index or to fetch the event at an index. Listeners can only rely on play order (Triggered arrives just before its
+moves). Two small helpers would close it: `GetActiveBoardEventIndex()` and `GetBoardEventCause()` (the active event's
+cause, typed like the other getters) -- e.g. so a Piece Moved can ask "was I moved by a power, and which one?".
+
 ## Suggested follow-ups
 
 | Item | Kind |
@@ -196,3 +221,4 @@ written -- **all approved by the owner 2026-10-28** (with the hub Stage 4 revisi
 | Tile catalog: power = effect struct (native tag, only its own values; trigger mask stays exposed for now) (5) | small plan (tile powers area) |
 | Layout tool: sync preview moves to their builder tiles (6, new behaviour) | small C++ (editor) |
 | `RefreshFromBoard` on grid actors | with the hover component plan |
+| Board event cause helpers (`GetActiveBoardEventIndex`, `GetBoardEventCause`) | small C++ |

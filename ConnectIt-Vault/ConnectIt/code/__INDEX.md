@@ -45,7 +45,7 @@ has none of its own (`/process-code` checks the pages).
 | AConnectIt_PlayerController | UCLASS (APlayerController) | Framework/Controller | primary | `Framework/Controller/ConnectIt_PlayerController.{h,cpp}` | stub — covered in systems/place-piece-request |
 | AConnectIt_AIController | UCLASS (AAIController) | Framework/Controller | primary | `Framework/Controller/ConnectIt_AIController.{h,cpp}` | stub |
 | AConnectIt_PlayerState | UCLASS | Framework/PlayerState | primary | `Framework/PlayerState/ConnectIt_PlayerState.h` | stub |
-| UConnectIt_PlacePieceAction / UConnectIt_DefaultViewerAction | UCLASS (`UTurnBasedAction` / `…SpectatorAction`) | Action | primary | `Action/ConnectIt_PlacePieceAction.{h,cpp}`, `Action/ConnectIt_DefaultViewerAction.h` | stub — covered in systems/place-piece-request |
+| UConnectIt_PlacePieceAction / UConnectIt_DefaultViewerAction | UCLASS (`UTurnBasedPlayerAction` / `…SpectatorAction`) | Action | primary | `Action/ConnectIt_PlacePieceAction.{h,cpp}`, `Action/ConnectIt_DefaultViewerAction.h` | stub — covered in systems/place-piece-request |
 | UConnectIt_LevelConfigDataAsset | UCLASS (UDataAsset) | Framework/Data | primary (config: the board) | `Framework/Data/ConnectIt_LevelConfigDataAsset.h` | stub |
 | Libraries (`UConnectIt_BoardStateLibrary`, `…_BoardEventLibrary`, `…_GameUtilityLibrary`, `…_LayoutToolLibrary`) | UCLASS (UBlueprintFunctionLibrary) | Framework/Library | primary | `Framework/Library/ConnectIt_*Library.{h,cpp}` | stub |
 | AConnectIt_PieceBase (was `AConnectIt_GridPiece`; `RefreshFromBoard`: faction from the display board) | UCLASS (`AGridPieceBase`) | Board/Actor | primary | `Board/Actor/ConnectIt_PieceBase.{h,cpp}` | stub |

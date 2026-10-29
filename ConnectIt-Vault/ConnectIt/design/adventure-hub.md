@@ -4,6 +4,16 @@ Design note (2026-10-23), the owner's look-and-feel ideas for Adventure mode. **
 nothing built.** Plans: [adventure-hub-plan](adventure-hub-plan.md); the hub map: [adventure-hub-map-plan](adventure-hub-map-plan.md) (**approved 2026-10-28**, not built) (**approved 2026-10-23**, not built). Builds on [adventure-modules-and-progression](adventure-modules-and-progression.md) (level
 types, the tutorial module, gating, the shard economy) and [adventure-mode](adventure-mode.md) (what a level can do).
 
+> **Vocabulary (2026-10-29):** the decisions below are kept as written; read them in the vocabulary settled by
+> [player actions, tile powers, board operations](../_decisions/2026-10-23-player-actions-tile-powers-board-operations.md):
+> - "skills" are **player actions** ("skill design" is the node's **action design**);
+> - "numbered uses" are **permanent uses** (from shards, back every level);
+> - "itemed uses" are **item actions** in the player's **inventory** (caps in the game's item inventory asset), spent
+>   within the node's **item budget**.
+>
+> (A "skill test" still means the player's skill.) As built:
+> [adventure-hub-plan](adventure-hub-plan.md) Stage 1 and its rename notes.
+
 ## Owner's direction
 
 - **A map of nodes.** You start at a central node and can play any node connected to it. Completing a node unlocks
@@ -257,3 +267,11 @@ completed node whose data asset was deleted → ignored; the start node missing 
 - **Validation also:** more than one Start flag in a hub map → error; a node data asset used by two components →
   error; an `Unlocks` entry with no component in this map → warning (it can't be revealed here).
 - **Sub-maps:** an **Exit** flag on the component the same way, validated to exactly one in a sub-map.
+
+### Revised (owner, 2026-10-28): a component on the hub game mode
+
+The hub system is **`UConnectIt_AdventureHubComponent` on `AConnectIt_GameMode_AdventureHub`**, not a world subsystem
+-- it only exists in hub maps. It **discovers** the map node components when it begins play (pull), and later spawns
+push themselves to it; this replaces "register in `OnRegister`, walk on `OnWorldBeginPlay`" above (the editor-world
+gotcha goes away; the save-loaded-first gotcha stays). Server-only is fine for a single-player hub. Detail:
+[adventure-hub-map-plan](adventure-hub-map-plan.md).

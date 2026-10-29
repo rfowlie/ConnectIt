@@ -6,6 +6,11 @@ Vault-wide passes go in `_core/_logs/`.
 
 Newest first:
 
+- [2026-10-29-1040](2026-10-29-1040.md) — session — player actions Stage 7 (vault): `UTurnBasedPlayerAction` page
+  (renamed), new `ActionConfig` / item inventory / PlayerState pages, ConnectIt pages on the new vocabulary and item
+  gate, vocabulary line in `CLAUDE.md`.
+- [2026-10-29-1039](2026-10-29-1039.md) — session — board visualizer: owner's notes filed, recommendations (typed registry getters, one visualizer actor per map, per-event Blueprint functions, completion handles).
+
 - [2026-10-28-1511](2026-10-28-1511.md) — session — hover-component Stage 5: `UGridHoverComponent` page, hover-relay
   rewritten, decision note; plan complete.
 - [2026-10-28-1508](2026-10-28-1508.md) — session — hover-component Stage 3: `IGridBoardActor::RefreshFromBoard`

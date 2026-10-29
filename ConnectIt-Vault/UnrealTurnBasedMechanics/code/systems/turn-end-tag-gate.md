@@ -71,7 +71,8 @@ sequenceDiagram
    no valid next participant.
 7. **`StartTurn`** sets the match phase back to `InProgress`, then does the incoming
    participant's per-turn action bookkeeping on its `ATurnBasedPlayerState` --
-   `TickActionCooldowns` (its own turns only) and `ResetActionTurnCounters` -- **before** the
+   `TickActionCooldowns` (its own turns only) and `ResetActionTurnCounters` (permanent uses and item uses this turn)
+   -- **before** the
    turn-start notification, so no client sees last turn's counts as this turn's; then
    `SetPhase(TurnStart)` and the notifications.
 

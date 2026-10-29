@@ -35,7 +35,7 @@ does a linear search of `Bindings` for the entry whose `InputAction` matches the
   context immediately (`GetMappingContext()` valid right after).
 - `BindAll()` / `UnbindAll()` — idempotent add/remove of the context + action bindings.
 - `GetMappingContext()` — exposed so a consumer with bespoke input needs (e.g.
-  `UTurnBasedAction`'s hover+confirm selection) can add one more key mapping onto the
+  `UTurnBasedPlayerAction`'s hover+confirm selection) can add one more key mapping onto the
   same context.
 - `FInputTagBinding`: `InputAction`, `ETriggerEvent` (default `Triggered`), `FKey`,
   `InputActionDelegate` (bound per-entry to the actual handler).
@@ -43,7 +43,7 @@ does a linear search of `Bindings` for the entry whose `InputAction` matches the
 ## Collaborators
 
 - Both Enhanced Input dependencies are **injected** via `Initialise` (no `GetWorld()`).
-- Consumers: `UnrealTurnBasedMechanics` `UTurnBasedAction` — overrides
+- Consumers: `UnrealTurnBasedMechanics` `UTurnBasedPlayerAction` — overrides
   `ConstructInputBindings()` to populate `InputBindings`, called from `InitialiseAction`
   before this binder is constructed.
 
@@ -58,7 +58,7 @@ does a linear search of `Bindings` for the entry whose `InputAction` matches the
   (whether intentionally, for two different `TriggerEvent`s, or by accident) will both fire
   on every trigger of that action, regardless of which `TriggerEvent` actually happened.
   Matches the still-open `// TODO: check if there are duplicate Input Actions in bindings`
-  in `UTurnBasedAction::InitialiseAction` — not yet guarded against.
+  in `UTurnBasedPlayerAction::InitialiseAction` — not yet guarded against.
 - If `InputActionDelegate` isn't bound on a matching entry, `ExecuteIfBound()` fails and a
   `Warning` is logged (`InputTagBinder - HandleInputTriggeredExecuteDelegate`) — check logs
   if a configured input silently does nothing.
@@ -78,4 +78,4 @@ Change `FInputTagBinding`'s shape or the dispatch mechanism and also update ever
 ## See also
 
 - In-repo: [[UnrealGameMechanics/CLAUDE|UnrealGameMechanics overview]] → *Input*.
-- Consumer: [[UnrealTurnBasedMechanics/code/UTurnBasedAction|UTurnBasedAction]]
+- Consumer: [[UnrealTurnBasedMechanics/code/UTurnBasedPlayerAction|UTurnBasedPlayerAction]]

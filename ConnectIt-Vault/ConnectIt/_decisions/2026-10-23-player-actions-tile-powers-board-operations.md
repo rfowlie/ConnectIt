@@ -42,6 +42,29 @@ One vocabulary for the plugin suite and the game. The plugin conforms first, the
 - **Renames:** the plugin's `UTurnBasedAction` → `UTurnBasedPlayerAction`; tags `ConnectIt.Action.*` →
   `ConnectIt.PlayerAction.*`, `ConnectIt.Game.State.*` → `ConnectIt.BoardOperation.*`.
 
+## In code (built 2026-10-24 / 25)
+
+- **Plugin (UnrealTurnBasedMechanics):**
+  - [[UnrealTurnBasedMechanics/code/UTurnBasedPlayerAction|UTurnBasedPlayerAction]] (class redirect from
+    `UTurnBasedAction`).
+  - Permanent: [[UnrealTurnBasedMechanics/code/ActionConfig|`FPermanentActionConfig`]] (`MatchUses`, `TurnUses`,
+    `CooldownTurns`) in a loadout's `PermanentActions`, or a list the game builds
+    (`ATurnBasedPlayerState::InitialiseActionState(Loadout, List)`).
+  - Items: `FItemActionEntry` (class + count) in the PlayerState's inventory. Caps live in
+    [[UnrealTurnBasedMechanics/code/UItemActionInventoryDataAsset|UItemActionInventoryDataAsset]] (Project Settings >
+    Turn Based Mechanics > Item Inventory). `GrantItems(Class, Amount)`.
+  - The per-match `FItemBudget` (`SetItemBudget`).
+  - The item path: `UTurnBasedActionsComponent::ActivateItemAction` → a request marked `bIsItemUse` → the server's
+    `CanUseItem` / `ConsumeItemUse`.
+  - Turn end: the **Item Used** leaf (`UTurnEndRequirementItemUsed`); an Action Used leaf counts permanent uses only.
+  - See [[UnrealTurnBasedMechanics/code/ATurnBasedPlayerState|ATurnBasedPlayerState]].
+- **ConnectIt:**
+  - tags `ConnectIt.PlayerAction.*` / `ConnectIt.BoardOperation.*`, the old ones redirected; "operation tag"
+    (`GetOperationTag`); every bare "Power" is "TilePower";
+  - the Mediator gates both paths; **the AI never uses items** (owner);
+  - Adventure: `UConnectIt_ActionShardTableDataAsset` (shard cost per use), `GetPermanentUses`, and the map node's
+    `ActionDesign` / `ItemBudget`.
+
 ## Why
 
 - **One word per concept** across the plugin and the game, and nothing that collides with Unreal (GAS "abilities").

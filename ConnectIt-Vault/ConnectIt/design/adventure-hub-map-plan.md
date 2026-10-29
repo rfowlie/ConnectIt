@@ -28,10 +28,14 @@ Stage 5. Written 2026-10-28 in a design-only session; **approved by the owner 20
 Settled with the owner:
 
 - **A map node is a component on any actor** (`UConnectIt_MapNodeComponent`), not an actor class.
-- **Components register themselves with a world subsystem**, which keeps **actor → data asset** and **data asset →
-  actor** maps.
-- **Register in `OnRegister`, walk on `OnWorldBeginPlay`.** On a map load, world subsystems exist before the level's
-  components register, and every placed component registers before any `BeginPlay` -- so the walk sees every node.
+- **The hub system is a component on the hub game mode** (`UConnectIt_AdventureHubComponent` on
+  `AConnectIt_GameMode_AdventureHub`) -- revised 2026-10-28 from a world subsystem, so it only exists in hub maps. It
+  keeps **actor → data asset** and **data asset → actor** maps.
+- **Discovery is pulled:** when the hub component begins play it finds every map node component in the world, then runs
+  the walk -- no dependency on load order. A node spawned later **pushes** itself to the hub component.
+- **Server-only accepted:** a game mode exists only on the server / in standalone; Adventure is single-player, so the
+  hub always has one. A networked hub would move the system client-side (a GameState component or a local-player
+  subsystem).
 - **The start node is a Start flag on the component** (an **Exit** flag likewise for sub-maps).
 - **The walk** enables nodes from the **active player file's Adventure progress** (game instance): breadth-first from
   the start, through completed nodes' `Unlocks`; states completed / available / gated; nothing about the map is saved
@@ -40,45 +44,56 @@ Settled with the owner:
 
 ### Gotchas (must be handled -- each has a test or a check below)
 
-1. **`OnRegister` also runs in editor worlds** (placing or moving an actor). Register only in **game worlds**
-   (`GetWorld()->IsGameWorld()`), and the subsystem only exists in game worlds.
-2. **`OnRegister` can run more than once** for one component (construction script reruns, re-registration).
-   Registering is **add-or-update**; **`OnUnregister` removes** the entry.
-3. **Late arrivals** (a node spawned at runtime, a streamed sub-level) register **after** the walk: the subsystem
-   applies that node's state as it registers when the walk has already run.
-4. **The player file's progress must be loaded** by the game instance **before** the hub map's `OnWorldBeginPlay`,
-   or the walk sees an empty save and reveals only the start.
+1. ~~Editor-world registration~~ -- gone: editor worlds have no game mode, and discovery runs only when the hub
+   component begins play.
+2. **Discovery runs once** per hub map load; a late node that pushes itself twice is added-or-updated, and a destroyed
+   node removes itself (`OnUnregister` / `EndPlay`).
+3. **Late arrivals** (a node spawned at runtime, a streamed sub-level) **push** themselves to the hub component (found
+   through the game mode) and get their state from the stored walk.
+4. **The player file's progress must be loaded** by the game instance **before** the hub component begins play, or the
+   walk sees an empty save and reveals only the start.
 5. A **deleted node id** in a save only matters in testing (ignored by the walk); a save override / renew tool comes
    later.
 
 Each stage builds and passes the tests before the next; the editor must be closed for builds; the owner commits between
 stages.
 
-## Stage 1: the node component and registration
+## Revision (owner, 2026-10-28, applied): a component on the hub game mode, not a world subsystem
+
+Owner's reason: hub maps have their own game mode, so the hub system should only exist there. Trade-offs weighed before
+applying -- for: only in hub maps, clear ownership, settings on the game mode Blueprint, no editor-world registration;
+cost: server-only (fine for a single-player hub), and discovery must be pulled at `BeginPlay` rather than relying on
+`OnRegister` reaching the game mode. The stages below are written for it.
+
+## Stage 1: the hub game mode, its component, and the node component
 
 - **`UConnectIt_MapNodeComponent`** (`Public/Adventure/`): `NodeData` (`UConnectIt_MapNodeDataAsset`), **`bIsStart`**,
   **`bIsExit`** (editable on instances); **`State`** (Hidden / Available / Gated / Completed, plus a "focus" flag) with
   `OnStateChanged` for Blueprint; on state Hidden it hides its owner (and its collision), otherwise shows it.
-- **`UConnectIt_AdventureHubSubsystem`** (world subsystem, `ShouldCreateSubsystem`: game worlds only):
-  `RegisterNode` / `UnregisterNode`; `NodeToActor` and `ActorToNode` maps (by data asset); the start and exit
-  components found while registering; `GetActorForNode`, `GetNodeForActor`.
-- The component registers in **`OnRegister`** (game worlds only -- gotcha 1), unregisters in **`OnUnregister`**;
-  registering twice updates, not duplicates (gotcha 2); a second component with the same data asset → logged error, the
-  first kept.
-- Tests: registering twice keeps one entry; unregister removes from both maps; duplicate data asset rejected
-  (unit-level with a test world where needed).
+- **`AConnectIt_GameMode_AdventureHub`** -- the hub maps' game mode (no match; owns the hub listener of Stage 4 and the
+  return-from-level focus); creates the hub component.
+- **`UConnectIt_AdventureHubComponent`** (on the hub game mode): `NodeToActor` and `ActorToNode` maps (by data asset);
+  the start and exit components; `GetActorForNode`, `GetNodeForActor`; a static helper to find it from any world
+  context (`GetAuthGameMode` → the component; null outside hub maps).
+- **Discovery (pull)** on the hub component's `BeginPlay`: iterate the world's map node components, fill the maps, find
+  Start / Exit; a second component with the same data asset → logged error, the first kept; then run the walk
+  (Stage 2).
+- **Late spawns (push):** a map node component whose `BeginPlay` comes after discovery calls `AddNode` on the hub
+  component (add-or-update); `EndPlay` calls `RemoveNode`.
+- Tests: discovery finds every node; a duplicate data asset rejected; a late node added once even if it pushes twice;
+  removal clears both maps (with a test world where needed).
 
 ## Stage 2: the reveal walk
 
-- **A pure function** (no world) that the subsystem calls: inputs = the start node, each node's `Unlocks`, the
+- **A pure function** (no world) that the hub component calls: inputs = the start node, each node's `Unlocks`, the
   progress (completed ids, broken seals, shards, seals), and the requirement check from the adventure subsystem;
   output = each node's state and the revealed links. Breadth-first with a visited set (loops can't hang it); completed
   → its unlocks are revealed; not completed → frontier (revealed, unlocks hidden); revealed nodes are Available when
   their gate is met or their seal is broken, else Gated (with what's missing).
-- **On `OnWorldBeginPlay`** the subsystem reads progress from the game instance's player file (gotcha 4: if none is
+- **After discovery** (the hub component's `BeginPlay`) it reads progress from the game instance's player file (gotcha 4: if none is
   loaded, a logged error and the start node only), runs the walk, applies states to the components, and remembers the
   result.
-- **Late arrivals** (gotcha 3): a node registering after the walk gets its state from the remembered result (Hidden if
+- **Late arrivals** (gotcha 3): a node pushing itself after the walk gets its state from the remembered result (Hidden if
   the walk didn't reach it).
 - **Live updates:** after Break Seal (adventure subsystem), the node's state updates in place.
 - **Debug:** a console variable / command to **reveal every node** (the owner's worst-case performance check, and for
@@ -87,10 +102,9 @@ stages.
   seal makes it available; a loop; a deleted id in progress ignored (gotcha 5); an unlock with no registered node
   skipped.
 
-## Stage 3: the hub game mode and validation
+## Stage 3: validation
 
-- **`AConnectIt_GameMode_AdventureHub`** -- the hub maps' game mode (no match; owns the hub listener of Stage 4 and
-  the return-from-level focus).
+- (The hub game mode itself moved to Stage 1, to host the hub component.)
 - **Map validation** (the World Settings check already branches on game mode): when the map's game mode is the hub game
   mode --
   - **no** component flagged Start → **error**; **more than one** → **error**;
@@ -126,7 +140,8 @@ stages.
 
 ## Stage 6: vault
 
-Decision note (map nodes as registered components, Start / Exit flags, the reveal walk, the gotchas); a `code/`
+Decision note (map nodes as components discovered by a component on the hub game mode, Start / Exit flags, the reveal
+walk, the gotchas); a `code/`
 recipe "build a hub map"; update [adventure-hub](adventure-hub.md) and the adventure hub plan (Stage 4 points here);
 log.
 

@@ -83,7 +83,7 @@ Design: [phased-levels](../../design/phased-levels.md); decision:
 - Output Log, filter `ConnectIt_`:
   - `phase 'ConnectIt.Phase.2' begins`;
   - `player win goals replaced (N)`;
-  - `level operation 'ConnectIt.Game.State.ChangeLayout' '<layout>': -A tile(s), +B tile(s)`.
+  - `level operation 'ConnectIt.BoardOperation.ChangeLayout' '<layout>': -A tile(s), +B tile(s)`.
   - Each is followed by its own board change and release (one board change at a time).
 - In PIE: the banner (if any), then the tiles go / come, and the camera reframes. Pieces on shared tiles stay. The UI's
   progress shows the new goal from its start. **Get Current Phase** (GameState) reads the new phase.

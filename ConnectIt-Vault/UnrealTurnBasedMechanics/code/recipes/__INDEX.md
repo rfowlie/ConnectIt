@@ -10,7 +10,7 @@ Step-by-step task procedures. Governed by [[_core/_schema/_code|_core/_schema/_c
 
 | Task | When you'd do it | Status |
 |---|---|---|
-| [[UnrealTurnBasedMechanics/code/recipes/add-a-turn-action\|add-a-turn-action]] | Add a new player move / ability as a `UTurnBasedAction` subclass | current |
+| [[UnrealTurnBasedMechanics/code/recipes/add-a-turn-action\|add-a-turn-action]] | Add a new player action (`UTurnBasedPlayerAction` subclass) -- permanent, item, or both | current |
 
 Candidate recipes not yet written (`stub`): add a turn-order strategy, register a system
 against `TurnEndEventTag`, add a system-action slot, wire a controller from scratch

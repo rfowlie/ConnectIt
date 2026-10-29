@@ -296,6 +296,9 @@ stages.
 
 ## Stage 7: vault
 
+**Done 2026-10-29** ([log](../_logs/2026-10-29-1040.md)). Stage 6 (owner, editor) is still open, so the plan stays in
+progress.
+
 - The decision note, updated with the item model.
 - **UnrealTurnBasedMechanics code pages:** the actions component, the action stack and turn-end flows, the
   add-a-turn-action recipe, and the inventory and budget.

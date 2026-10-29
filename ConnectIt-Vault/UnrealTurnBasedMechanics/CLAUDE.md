@@ -3,9 +3,11 @@
 A network-replicated turn-based match framework with no knowledge of grids or game rules.
 Each controller's moment-to-moment behaviour is an entry on an **action stack**
 (`UTurnBasedActionsComponent`) fed from a designer `UActionLoadoutDataAsset` with five
-system slots (root / idle / spectator / pause / awaiting-confirmation). `UTurnBasedAction`
-is the per-turn action, with cooldowns and an Enhanced-Input grid-tile
-hover→validate→select pipeline. `UTurnBasedParticipantManagerComponent` (on the game
+system slots (root / idle / spectator / pause / awaiting-confirmation).
+`UTurnBasedPlayerAction` (a **Player Action**; was `UTurnBasedAction`) is what a participant does on their turn, with
+an Enhanced-Input grid-tile hover→validate→select pipeline; how often it may be used lives on the PlayerState -- a
+**permanent action** list (match / turn uses, cooldown), an **item** inventory (caps in a static asset) and a per-match
+**item budget**. `UTurnBasedParticipantManagerComponent` (on the game
 state) is the replicated match state machine: ready-check, turn timers,
 forfeit-on-disconnect, reconnect handling, and a **gameplay-tag-gated turn-end sequence**
 routed through [UnrealGameMechanics](../UnrealGameMechanics/CLAUDE.md)'

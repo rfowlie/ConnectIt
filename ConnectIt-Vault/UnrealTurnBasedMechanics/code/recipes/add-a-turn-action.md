@@ -1,24 +1,24 @@
 ---
 schema: recipes
-task: Add a new player move / ability as a UTurnBasedAction subclass and make it selectable during a turn.
+task: Add a new player action as a UTurnBasedPlayerAction subclass and make it usable during a turn -- as a permanent action, an item, or both.
 touches:
-  - a new UTurnBasedAction subclass (C++ or Blueprint)
-  - the controller's UActionLoadoutDataAsset (PermanentActions / NumberedActions entry)
-  - Plugins/UnrealTurnBasedMechanics/Source/UnrealTurnBasedMechanics/Public/Action/TurnBasedAction.h
+  - a new UTurnBasedPlayerAction subclass (C++ or Blueprint)
+  - the loadouts' PermanentActions (a permanent action) and/or the item inventory asset's MaxHeld (an item)
+  - Plugins/UnrealTurnBasedMechanics/Source/UnrealTurnBasedMechanics/Public/Action/TurnBasedPlayerAction.h
   - Plugins/UnrealTurnBasedMechanics/Source/UnrealTurnBasedMechanics/Public/Action/ActionConfig.h
   - GetActionTag() override (C++ or the Blueprint event), ConstructInputBindings() override
     (if it needs named inputs), ProducesRequestType() (if it changes the board)
   - a project USTRUCT for the request payload (only if the action changes the board)
   - UDWidget_TurnBasedActionsComponent (only if an action bar surfaces the new action)
-reconciled: 2026-10-22
-commit: ee45a98
+reconciled: 2026-10-29
+commit: cb9f405
 ---
 
 # Recipe: add a turn action
 
 ## Goal
 
-A new [[UnrealTurnBasedMechanics/code/UTurnBasedAction|UTurnBasedAction]] subclass that a player can activate on their turn — with optional grid-tile selection and an optional board-change request — showing up through the existing action stack with no engine-side changes.
+A new [[UnrealTurnBasedMechanics/code/UTurnBasedPlayerAction|UTurnBasedPlayerAction]] subclass that a player can activate on their turn — with optional grid-tile selection and an optional board-change request — showing up through the existing action stack with no engine-side changes.
 
 ## Prerequisites
 
@@ -32,7 +32,7 @@ A new [[UnrealTurnBasedMechanics/code/UTurnBasedAction|UTurnBasedAction]] subcla
 
 ## Steps
 
-1. **Create the subclass.** Derive from `UTurnBasedAction` (Blueprint child of a C++
+1. **Create the subclass.** Derive from `UTurnBasedPlayerAction` (Blueprint child of a C++
    base is the common path). Implement `GetActionTag()` (a `BlueprintNativeEvent` — a
    C++ override, or the Blueprint event node) to return this action's identity tag; it's
    not a settable data field, each concrete action hardcodes its own. Action config on the
@@ -40,7 +40,8 @@ A new [[UnrealTurnBasedMechanics/code/UTurnBasedAction|UTurnBasedAction]] subcla
    presentation fields.
 2. **Selection behaviour (if `bRequiresSelection`).** Override the BlueprintNativeEvents:
    `IsValidHoverTile` / `IsValidSelectionTile` (predicate on `AGridTileBase`),
-   `HandleValidHover` / `HandleHoverCleared` (preview), `HandleValidSelection` (commit),
+   `HandleValidHover` / `HandleHoverCleared` (preview; hover end clears too), `HandleValidSelection` (commit),
+   `HandleTileClicked` (optional, click-only handling),
    `ClearSelectionState` (teardown). `BindInput()` / `BindGridSubsystem()` are called
    automatically from `Activate_Internal` when `bRequiresSelection` is true; for a
    deferred selection leave the flag false and call them yourself when ready.
@@ -58,17 +59,20 @@ A new [[UnrealTurnBasedMechanics/code/UTurnBasedAction|UTurnBasedAction]] subcla
 5. **Completion.** Call `Complete()` on success or `Cancel()` if the player backs out;
    override `OnCompleted` / `OnCancelled` for cleanup. Uses are counted by the server when a
    request commits, not by `Complete()`.
-6. **Register it in the loadout**, keyed by class:
-   - **`PermanentActions`** (`FPermanentActionConfig`): always available -- `MaxUsesPerTurn`
-     (0 = unlimited), `CooldownTurns`.
-   - **`NumberedActions`** (`FNumberedActionConfig`): a budget -- `StartingMatchUses`,
-     `MaxUsesPerTurn`, `MaxHeldUses`, `CooldownTurns`.
+6. **Make it usable**, keyed by class (see [[UnrealTurnBasedMechanics/code/ActionConfig|ActionConfig]]):
+   - **A permanent action:** an entry in the loadout's **`PermanentActions`** (`FPermanentActionConfig`):
+     `MatchUses` (-1 = unlimited), `TurnUses` (at least 1), `CooldownTurns`. (Or the game's own list, e.g. from a
+     save.)
+   - **An item:** list it in the item inventory asset's **`MaxHeld`**
+     ([[UnrealTurnBasedMechanics/code/UItemActionInventoryDataAsset|UItemActionInventoryDataAsset]]) -- unlisted, it
+     can't be held. Players get it through `InitialiseInventory` / `GrantItems`; it's used through
+     `ActivateItemAction` (e.g. an inventory button), limited by the match's item budget.
    - Or a system slot (root / idle / spectator / pause / awaiting confirmation).
-   - If the turn should only end once it's been used, reference it from a leaf of the
-     loadout's `TurnEndRequirements` tree.
-   Check the loadout's Data Validation output (empty or duplicate action tags are warned).
+   - If the turn should only end once it's been used, reference it from an **Action Used** leaf of the loadout's
+     `TurnEndRequirements` tree (permanent uses), or use an **Item Used** leaf (any item).
+   Check the loadout's Data Validation output.
 7. **Chaining (optional).** To push a follow-up action, call
-   `RequestNextAction(TSubclassOf<UTurnBasedAction>)`.
+   `RequestNextAction(TSubclassOf<UTurnBasedPlayerAction>)`.
 
 ## Verify
 
@@ -98,7 +102,7 @@ A new [[UnrealTurnBasedMechanics/code/UTurnBasedAction|UTurnBasedAction]] subcla
 
 ## See also
 
-- [[UnrealTurnBasedMechanics/code/UTurnBasedAction|UTurnBasedAction]] ·
+- [[UnrealTurnBasedMechanics/code/UTurnBasedPlayerAction|UTurnBasedPlayerAction]] ·
   [[UnrealTurnBasedMechanics/code/UActionLoadoutDataAsset|UActionLoadoutDataAsset]] ·
   [[UnrealTurnBasedMechanics/code/UTurnBasedActionsComponent|UTurnBasedActionsComponent]]
 - In-repo: [[UnrealTurnBasedMechanics/CLAUDE|UnrealTurnBasedMechanics overview]] → *Action*.

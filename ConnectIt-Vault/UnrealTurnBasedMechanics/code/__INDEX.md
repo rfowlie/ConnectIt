@@ -1,7 +1,7 @@
 ---
 schema: code
-reconciled: 2026-09-14
-commit: 131609f
+reconciled: 2026-10-29
+commit: cb9f405
 ---
 
 # UnrealTurnBasedMechanics — code index
@@ -17,16 +17,20 @@ drift detected · **covered in X** = documented inside another type's page.
 | Type | Kind | Area | Role | Source (`Public/…`, `Private/…`) | Status |
 |---|---|---|---|---|---|
 | [[UnrealTurnBasedMechanics/code/UTurnBasedActionsComponent\|UTurnBasedActionsComponent]] | UCLASS (component) | Action | primary | `Action/TurnBasedActionsComponent.{h,cpp}` | current |
-| [[UnrealTurnBasedMechanics/code/UTurnBasedAction\|UTurnBasedAction]] | UCLASS (abstract) | Action | primary | `Action/TurnBasedAction.{h,cpp}` | current |
+| [[UnrealTurnBasedMechanics/code/UTurnBasedPlayerAction\|UTurnBasedPlayerAction]] (was `UTurnBasedAction`) | UCLASS (abstract) | Action | primary | `Action/TurnBasedPlayerAction.{h,cpp}` | current |
 | [[UnrealTurnBasedMechanics/code/UTurnBasedActionBase\|UTurnBasedActionBase]] | UCLASS (abstract) | Action | primary | `Action/TurnBasedActionBase.{h,cpp}` | current |
 | [[UnrealTurnBasedMechanics/code/UActionLoadoutDataAsset\|UActionLoadoutDataAsset]] | UCLASS (UDataAsset) | Action | primary | `Action/ActionLoadoutDataAsset.{h,cpp}` | current |
+| [[UnrealTurnBasedMechanics/code/ActionConfig\|ActionConfig]] (`FPermanentActionConfig`, runtime state / entry, `FItemActionEntry`, `FItemBudget`) | USTRUCT ×5 | Action | primary (data) | `Action/ActionConfig.h` | current |
+| [[UnrealTurnBasedMechanics/code/UItemActionInventoryDataAsset\|UItemActionInventoryDataAsset]] + `UTurnBasedMechanicsSettings` | UCLASS (UDataAsset, UDeveloperSettings) | Action / Top-level | primary (item caps) | `Action/ItemActionInventoryDataAsset.{h,cpp}`, `TurnBasedMechanicsSettings.h` | current |
+| Turn-end requirement nodes (`UTurnEndRequirementGroup`, `…Leaf` "Action Used", `…ItemUsed`, `FTurnEndUses`) | UCLASS (instanced UObject) | Action | primary | `Action/TurnEndRequirement.{h,cpp}` | covered in UActionLoadoutDataAsset |
 | [[UnrealTurnBasedMechanics/code/UTurnBasedParticipantManagerComponent\|UTurnBasedParticipantManagerComponent]] | UCLASS (component) | Turn/Participant | primary (core) | `Turn/Participant/TurnBasedParticipantManagerComponent.{h,cpp}` | current |
 | [[UnrealTurnBasedMechanics/code/UTurnBasedParticipantComponent\|UTurnBasedParticipantComponent]] | UCLASS (component) | Turn/Participant | primary | `Turn/Participant/TurnBasedParticipantComponent.{h,cpp}` | current |
 | [[UnrealTurnBasedMechanics/code/ITurnOrderInterface\|ITurnOrderInterface]] | UINTERFACE | Turn/Order | primary (contract) | `Turn/Order/TurnOrderInterface.{h,cpp}` | current |
 | UTurnBasedSpectatorAction | UCLASS (abstract) | Action | primary | `Action/TurnBasedSpectatorAction.{h,cpp}` | stub |
 | FTurnActionSnapshot / FTurnBasedActionsComponentInfo | USTRUCT | Action | internal (debug) | `Action/TurnBasedActionsComponent.h` | covered in UTurnBasedActionsComponent |
 | UTurnBasedPauseAction | UCLASS | Action/Spectator | primary (default) | `Action/Spectator/TurnBasedPauseAction.{h,cpp}` | stub |
-| ATurnBasedGameMode / GameState / PlayerState | UCLASS | Framework | primary | `Framework/{GameMode,GameState,PlayerState}/*.{h,cpp}` | stub |
+| [[UnrealTurnBasedMechanics/code/ATurnBasedPlayerState\|ATurnBasedPlayerState]] | UCLASS (APlayerState) | Framework | primary (action uses, inventory, item budget, turn end) | `Framework/PlayerState/TurnBasedPlayerState.{h,cpp}` | current |
+| ATurnBasedGameMode / GameState | UCLASS | Framework | primary | `Framework/{GameMode,GameState}/*.{h,cpp}` | stub |
 | ATurnBasedPlayerControllerBase / ATurnBasedAIController | UCLASS (abstract) | Framework/Controller | primary | `Framework/Controller/TurnBased{PlayerControllerBase,AIController}.{h,cpp}` | stub |
 | UTurnBasedControllerCoordinatorComponent | UCLASS (component) | Framework/Controller | primary (plumbing) | `Framework/Controller/TurnBasedControllerCoordinatorComponent.{h,cpp}` | stub |
 | UTurnBasedGameEvent | UCLASS (abstract) | GameEvent | primary (extension point) | `GameEvent/TurnBasedGameEvent.{h,cpp}` | stub |
@@ -51,9 +55,12 @@ siblings on `UTurnBasedParticipantComponent` — not a type, no page.
   ([[UnrealTurnBasedMechanics/code/UTurnBasedActionsComponent|UTurnBasedActionsComponent]])
   fed from a
   [[UnrealTurnBasedMechanics/code/UActionLoadoutDataAsset|UActionLoadoutDataAsset]] with
-  five system slots. `UTurnBasedActionBase` → `UTurnBasedAction` (per-turn, with the grid
+  five system slots. `UTurnBasedActionBase` → [[UnrealTurnBasedMechanics/code/UTurnBasedPlayerAction|UTurnBasedPlayerAction]] (a Player Action, with the grid
   hover→select pipeline + board-change confirmation gate) / `UTurnBasedSpectatorAction`
-  (passive views). See
+  (passive views). How often an action may be used lives on
+  [[UnrealTurnBasedMechanics/code/ATurnBasedPlayerState|ATurnBasedPlayerState]]: a permanent list, an item
+  inventory (caps: [[UnrealTurnBasedMechanics/code/UItemActionInventoryDataAsset|the item inventory asset]]) and the
+  match's item budget ([[UnrealTurnBasedMechanics/code/ActionConfig|ActionConfig]]). See
   [[UnrealTurnBasedMechanics/code/systems/action-stack-lifecycle|systems/action-stack-lifecycle]].
 - **`Turn/Participant/`** — the replicated match state machine
   ([[UnrealTurnBasedMechanics/code/UTurnBasedParticipantManagerComponent|…ManagerComponent]]

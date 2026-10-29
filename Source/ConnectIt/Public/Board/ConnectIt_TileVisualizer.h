@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "GameplayTagContainer.h"
+#include "Events/ConnectIt_BoardEvents.h"
 #include "UObject/Object.h"
 #include "ConnectIt_TileVisualizer.generated.h"
 
@@ -37,6 +38,9 @@ public:
 
     // The board event tags it reacts to
     static TArray<FGameplayTag> GetHandledEventTags();
+
+    UFUNCTION(BlueprintImplementableEvent, BlueprintCallable, Category= "ConnectIt | Visualizer")
+    void HandlePlacePiece(const FConnectItBoardEvent_PiecePlaced& Payload);
 
 private:
 

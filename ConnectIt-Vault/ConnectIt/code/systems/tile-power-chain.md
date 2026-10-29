@@ -61,7 +61,7 @@ turn start, one board change at a time. The AI's search doesn't make this change
 
 **Firing one power** (`FConnectItPowerChain::TryFire`). A power is the tile's own (its tag looked up in the rules'
 `TilePowers`, copied from the [tile catalog](../../_decisions/2026-10-22-tile-catalog-and-builder-tiles.md) at match
-start) or a level-wide one (`LevelWidePowers`). It fires only for a trigger in its set (`Triggers`, a bitmask).
+start) or a level-wide one (`LevelWideTilePowers`). It fires only for a trigger in its set (`Triggers`, a bitmask).
 
 - **What can stop it:**
   - **the gate:** the effect's `PassesGate` says no (Push, Vacuum, Repel: the tile's multiplier below their
@@ -87,7 +87,7 @@ read the board as far as the player has seen it. The change record stays on the 
 plays:
 
 - it finds the tile actors at the event's positions;
-- it calls each one's hook (`AConnectIt_TileBase::OnPowerTriggered`, `OnPieceEnter`, ...) with a fresh
+- it calls each one's hook (`AConnectIt_TileBase::OnTilePowerTriggered`, `OnPieceEnter`, ...) with a fresh
   `UConnectIt_TileReaction`;
 - the queue moves on only once every reaction has called **Finish**, so a chain plays in order;
 - with no actor, or if every hook finished at once, it completes on the next tick.

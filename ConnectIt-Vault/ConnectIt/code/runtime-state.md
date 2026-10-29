@@ -28,7 +28,7 @@ convenience wrappers over reaching into a manager directly.
 | The board event playing right now (in a tag listener) | `UConnectIt_BoardEventLibrary::GetActive...Event` (typed) / `GetActiveBoardEventAs<T>` (C++) | the event queue's payload | Callable |
 | Both states + change event | `GetBoardSnapshot()` → `const FConnectItBoardStateSnapshot*` | same | — |
 | **The board as the player has seen it** (for visuals: steps along one event at a time) | `GetDisplayBoard()` (+ `OnDisplayBoardChanged`) | same, every machine | Pure |
-| Tile lock, power and chain (pass the display board in visuals) | `UConnectIt_BoardStateLibrary::GetPlacementBlocker / GetPowerTurnsLeft(State, Position, CurrentTurn) / GetChainPartner / GetChainedTilesFor`; fields `bIsLocked`, `TilePowerTag`, `PowerReadyTurn`, `TileId`, `ChainPartnerId` on `FConnectItTileData` | static library over a board | Pure |
+| Tile lock, power and chain (pass the display board in visuals) | `UConnectIt_BoardStateLibrary::GetPlacementBlocker / GetTilePowerTurnsLeft(State, Position, CurrentTurn) / GetChainPartner / GetChainedTilesFor`; fields `bIsLocked`, `TilePowerTag`, `TilePowerReadyTurn`, `TileId`, `ChainPartnerId` on `FConnectItTileData` | static library over a board | Pure |
 | The turn a board is at (tile power cooldowns) | `FConnectItBoardState::TurnNumber` | on the struct | ReadOnly |
 | Per-tile queries | `FConnectItBoardState::IsTileOccupied / IsTileActive / GetScore` (placeable: `FConnectItBoardOperation_PlacePiece::IsTilePlaceableAt`) | inline on the struct | — |
 | A phased level's phase | `AConnectIt_GameState::GetCurrentPhase()` / `FConnectItBoardState::CurrentPhase` | replicated with the board | Pure |
@@ -64,8 +64,8 @@ convenience wrappers over reaching into a manager directly.
 | What's active (top of stack) | `GetTopAction()`, `GetRootAction()`, `IsRootOnTop()`, `GetStackDepth()` | `UTurnBasedActionsComponent` | Pure |
 | All configured actions | `GetAllRuntimeActions()`, `FindActionByTag()` | same | Pure |
 | Is a board-change request in flight | `IsAwaitingRequestConfirmation()` | same | Pure |
-| Per-action active state | `IsActive()` | on the `UTurnBasedAction` instance | Pure |
-| Per-action uses / cooldown / availability | `CanActivate()`, `GetPermanentRuntimeState` / `GetNumberedRuntimeState`, `GetUsesRemaining` (read from the PlayerState -- the action holds none); `bIsCancellable`, `GetActionTag()` | on the `UTurnBasedAction` instance | Pure |
+| Per-action active state | `IsActive()` | on the `UTurnBasedPlayerAction` instance | Pure |
+| Per-action uses / cooldown / availability | `CanActivate()`, `GetPermanentRuntimeState`, `GetMatchUsesRemaining` (-1 = unlimited), `GetUsesThisTurn`, `IsItemUse()` (read from the PlayerState -- the action holds none); items: the PlayerState's `GetInventory` / `GetItemCount` / `GetItemBudget` / `CanUseItem`; `bIsCancellable`, `GetActionTag()` | on the `UTurnBasedPlayerAction` instance | Pure |
 
 ## Sequencing ("game is busy" / animation gating)
 

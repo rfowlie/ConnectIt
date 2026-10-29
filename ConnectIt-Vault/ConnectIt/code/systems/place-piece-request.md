@@ -22,7 +22,7 @@ the AI joins it at `ProcessBoardRequest` ([[ai-turn]]).
 ## What happens
 
 On the local client the action (e.g. `UConnectIt_PlacePieceAction`, a
-[[UnrealTurnBasedMechanics/code/UTurnBasedAction|UTurnBasedAction]]) builds an `FTurnActionRequest` -- `ActionTag` plus
+[[UnrealTurnBasedMechanics/code/UTurnBasedPlayerAction|UTurnBasedPlayerAction]]) builds an `FTurnActionRequest` -- `ActionTag` plus
 the board operation itself as `Payload` -- and requests it.
 [[UnrealTurnBasedMechanics/code/UTurnBasedActionsComponent|UTurnBasedActionsComponent]] freezes the action stack
 (`bAwaitingRequestConfirmation`) and re-broadcasts. The ConnectIt player controller doesn't send it while the GameState
@@ -97,8 +97,9 @@ sequenceDiagram
 4. **Route** -- `ServerRouteBoardChangeRequest`: active participant, match not over, faction from this controller's
    PlayerState.
 5. **One at a time (server)** -- `ProcessBoardRequest`: refused unless `IsBoardSettled()`.
-6. **Gate** -- `ProcessRequest`: payload is an operation; the action is in the loadout, produces it, a shift's
-   `Steps` matches, and the action can be used now.
+6. **Gate** -- `ProcessRequest`: payload is an operation; the action is the player's (a permanent action, or a held
+   item for a request marked `bIsItemUse`), produces it, a shift's `Steps` matches, and it can be used now (its uses,
+   or the item and the item budget).
 7. **Apply and commit** -- `DispatchRequest`, then `SetBoardState`. The directors hear the change through
    `OnBoardStateChanged` and may ask for level changes, which wait. The events are queued, the GameMode locks
    (`OnBoardChangeCommitted`), and the completion marker is queued last.

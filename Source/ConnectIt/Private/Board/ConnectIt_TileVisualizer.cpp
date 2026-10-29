@@ -98,10 +98,11 @@ void UConnectIt_TileVisualizer::Dispatch(const FInstancedStruct& Payload)
     }
     else if (const auto* Placed = Payload.GetPtr<FConnectItBoardEvent_PiecePlaced>())
     {
-        if (AConnectIt_TileBase* Tile = TileAt(Placed->Position))
-        {
-            Tile->OnPieceEnter(Placed->Faction, ConnectIt_Event_PiecePlaced, MakeReaction(Tile));
-        }
+        HandlePlacePiece(*Placed);
+        // if (AConnectIt_TileBase* Tile = TileAt(Placed->Position))
+        // {
+        //     Tile->OnPieceEnter(Placed->Faction, ConnectIt_Event_PiecePlaced, MakeReaction(Tile));
+        // }
     }
     else if (const auto* Swapped = Payload.GetPtr<FConnectItBoardEvent_PiecesSwapped>())
     {

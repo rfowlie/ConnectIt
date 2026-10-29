@@ -33,7 +33,7 @@ public:
     UFUNCTION(BlueprintNativeEvent, Category = "ConnectIt|Tile Hooks")
     void OnTilePowerTriggered(const FConnectItBoardEvent_TilePowerTriggered& Event, UConnectIt_TileReaction* Reaction);
 
-    // A piece arrived on this tile: placed, swapped in, captured (now
+    // A piece arrived at this tile: placed, swapped in, captured (now
     // Faction's), moved in. Cause: the board event's tag.
     UFUNCTION(BlueprintNativeEvent, Category = "ConnectIt|Tile Hooks")
     void OnPieceEnter(int32 Faction, FGameplayTag Cause, UConnectIt_TileReaction* Reaction);

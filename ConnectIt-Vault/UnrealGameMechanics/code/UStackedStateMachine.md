@@ -41,7 +41,7 @@ Covers `UStackedState` (the abstract per-entry base).
 - Machine ↔ state via the three transition-request delegates.
 - Ported deliberately *without* the source project's input-handler interface — concrete
   states bind their own input in `Initialize` / `Deinitialize` (same approach as
-  `UTurnBasedAction`'s selection binding).
+  `UTurnBasedPlayerAction`'s selection binding).
 
 ## Gotchas
 

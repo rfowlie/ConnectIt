@@ -4,10 +4,10 @@ task: Add a new kind of board change (a board operation) end to end -- the opera
 touches:
   - Source/ConnectIt/Public/Board/Operations/ConnectIt_BoardOperations.h (a FConnectItBoardOperation subtype; base in ConnectIt_BoardOperation.h)
   - Source/ConnectIt/Public/Board/Events/ConnectIt_BoardEvents.h (a FConnectItBoardEvent subtype with ApplyTo)
-  - Source/ConnectIt/Public/ConnectIt_GameplayTags.h (a ConnectIt.Game.State.* request type + a ConnectIt.Event.* event tag)
+  - Source/ConnectIt/Public/ConnectIt_GameplayTags.h (a ConnectIt.BoardOperation.* operation tag + a ConnectIt.Event.* event tag)
   - Source/ConnectIt/Public/Framework/Library/ConnectIt_BoardEventLibrary.h (GetActive<Name>Event)
   - (if it concerns tiles) Source/ConnectIt/Public/Board/ConnectIt_TileVisualizer.h (the tile hooks it calls)
-  - a UTurnBasedAction subclass that builds and sends it (ProducesRequestType), if players make it
+  - a UTurnBasedPlayerAction subclass that builds and sends it (ProducesRequestType), if players make it
 reconciled: 2026-10-23
 commit: 56d6946
 ---
@@ -31,7 +31,7 @@ Nothing in the Mediator changes for a new kind.
 
 ## Steps
 
-1. **Tags** (`ConnectIt_GameplayTags.h` / `.cpp`, native): a request type `ConnectIt.Game.State.<Name>`
+1. **Tags** (`ConnectIt_GameplayTags.h` / `.cpp`, native): an operation tag `ConnectIt.BoardOperation.<Name>`
    (`UE_DECLARE_GAMEPLAY_TAG_EXTERN` / `UE_DEFINE_GAMEPLAY_TAG_COMMENT`) and an event tag `ConnectIt.Event.<Name>`.
 2. **The event** (`ConnectIt_BoardEvents.h`): a struct deriving `FConnectItBoardOperationEvent` with `UPROPERTY` fields
    for everything it changed (the from / to, the owner, the previous and new values...). Override `GetEventTag` and
@@ -39,7 +39,7 @@ Nothing in the Mediator changes for a new kind.
    `ApplyTo` must equal the board after the change -- that's how the display board steps along.
 3. **The operation** (`ConnectIt_BoardOperations.h`): a `USTRUCT(BlueprintType, meta = (DisplayName = ...))` deriving
    `FConnectItBoardOperation`, every field a `UPROPERTY` (or it won't reach the server). Override:
-   - `GetRequestType` → your request tag;
+   - `GetOperationTag` → your operation tag;
    - `CanApply(Board, OutWhyNot)` → whether it may be made, with a reason for the log;
    - `Apply(Board, OutChanges, OutEvents)` → change the board, report what really changed in `OutChanges`
      (`AddEntered` / `AddExited` / owner and tile changes -- scoring and tile powers react to these), and append your
@@ -55,9 +55,10 @@ Nothing in the Mediator changes for a new kind.
 5. **Tile visuals**, if it changes tiles: add its tag to `UConnectIt_TileVisualizer`'s handled tags and call the
    tile hooks it implies (e.g. `OnPieceExit` at From, `OnPieceEnter` at To).
 6. **Who makes it:**
-   - **A player:** a `UTurnBasedAction` subclass (like `UConnectIt_PlacePieceAction`) builds the operation and calls
+   - **A player:** a `UTurnBasedPlayerAction` subclass (like `UConnectIt_PlacePieceAction`) builds the operation and calls
      `RequestBoardChange(FInstancedStruct::Make(Operation))`, and overrides `ProducesRequestType` to say yes to your
-     tag. Add the action to a loadout ([[UnrealTurnBasedMechanics/code/recipes/add-a-turn-action|add-a-turn-action]]).
+     operation tag. Make it usable as a permanent action (a loadout's `PermanentActions`) and/or an item (the item
+     inventory asset) ([[UnrealTurnBasedMechanics/code/recipes/add-a-turn-action|add-a-turn-action]]).
      A field the client could abuse (like Shift's `Steps`) needs a check in the Mediator's `ProcessRequest` against
      the sending action.
    - **The Level director:** **Apply Board Operation** with it ([[script-a-level]]).
@@ -65,7 +66,7 @@ Nothing in the Mediator changes for a new kind.
 
 ## Verify
 
-- `ConnectIt.AI.Candidates` counts the kinds of operation (`GetAllRequestTypes`, found by reflection): raise its
+- `ConnectIt.AI.Candidates` counts the kinds of operation (`GetAllOperationTags`, found by reflection): raise its
   expected count by one.
 - Add a test like `ConnectIt.Board.MoveAndMultiplier`: allowed and refused cases (locked tiles included), what
   `OutChanges` reports, the event, and **a replay** (previous + `ApplyTo` of every event = the board after;

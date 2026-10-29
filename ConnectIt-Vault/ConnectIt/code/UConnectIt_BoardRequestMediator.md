@@ -27,10 +27,12 @@ board changes and knows nothing about any particular kind: a request's payload *
 - `Initialise(const FConnectItRuleSet* InRules)` — once, from `AConnectIt_GameMode` (its own rule set).
 - `ProcessRequest(const FTurnActionRequest&, RequestingFaction) → bool` — **the mandatory per-action gate**, then
   `DispatchRequest`. The gate: the payload is a board operation; the requester's PlayerState exists and
-  `HasActionConfig()`; `Request.ActionTag` (client-supplied) resolves via `FindActionClassByTag` to an action in *that
-  player's* loadout; that class's CDO `ProducesRequestType(operation's type)`; a shift's `Steps` equals the action's
-  `ShiftSteps`; `CanUseAction` passes. Only after a successful dispatch does it `ConsumeActionUse` — a rejected request
-  never burns a use.
+  `HasActionConfig()`; `Request.ActionTag` (client-supplied) resolves to an action the player has -- for an **item
+  use** (`bIsItemUse`, client-supplied too) through `FindItemActionClassByTag` (held in the inventory), else through
+  `FindActionClassByTag` (the permanent list); that class's CDO `ProducesRequestType(operation tag)`; a shift's `Steps`
+  equals the action's `ShiftSteps`; `CanUseItem` / `CanUseAction` passes. Only after a successful dispatch does it
+  spend -- `ConsumeItemUse` (the item and the item budget) or `ConsumeActionUse` -- so a rejected request never burns
+  a use. The AI never uses items.
 - `ProcessLevelOperation(const FInstancedStruct& Operation, int32 AsFaction) → bool` — the Level director's path: no
   loadout gate, no use; straight to `DispatchRequest`. The GameMode calls it when the board is free.
 - `IsDispatching()` — true for the synchronous carry-out (the GameMode's board-busy check includes it).

@@ -14,7 +14,7 @@ commit: 9187568
 `Abstract UObject`, `EditInlineNew`, `DefaultToInstanced`. Root of the action-stack
 hierarchy: the minimal activate / deactivate / force-deactivate contract every stack
 entry shares. Subclassed by
-[[UnrealTurnBasedMechanics/code/UTurnBasedAction|UTurnBasedAction]] (per-turn) and
+[[UnrealTurnBasedMechanics/code/UTurnBasedPlayerAction|UTurnBasedPlayerAction]] (per-turn) and
 `UTurnBasedSpectatorAction` (passive views).
 
 ## When you touch this
@@ -49,7 +49,7 @@ changing the lifecycle contract itself, or `PostInitialiseAction` dependency-cac
 
 - `ForceDeactivate()` is the *system-interrupt* path — no completion bookkeeping, safe to
   call when not active. Distinct from a subclass's natural `Complete()` / `Cancel()`.
-- `PostInitialiseAction` timing differs per branch (`UTurnBasedAction`: inside
+- `PostInitialiseAction` timing differs per branch (`UTurnBasedPlayerAction`: inside
   `InitialiseAction`; spectator: inside `CreateSystemActions`) but both are early and
   well-defined — don't reach for `OwningController` before it.
 - `DefaultToInstanced` + `EditInlineNew`: instances live inline in the loadout asset, not
@@ -57,7 +57,7 @@ changing the lifecycle contract itself, or `PostInitialiseAction` dependency-cac
 
 ## Cross-impact
 
-Change the lifecycle hook set and also update: `UTurnBasedAction` and
+Change the lifecycle hook set and also update: `UTurnBasedPlayerAction` and
 `UTurnBasedSpectatorAction` `_Implementation` overrides, and
 `UTurnBasedActionsComponent::BindActionDelegates`.
 

@@ -5,8 +5,8 @@ role: primary
 source:
   - Plugins/UnrealTurnBasedMechanics/Source/UnrealTurnBasedMechanics/Public/Action/TurnBasedActionsComponent.h
   - Plugins/UnrealTurnBasedMechanics/Source/UnrealTurnBasedMechanics/Private/Action/TurnBasedActionsComponent.cpp
-reconciled: 2026-10-22
-commit: ee95bc5
+reconciled: 2026-10-29
+commit: 193c1c9
 ---
 
 # UTurnBasedActionsComponent
@@ -35,12 +35,16 @@ the plugin (~25 UPROPERTY / ~32 UFUNCTION).
   `NotifyMatchEnded`.
 - **Stack ops:** `PushAction` (force-deactivates old top, no pop), `SafePopAction`
   (refuses to empty the stack), `ClearAndPush` (tear down + new sole root),
-  `TryPushAction(FGameplayTag)` / `TryPushActionByRef` / `TryPushActionByClass(TSubclassOf<UTurnBasedAction>)`
+  `TryPushAction(FGameplayTag)` / `TryPushActionByRef` / `TryPushActionByClass(TSubclassOf<UTurnBasedPlayerAction>)`
   (added 2026-09-14 — resolves to the already-cloned `RuntimeActions` instance of that
   class, same as `TryPushAction` does by tag; **does not** construct a new instance; returns `TryPushActionByRef`'s
   result — true only if actually pushed, false if no such action or the push was refused by limbo /
   awaiting-confirmation / `CanActivate()`),
   `CancelTopAction`.
+- **Items:** `ActivateItemAction(Class)` -- starts an item action from the inventory (e.g. its button): the player
+  must hold one and the item budget have a use left; the instance is marked as an item use for this activation, so its
+  request spends the item and the budget, never permanent uses. Works for an action with no permanent uses. False if
+  refused (also the usual push refusals, or the action already active).
 - **Turn end:** `CanEndTurn()` → `CanAutoEndTurn()` (BlueprintNativeEvent) — default asks the owner's
   `ATurnBasedPlayerState::AreTurnEndRequirementsMet(Loadout)` (the same check AI controllers use), which walks
   the loadout's `TurnEndRequirements` tree against the uses this turn; **no tree ⇒ true**. `HasTurnEndRequirementTree()`;
@@ -59,12 +63,14 @@ the plugin (~25 UPROPERTY / ~32 UFUNCTION).
 
 ## Collaborators
 
-- **Loadout:** `UActionLoadoutDataAsset` — one runtime action instance is built per `PermanentActions` /
-  `NumberedActions` entry (reused every turn), plus the 5 system actions.
+- **Loadout:** `UActionLoadoutDataAsset` — the 5 system actions and the turn-end tree. **Turn actions are built
+  from the PlayerState** (`SyncRuntimeActions`): one instance per action it has -- permanent and item -- reused every
+  turn; until its state has replicated, per loadout `PermanentActions` entry. Only adds; re-run on every PlayerState
+  action update, so a game-built list or a newly granted item gets its instance.
 - **PlayerState:** `ATurnBasedPlayerState` holds the authoritative per-action state (seeded by the game, not by
   this component), evaluates turn end (`AreTurnEndRequirementsMet`) and signals via `OnActionRuntimeStateUpdated`. Cooldown ticking (`TickCooldowns`) moved off the
   component to the server's `StartTurn`.
-- **Actions:** creates & owns `UTurnBasedAction` runtime instances +
+- **Actions:** creates & owns [[UnrealTurnBasedMechanics/code/UTurnBasedPlayerAction|UTurnBasedPlayerAction]] runtime instances +
   `UTurnBasedSpectatorAction` system instances; binds each action's
   `OnChangeRequested` / `OnActionCompleted` / `OnActionCancelled` / `OnNextActionRequested`.
 - **Coordinator:** `UTurnBasedControllerCoordinatorComponent` calls every `Notify*` and
@@ -103,6 +109,9 @@ Change the slot set or lifecycle and also update:
 
 ## Changes
 
+- 2026-10-24 — `ActivateItemAction`; runtime actions built from the PlayerState's actions (`SyncRuntimeActions`,
+  permanent + inventory) instead of the loadout's lists; `UTurnBasedAction` → `UTurnBasedPlayerAction`. Player-actions
+  plan, Stages 1-3.
 - 2026-10-22 — **no longer seeds the PlayerState** in `InitialiseFromLoadout` (the game's server setup does --
   seeding here would loop, since the controller builds this component from the PlayerState's loadout);
   `CanAutoEndTurn` delegates to `ATurnBasedPlayerState::AreTurnEndRequirementsMet`, shared with AI controllers.
@@ -115,7 +124,7 @@ Change the slot set or lifecycle and also update:
   (`process-code` sweep — commit `9187568`.)
 - 2026-09-14 — added `TryPushActionByClass` (resolve-by-class, same shape as
   `TryPushAction`'s resolve-by-tag) — for UI code that only has a
-  `TSubclassOf<UTurnBasedAction>` handy, not the action's `ActionTag`.
+  `TSubclassOf<UTurnBasedPlayerAction>` handy, not the action's `ActionTag`.
 - 2026-09-10 — re-ingested to the `_code` schema; provenance re-anchored.
 
 ## See also

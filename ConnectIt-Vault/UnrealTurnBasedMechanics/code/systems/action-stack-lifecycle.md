@@ -3,10 +3,10 @@ schema: systems
 spans:
   - Plugins/UnrealTurnBasedMechanics/Source/UnrealTurnBasedMechanics/Public/Action/TurnBasedActionsComponent.h
   - Plugins/UnrealTurnBasedMechanics/Source/UnrealTurnBasedMechanics/Private/Action/TurnBasedActionsComponent.cpp
-  - Plugins/UnrealTurnBasedMechanics/Source/UnrealTurnBasedMechanics/Public/Action/TurnBasedAction.h
+  - Plugins/UnrealTurnBasedMechanics/Source/UnrealTurnBasedMechanics/Public/Action/TurnBasedPlayerAction.h
   - Plugins/UnrealTurnBasedMechanics/Source/UnrealTurnBasedMechanics/Public/Action/TurnBasedActionBase.h
-reconciled: 2026-10-22
-commit: ee45a98
+reconciled: 2026-10-29
+commit: cb9f405
 ---
 
 # Action stack lifecycle
@@ -46,18 +46,19 @@ stateDiagram-v2
 
 ## Steps
 
-1. **`InitialiseFromLoadout`** builds one runtime action per `PermanentActions` /
-   `NumberedActions` entry and the five system-action instances from
-   [[UnrealTurnBasedMechanics/code/UActionLoadoutDataAsset|UActionLoadoutDataAsset]]. It doesn't seed
-   the PlayerState's action state (the game's server setup does).
+1. **`InitialiseFromLoadout`** builds the five system-action instances from
+   [[UnrealTurnBasedMechanics/code/UActionLoadoutDataAsset|UActionLoadoutDataAsset]] and one runtime action per
+   action the PlayerState has, permanent and item (`SyncRuntimeActions`, re-run on every PlayerState update). It
+   doesn't seed the PlayerState's action state (the game's server setup does).
 2. **`NotifyTurnStarted(FTurnStartContext)`** → binds the PlayerState listener, ends any limbo, then
    `OnTurnStarted` (designer override, default `ClearAndPush(RootAction)`). Per-turn counters and
    cooldowns are the server's, reset / ticked on the PlayerState in `StartTurn`
    ([[UnrealTurnBasedMechanics/code/systems/turn-end-tag-gate|turn-end-tag-gate]]).
 3. During the turn, an action chains via `RequestNextAction` → component `TryPushAction`;
-   the player backs out via `CancelTopAction` / `SafePopAction`.
+   the player backs out via `CancelTopAction` / `SafePopAction`. An **item** is started with `ActivateItemAction`
+   (held + budget left), which marks that activation as an item use.
 4. **Board change:** the action calls `RequestBoardChange(Payload)` (it builds the
-   `FTurnActionRequest`: its tag + the payload) → `OnChangeRequested` → `UTurnBasedActionsComponent::HandleBoardChangeRequested` sets
+   `FTurnActionRequest`: its tag, the payload, `bIsItemUse`) → `OnChangeRequested` → `UTurnBasedActionsComponent::HandleBoardChangeRequested` sets
    `bAwaitingRequestConfirmation`, stores `PendingRequest`, pushes
    `AwaitingConfirmationAction`. `PushAction` / `SafePopAction` / `TryPushActionByRef` /
    `ClearAndPush` now refuse to run. The component re-broadcasts `OnBoardChangeRequested`
@@ -97,7 +98,7 @@ Changing the primitives or `Notify*` set touches:
 `UTurnBasedControllerCoordinatorComponent` (caller),
 `UDWidget_TurnBasedActionsComponent` + `FTurnBasedActionsComponentInfo` (observers),
 [[UnrealTurnBasedMechanics/code/UTurnBasedActionBase|UTurnBasedActionBase]] /
-[[UnrealTurnBasedMechanics/code/UTurnBasedAction|UTurnBasedAction]] lifecycle hooks.
+[[UnrealTurnBasedMechanics/code/UTurnBasedPlayerAction|UTurnBasedPlayerAction]] lifecycle hooks.
 
 ## See also
 

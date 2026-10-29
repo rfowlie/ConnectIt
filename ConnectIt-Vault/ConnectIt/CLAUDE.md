@@ -12,7 +12,13 @@ logic — everything reusable lives in a plugin.
   `Framework/` (Controller / Data / GameMode / GameState / Library / PlayerState /
   Subsystem), `Board/` (Actor / Events / Operations / Powers / Rules), `AI/`, `Action/`,
   `MinMax/`, `UI/`.
-- **Status:** active — the shipping target. Branch `0.4.0-Remove-Lecagy-ConnectIt`.
+- **Status:** active — the shipping target. Branch `0.4.1-Adventure-Hub`.
+- **Vocabulary** ([decision](_decisions/2026-10-23-player-actions-tile-powers-board-operations.md)): a **Player
+  Action** is what a player chooses to do (`UTurnBasedPlayerAction`, `ConnectIt.PlayerAction.*`) -- **permanent**
+  (a per-level list: match uses, -1 = unlimited; turn uses, always finite) or an **item** (one-time, from the
+  inventory, limited by the level's item budget). A **Tile Power** is what a tile does (`ConnectIt.TilePower.*`; all
+  names "TilePower"). Both produce **Board Operations** (`ConnectIt.BoardOperation.*`, "operation tag"). "Skill" is
+  retired.
 - **Content:** `../Content/_ConnectIt/`, `../Content/_ConnectItNetworked/`.
 - **Config:** `../Config/` — `DefaultGameplayTags.ini` is the tag vocabulary the
   phase-barrier and turn systems key off.

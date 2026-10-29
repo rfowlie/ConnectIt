@@ -5,14 +5,14 @@ role: primary
 source:
   - Plugins/UnrealTurnBasedMechanics/Source/UnrealTurnBasedMechanics/Public/Action/ActionLoadoutDataAsset.h
   - Plugins/UnrealTurnBasedMechanics/Source/UnrealTurnBasedMechanics/Private/Action/ActionLoadoutDataAsset.cpp
-reconciled: 2026-09-21
-commit: 19d1772
+reconciled: 2026-10-29
+commit: efc2c27
 ---
 
 # UActionLoadoutDataAsset
 
 `UDataAsset`. The designer-authored seam between content and the action system: five
-system-action class slots, two class-keyed action config arrays, and a turn-end requirement tree.
+system-action class slots, the permanent action list, and a turn-end requirement tree.
 [[UnrealTurnBasedMechanics/code/UTurnBasedActionsComponent|UTurnBasedActionsComponent]]
 reads exactly one of these in `InitialiseFromLoadout`, and each player's `ATurnBasedPlayerState` is
 seeded from it (`InitialiseActionState`).
@@ -28,30 +28,28 @@ seeded from it (`InitialiseActionState`).
 - **Slots (`TSubclassOf`):** `RootActionClass` (mandatory),
   `IdleViewerActionClass`, `SpectatorViewerActionClass`, `PauseViewerActionClass`,
   `AwaitingConfirmationActionClass`.
-- **Turn actions (config, keyed by `TSubclassOf<UTurnBasedAction> ActionClass`; the gameplay tag is derived
-  via `UTurnBasedAction::GetTagForClass`):**
-  - `PermanentActions` (`FPermanentActionConfig`: `ActionClass`, `MaxUsesPerTurn`, `CooldownTurns`; 0 = unlimited/none)
-    — always available.
-  - `NumberedActions` (`FNumberedActionConfig`: `ActionClass`, `StartingMatchUses` (default 0 — may be granted
-    later), `MaxUsesPerTurn`, `MaxHeldUses`, `CooldownTurns`) — a match-lifetime use budget.
-  - A class belongs in exactly one array. Live state is `FPermanentActionRuntimeState` /
-    `FNumberedActionRuntimeState` on the PlayerState (see `ActionConfig.h`), not here.
-- **Turn end:** `TurnEndRequirements` (`Instanced` `UTurnEndRequirementNode` — a `Group` (Any/All) or
-  `Leaf` (`ActionClass` + `RequiredUsesThisTurn`) tree; `bIsEnabled == false` nodes are skipped). Unset ⇒
-  the turn can be ended at any time. `HasTurnEndRequirements()`.
+- **`PermanentActions`** (`TArray<FPermanentActionConfig>`, keyed by `ActionClass`; the tag is derived via
+  `UTurnBasedPlayerAction::GetTagForClass`): each action once, with `MatchUses` (-1 = unlimited), `TurnUses` (>= 1)
+  and `CooldownTurns` -- see [[UnrealTurnBasedMechanics/code/ActionConfig|ActionConfig]]. The PlayerState is seeded
+  from it unless the game hands it its own list (`InitialiseActionState(Loadout, List)`). Live state is on the
+  PlayerState. **Item actions are not in the loadout** -- they are the player's inventory.
+- **Turn end:** `TurnEndRequirements` (`Instanced` `UTurnEndRequirementNode` tree): **Group** (Any / All),
+  **Action Used** (`ActionClass` + `RequiredUsesThisTurn`; permanent uses only) and **Item Used**
+  (`RequiredItemUses`; any item action). `bIsEnabled == false` nodes are skipped. Unset ⇒ the turn can be ended at any
+  time. `HasTurnEndRequirements()`.
 - **Vending (each `NewObject(Outer)`, null if class unset):** `GetRootAction`,
   `GetIdleViewerAction`, `GetSpectatorAction`, `GetPauseAction`,
   `GetAwaitingConfirmationAction`.
-- `IsDataValid` (`WITH_EDITOR`) — errors on an entry with no `ActionClass`, a class listed twice / in both
-  arrays, a turn-end leaf naming a class in neither array, or a leaf whose `RequiredUsesThisTurn` exceeds that
-  action's non-zero `MaxUsesPerTurn` (can never be satisfied); warns on a leaf with no class.
+- `IsDataValid` (`WITH_EDITOR`) — errors on an entry with no `ActionClass`, a class listed twice, `TurnUses` below
+  1, an action with no tag, a turn-end leaf naming a class not in the list, or a leaf needing more uses than the
+  action's `TurnUses`; warns on `MatchUses` 0, a leaf with no class, no root, no actions, no tree.
 
 ## Collaborators
 
-- Consumed by `UTurnBasedActionsComponent` (`InitialiseFromLoadout` → builds one action instance per
-  config entry + `CreateSystemActions`) and by `ATurnBasedPlayerState::InitialiseActionState` (seeds the
-  replicated runtime arrays and the effective `MaxUsesThisTurn` caps).
-- References [[UnrealTurnBasedMechanics/code/UTurnBasedAction|UTurnBasedAction]] /
+- Consumed by `UTurnBasedActionsComponent` (`InitialiseFromLoadout` → `CreateSystemActions`; the turn actions are
+  built from the PlayerState's actions) and by
+  [[UnrealTurnBasedMechanics/code/ATurnBasedPlayerState|ATurnBasedPlayerState]]`::InitialiseActionState`.
+- References [[UnrealTurnBasedMechanics/code/UTurnBasedPlayerAction|UTurnBasedPlayerAction]] /
   `UTurnBasedSpectatorAction` subclasses by class.
 
 ## Gotchas
@@ -77,6 +75,9 @@ the `Notify*` that pushes it), the loadout assets themselves, and — if surface
 
 ## Changes
 
+- 2026-10-24 — **one permanent list**: `NumberedActions` removed; `PermanentActions` entries carry `MatchUses` /
+  `TurnUses` / `CooldownTurns`; the **Item Used** turn-end leaf added; validation updated. Player-actions plan,
+  Stages 2-3.
 - 2026-09-21 — **redesigned**: `Actions` (instanced), `BannedActionTags` and the permitted/required/optional
   queries removed; class-keyed `PermanentActions` / `NumberedActions` and the `TurnEndRequirements` tree added.
   See [legacy removal](../../ConnectIt/_decisions/2026-09-20-legacy-action-system-removed-stage-3.md),

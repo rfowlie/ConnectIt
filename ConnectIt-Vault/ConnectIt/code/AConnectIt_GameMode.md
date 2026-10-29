@@ -52,7 +52,7 @@ every director the same events, carries out the level's changes, and enforces **
   the map's `AConnectIt_WorldSettings::FindDefaultMatchPreset`; copies its rules and director classes; resolves both
   sides' goals from the **Level director's class defaults** (`ResolveConditionGroups`); copies every tile power the
   level's tile catalog defines (`UConnectIt_TileCatalogDataAsset::FindFor` → `MakePowers`) and the Level director's
-  `LevelWidePowers` into the rules (`SetTilePowers`); applies the menu's tweaks; publishes to the GameState
+  `LevelWideTilePowers` into the rules (`SetTilePowers`); applies the menu's tweaks; publishes to the GameState
   (`PublishMatchSetup`).
 - **Directors:** makes the Level director and one Player director per human (`FindOrCreatePlayerDirector`); the AI
   director belongs to the AI controller. `ForEachDirector` sends events in dispatch order (Level, Players by slot, AI).

@@ -59,7 +59,7 @@ sequenceDiagram
     GM->>GM: turn-start level changes join the waiting line, play one at a time
     GM->>DI: OnTurnStarted(AI faction, IsMine = true)
     AC->>GM: IsBoardSettled? (no: wait for OnBoardChangeSettled)
-    AC->>AC: BeginDecision: Director.ApplyPendingChanges; copy Board, Rules, loadouts, AvailableRequestTypes...
+    AC->>AC: BeginDecision: Director.ApplyPendingChanges; copy Board, Rules, loadouts, AvailableOperationTags...
     AC->>CO: Begin(Context, Director.Strategies, Director.Selector, think time)
     CO->>ST: StartDecision (all at once; each told budget x share)
     loop every 0.05 s until all finished, or the budget ends and one has a move
@@ -104,7 +104,7 @@ sequenceDiagram
 4. **Context.** `BeginDecision` first applies the director's pending strategy / selector changes, then copies, on the game
    thread: `Board` (its `TurnNumber` set to the decision's turn -- the search's root, so tile power cooldowns count
    against it; each ply adds one), `OwnSlot`, `Rules` (plain thread-safe data), `OwnLoadout`/`OpponentLoadout` (assets:
-   game thread only), `TurnNumber`, `DecisionIndexThisTurn`, `AvailableRequestTypes` (produced by its loadout, usable now, and with at least one
+   game thread only), `TurnNumber`, `DecisionIndexThisTurn`, `AvailableOperationTags` (produced by its loadout, usable now, and with at least one
    legal instance on the board -- `FConnectItBoardOperation::GetLegality`; a kind of move that can't tell stays in).
    **Nothing available = the AI passes**: it logs `no legal move -- passing` and ends its turn without asking a strategy.
 5. **Decide.** The coordinator starts every strategy (`StartDecision` -> `BeginDecision`, C++ or Blueprint), each with
@@ -120,7 +120,7 @@ sequenceDiagram
 8. **Submit.** `SubmitDecision` re-checks the decision is current. If the board changed while it thought
    (`GetNumBoardChanges` differs from the decision's start, e.g. a director's Immediately change from `OnTurnStarted`) or
    isn't settled, it decides again once settled. Otherwise it tries the candidates in order (`SubmitCandidate`): the
-   loadout action whose class `ProducesRequestType` the operation's request type, sent through `GameMode->ProcessBoardRequest` as
+   loadout action whose class `ProducesRequestType` the operation's tag, sent through `GameMode->ProcessBoardRequest` as
    its own slot. The first accepted one wins; if every candidate is rejected it logs an error and ends the turn.
 9. **The gate.** [[UConnectIt_BoardRequestMediator]] holds the AI to the same rules as a human: the action must be in its loadout,
    produce that request type, be usable now (uses, per-turn cap, cooldown), and the operation must `CanApply` to the board. The
