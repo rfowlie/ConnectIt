@@ -61,8 +61,19 @@ struct CONNECTIT_API FConnectItBoardEvent
     UPROPERTY(BlueprintReadOnly, Category = "Event")
     int32 CauseIndex = INDEX_NONE;
 
+    // Where this event is while it plays: its index in its change's list and
+    // which queued change it belongs to. Set locally when the board state
+    // component queues it -- not replicated, not part of what happened. -1
+    // until queued.
+    int32 PlayIndex = INDEX_NONE;
+    int32 PlayChangeId = INDEX_NONE;
+
     // Every event of Events applied to Board, in order
     static void ApplyAll(const FConnectItBoardChangeEvent& Events, FConnectItBoardState& Board);
+
+    // The event in Change that set Change.Events[Index] off (its CauseIndex),
+    // or null: the action itself (or an index out of range)
+    static const FInstancedStruct* FindCause(const FConnectItBoardChangeEvent& Change, int32 Index);
 };
 
 // What a board operation did

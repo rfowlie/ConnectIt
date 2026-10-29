@@ -68,7 +68,7 @@ reaction reports done.
 - **Calling `CallOnComplete()` from inside your execute function** (a reaction with nothing
   to wait for): the queue calls each phase's tasks from a loop over the very array that
   completing removes from. Defer the completion to the next tick (ConnectIt's
-  `UConnectIt_TileVisualizer` does).
+  `AConnectIt_BoardVisualizer` does).
 - **The payload is only readable while its entry is active** -- copy what you need in the
   execute function, not when the reaction finishes.
 

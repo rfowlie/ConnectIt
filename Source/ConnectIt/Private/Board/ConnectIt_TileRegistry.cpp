@@ -2,6 +2,7 @@
 
 
 #include "Board/ConnectIt_TileRegistry.h"
+#include "Board/Actor/ConnectIt_TileBase.h"
 #include "Framework/Library/ConnectIt_GameUtilityLibrary.h"
 #include "Framework/Data/ConnectIt_LevelConfigDataAsset.h"
 #include "Framework/Data/ConnectIt_WorldSettings.h"
@@ -181,4 +182,30 @@ TArray<AGridTileBase*> UConnectIt_TileRegistry::ShiftTiles(const TArray<FGridPos
         }
     }
     return Moving;
+}
+
+AConnectIt_TileBase* UConnectIt_TileRegistry::GetTileAt(FGridPosition Position) const
+{
+    AGridTileBase* Tile = GetTileAtPosition(Position);
+    if (!Tile) return nullptr;
+
+    AConnectIt_TileBase* ConnectItTile = Cast<AConnectIt_TileBase>(Tile);
+    if (!ConnectItTile)
+    {
+        UE_LOG(LogTemp, Warning,
+            TEXT("ConnectIt_TileRegistry: the tile at (%d, %d) is a %s, not a ConnectIt tile (AConnectIt_TileBase)"),
+            Position.X, Position.Y, *Tile->GetClass()->GetName());
+    }
+    return ConnectItTile;
+}
+
+TArray<AConnectIt_TileBase*> UConnectIt_TileRegistry::GetTilesAt(const TArray<FGridPosition>& Positions) const
+{
+    TArray<AConnectIt_TileBase*> Found;
+    Found.Reserve(Positions.Num());
+    for (const FGridPosition& Position : Positions)
+    {
+        Found.Add(GetTileAt(Position));
+    }
+    return Found;
 }

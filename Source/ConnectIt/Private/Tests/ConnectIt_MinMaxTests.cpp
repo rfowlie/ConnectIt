@@ -25,8 +25,6 @@
 #include "Board/Actor/ConnectIt_BuilderTile.h"
 #include "Board/Powers/ConnectIt_TileCatalogDataAsset.h"
 #include "Board/Powers/ConnectIt_TilePowerEffects.h"
-#include "Board/ConnectIt_TileReaction.h"
-#include "Board/ConnectIt_TileVisualizer.h"
 #include "AI/ConnectIt_LevelDirector.h"
 #include "NativeGameplayTags.h"
 
@@ -3702,6 +3700,10 @@ bool FConnectItTilePowerChainTest::RunTest(const FString& Parameters)
         {
             const auto* Mover = EventAt<FConnectItBoardEvent_TilePowerTriggered>(Events, 2);
             const auto* Second = EventAt<FConnectItBoardEvent_TilePowerTriggered>(Events, 6);
+            TestTrue(TEXT("cause: the power's move reports its Tile Power Triggered; the action's own event has none"),
+                FConnectItBoardEvent::FindCause(Events, 3) == &Events.Events[2]
+                && FConnectItBoardEvent::FindCause(Events, 0) == nullptr
+                && FConnectItBoardEvent::FindCause(Events, 99) == nullptr);
             TestTrue(TEXT("chain: the mover is the tile's power, for the scoring faction"),
                 Mover->TilePowerName == TestPower1 && Mover->Position == FGridPosition(2, 0) && Mover->Faction == 0 && !Mover->bNoEffect);
             TestTrue(TEXT("chain: each event names its cause"),
@@ -4760,68 +4762,6 @@ bool FConnectItTurnStartTilePowersTest::RunTest(const FString& Parameters)
         Place(Board, 1, 2, 1);
         StartTurn(Board, 3);
         TestEqual(TEXT("scoring: the repelled piece completed (0..3, 0)"), Board.GetScore(0), 4.f);
-    }
-    return true;
-}
-
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(FConnectItTileHooksTest,
-    "ConnectIt.Board.TileHooks", TestFlags)
-
-bool FConnectItTileHooksTest::RunTest(const FString& Parameters)
-{
-    // First tile powers plan, Stage 4: what runs without a world -- the
-    // reaction handle, the hooks' defaults, finishing a tile's held reactions
-    int32 Finished = 0;
-    const auto MakeReaction = [&Finished]()
-    {
-        UConnectIt_TileReaction* Reaction = NewObject<UConnectIt_TileReaction>();
-        Reaction->OnFinished = [&Finished]() { Finished++; };
-        return Reaction;
-    };
-
-    // --- A reaction finishes once ---
-    {
-        UConnectIt_TileReaction* Reaction = MakeReaction();
-        TestFalse(TEXT("reaction: not finished to start"), Reaction->IsFinished());
-        Reaction->Finish();
-        Reaction->Finish();
-        TestTrue(TEXT("reaction: finished, counted once"), Reaction->IsFinished() && Finished == 1);
-    }
-
-    // --- Each hook's default finishes at once ---
-    {
-        AConnectIt_TileBase* Tile = GetMutableDefault<AConnectIt_TileBase>();
-        Finished = 0;
-        Tile->OnTilePowerTriggered(FConnectItBoardEvent_TilePowerTriggered(), MakeReaction());
-        Tile->OnPieceEnter(0, ConnectIt_Event_PiecePlaced, MakeReaction());
-        Tile->OnPieceExit(0, ConnectIt_Event_PieceRemoved, MakeReaction());
-        Tile->OnMultiplierChanged(2.f, MakeReaction());
-        Tile->OnLockChanged(true, MakeReaction());
-        Tile->OnActiveChanged(false, MakeReaction());
-        Tile->OnChainPartnerChanged(FConnectItBoardEvent_ChainPartnerChanged(), MakeReaction());
-        TestEqual(TEXT("hooks: all seven defaults finished their reaction"), Finished, 7);
-    }
-
-    // --- A tile leaving play finishes what it still holds ---
-    {
-        AConnectIt_TileBase* Tile = GetMutableDefault<AConnectIt_TileBase>();
-        Finished = 0;
-        UConnectIt_TileReaction* First = MakeReaction();
-        UConnectIt_TileReaction* Second = MakeReaction();
-        Tile->HoldReaction(First);
-        Tile->HoldReaction(Second);
-        Second->Finish();
-        Tile->FinishPendingReactions();
-        TestTrue(TEXT("pending: both finished, each counted once"), First->IsFinished() && Second->IsFinished() && Finished == 2);
-    }
-
-    // --- The visualizer handles the tile events ---
-    {
-        const TArray<FGameplayTag> Handled = UConnectIt_TileVisualizer::GetHandledEventTags();
-        TestTrue(TEXT("visualizer: power, pieces, multipliers, lock, active, chain"),
-            Handled.Contains(FGameplayTag(ConnectIt_Event_TilePowerTriggered)) && Handled.Contains(FGameplayTag(ConnectIt_Event_PieceMoved))
-            && Handled.Contains(FGameplayTag(ConnectIt_Event_Scored)) && Handled.Contains(FGameplayTag(ConnectIt_Event_TileLockChanged))
-            && Handled.Contains(FGameplayTag(ConnectIt_Event_ChainPartnerChanged)) && Handled.Num() == 12);
     }
     return true;
 }

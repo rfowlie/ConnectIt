@@ -137,6 +137,34 @@ public:
         meta = (WorldContext = "WorldContextObject", ExpandBoolAsExecs = "ReturnValue"))
     static bool GetActiveGameWonEvent(const UObject* WorldContextObject, FConnectItBoardEvent_GameWon& OutEvent);
 
+    // --- The playing event's place in its change ---
+
+    // The playing board event's index in its change's list (-1 if none is
+    // playing)
+    UFUNCTION(BlueprintPure, Category = "ConnectIt|Board Events", meta = (WorldContext = "WorldContextObject"))
+    static int32 GetActiveBoardEventIndex(const UObject* WorldContextObject);
+
+    // The event that set the playing one off -- e.g. a Tile Power Triggered
+    // for a power's Piece Moved -- as its own struct (Get Instanced Struct
+    // Value for its fields). False (the False pin) if it has none: the action
+    // itself, or nothing is playing.
+    UFUNCTION(BlueprintCallable, Category = "ConnectIt|Board Events",
+        meta = (WorldContext = "WorldContextObject", ExpandBoolAsExecs = "ReturnValue"))
+    static bool GetBoardEventCause(const UObject* WorldContextObject, FInstancedStruct& OutCause);
+
+    // The cause's event tag (none if the playing event has no cause), e.g. to
+    // branch on "was this a tile power?"
+    UFUNCTION(BlueprintPure, Category = "ConnectIt|Board Events", meta = (WorldContext = "WorldContextObject"))
+    static FGameplayTag GetBoardEventCauseTag(const UObject* WorldContextObject);
+
+    // C++ form: the cause if it is a TEvent, else null
+    template<typename TEvent>
+    static const TEvent* GetBoardEventCauseAs(const UObject* WorldContextObject)
+    {
+        const FInstancedStruct* Cause = FindActiveBoardEventCause(WorldContextObject);
+        return Cause ? Cause->GetPtr<TEvent>() : nullptr;
+    }
+
     // Has the tile and piece actors at Positions refresh themselves from the
     // display board (IGridBoardActor::RefreshFromBoard). Never creates a
     // piece. The board state component calls it as the display board moves
@@ -159,6 +187,9 @@ private:
 
     // The game event queue's active payload, or null if there is none
     static const FInstancedStruct* GetActiveBoardEvent(const UObject* WorldContextObject);
+
+    // The playing event's cause in its change, or null
+    static const FInstancedStruct* FindActiveBoardEventCause(const UObject* WorldContextObject);
 
     // Shared body of the GetActive...Event functions
     template<typename TEvent>

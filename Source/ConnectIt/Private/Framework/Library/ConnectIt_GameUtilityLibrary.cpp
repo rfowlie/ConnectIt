@@ -35,7 +35,7 @@ UConnectIt_BoardStateComponent* UConnectIt_GameUtilityLibrary::GetBoardStateComp
     return IsValid(GameState) ? GameState->GetBoardStateComponent() : nullptr;
 }
 
-UGridTileRegistryBase* UConnectIt_GameUtilityLibrary::GetTileRegistry(
+UConnectIt_TileRegistry* UConnectIt_GameUtilityLibrary::GetTileRegistry(
     const UObject* WorldContextObject)
 {
     if (!IsValid(WorldContextObject)) return nullptr;
@@ -51,7 +51,7 @@ UGridTileRegistryBase* UConnectIt_GameUtilityLibrary::GetTileRegistry(
     return IsValid(Subsystem) ? Subsystem->GetTileRegistry() : nullptr;
 }
 
-UGridPieceRegistryBase* UConnectIt_GameUtilityLibrary::GetPieceRegistry(
+UConnectIt_PieceRegistry* UConnectIt_GameUtilityLibrary::GetPieceRegistry(
     const UObject* WorldContextObject)
 {
     if (!IsValid(WorldContextObject)) return nullptr;

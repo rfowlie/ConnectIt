@@ -5,7 +5,8 @@
 
 #include "Board/ConnectIt_PieceRegistry.h"
 #include "Board/ConnectIt_TileRegistry.h"
-#include "Board/ConnectIt_TileVisualizer.h"
+#include "Board/ConnectIt_BoardVisualizer.h"
+#include "Engine/World.h"
 #include "Framework/Data/ConnectIt_LevelConfigDataAsset.h"
 #include "Framework/Data/ConnectIt_WorldSettings.h"
 #include "Framework/Library/ConnectIt_GameUtilityLibrary.h"
@@ -73,10 +74,6 @@ void UConnectIt_BoardRegistrySubsystem::OnWorldBeginPlay(UWorld& InWorld)
                 "OnWorldBeginPlay — no UGameEventTaskSubsystem, TileRegistry "
                 "mappings will not stay in sync"));
         }
-
-        // The tile actors' hooks, as board events play
-        TileVisualizer = NewObject<UConnectIt_TileVisualizer>(this);
-        TileVisualizer->Initialise(TileRegistry);
     }
     else
     {
@@ -111,6 +108,28 @@ void UConnectIt_BoardRegistrySubsystem::OnWorldBeginPlay(UWorld& InWorld)
     
     // No error log if unset -- InitialiseRegistry() is still a no-op stub
     // on UGridPieceRegistryBase, so not every level needs one authored yet.
+
+    // The board's visuals, once both registries exist: one per map, local
+    // to each machine
+    if (IsValid(TileRegistry))
+    {
+        const TSubclassOf<AConnectIt_BoardVisualizer> VisualizerClass = LevelConfig->VisualizerClass
+            ? LevelConfig->VisualizerClass : TSubclassOf<AConnectIt_BoardVisualizer>(AConnectIt_BoardVisualizer::StaticClass());
+        FActorSpawnParameters Params;
+        Params.Name = TEXT("BoardVisualizer");
+        Params.ObjectFlags |= RF_Transient;
+        Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+        BoardVisualizer = InWorld.SpawnActor<AConnectIt_BoardVisualizer>(VisualizerClass, FTransform::Identity, Params);
+        if (IsValid(BoardVisualizer))
+        {
+            BoardVisualizer->Initialise();
+        }
+        else
+        {
+            UE_LOG(LogTemp, Error, TEXT("ConnectIt_BoardRegistrySubsystem: "
+                "OnWorldBeginPlay — couldn't spawn the board visualizer (%s)"), *GetNameSafe(VisualizerClass));
+        }
+    }
 }
 
 void UConnectIt_BoardRegistrySubsystem::Deinitialize()

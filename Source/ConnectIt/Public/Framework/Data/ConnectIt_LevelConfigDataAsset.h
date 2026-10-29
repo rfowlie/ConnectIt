@@ -10,6 +10,7 @@ class AConnectIt_PieceBase;
 class AGridTileBase;
 class UConnectIt_TileRegistry;
 class UConnectIt_PieceRegistry;
+class AConnectIt_BoardVisualizer;
 class UGridDefinition;
 
 // A board: the tile and piece registries, grid geometry and pieces a map is
@@ -56,6 +57,12 @@ public:
 
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Instanced, Category = "ConnectIt|Board")
     TObjectPtr<UConnectIt_PieceRegistry> PieceRegistry;
+
+    // The board's visuals: one per map, spawned after the registries
+    // (AConnectIt_BoardVisualizer). None = the C++ base (the actors' own
+    // hooks only); pick a Blueprint subclass for this look's effects.
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "ConnectIt|Board")
+    TSubclassOf<AConnectIt_BoardVisualizer> VisualizerClass;
 
     // Grid geometry (cell size, World<->Grid conversion) both registries
     // above share -- a sibling template, same Instanced/duplicate-per-world

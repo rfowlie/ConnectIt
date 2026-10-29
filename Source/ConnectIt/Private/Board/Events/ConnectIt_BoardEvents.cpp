@@ -129,6 +129,13 @@ void FConnectItBoardEvent::ApplyAll(const FConnectItBoardChangeEvent& Events, FC
     }
 }
 
+const FInstancedStruct* FConnectItBoardEvent::FindCause(const FConnectItBoardChangeEvent& Change, int32 Index)
+{
+    const FConnectItBoardEvent* Event =
+        Change.Events.IsValidIndex(Index) ? Change.Events[Index].GetPtr<FConnectItBoardEvent>() : nullptr;
+    return Event && Change.Events.IsValidIndex(Event->CauseIndex) ? &Change.Events[Event->CauseIndex] : nullptr;
+}
+
 void FConnectItBoardEvent_BoardSeeded::ApplyTo(FConnectItBoardState& Board) const
 {
     // The seed is the starting board itself: nothing to change

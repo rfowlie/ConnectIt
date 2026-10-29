@@ -314,8 +314,7 @@ void UConnectIt_BoardStateComponent::OnRep_BoardSnapshot()
 
         // ...and its builder tiles become the tile catalog's actors (tile
         // actors are local: each machine swaps its own)
-        if (UConnectIt_TileRegistry* ConnectItTiles =
-            Cast<UConnectIt_TileRegistry>(UConnectIt_GameUtilityLibrary::GetTileRegistry(this)))
+        if (UConnectIt_TileRegistry* ConnectItTiles = UConnectIt_GameUtilityLibrary::GetTileRegistry(this))
         {
             ConnectItTiles->SwapBuilderTiles();
         }
@@ -344,10 +343,13 @@ void UConnectIt_BoardStateComponent::EnqueueBoardEventTags()
     GameEventSubsystem->OnAnyTagComplete.AddUniqueDynamic(
         this, &UConnectIt_BoardStateComponent::HandleQueueEntryComplete);
 
-    // Only entries that are board events with a tag are queued
-    TArray<const FInstancedStruct*, TInlineAllocator<16>> ToQueue;
-    for (const FInstancedStruct& Entry : BoardSnapshot.ChangeEvent.Events)
+    // Only entries that are board events with a tag are queued (by their
+    // index in the change's list, which a cause refers to)
+    TArray<int32, TInlineAllocator<16>> ToQueue;
+    const TArray<FInstancedStruct>& Entries = BoardSnapshot.ChangeEvent.Events;
+    for (int32 Index = 0; Index < Entries.Num(); Index++)
     {
+        const FInstancedStruct& Entry = Entries[Index];
         const FConnectItBoardEvent* Event = Entry.GetPtr<FConnectItBoardEvent>();
         if (!Event || !Event->GetEventTag().IsValid())
         {
@@ -357,7 +359,7 @@ void UConnectIt_BoardStateComponent::EnqueueBoardEventTags()
                 *GetNameSafe(Entry.GetScriptStruct()));
             continue;
         }
-        ToQueue.Add(&Entry);
+        ToQueue.Add(Index);
     }
 
     // Counted before any is queued: with no visuals bound an entry completes
@@ -374,10 +376,21 @@ void UConnectIt_BoardStateComponent::EnqueueBoardEventTags()
     // its own data as the entry's payload, so a listener always reads the
     // event that is actually playing (UConnectIt_BoardEventLibrary) -- even if this
     // snapshot has been replaced by a newer one by then.
-    for (const FInstancedStruct* Entry : ToQueue)
+    //
+    // Each copy is stamped with where it plays (its change and index), and
+    // the change is kept until its events have played, so a listener can ask
+    // what caused the event it's playing (UConnectIt_BoardEventLibrary::
+    // GetBoardEventCause).
+    const int32 ChangeId = NextPlayChangeId++;
+    PlayingChanges.Add(ChangeId, BoardSnapshot.ChangeEvent);
+    PlayingRemaining.Add(ChangeId, ToQueue.Num());
+    for (const int32 Index : ToQueue)
     {
-        const FGameplayTag EventTag = Entry->Get<FConnectItBoardEvent>().GetEventTag();
-        GameEventSubsystem->QueueTagContainerWithPayload(FGameplayTagContainer(EventTag), *Entry);
+        FInstancedStruct Entry = Entries[Index];
+        FConnectItBoardEvent& Event = Entry.GetMutable<FConnectItBoardEvent>();
+        Event.PlayIndex = Index;
+        Event.PlayChangeId = ChangeId;
+        GameEventSubsystem->QueueTagContainerWithPayload(FGameplayTagContainer(Event.GetEventTag()), Entry);
     }
 }
 
@@ -398,6 +411,16 @@ void UConnectIt_BoardStateComponent::HandleQueueEntryComplete(FGameplayTag Tag)
     const FConnectItBoardState Before = DisplayBoard;
     Event->ApplyTo(DisplayBoard);
     PendingDisplayEvents--;
+
+    // Its change is kept until its last event has played
+    if (int32* Remaining = PlayingRemaining.Find(Event->PlayChangeId))
+    {
+        if (--*Remaining <= 0)
+        {
+            PlayingRemaining.Remove(Event->PlayChangeId);
+            PlayingChanges.Remove(Event->PlayChangeId);
+        }
+    }
     RefreshDisplayActors(&Before);
 
     if (PendingDisplayEvents == 0)
@@ -427,6 +450,12 @@ void UConnectIt_BoardStateComponent::RefreshDisplayActors(const FConnectItBoardS
     {
         UConnectIt_BoardEventLibrary::RefreshActorsAt(this, Positions);
     }
+}
+
+const FInstancedStruct* UConnectIt_BoardStateComponent::GetPlayingEvent(int32 ChangeId, int32 Index) const
+{
+    const FConnectItBoardChangeEvent* Change = PlayingChanges.Find(ChangeId);
+    return Change && Change->Events.IsValidIndex(Index) ? &Change->Events[Index] : nullptr;
 }
 
 void UConnectIt_BoardStateComponent::CatchDisplayBoardUp()

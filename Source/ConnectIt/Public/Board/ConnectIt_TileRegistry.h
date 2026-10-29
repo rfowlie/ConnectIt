@@ -9,6 +9,7 @@
 #include "ConnectIt_TileRegistry.generated.h"
 
 class UConnectIt_BoardStateComponent;
+class AConnectIt_TileBase;
 
 // ConnectIt-specific tile registry -- the plugin's UGridTileRegistryBase
 // knows nothing about UConnectIt_BoardStateComponent, so board-state access
@@ -32,6 +33,17 @@ public:
 
     UFUNCTION(BlueprintImplementableEvent, Category = "ConnectIt|Board")
     void HandleGameEventComplete(FGameplayTag EventTag);
+
+    // --- Typed lookups (every ConnectIt tile derives AConnectIt_TileBase) ---
+
+    // The tile at Position, or null if there is none. An actor there that
+    // isn't a ConnectIt tile is logged and returns null.
+    UFUNCTION(BlueprintPure, Category = "ConnectIt|Board")
+    AConnectIt_TileBase* GetTileAt(FGridPosition Position) const;
+
+    // GetTileAt for each position, in order (null where there is none)
+    UFUNCTION(BlueprintPure, Category = "ConnectIt|Board")
+    TArray<AConnectIt_TileBase*> GetTilesAt(const TArray<FGridPosition>& Positions) const;
 
     // --- A phased level's tiles coming and going (see UConnectIt_BoardLayoutDataAsset) ---
     // The bookkeeping half of following the board: call these from the

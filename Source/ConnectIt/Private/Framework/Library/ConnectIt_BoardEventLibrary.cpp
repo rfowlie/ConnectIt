@@ -5,6 +5,7 @@
 #include "Engine/Engine.h"
 #include "Engine/World.h"
 #include "Framework/Library/ConnectIt_GameUtilityLibrary.h"
+#include "Board/ConnectIt_BoardStateComponent.h"
 #include "Interface/GridBoardActor.h"
 #include "Piece/GridPieceBase.h"
 #include "Piece/GridPieceRegistryBase.h"
@@ -148,6 +149,39 @@ const FInstancedStruct* UConnectIt_BoardEventLibrary::GetActiveBoardEvent(const 
 
     const FInstancedStruct& Payload = GameEventSubsystem->GetActivePayload();
     return Payload.IsValid() ? &Payload : nullptr;
+}
+
+int32 UConnectIt_BoardEventLibrary::GetActiveBoardEventIndex(const UObject* WorldContextObject)
+{
+    const FInstancedStruct* Active = GetActiveBoardEvent(WorldContextObject);
+    const FConnectItBoardEvent* Event = Active ? Active->GetPtr<FConnectItBoardEvent>() : nullptr;
+    return Event ? Event->PlayIndex : INDEX_NONE;
+}
+
+const FInstancedStruct* UConnectIt_BoardEventLibrary::FindActiveBoardEventCause(const UObject* WorldContextObject)
+{
+    const FInstancedStruct* Active = GetActiveBoardEvent(WorldContextObject);
+    const FConnectItBoardEvent* Event = Active ? Active->GetPtr<FConnectItBoardEvent>() : nullptr;
+    if (!Event || Event->CauseIndex == INDEX_NONE) return nullptr;
+
+    const UConnectIt_BoardStateComponent* BoardState =
+        UConnectIt_GameUtilityLibrary::GetBoardStateComponent(WorldContextObject);
+    return BoardState ? BoardState->GetPlayingEvent(Event->PlayChangeId, Event->CauseIndex) : nullptr;
+}
+
+bool UConnectIt_BoardEventLibrary::GetBoardEventCause(const UObject* WorldContextObject, FInstancedStruct& OutCause)
+{
+    const FInstancedStruct* Cause = FindActiveBoardEventCause(WorldContextObject);
+    if (!Cause) return false;
+    OutCause = *Cause;
+    return true;
+}
+
+FGameplayTag UConnectIt_BoardEventLibrary::GetBoardEventCauseTag(const UObject* WorldContextObject)
+{
+    const FInstancedStruct* Cause = FindActiveBoardEventCause(WorldContextObject);
+    const FConnectItBoardEvent* Event = Cause ? Cause->GetPtr<FConnectItBoardEvent>() : nullptr;
+    return Event ? Event->GetEventTag() : FGameplayTag();
 }
 
 void UConnectIt_BoardEventLibrary::RefreshActorsAt(const UObject* WorldContextObject, const TArray<FGridPosition>& Positions)

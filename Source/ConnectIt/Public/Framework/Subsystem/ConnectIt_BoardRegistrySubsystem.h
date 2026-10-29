@@ -7,7 +7,7 @@
 #include "ConnectIt_BoardRegistrySubsystem.generated.h"
 
 class UConnectIt_TileRegistry;
-class UConnectIt_TileVisualizer;
+class AConnectIt_BoardVisualizer;
 class UConnectIt_PieceRegistry;
 class UGridDefinition;
 
@@ -58,6 +58,10 @@ public:
     UFUNCTION(BlueprintPure, Category = "ConnectIt|Board")
     UGridDefinition* GetGridDefinition() const { return GridDefinition; }
 
+    // The map's board visualizer (null if the map has no board)
+    UFUNCTION(BlueprintPure, Category = "ConnectIt|Board")
+    AConnectIt_BoardVisualizer* GetBoardVisualizer() const { return BoardVisualizer; }
+
 private:
 
     // Runtime-only duplicates of the level config's registry templates --
@@ -71,7 +75,7 @@ private:
     UPROPERTY()
     TObjectPtr<UGridDefinition> GridDefinition;
 
-    // Calls the tile actors' hooks as board events play (every machine)
+    // Plays the board events on the actors (every machine)
     UPROPERTY()
-    TObjectPtr<UConnectIt_TileVisualizer> TileVisualizer;
+    TObjectPtr<AConnectIt_BoardVisualizer> BoardVisualizer;
 };

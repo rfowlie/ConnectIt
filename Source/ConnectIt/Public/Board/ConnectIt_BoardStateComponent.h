@@ -151,6 +151,10 @@ public:
         return DisplayBoard;
     }
 
+    // An event of a change that is queued or playing (by its PlayChangeId
+    // and index), or null once that change has played out
+    const FInstancedStruct* GetPlayingEvent(int32 ChangeId, int32 Index) const;
+
     // Fires each time the display board moves on (an event applied, or the
     // copy of Current once the queue drains)
     UPROPERTY(BlueprintAssignable, Category = "Board State")
@@ -219,6 +223,13 @@ private:
 
     // DisplayBoard = Current, warning when the tiles or scores differ
     void CatchDisplayBoardUp();
+
+    // Changes whose events are queued or playing, by the id stamped on their
+    // events (FConnectItBoardEvent::PlayChangeId) -- for an event's cause --
+    // and how many of each are still to complete
+    TMap<int32, FConnectItBoardChangeEvent> PlayingChanges;
+    TMap<int32, int32> PlayingRemaining;
+    int32 NextPlayChangeId = 0;
 
     // Has the tile and piece actors refresh themselves from DisplayBoard
     // (UConnectIt_BoardEventLibrary::RefreshActorsAt): where it differs from

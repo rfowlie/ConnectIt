@@ -2,6 +2,7 @@
 
 
 #include "Board/Actor/ConnectIt_PieceBase.h"
+#include "Board/ConnectIt_BoardVisualizer.h"
 #include "Board/ConnectIt_BoardStateComponent.h"
 #include "Framework/Library/ConnectIt_GameUtilityLibrary.h"
 #include "Piece/GridPieceRegistryBase.h"
@@ -42,6 +43,21 @@ void AConnectIt_PieceBase::RefreshFromBoard_Implementation()
 		FactionID = Data->FactionPiece;
 		OnFactionVisualUpdate(FactionID);
 	}
+}
+
+void AConnectIt_PieceBase::SetBoardPosition(const FGridPosition& Position)
+{
+	OccupiedPosition = Position;
+	GridPosition     = Position;
+}
+
+void AConnectIt_PieceBase::EndPlay(const EEndPlayReason::Type EndPlayReason)
+{
+	if (AConnectIt_BoardVisualizer* Visualizer = AConnectIt_BoardVisualizer::GetBoardVisualizer(this))
+	{
+		Visualizer->ReleaseHoldsBy(this);
+	}
+	Super::EndPlay(EndPlayReason);
 }
 
 void AConnectIt_PieceBase::OnFactionVisualUpdate_Implementation(int32 InFactionID)

@@ -4,6 +4,8 @@
 
 #include "CoreMinimal.h"
 #include "Kismet/BlueprintFunctionLibrary.h"
+#include "Board/ConnectIt_TileRegistry.h"
+#include "Board/ConnectIt_PieceRegistry.h"
 #include "ConnectIt_GameUtilityLibrary.generated.h"
 
 class AConnectIt_PlayerState;
@@ -38,17 +40,18 @@ public:
 
     // Returns the current world's TileRegistry, via
     // UConnectIt_BoardRegistrySubsystem -- one canonical instance per world,
-    // resolved identically on server and every client.
+    // resolved identically on server and every client. ConnectIt's own type,
+    // so its typed lookups (Get Tile At) need no cast.
     UFUNCTION(BlueprintPure, Category = "ConnectIt|Utility",
         meta = (WorldContext = "WorldContextObject"))
-    static UGridTileRegistryBase* GetTileRegistry(
+    static UConnectIt_TileRegistry* GetTileRegistry(
         const UObject* WorldContextObject);
 
     // Returns the current world's PieceRegistry, via
     // UConnectIt_BoardRegistrySubsystem. See GetTileRegistry.
     UFUNCTION(BlueprintPure, Category = "ConnectIt|Utility",
         meta = (WorldContext = "WorldContextObject"))
-    static UGridPieceRegistryBase* GetPieceRegistry(
+    static UConnectIt_PieceRegistry* GetPieceRegistry(
         const UObject* WorldContextObject);
 
 
