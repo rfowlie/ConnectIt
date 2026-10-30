@@ -54,12 +54,14 @@ public:
     void ShutdownRegistry();
 
     // Get-or-create: returns the piece already mapped to Position, or asks
-    // InstantiatePiece to create one and caches the result.
+    // InstantiatePiece to create one and maps the result (setting its
+    // position -- whatever the override did).
     UFUNCTION(BlueprintCallable, Category = "Grid|Registry")
     AGridPieceBase* GetPiece(FGridPosition Position);
 
     // Designer-implemented creation hook -- called by GetPiece the first
-    // time a position is queried with nothing mapped yet.
+    // time a position is queried with nothing mapped yet. Just make the
+    // piece: GetPiece maps it and sets its position.
     UFUNCTION(BlueprintImplementableEvent, BlueprintCallable, Category = "Grid|Registry")
     AGridPieceBase* InstantiatePiece(FGridPosition Position);
 
@@ -112,10 +114,19 @@ public:
     UFUNCTION(BlueprintPure, Category = "Grid|Registry")
     bool FindPositionOfPiece(const AGridPieceBase* Piece, FGridPosition& OutPosition) const;
 
+    // Every position a piece is mapped at
+    UFUNCTION(BlueprintPure, Category = "Grid|Registry")
+    TArray<FGridPosition> GetAllPiecePositions() const;
+
 protected:
-    
-    UPROPERTY(BlueprintReadWrite, Category = "Grid|Registry")
+
+    // Position -> piece. Read-only to Blueprint: every mapping goes through
+    // SetPieceAt, so a piece's position always matches it.
+    UPROPERTY(BlueprintReadOnly, Category = "Grid|Registry")
     TMap<FGridPosition, TObjectPtr<AGridPieceBase>> PieceMap;
+
+    // Maps Piece at Position and sets the piece's position, in one step
+    void SetPieceAt(const FGridPosition& Position, AGridPieceBase* Piece);
 
     UFUNCTION(BlueprintCallable, Category = "Grid|Registry")
     void UpdateMappings();

@@ -48,8 +48,23 @@ void UGridPieceRegistryBase::UpdateMappings()
     PieceMap.Reset();
     for (auto Piece : Pieces)
     {
-        PieceMap.Add(GridDefinition->WorldToGridPosition(Piece->GetActorLocation()), Piece);
+        SetPieceAt(GridDefinition->WorldToGridPosition(Piece->GetActorLocation()), Piece);
     }
+}
+
+void UGridPieceRegistryBase::SetPieceAt(const FGridPosition& Position, AGridPieceBase* Piece)
+{
+    if (!IsValid(Piece)) return;
+
+    PieceMap.Add(Position, Piece);
+    Piece->GridPosition = Position;
+}
+
+TArray<FGridPosition> UGridPieceRegistryBase::GetAllPiecePositions() const
+{
+    TArray<FGridPosition> Positions;
+    PieceMap.GenerateKeyArray(Positions);
+    return Positions;
 }
 
 UGridHoverSubsystem* UGridPieceRegistryBase::ResolveHoverSubsystem() const
@@ -64,8 +79,10 @@ AGridPieceBase* UGridPieceRegistryBase::GetPiece(FGridPosition Position)
         return *Found;
     }
 
+    // The override only makes the piece; mapping it sets its position (a
+    // position the override set is overwritten, not trusted)
     AGridPieceBase* Piece = InstantiatePiece(Position);
-    PieceMap.Add(Position, Piece);
+    SetPieceAt(Position, Piece);
     return Piece;
 }
 

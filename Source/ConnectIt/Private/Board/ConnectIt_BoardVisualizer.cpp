@@ -2,6 +2,7 @@
 
 #include "Board/ConnectIt_BoardVisualizer.h"
 #include "Board/ConnectIt_VisualHandle.h"
+#include "Board/ConnectIt_EventVisual.h"
 #include "Board/ConnectIt_BoardStateComponent.h"
 #include "Board/ConnectIt_PieceRegistry.h"
 #include "Board/ConnectIt_TileRegistry.h"
@@ -18,6 +19,15 @@
 #include "Engine/World.h"
 #include "TimerManager.h"
 #include "UObject/UObjectIterator.h"
+#include "HAL/IConsoleManager.h"
+
+namespace
+{
+    TAutoConsoleVariable<int32> CVarVisualizerReconcile(
+        TEXT("ConnectIt.Visualizer.Reconcile"), 2,
+        TEXT("Check the board's actors against the registries after board events play: ")
+        TEXT("0 off, 1 log mismatches, 2 log and put them right (default)"));
+}
 
 
 AConnectIt_BoardVisualizer::AConnectIt_BoardVisualizer()
@@ -83,6 +93,96 @@ void AConnectIt_BoardVisualizer::Initialise()
         Queue->RegisterAsyncTask(Tag, Task, 0);
         Tasks.Add(Tag, Task);
     }
+
+    if (const UConnectIt_LevelConfigDataAsset* LevelConfig = AConnectIt_WorldSettings::FindLevelConfig(this))
+    {
+        SetEventVisuals(LevelConfig->EventVisuals);
+    }
+}
+
+// --- Event visuals ---
+
+TMap<FGameplayTag, TSubclassOf<AConnectIt_EventVisual>> AConnectIt_BoardVisualizer::BuildEventVisualMap(
+    const TArray<TSubclassOf<AConnectIt_EventVisual>>& Classes, TArray<FString>* OutErrors, TArray<FString>* OutWarnings)
+{
+    TMap<FGameplayTag, TSubclassOf<AConnectIt_EventVisual>> Map;
+    const auto Warn = [OutWarnings](const FString& Message) { if (OutWarnings) OutWarnings->Add(Message); };
+
+    for (int32 Index = 0; Index < Classes.Num(); Index++)
+    {
+        const TSubclassOf<AConnectIt_EventVisual>& Class = Classes[Index];
+        if (!Class)
+        {
+            Warn(FString::Printf(TEXT("Event Visuals entry %d is empty"), Index));
+            continue;
+        }
+        if (Class->HasAnyClassFlags(CLASS_Abstract))
+        {
+            Warn(FString::Printf(TEXT("Event visual %s is abstract -- make a Blueprint of it and list that"), *Class->GetName()));
+            continue;
+        }
+        const FGameplayTag Tag = AConnectIt_EventVisual::GetEventTagOf(Class);
+        if (!Tag.IsValid())
+        {
+            Warn(FString::Printf(TEXT("Event visual %s isn't for a board event -- derive it from an event kind's class "
+                "(e.g. ConnectIt_EventVisual_PiecePlaced)"), *Class->GetName()));
+            continue;
+        }
+        if (const TSubclassOf<AConnectIt_EventVisual>* First = Map.Find(Tag))
+        {
+            if (OutErrors)
+            {
+                OutErrors->Add(FString::Printf(TEXT("Event visuals %s and %s are both for %s -- one per event (the first is used)"),
+                    *(*First)->GetName(), *Class->GetName(), *Tag.ToString()));
+            }
+            continue;
+        }
+        Map.Add(Tag, Class);
+    }
+    return Map;
+}
+
+void AConnectIt_BoardVisualizer::SetEventVisuals(const TArray<TSubclassOf<AConnectIt_EventVisual>>& Classes)
+{
+    TArray<FString> Problems;
+    EventVisualClasses = BuildEventVisualMap(Classes, &Problems, &Problems);
+    for (const FString& Problem : Problems)
+    {
+        UE_LOG(LogTemp, Warning, TEXT("ConnectIt_BoardVisualizer: %s"), *Problem);
+    }
+
+    for (const TPair<FGameplayTag, TObjectPtr<AConnectIt_EventVisual>>& Spawned : EventVisuals)
+    {
+        if (IsValid(Spawned.Value)) Spawned.Value->Destroy();
+    }
+    EventVisuals.Reset();
+}
+
+bool AConnectIt_BoardVisualizer::PlayEventVisual(const FInstancedStruct& Payload, UConnectIt_VisualHandle* Handle)
+{
+    const FConnectItBoardEvent* Event = Payload.GetPtr<FConnectItBoardEvent>();
+    const FGameplayTag Tag = Event ? Event->GetEventTag() : FGameplayTag();
+    const TSubclassOf<AConnectIt_EventVisual>* Class = EventVisualClasses.Find(Tag);
+    if (!Class || !GetWorld()) return false;
+
+    TObjectPtr<AConnectIt_EventVisual>& Visual = EventVisuals.FindOrAdd(Tag);
+    if (!IsValid(Visual))
+    {
+        FActorSpawnParameters Params;
+        Params.Owner = this;
+        Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+        Params.ObjectFlags |= RF_Transient;
+        Visual = GetWorld()->SpawnActor<AConnectIt_EventVisual>(*Class, GetActorTransform(), Params);
+    }
+    if (!IsValid(Visual)) return false;
+
+    Visual->PlayEvent(this, Payload, Handle);
+    return true;
+}
+
+void AConnectIt_BoardVisualizer::PlayDefaultVisuals(const FInstancedStruct& Payload, UConnectIt_VisualHandle* Handle)
+{
+    Dispatch(Payload, Handle);
 }
 
 void AConnectIt_BoardVisualizer::ReleaseHoldsBy(const UObject* Holder)
@@ -115,6 +215,8 @@ void AConnectIt_BoardVisualizer::HandleTaskExecute()
 
     TGuardValue<bool> Executing(bExecuting, true);
     ActiveTask = *Task;
+    ActivePayload = Payload;
+    BindToBoardState();
 
     UConnectIt_VisualHandle* Handle = NewObject<UConnectIt_VisualHandle>(this);
     ActiveHandle = Handle;
@@ -122,7 +224,10 @@ void AConnectIt_BoardVisualizer::HandleTaskExecute()
     Handle->Begin(Event->GetEventTag(), HoldTimeoutSeconds);
 
     BeginBookkeeping(Payload);
-    Dispatch(Payload, Handle);
+    if (!PlayEventVisual(Payload, Handle))
+    {
+        Dispatch(Payload, Handle);
+    }
     Handle->Seal();
 }
 
@@ -193,13 +298,9 @@ void AConnectIt_BoardVisualizer::BeginBookkeeping(const FInstancedStruct& Payloa
     UConnectIt_PieceRegistry* Pieces = GetPieceRegistry();
     const FConnectItBoardState* Display = GetDisplayBoard();
 
-    // A piece's own position follows the registry's
+    // Moved pieces end on their tile (the registry already set their position)
     const auto Repositioned = [this](const FGridPosition& Position)
     {
-        if (AConnectIt_PieceBase* Piece = GetPieceAt(Position))
-        {
-            Piece->SetBoardPosition(Position);
-        }
         PiecesToSnap.Add(Position);
     };
 
@@ -333,11 +434,204 @@ void AConnectIt_BoardVisualizer::FinishBookkeeping()
         }
     }
 
+    // Then the actors the event named, against the registries
+    if (IsValid(ActiveHandle))
+    {
+        const FString Tag = ActiveHandle->GetEventTag().ToString();
+        LastEventNote = ActiveHandle->HasTimedOut()
+            ? FString::Printf(TEXT("after %s, which timed out held by %s"), *Tag, *ActiveHandle->GetTimedOutHolders())
+            : FString::Printf(TEXT("after %s"), *Tag);
+    }
+    TArray<FGridPosition> Touched = TilesToSnap;
+    Touched.Append(PiecesToSnap);
+    for (const AConnectIt_PieceBase* Piece : GetArrivingPieces())
+    {
+        Touched.Add(Piece->GetGridPosition());
+    }
+    if (const UScriptStruct* Struct = ActivePayload.GetScriptStruct())
+    {
+        CollectPositions(Struct, ActivePayload.GetMemory(), Touched);
+    }
+    ReconcileActors(Touched);
+
+    ActivePayload.Reset();
     ArrivingPieces.Reset();
     LeavingPieces.Reset();
     LeavingTiles.Reset();
     TilesToSnap.Reset();
     PiecesToSnap.Reset();
+}
+
+// --- Reconcile ---
+
+void AConnectIt_BoardVisualizer::BindToBoardState()
+{
+    if (bBoundToBoardState) return;
+
+    if (UConnectIt_BoardStateComponent* BoardState = UConnectIt_GameUtilityLibrary::GetBoardStateComponent(this))
+    {
+        BoardState->OnBoardEventsPlayed.AddUniqueDynamic(this, &AConnectIt_BoardVisualizer::HandleBoardEventsPlayed);
+        bBoundToBoardState = true;
+    }
+}
+
+void AConnectIt_BoardVisualizer::HandleBoardEventsPlayed()
+{
+    ReconcileAll();
+}
+
+void AConnectIt_BoardVisualizer::CollectPositions(const UStruct* Struct, const void* Data, TArray<FGridPosition>& OutPositions)
+{
+    const UScriptStruct* PositionStruct = FGridPosition::StaticStruct();
+    const auto Visit = [&OutPositions, PositionStruct](const UScriptStruct* ValueStruct, const void* Value)
+    {
+        if (ValueStruct == PositionStruct)
+        {
+            OutPositions.Add(*static_cast<const FGridPosition*>(Value));
+        }
+        else
+        {
+            CollectPositions(ValueStruct, Value, OutPositions);
+        }
+    };
+
+    for (TFieldIterator<FProperty> It(Struct); It; ++It)
+    {
+        const void* Value = It->ContainerPtrToValuePtr<void>(Data);
+        if (const FStructProperty* StructProperty = CastField<FStructProperty>(*It))
+        {
+            Visit(StructProperty->Struct, Value);
+        }
+        else if (const FArrayProperty* ArrayProperty = CastField<FArrayProperty>(*It))
+        {
+            const FStructProperty* Inner = CastField<FStructProperty>(ArrayProperty->Inner);
+            if (!Inner) continue;
+
+            FScriptArrayHelper Array(ArrayProperty, Value);
+            for (int32 Index = 0; Index < Array.Num(); Index++)
+            {
+                Visit(Inner->Struct, Array.GetRawPtr(Index));
+            }
+        }
+    }
+}
+
+void AConnectIt_BoardVisualizer::ReportMismatch(const AActor* Actor, const FGridPosition& Position, const FString& What, bool bFixed) const
+{
+    const FString After = LastEventNote.IsEmpty() ? FString() : FString::Printf(TEXT(" (%s)"), *LastEventNote);
+    UE_LOG(LogTemp, Error, TEXT("ConnectIt_BoardVisualizer: reconcile -- %s at (%d, %d) %s%s%s"),
+        *GetNameSafe(Actor), Position.X, Position.Y, *What, *After, bFixed ? TEXT(" -- put right") : TEXT(""));
+}
+
+int32 AConnectIt_BoardVisualizer::ReconcileActors(const TArray<FGridPosition>& Positions)
+{
+    const int32 Mode = CVarVisualizerReconcile.GetValueOnGameThread();
+    UConnectIt_TileRegistry* Tiles = GetTileRegistry();
+    UConnectIt_PieceRegistry* Pieces = GetPieceRegistry();
+    const UGridDefinition* Grid = Tiles ? Tiles->GridDefinition.Get() : nullptr;
+    if (Mode <= 0 || !Tiles) return 0;
+    const bool bFix = Mode >= 2;
+
+    TArray<FGridPosition> Unique;
+    for (const FGridPosition& Position : Positions)
+    {
+        Unique.AddUnique(Position);
+    }
+
+    int32 Mismatches = 0;
+
+    // Tiles first: pieces rest on them
+    for (const FGridPosition& Position : Unique)
+    {
+        AGridTileBase* Tile = Tiles->GetTileAtPosition(Position);
+        if (!IsValid(Tile) || !Grid) continue;
+
+        const FVector Current = Tile->GetActorLocation();
+        const FVector Cell = Grid->GridPositionToWorld(Position);
+        const FVector Expected(Cell.X, Cell.Y, Current.Z);
+        if (!Current.Equals(Expected, ReconcileTolerance))
+        {
+            Mismatches++;
+            ReportMismatch(Tile, Position, FString::Printf(TEXT("is at %s, off its cell %s"),
+                *Current.ToCompactString(), *Expected.ToCompactString()), bFix);
+            if (bFix) Tile->SetActorLocation(Expected);
+        }
+    }
+
+    for (const FGridPosition& Position : Unique)
+    {
+        AGridPieceBase* Piece = Pieces ? Pieces->GetPieceAtPosition(Position) : nullptr;
+        if (!IsValid(Piece)) continue;
+
+        const FGridPosition Cached = Piece->GetGridPosition();
+        if (!(Cached == Position))
+        {
+            Mismatches++;
+            ReportMismatch(Piece, Position, FString::Printf(TEXT("has its position as (%d, %d), not the registry's"),
+                Cached.X, Cached.Y), bFix);
+            if (bFix) Pieces->MapPiece(Position, Piece);
+        }
+        if (!Tiles->GetTileAtPosition(Position))
+        {
+            Mismatches++;
+            ReportMismatch(Piece, Position, TEXT("has no tile under it (not put right here)"), false);
+        }
+
+        const FVector Current = Piece->GetActorLocation();
+        const FVector Expected = GetPieceLocation(Position);
+        if (!Current.Equals(Expected, ReconcileTolerance))
+        {
+            Mismatches++;
+            ReportMismatch(Piece, Position, FString::Printf(TEXT("is at %s, not on its tile at %s"),
+                *Current.ToCompactString(), *Expected.ToCompactString()), bFix);
+            if (bFix) Piece->SetActorLocation(Expected);
+        }
+    }
+    return Mismatches;
+}
+
+int32 AConnectIt_BoardVisualizer::ReconcileAll()
+{
+    if (CVarVisualizerReconcile.GetValueOnGameThread() <= 0) return 0;
+
+    UConnectIt_TileRegistry* Tiles = GetTileRegistry();
+    UConnectIt_PieceRegistry* Pieces = GetPieceRegistry();
+    TArray<FGridPosition> Positions = Tiles ? Tiles->GetAllTilePositions() : TArray<FGridPosition>();
+    if (Pieces) Positions.Append(Pieces->GetAllPiecePositions());
+    int32 Mismatches = ReconcileActors(Positions);
+
+    // The board against the piece registry (the display board has caught up
+    // once a change has played out)
+    const FConnectItBoardState* Board = GetDisplayBoard();
+    if (Board && Pieces && Board->NumTiles() > 0)
+    {
+        for (int32 Index = 0; Index < Board->NumTiles(); Index++)
+        {
+            const FGridPosition Position = Board->GetPositionAt(Index);
+            const bool bOnBoard = Board->GetTileDataAt(Index).bIsOccupied;
+            const bool bInRegistry = Pieces->GetPieceAtPosition(Position) != nullptr;
+            if (bOnBoard != bInRegistry)
+            {
+                Mismatches++;
+                UE_LOG(LogTemp, Error,
+                    TEXT("ConnectIt_BoardVisualizer: reconcile -- the board has %s at (%d, %d) but the piece registry %s (not put right here)"),
+                    bOnBoard ? TEXT("a piece") : TEXT("no piece"), Position.X, Position.Y,
+                    bInRegistry ? TEXT("maps one") : TEXT("doesn't"));
+            }
+        }
+        for (const FGridPosition& Position : Pieces->GetAllPiecePositions())
+        {
+            if (!Board->GetTileData(Position))
+            {
+                Mismatches++;
+                UE_LOG(LogTemp, Error,
+                    TEXT("ConnectIt_BoardVisualizer: reconcile -- the piece registry maps a piece at (%d, %d), where the board has no tile (not put right here)"),
+                    Position.X, Position.Y);
+            }
+        }
+    }
+    LastEventNote.Reset();
+    return Mismatches;
 }
 
 AConnectIt_PieceBase* AConnectIt_BoardVisualizer::SpawnPieceAt(const FGridPosition& Position, int32 Faction)
@@ -348,7 +642,7 @@ AConnectIt_PieceBase* AConnectIt_BoardVisualizer::SpawnPieceAt(const FGridPositi
     // Already there (e.g. placed by older visuals): take it as it is
     if (AConnectIt_PieceBase* Existing = Pieces->GetPieceAt(Position))
     {
-        Existing->InitialisePiece(Faction, Position);
+        Existing->InitialisePiece(Faction);
         return Existing;
     }
 
@@ -365,7 +659,7 @@ AConnectIt_PieceBase* AConnectIt_BoardVisualizer::SpawnPieceAt(const FGridPositi
     AConnectIt_PieceBase* Piece = Cast<AConnectIt_PieceBase>(Pieces->RetrievePiece(PieceClass));
     if (!Piece) return nullptr;
 
-    Piece->InitialisePiece(Faction, Position);
+    Piece->InitialisePiece(Faction);
     Piece->SetActorLocation(GetPieceLocation(Position));
     Pieces->MapPiece(Position, Piece);
     if (AConnectIt_TileBase* Tile = GetTileAt(Position))
@@ -480,25 +774,63 @@ namespace
         const FConnectItTileData* Tile = Board ? Board->GetTileData(Position) : nullptr;
         return Tile ? Tile->FactionPiece : INDEX_NONE;
     }
+
+    // The multiplier at Position on Board (1 if none)
+    float MultiplierAt(const FConnectItBoardState* Board, const FGridPosition& Position)
+    {
+        const FConnectItTileData* Tile = Board ? Board->GetTileData(Position) : nullptr;
+        return Tile ? Tile->Multiplier : 1.f;
+    }
+
+    // An event of type T made for a hook another kind of event leads to: its
+    // cause is that event, and it plays where that event plays
+    template <typename T>
+    T MadeFor(const FConnectItBoardEvent& Source)
+    {
+        T Made;
+        Made.CauseIndex = Source.PlayIndex;
+        Made.PlayIndex = Source.PlayIndex;
+        Made.PlayChangeId = Source.PlayChangeId;
+        return Made;
+    }
+
+    // A Multiplier Changed for Position, made for Source
+    FConnectItBoardEvent_MultiplierChanged MultiplierMadeFor(const FConnectItBoardEvent& Source,
+        const FGridPosition& Position, float Previous, float New)
+    {
+        FConnectItBoardEvent_MultiplierChanged Made = MadeFor<FConnectItBoardEvent_MultiplierChanged>(Source);
+        Made.Position = Position;
+        Made.PreviousMultiplier = Previous;
+        Made.NewMultiplier = New;
+        return Made;
+    }
+}
+
+void AConnectIt_BoardVisualizer::PlaceArrivingPieces(const FConnectItBoardEvent& Source, UConnectIt_VisualHandle* Handle)
+{
+    for (AConnectIt_PieceBase* Piece : GetArrivingPieces())
+    {
+        FConnectItBoardEvent_PiecePlaced Placed = MadeFor<FConnectItBoardEvent_PiecePlaced>(Source);
+        Placed.Position = Piece->GetGridPosition();
+        Placed.Faction = Piece->GetFactionID();
+        Piece->OnPlaced(Placed, Handle);
+    }
 }
 
 void AConnectIt_BoardVisualizer::OnBoardSeeded_Implementation(const FConnectItBoardEvent_BoardSeeded& Event, UConnectIt_VisualHandle* Handle)
 {
-    for (AConnectIt_PieceBase* Piece : GetArrivingPieces())
-    {
-        Piece->OnPlaced(Handle);
-    }
+    PlaceArrivingPieces(Event, Handle);
 }
 
 void AConnectIt_BoardVisualizer::OnPiecePlaced_Implementation(const FConnectItBoardEvent_PiecePlaced& Event, UConnectIt_VisualHandle* Handle)
 {
     if (AConnectIt_TileBase* Tile = GetTileAt(Event.Position))
     {
-        Tile->OnPieceEnter(Event.Faction, Event.GetEventTag(), Handle);
+        Tile->OnPieceEnter(FInstancedStruct::Make(Event), Event.Faction, Handle);
     }
     if (AConnectIt_PieceBase* Piece = GetPieceAt(Event.Position))
     {
-        Piece->OnPlaced(Handle);
+        Piece->OnPlaced(Event, Handle);
     }
 }
 
@@ -507,25 +839,25 @@ void AConnectIt_BoardVisualizer::OnPiecesSwapped_Implementation(const FConnectIt
     // The display board is still the board before the swap
     const int32 FactionA = FactionAt(GetDisplayBoard(), Event.PositionA);
     const int32 FactionB = FactionAt(GetDisplayBoard(), Event.PositionB);
-    const FGameplayTag Cause = Event.GetEventTag();
+    const FInstancedStruct Copy = FInstancedStruct::Make(Event);
     if (AConnectIt_TileBase* TileA = GetTileAt(Event.PositionA))
     {
-        TileA->OnPieceExit(FactionA, Cause, Handle);
-        TileA->OnPieceEnter(FactionB, Cause, Handle);
+        TileA->OnPieceExit(Copy, FactionA, Handle);
+        TileA->OnPieceEnter(Copy, FactionB, Handle);
     }
     if (AConnectIt_TileBase* TileB = GetTileAt(Event.PositionB))
     {
-        TileB->OnPieceExit(FactionB, Cause, Handle);
-        TileB->OnPieceEnter(FactionA, Cause, Handle);
+        TileB->OnPieceExit(Copy, FactionB, Handle);
+        TileB->OnPieceEnter(Copy, FactionA, Handle);
     }
-    // The registry has swapped them: the piece now at A came from B
+    // The registry has swapped them: each piece's position is its new one
     if (AConnectIt_PieceBase* AtA = GetPieceAt(Event.PositionA))
     {
-        AtA->OnSwapped(Event.PositionB, Event.PositionA, Handle);
+        AtA->OnSwapped(Event, Handle);
     }
     if (AConnectIt_PieceBase* AtB = GetPieceAt(Event.PositionB))
     {
-        AtB->OnSwapped(Event.PositionA, Event.PositionB, Handle);
+        AtB->OnSwapped(Event, Handle);
     }
 }
 
@@ -533,11 +865,11 @@ void AConnectIt_BoardVisualizer::OnPieceCaptured_Implementation(const FConnectIt
 {
     if (AConnectIt_TileBase* Tile = GetTileAt(Event.Position))
     {
-        Tile->OnPieceEnter(Event.CapturingFaction, Event.GetEventTag(), Handle);
+        Tile->OnPieceEnter(FInstancedStruct::Make(Event), Event.CapturingFaction, Handle);
     }
     if (AConnectIt_PieceBase* Piece = GetPieceAt(Event.Position))
     {
-        Piece->OnCaptured(Event.CapturingFaction, Handle);
+        Piece->OnCaptured(Event, Handle);
     }
 }
 
@@ -545,40 +877,45 @@ void AConnectIt_BoardVisualizer::OnPieceRemoved_Implementation(const FConnectItB
 {
     if (AConnectIt_TileBase* Tile = GetTileAt(Event.Position))
     {
-        Tile->OnPieceExit(Event.RemovedFaction, Event.GetEventTag(), Handle);
+        Tile->OnPieceExit(FInstancedStruct::Make(Event), Event.RemovedFaction, Handle);
     }
     const TObjectPtr<AGridPieceBase>* Leaving = LeavingPieces.Find(Event.Position);
     if (AConnectIt_PieceBase* Piece = Leaving ? Cast<AConnectIt_PieceBase>(*Leaving) : nullptr)
     {
-        Piece->OnRemoved(Handle);
+        Piece->OnRemoved(Event, Handle);
     }
 }
 
 void AConnectIt_BoardVisualizer::OnPieceMoved_Implementation(const FConnectItBoardEvent_PieceMoved& Event, UConnectIt_VisualHandle* Handle)
 {
-    const FGameplayTag Cause = Event.GetEventTag();
+    const FInstancedStruct Copy = FInstancedStruct::Make(Event);
     if (AConnectIt_TileBase* From = GetTileAt(Event.From))
     {
-        From->OnPieceExit(Event.Faction, Cause, Handle);
+        From->OnPieceExit(Copy, Event.Faction, Handle);
     }
     if (AConnectIt_TileBase* To = GetTileAt(Event.To))
     {
-        To->OnPieceEnter(Event.Faction, Cause, Handle);
+        To->OnPieceEnter(Copy, Event.Faction, Handle);
     }
     if (AConnectIt_PieceBase* Piece = GetPieceAt(Event.To))
     {
-        Piece->OnMoved(Event.From, Event.To, Handle);
+        Piece->OnMoved(Event, Handle);
     }
 }
 
 void AConnectIt_BoardVisualizer::OnBoardShifted_Implementation(const FConnectItBoardEvent_BoardShifted& Event, UConnectIt_VisualHandle* Handle)
 {
-    // Not a Piece Enter / Exit: the pieces ride their tiles
+    // Not a Piece Enter / Exit: the pieces ride their tiles (a Piece Moved
+    // made for each)
     for (int32 Index = 0; Index < Event.StartPositions.Num() && Index < Event.EndPositions.Num(); Index++)
     {
         if (AConnectIt_PieceBase* Piece = GetPieceAt(Event.EndPositions[Index]))
         {
-            Piece->OnMoved(Event.StartPositions[Index], Event.EndPositions[Index], Handle);
+            FConnectItBoardEvent_PieceMoved Moved = MadeFor<FConnectItBoardEvent_PieceMoved>(Event);
+            Moved.From = Event.StartPositions[Index];
+            Moved.To = Event.EndPositions[Index];
+            Moved.Faction = Piece->GetFactionID();
+            Piece->OnMoved(Moved, Handle);
         }
     }
 }
@@ -587,9 +924,11 @@ void AConnectIt_BoardVisualizer::OnScored_Implementation(const FConnectItBoardEv
 {
     for (int32 Index = 0; Index < Event.Positions.Num() && Index < Event.NewMultipliers.Num(); Index++)
     {
-        if (AConnectIt_TileBase* Tile = GetTileAt(Event.Positions[Index]))
+        const FGridPosition& Position = Event.Positions[Index];
+        if (AConnectIt_TileBase* Tile = GetTileAt(Position))
         {
-            Tile->OnMultiplierChanged(Event.NewMultipliers[Index], Handle);
+            Tile->OnMultiplierChanged(MultiplierMadeFor(Event, Position,
+                MultiplierAt(GetDisplayBoard(), Position), Event.NewMultipliers[Index]), Handle);
         }
     }
     for (const FGridPosition& Cleared : Event.ClearedPositions)
@@ -597,7 +936,7 @@ void AConnectIt_BoardVisualizer::OnScored_Implementation(const FConnectItBoardEv
         const TObjectPtr<AGridPieceBase>* Leaving = LeavingPieces.Find(Cleared);
         if (AConnectIt_PieceBase* Piece = Leaving ? Cast<AConnectIt_PieceBase>(*Leaving) : nullptr)
         {
-            Piece->OnClearedByScore(Handle);
+            Piece->OnClearedByScore(Event, Handle);
         }
     }
 }
@@ -606,7 +945,7 @@ void AConnectIt_BoardVisualizer::OnMultiplierChanged_Implementation(const FConne
 {
     if (AConnectIt_TileBase* Tile = GetTileAt(Event.Position))
     {
-        Tile->OnMultiplierChanged(Event.NewMultiplier, Handle);
+        Tile->OnMultiplierChanged(Event, Handle);
     }
 }
 
@@ -614,7 +953,7 @@ void AConnectIt_BoardVisualizer::OnTileMultiplierDestroyed_Implementation(const 
 {
     if (AConnectIt_TileBase* Tile = GetTileAt(Event.Position))
     {
-        Tile->OnMultiplierChanged(Event.NewMultiplier, Handle);
+        Tile->OnMultiplierChanged(MultiplierMadeFor(Event, Event.Position, Event.PreviousMultiplier, Event.NewMultiplier), Handle);
     }
 }
 
@@ -622,7 +961,7 @@ void AConnectIt_BoardVisualizer::OnTileLockChanged_Implementation(const FConnect
 {
     if (AConnectIt_TileBase* Tile = GetTileAt(Event.Position))
     {
-        Tile->OnLockChanged(Event.bLocked, Handle);
+        Tile->OnLockChanged(Event, Handle);
     }
 }
 
@@ -630,7 +969,7 @@ void AConnectIt_BoardVisualizer::OnTileActiveToggled_Implementation(const FConne
 {
     if (AConnectIt_TileBase* Tile = GetTileAt(Event.Position))
     {
-        Tile->OnActiveChanged(Event.bNowActive, Handle);
+        Tile->OnActiveChanged(Event, Handle);
     }
 }
 
@@ -659,17 +998,21 @@ void AConnectIt_BoardVisualizer::OnTilePowerTriggered_Implementation(const FConn
 
 void AConnectIt_BoardVisualizer::OnTilesAdded_Implementation(const FConnectItBoardEvent_TilesAdded& Event, UConnectIt_VisualHandle* Handle)
 {
-    for (AConnectIt_PieceBase* Piece : GetArrivingPieces())
-    {
-        Piece->OnPlaced(Handle);
-    }
+    PlaceArrivingPieces(Event, Handle);
 }
 
 void AConnectIt_BoardVisualizer::OnTilesRemoved_Implementation(const FConnectItBoardEvent_TilesRemoved& Event, UConnectIt_VisualHandle* Handle)
 {
-    for (AConnectIt_PieceBase* Piece : GetLeavingPieces())
+    // A Piece Removed made for each piece that goes with its tile
+    for (const TPair<FGridPosition, TObjectPtr<AGridPieceBase>>& Leaving : LeavingPieces)
     {
-        Piece->OnRemoved(Handle);
+        if (AConnectIt_PieceBase* Piece = Cast<AConnectIt_PieceBase>(Leaving.Value))
+        {
+            FConnectItBoardEvent_PieceRemoved Removed = MadeFor<FConnectItBoardEvent_PieceRemoved>(Event);
+            Removed.Position = Leaving.Key;
+            Removed.RemovedFaction = Piece->GetFactionID();
+            Piece->OnRemoved(Removed, Handle);
+        }
     }
 }
 

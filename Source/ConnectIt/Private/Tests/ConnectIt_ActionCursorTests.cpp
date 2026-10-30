@@ -44,6 +44,8 @@ bool FConnectItActionCursorsTest::RunTest(const FString& Parameters)
         GEngine->DestroyWorldContext(World);
         World->DestroyWorld(false);
     };
+    // Actors only take interface (ProcessEvent) calls once the world is initialised for play
+    World->InitializeActorsForPlay(FURL());
 
     UGridHoverSubsystem* Hover = World->GetSubsystem<UGridHoverSubsystem>();
     if (!TestNotNull(TEXT("the hover subsystem"), Hover)) return false;

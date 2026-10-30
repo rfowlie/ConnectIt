@@ -15,14 +15,9 @@ AConnectIt_PieceBase::AConnectIt_PieceBase()
 	PrimaryActorTick.bCanEverTick = false;
 }
 
-void AConnectIt_PieceBase::InitialisePiece(
-	int32 InFactionID,
-	FGridPosition InGridPosition)
+void AConnectIt_PieceBase::InitialisePiece(int32 InFactionID)
 {
-	FactionID        = InFactionID;
-	OccupiedPosition = InGridPosition;
-	GridPosition     = InGridPosition;
-
+	FactionID = InFactionID;
 	OnFactionVisualUpdate(FactionID);
 }
 
@@ -33,22 +28,13 @@ void AConnectIt_PieceBase::RefreshFromBoard_Implementation()
 	FGridPosition Position;
 	if (!BoardState || !Pieces || !Pieces->FindPositionOfPiece(this, Position)) return;
 
-	// The registry's position is the true one (moves, shifts and swaps keep it)
-	OccupiedPosition = Position;
-	GridPosition     = Position;
-
+	// The registry's position is the true one (and already this piece's)
 	const FConnectItTileData* Data = BoardState->GetDisplayBoard().GetTileData(Position);
 	if (Data && Data->bIsOccupied && Data->FactionPiece != FactionID)
 	{
 		FactionID = Data->FactionPiece;
 		OnFactionVisualUpdate(FactionID);
 	}
-}
-
-void AConnectIt_PieceBase::SetBoardPosition(const FGridPosition& Position)
-{
-	OccupiedPosition = Position;
-	GridPosition     = Position;
 }
 
 void AConnectIt_PieceBase::EndPlay(const EEndPlayReason::Type EndPlayReason)

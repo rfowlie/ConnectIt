@@ -151,6 +151,12 @@ const FInstancedStruct* UConnectIt_BoardEventLibrary::GetActiveBoardEvent(const 
     return Payload.IsValid() ? &Payload : nullptr;
 }
 
+FGameplayTag UConnectIt_BoardEventLibrary::GetBoardEventTag(const FInstancedStruct& Event)
+{
+    const FConnectItBoardEvent* BoardEvent = Event.GetPtr<FConnectItBoardEvent>();
+    return BoardEvent ? BoardEvent->GetEventTag() : FGameplayTag();
+}
+
 int32 UConnectIt_BoardEventLibrary::GetActiveBoardEventIndex(const UObject* WorldContextObject)
 {
     const FInstancedStruct* Active = GetActiveBoardEvent(WorldContextObject);

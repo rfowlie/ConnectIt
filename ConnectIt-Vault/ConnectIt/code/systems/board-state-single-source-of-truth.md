@@ -86,7 +86,9 @@ flowchart TD
    listener can ask an event's cause (`GetBoardEventCause`). A listener reads the event that is playing through
    `UConnectIt_BoardEventLibrary`, even if a newer snapshot has arrived. The map's **board visualizer** plays every
    event on the actors ([[add-visuals-for-a-board-event]]). When the entry completes, the event applies itself to the
-   display board, and the actors whose tiles changed refresh themselves (`RefreshFromBoard`).
+   display board, and the actors whose tiles changed refresh themselves (`RefreshFromBoard`). Once every queued event
+   has played, `OnBoardEventsPlayed` fires and the visualizer reconciles every actor against the registries (they own
+   where grid actors are: [registries own grid positions](../../_decisions/2026-10-30-registries-own-grid-positions.md)).
 5. Server only: `OnBoardChangeCommitted`, then the completion marker. The GameMode lifts the lock when it completes
    (or after `BoardChangeTimeoutSeconds`), and mirrors "busy" on the GameState (`IsBoardChangeResolving`) for UI.
 
@@ -99,6 +101,8 @@ flowchart TD
   carries the level's `CurrentPhase`, its `TurnNumber` and `RandomSeed` (tile powers).
 - **Visuals read the display board, not Current**: Current is already past the whole chain while its first event is
   still playing.
+- **Where an actor is belongs to the registries**, not the board or the actor: a piece's `GetGridPosition` is a cache
+  the piece registry writes when it maps it.
 - `OnBoardStateChanged` carries **no parameters** by design: data comes from `GetCurrentState()` / `GetChangeEvent()`.
   That list is the latest change's, not necessarily the one playing.
 - `EnqueueBoardEventTags` runs on clients too: anything it triggers must be safe without authority.

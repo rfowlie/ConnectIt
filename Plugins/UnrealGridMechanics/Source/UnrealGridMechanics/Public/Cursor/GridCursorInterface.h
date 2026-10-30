@@ -9,7 +9,7 @@
 class AGridTileBase;
 
 UINTERFACE(BlueprintType)
-class UGridCursor : public UInterface
+class UNREALGRIDMECHANICS_API UGridCursor : public UInterface
 {
 	GENERATED_BODY()
 };

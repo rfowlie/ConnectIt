@@ -107,8 +107,7 @@
               "title": "Bookmarks"
             }
           }
-        ],
-        "currentTab": 2
+        ]
       }
     ],
     "direction": "horizontal",
@@ -215,8 +214,12 @@
       "bases:Create new base": false
     }
   },
-  "active": "d21229c17b1e2e8b",
+  "active": "97e0ab6e321a7903",
   "lastOpenFiles": [
+    "ConnectIt/_decisions/2026-10-30-registries-own-grid-positions.md",
+    "ConnectIt/design/grid-cursor-channel-plan.md",
+    "ConnectIt/design/__INDEX.md",
+    "BRAIN DUMP.md",
     "ConnectIt/design/board-visualizer-revision-plan.md",
     "ConnectIt/_logs/2026-10-30-1026.md",
     "UnrealGridMechanics/code/AGridTileBase.md",
@@ -224,8 +227,6 @@
     "ConnectIt/_decisions/2026-10-30-each-action-is-its-own-cursor-manager.md",
     "ConnectIt/_decisions/2026-10-30-each-action-is-its-own-cursor-manager.md.tmp.33396.4d50141ac1c3",
     "ConnectIt/_logs/2026-10-30-1014.md",
-    "ConnectIt/design/__INDEX.md",
-    "BRAIN DUMP.md",
     "ConnectIt/design/adventure-from-scratch-checklist.md",
     "ConnectIt/_tasks/active.md",
     "ConnectIt/_logs/2026-10-29-2107.md",
@@ -242,8 +243,6 @@
     "ConnectIt/_logs/2026-10-29-2026.md",
     "ConnectIt/design/actor-pool-spawning.md",
     "ConnectIt/_logs/2026-10-29-2020.md",
-    "ConnectIt/_logs/2026-10-29-2011.md",
-    "ConnectIt/_logs/2026-10-29-1946.md",
     "ConnectIt/_decisions/decsum.pl",
     "ConnectIt/design/level-outcomes-plan.md.tmp.7932.7141aac2726e",
     "ConnectIt/_logs/2026-10-24-1444.md.tmp.16900.05a8d2b10900",

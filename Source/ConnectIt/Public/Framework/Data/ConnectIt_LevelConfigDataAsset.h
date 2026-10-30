@@ -11,6 +11,7 @@ class AGridTileBase;
 class UConnectIt_TileRegistry;
 class UConnectIt_PieceRegistry;
 class AConnectIt_BoardVisualizer;
+class AConnectIt_EventVisual;
 class UGridDefinition;
 
 // A board: the tile and piece registries, grid geometry and pieces a map is
@@ -63,6 +64,12 @@ public:
     // hooks only); pick a Blueprint subclass for this look's effects.
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "ConnectIt|Board")
     TSubclassOf<AConnectIt_BoardVisualizer> VisualizerClass;
+
+    // Visuals for single kinds of board event, each played instead of the
+    // visualizer's own function for its event (AConnectIt_EventVisual): one
+    // per event kind
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Visuals")
+    TArray<TSubclassOf<AConnectIt_EventVisual>> EventVisuals;
 
     // Grid geometry (cell size, World<->Grid conversion) both registries
     // above share -- a sibling template, same Instanced/duplicate-per-world

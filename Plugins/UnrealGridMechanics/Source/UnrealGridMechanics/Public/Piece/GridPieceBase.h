@@ -25,6 +25,8 @@ class UNREALGRIDMECHANICS_API AGridPieceBase : public AActor, public IActorPoolI
 public:
 	AGridPieceBase();
 
+	// Where the piece registry has this piece (a cache the registry writes in
+	// the same call that maps it -- the registry is the truth)
 	UFUNCTION(BlueprintPure, Category = "Grid")
 	FGridPosition GetGridPosition() const { return GridPosition; }
 
@@ -75,6 +77,11 @@ protected:
 	virtual void BeginPlay() override;
 	virtual void PostInitializeComponents() override;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Grid")
+private:
+	// Only the piece registries write it (see GetGridPosition)
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "Grid", meta = (AllowPrivateAccess = "true"))
 	FGridPosition GridPosition;
+
+	friend class UGridPieceRegistryBase;
+	friend class UGridPieceRegistryComponent;
 };

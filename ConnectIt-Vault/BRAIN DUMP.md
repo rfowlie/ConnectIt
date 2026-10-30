@@ -12,30 +12,10 @@
 - We need to create some sort of catalog somewhere that explains what plugins are in the framework, what they do, can be used for so that we do not have a bunch of things for solving the same problems. We should try to use a single plugin or set of code for accomplishing specific tasks
 
 
-## Updating Outdated BP
-
-- find and replace deprecated pathways
-- CI_GridTileBase listens to it's own mouse hover instead of utilizing the OnTileHovered virtual function
-- Visualizer needs to be overhauled as we just used a random actor to connect things while we figured 
-
-## Visualizer Framework
-
-- the new setup is to have one visualizer per level that then becomes responsible for handling all misc. visualizations for all possible board reactions and operations. 
-- This feels a bit monolithic and daunting.
-- It might be easier down the line to add flexibility by creating single visualizers. The concept would be that you have a base visualizer (the C++ default for example). Then a list of single visualizers that override one board operation each. This way we can more easily swap out behaviors. 
-	- Should be a map with Operation tag and Visualizer Actor (single)
-
-
 ## Updating Vault
 
 - use that Microsoft article about the development cycle to better structure the ConnectIt Domain
 - Already doing some of the things listed, but could look to better arrange things
-
-
-## Trace Channel
-
-- since we are building a custom framework, should we just make a grid trace channel and use that going forward?
-	- Is it just easier to not do this?
 
 
 ## Random Notes

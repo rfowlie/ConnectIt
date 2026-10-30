@@ -25,6 +25,7 @@ AGridPieceBase* UGridPieceRegistryComponent::GetPiece(const FGridPosition Positi
 		if (IsValid(Piece))
 		{
 			PieceMap.Add(Position, Piece);
+			Piece->GridPosition = Position;
 		}
 	}
 

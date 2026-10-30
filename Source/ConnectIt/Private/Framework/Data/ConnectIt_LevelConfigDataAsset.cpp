@@ -3,6 +3,8 @@
 #include "Framework/Data/ConnectIt_LevelConfigDataAsset.h"
 #include "Board/ConnectIt_TileRegistry.h"
 #include "Board/Actor/ConnectIt_PieceBase.h"
+#include "Board/ConnectIt_BoardVisualizer.h"
+#include "Board/ConnectIt_EventVisual.h"
 #include "Misc/DataValidation.h"
 #include "Registry/GridDefinition.h"
 
@@ -37,6 +39,20 @@ EDataValidationResult UConnectIt_LevelConfigDataAsset::IsDataValid(
             "ConnectIt_LevelConfigDataAsset: No GridDefinition template set -- "
             "TileRegistry/PieceRegistry position mapping will not work.")));
         Result = EDataValidationResult::Invalid;
+    }
+
+    // Event visuals: one per event kind, each a usable class
+    TArray<FString> Errors;
+    TArray<FString> Warnings;
+    AConnectIt_BoardVisualizer::BuildEventVisualMap(EventVisuals, &Errors, &Warnings);
+    for (const FString& Error : Errors)
+    {
+        Context.AddError(FText::FromString(TEXT("ConnectIt_LevelConfigDataAsset: ") + Error));
+        Result = EDataValidationResult::Invalid;
+    }
+    for (const FString& Warning : Warnings)
+    {
+        Context.AddWarning(FText::FromString(TEXT("ConnectIt_LevelConfigDataAsset: ") + Warning));
     }
 
     return Result;

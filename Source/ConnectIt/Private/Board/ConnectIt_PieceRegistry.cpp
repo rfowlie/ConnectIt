@@ -38,14 +38,13 @@ AGridPieceBase* UConnectIt_PieceRegistry::MovePieceActor(FGridPosition From, FGr
     TObjectPtr<AGridPieceBase> Piece;
     if (!PieceMap.RemoveAndCopyValue(From, Piece) || !Piece) return nullptr;
 
-    PieceMap.Add(To, Piece);
+    SetPieceAt(To, Piece);
     return Piece;
 }
 
 void UConnectIt_PieceRegistry::MapPiece(const FGridPosition& Position, AGridPieceBase* Piece)
 {
-    if (!Piece) return;
-    PieceMap.Add(Position, Piece);
+    SetPieceAt(Position, Piece);
 }
 
 AGridPieceBase* UConnectIt_PieceRegistry::UnmapPiece(const FGridPosition& Position)
@@ -61,8 +60,8 @@ void UConnectIt_PieceRegistry::SwapPieceActors(const FGridPosition& A, const FGr
     TObjectPtr<AGridPieceBase> PieceB;
     PieceMap.RemoveAndCopyValue(A, PieceA);
     PieceMap.RemoveAndCopyValue(B, PieceB);
-    if (PieceB) PieceMap.Add(A, PieceB);
-    if (PieceA) PieceMap.Add(B, PieceA);
+    SetPieceAt(A, PieceB);
+    SetPieceAt(B, PieceA);
 }
 
 void UConnectIt_PieceRegistry::ShiftPieceActors(
@@ -86,6 +85,6 @@ void UConnectIt_PieceRegistry::ShiftPieceActors(
     }
     for (int32 Index = 0; Index < EndPositions.Num(); Index++)
     {
-        if (Moving[Index]) PieceMap.Add(EndPositions[Index], Moving[Index]);
+        SetPieceAt(EndPositions[Index], Moving[Index]);
     }
 }

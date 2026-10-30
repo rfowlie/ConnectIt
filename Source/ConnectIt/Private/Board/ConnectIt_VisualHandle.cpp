@@ -99,9 +99,11 @@ void UConnectIt_VisualHandle::HandleTimeout()
 {
     if (bComplete) return;
 
+    bTimedOut = true;
+    TimedOutHolders = FString::Join(HolderNames, TEXT(", "));
     UE_LOG(LogTemp, Error,
         TEXT("ConnectIt_VisualHandle: %s timed out with %d hold(s) never released (%s) -- completed anyway"),
-        *EventTag.ToString(), Holders.Num(), *FString::Join(HolderNames, TEXT(", ")));
+        *EventTag.ToString(), Holders.Num(), *TimedOutHolders);
     Holders.Reset();
     HolderNames.Reset();
     Complete();

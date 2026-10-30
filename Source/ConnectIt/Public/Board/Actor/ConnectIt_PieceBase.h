@@ -8,6 +8,7 @@
 #include "Interface/GridTileHandler.h"
 #include "Piece/GridPieceBase.h"
 #include "Pooling/ActorPoolInterface.h"
+#include "Board/Events/ConnectIt_BoardEvents.h"
 #include "ConnectIt_PieceBase.generated.h"
 
 class UConnectIt_VisualHandle;
@@ -31,50 +32,52 @@ class CONNECTIT_API AConnectIt_PieceBase : public AGridPieceBase,
 public:
 	AConnectIt_PieceBase();
 
-	// Set faction and trigger visual update
-	// Called immediately after retrieval from pool
+	// Set faction and trigger visual update. Called immediately after
+	// retrieval from pool. Its position isn't set here: the piece registry
+	// sets it when it maps the piece (Get Grid Position).
 	UFUNCTION(BlueprintCallable, Category = "ConnectIt|Piece")
-	void InitialisePiece(int32 InFactionID, FGridPosition InGridPosition);
-	
-	// Grid position this piece occupies
-	UPROPERTY(BlueprintReadOnly, Category = "ConnectIt|Piece")
-	FGridPosition OccupiedPosition;
+	void InitialisePiece(int32 InFactionID);
 
-	// The board visualizer's: the piece now stands at Position
-	void SetBoardPosition(const FGridPosition& Position);
+	UFUNCTION(BlueprintPure, Category = "ConnectIt|Piece")
+	int32 GetFactionID() const { return FactionID; }
 
 	// --- Piece hooks ---
 	// The board visualizer (AConnectIt_BoardVisualizer) calls these as board
-	// events play, after the registry has followed the event. Each is handed
-	// the event's handle: Hold it while animating, Release when done (the
-	// event waits). Defaults do nothing. The piece ends on its tile whatever
-	// the hook does (the visualizer places it once the event's visuals finish).
+	// events play, after the registry has followed the event. Each gets a
+	// copy of the event and its handle: Hold the handle while animating,
+	// Release when done (the event waits). Defaults do nothing. The piece ends
+	// on its tile whatever the hook does (the visualizer places it once the
+	// event's visuals finish, and the reconcile step corrects anything left).
+	// A hook another kind of event leads to gets an event made for it, whose
+	// Cause Index is that event (a starting piece's Piece Placed points at
+	// the Board Seeded; a shifted piece's Piece Moved at the Board Shifted).
 
-	// The piece arrived (placed, a starting piece, a tile added with it)
+	// The piece arrived: placed, a starting piece, a tile added with it
 	UFUNCTION(BlueprintNativeEvent, Category = "ConnectIt|Piece Hooks")
-	void OnPlaced(UConnectIt_VisualHandle* Handle);
+	void OnPlaced(const FConnectItBoardEvent_PiecePlaced& Event, UConnectIt_VisualHandle* Handle);
 
-	// The piece moved From -> To (a power's move, riding a shifted tile)
+	// The piece moved From -> To: a power's move, or riding a shifted tile
 	UFUNCTION(BlueprintNativeEvent, Category = "ConnectIt|Piece Hooks")
-	void OnMoved(FGridPosition From, FGridPosition To, UConnectIt_VisualHandle* Handle);
+	void OnMoved(const FConnectItBoardEvent_PieceMoved& Event, UConnectIt_VisualHandle* Handle);
 
-	// The piece traded places with another: From -> To
+	// The piece traded places with another: it is now at Get Grid Position
+	// and came from the event's other position
 	UFUNCTION(BlueprintNativeEvent, Category = "ConnectIt|Piece Hooks")
-	void OnSwapped(FGridPosition From, FGridPosition To, UConnectIt_VisualHandle* Handle);
+	void OnSwapped(const FConnectItBoardEvent_PiecesSwapped& Event, UConnectIt_VisualHandle* Handle);
 
 	// The piece changed owner where it stands
 	UFUNCTION(BlueprintNativeEvent, Category = "ConnectIt|Piece Hooks")
-	void OnCaptured(int32 NewFaction, UConnectIt_VisualHandle* Handle);
+	void OnCaptured(const FConnectItBoardEvent_PieceCaptured& Event, UConnectIt_VisualHandle* Handle);
 
 	// The piece was taken off the board (removed, or went with its tile); it
 	// returns to the pool once the event's visuals are done
 	UFUNCTION(BlueprintNativeEvent, Category = "ConnectIt|Piece Hooks")
-	void OnRemoved(UConnectIt_VisualHandle* Handle);
+	void OnRemoved(const FConnectItBoardEvent_PieceRemoved& Event, UConnectIt_VisualHandle* Handle);
 
-	// A score cleared the piece; it returns to the pool once the event's
-	// visuals are done
+	// A score cleared the piece (its position is one of the event's cleared
+	// ones); it returns to the pool once the event's visuals are done
 	UFUNCTION(BlueprintNativeEvent, Category = "ConnectIt|Piece Hooks")
-	void OnClearedByScore(UConnectIt_VisualHandle* Handle);
+	void OnClearedByScore(const FConnectItBoardEvent_Scored& Event, UConnectIt_VisualHandle* Handle);
 
 	// IGridBoardActor: takes its position from the piece registry and its
 	// faction from the display board there; a changed faction updates the
@@ -102,12 +105,12 @@ protected:
 	void OnFactionVisualUpdate(int32 InFactionID);
 	virtual void OnFactionVisualUpdate_Implementation(int32 InFactionID);
 
-	virtual void OnPlaced_Implementation(UConnectIt_VisualHandle* Handle) {}
-	virtual void OnMoved_Implementation(FGridPosition From, FGridPosition To, UConnectIt_VisualHandle* Handle) {}
-	virtual void OnSwapped_Implementation(FGridPosition From, FGridPosition To, UConnectIt_VisualHandle* Handle) {}
-	virtual void OnCaptured_Implementation(int32 NewFaction, UConnectIt_VisualHandle* Handle) {}
-	virtual void OnRemoved_Implementation(UConnectIt_VisualHandle* Handle) {}
-	virtual void OnClearedByScore_Implementation(UConnectIt_VisualHandle* Handle) {}
+	virtual void OnPlaced_Implementation(const FConnectItBoardEvent_PiecePlaced& Event, UConnectIt_VisualHandle* Handle) {}
+	virtual void OnMoved_Implementation(const FConnectItBoardEvent_PieceMoved& Event, UConnectIt_VisualHandle* Handle) {}
+	virtual void OnSwapped_Implementation(const FConnectItBoardEvent_PiecesSwapped& Event, UConnectIt_VisualHandle* Handle) {}
+	virtual void OnCaptured_Implementation(const FConnectItBoardEvent_PieceCaptured& Event, UConnectIt_VisualHandle* Handle) {}
+	virtual void OnRemoved_Implementation(const FConnectItBoardEvent_PieceRemoved& Event, UConnectIt_VisualHandle* Handle) {}
+	virtual void OnClearedByScore_Implementation(const FConnectItBoardEvent_Scored& Event, UConnectIt_VisualHandle* Handle) {}
 
 	// Lets go of any hold it still has on a playing event
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;

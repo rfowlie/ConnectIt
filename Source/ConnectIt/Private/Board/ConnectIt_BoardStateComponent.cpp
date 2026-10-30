@@ -426,6 +426,7 @@ void UConnectIt_BoardStateComponent::HandleQueueEntryComplete(FGameplayTag Tag)
     if (PendingDisplayEvents == 0)
     {
         CatchDisplayBoardUp();
+        OnBoardEventsPlayed.Broadcast();
         return;
     }
     OnDisplayBoardChanged.Broadcast();

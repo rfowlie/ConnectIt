@@ -62,6 +62,18 @@ public:
     UFUNCTION(BlueprintPure, Category = "ConnectIt|Board")
     AConnectIt_BoardVisualizer* GetBoardVisualizer() const { return BoardVisualizer; }
 
+#if WITH_DEV_AUTOMATION_TESTS
+    // Tests: stands in for OnWorldBeginPlay with ready-made registries
+    void SetUpForTest(UConnectIt_TileRegistry* InTiles, UConnectIt_PieceRegistry* InPieces,
+        UGridDefinition* InGrid, AConnectIt_BoardVisualizer* InVisualizer)
+    {
+        TileRegistry = InTiles;
+        PieceRegistry = InPieces;
+        GridDefinition = InGrid;
+        BoardVisualizer = InVisualizer;
+    }
+#endif
+
 private:
 
     // Runtime-only duplicates of the level config's registry templates --

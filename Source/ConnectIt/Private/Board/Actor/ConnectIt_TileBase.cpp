@@ -9,11 +9,11 @@
 
 // Defaults: nothing animates, so nothing holds the handle
 void AConnectIt_TileBase::OnTilePowerTriggered_Implementation(const FConnectItBoardEvent_TilePowerTriggered& Event, UConnectIt_VisualHandle* Handle) {}
-void AConnectIt_TileBase::OnPieceEnter_Implementation(int32 Faction, FGameplayTag Cause, UConnectIt_VisualHandle* Handle) {}
-void AConnectIt_TileBase::OnPieceExit_Implementation(int32 Faction, FGameplayTag Cause, UConnectIt_VisualHandle* Handle) {}
-void AConnectIt_TileBase::OnMultiplierChanged_Implementation(float NewMultiplier, UConnectIt_VisualHandle* Handle) {}
-void AConnectIt_TileBase::OnLockChanged_Implementation(bool bLocked, UConnectIt_VisualHandle* Handle) {}
-void AConnectIt_TileBase::OnActiveChanged_Implementation(bool bActive, UConnectIt_VisualHandle* Handle) {}
+void AConnectIt_TileBase::OnPieceEnter_Implementation(const FInstancedStruct& Event, int32 Faction, UConnectIt_VisualHandle* Handle) {}
+void AConnectIt_TileBase::OnPieceExit_Implementation(const FInstancedStruct& Event, int32 Faction, UConnectIt_VisualHandle* Handle) {}
+void AConnectIt_TileBase::OnMultiplierChanged_Implementation(const FConnectItBoardEvent_MultiplierChanged& Event, UConnectIt_VisualHandle* Handle) {}
+void AConnectIt_TileBase::OnLockChanged_Implementation(const FConnectItBoardEvent_TileLockChanged& Event, UConnectIt_VisualHandle* Handle) {}
+void AConnectIt_TileBase::OnActiveChanged_Implementation(const FConnectItBoardEvent_TileActiveToggled& Event, UConnectIt_VisualHandle* Handle) {}
 void AConnectIt_TileBase::OnChainPartnerChanged_Implementation(const FConnectItBoardEvent_ChainPartnerChanged& Event, UConnectIt_VisualHandle* Handle) {}
 
 void AConnectIt_TileBase::ReleaseVisualHolds()

@@ -52,6 +52,12 @@ public:
     // Releases every hold Holder still has (an actor leaving play)
     void ReleaseAllBy(const UObject* Holder);
 
+    // Completed by its timeout rather than by every hold being released
+    bool HasTimedOut() const { return bTimedOut; }
+
+    // Who still held it when it timed out (empty if it didn't)
+    const FString& GetTimedOutHolders() const { return TimedOutHolders; }
+
     // --- The visualizer's ---
 
     // Starts the handle for an event; a timeout above 0 completes it (with a
@@ -80,4 +86,6 @@ private:
     FTimerHandle TimeoutHandle;
     bool bSealed = false;
     bool bComplete = false;
+    bool bTimedOut = false;
+    FString TimedOutHolders;
 };

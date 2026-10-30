@@ -14,6 +14,7 @@ class UConnectIt_TileCatalogDataAsset;
 struct FConnectItRuleSet;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnConnectItDisplayBoardChanged);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnConnectItBoardEventsPlayed);
 
 
 // Everything a debug widget needs to know about this component's current
@@ -159,6 +160,11 @@ public:
     // copy of Current once the queue drains)
     UPROPERTY(BlueprintAssignable, Category = "Board State")
     FOnConnectItDisplayBoardChanged OnDisplayBoardChanged;
+
+    // Fires once every queued board event has played (the display board has
+    // caught up with the board)
+    UPROPERTY(BlueprintAssignable, Category = "Board State")
+    FOnConnectItBoardEventsPlayed OnBoardEventsPlayed;
 
     // --- Helpers ---
 

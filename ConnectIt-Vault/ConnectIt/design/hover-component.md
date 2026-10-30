@@ -115,3 +115,25 @@ touched.
 2. Click through the component, or keep clicks on the player controller's input (the actions use the hovered tile)?
 3. One hover at a time across categories (a piece over a tile: who wins?) -- today pieces and tiles both relay.
 4. `RefreshFromBoard` as an interface (lean) or a base-class function.
+
+## Open: a dedicated Grid cursor trace channel? (owner's question, 2026-10-30)
+
+Today hover rides **Visibility** (`CursorTraceChannel = ECC_Visibility` on `UGridHoverComponent` and `AGridPieceBase`; the
+player controller's default click trace). Pieces set themselves to Ignore it so the tile under the piece takes the hover,
+and the hover component warns when its owner has no primitive blocking the channel.
+
+- **For a custom channel:** nothing else on the map (decals, VFX, the hub's node actors, a big backdrop mesh) can steal
+  or block the cursor; the "pieces ignore Visibility" rule becomes a default profile, not per-instance code; the
+  hub (clickable nodes) and the match board can use separate channels.
+- **Against:** a trace channel is a *project* setting (`DefaultEngine.ini`), so the plugin cannot own it -- it would stay
+  a property whose default the game sets; every tile / piece Blueprint's collision preset and the player controller's
+  click trace channel must change once; nothing is broken today.
+- **Lean:** yes, but as **one project-wide setting** (the plugin reads a single "grid cursor channel" instead of a
+  property per component and per piece), done together with the cursor plan's editor work so the collision presets are
+  touched once. Not urgent. Undecided -- owner's call.
+
+**Decided 2026-10-30:** make it. Plan: [grid-cursor-channel-plan](grid-cursor-channel-plan.md) (one plugin setting, the
+game defines the channel; a plugin can carry the ini -- UE merges a plugin's `Config/` inis into the project branches --
+but the slot number and filename need a test).
+
+Plan approved 2026-10-30, with the base `AGridTileBase` / `AGridPieceBase` setting their collision for the cursor channel in C++.

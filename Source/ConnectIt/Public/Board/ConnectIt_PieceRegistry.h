@@ -41,7 +41,8 @@ public:
 
     // --- The board visualizer's bookkeeping (AConnectIt_BoardVisualizer) ---
 
-    // Piece is now the one at Position (replacing any mapped there)
+    // Piece is now the one at Position (replacing any mapped there); its
+    // position is set to match. Every mapping here does that.
     void MapPiece(const FGridPosition& Position, AGridPieceBase* Piece);
 
     // Stops mapping the piece at Position and returns it (null if none) --

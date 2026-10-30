@@ -1,7 +1,9 @@
 # Board visualizer: registries, events and the artist entry point
 
-Design note (2026-10-29), from the owner's notes on registries and visualizers. **Decided the same day (all three leans, owner); nothing
-built.** Related: [hover-component](hover-component.md) (`RefreshFromBoard`),
+Design note (2026-10-29), from the owner's notes on registries and visualizers. **Decided the same day (all three leans, owner); built
+([board-visualizer-plan](board-visualizer-plan.md)); Round 3 built 2026-10-30
+([board-visualizer-revision-plan](board-visualizer-revision-plan.md),
+[registries own grid positions](../_decisions/2026-10-30-registries-own-grid-positions.md)).** Related: [hover-component](hover-component.md) (`RefreshFromBoard`),
 [board-events](board-events.md), [editor-notes-2026-10-28](editor-notes-2026-10-28.md) (event cause helpers).
 
 ## Owner's notes (2026-10-29)

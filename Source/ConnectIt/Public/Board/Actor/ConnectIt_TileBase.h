@@ -18,9 +18,10 @@ class UConnectIt_VisualHandle;
 // carries the tag (FConnectItTileData::TilePowerTag).
 //
 // Hooks: when a board event about this tile plays, the board visualizer
-// (AConnectIt_BoardVisualizer) calls the matching hook with the event's
-// handle. A hook that animates Holds the handle and Releases it when done --
-// the event waits for every hold. Defaults do nothing (nothing to wait for).
+// (AConnectIt_BoardVisualizer) calls the matching hook with a copy of the
+// event and its handle. A hook that animates Holds the handle and Releases
+// it when done -- the event waits for every hold. Defaults do nothing
+// (nothing to wait for).
 UCLASS(Blueprintable)
 class CONNECTIT_API AConnectIt_TileBase : public AGridTileBase
 {
@@ -33,24 +34,28 @@ public:
     void OnTilePowerTriggered(const FConnectItBoardEvent_TilePowerTriggered& Event, UConnectIt_VisualHandle* Handle);
 
     // A piece arrived at this tile: placed, swapped in, captured (now
-    // Faction's), moved in. Cause: the board event's tag.
+    // Faction's), moved in. Event: a copy of the board event that did it --
+    // its tag from Get Board Event Tag, its data from the instanced struct
+    // (several kinds of event lead here).
     UFUNCTION(BlueprintNativeEvent, Category = "ConnectIt|Tile Hooks")
-    void OnPieceEnter(int32 Faction, FGameplayTag Cause, UConnectIt_VisualHandle* Handle);
+    void OnPieceEnter(const FInstancedStruct& Event, int32 Faction, UConnectIt_VisualHandle* Handle);
 
-    // A piece left this tile: removed, swapped out, moved off. Cause: the
-    // board event's tag.
+    // A piece left this tile: removed, swapped out, moved off. Event as for
+    // On Piece Enter.
     UFUNCTION(BlueprintNativeEvent, Category = "ConnectIt|Tile Hooks")
-    void OnPieceExit(int32 Faction, FGameplayTag Cause, UConnectIt_VisualHandle* Handle);
+    void OnPieceExit(const FInstancedStruct& Event, int32 Faction, UConnectIt_VisualHandle* Handle);
 
-    // This tile's multiplier changed: scored through, adjusted, destroyed
+    // This tile's multiplier changed: adjusted, or -- with a Multiplier
+    // Changed made for this tile, its Cause Index that event -- scored
+    // through or destroyed
     UFUNCTION(BlueprintNativeEvent, Category = "ConnectIt|Tile Hooks")
-    void OnMultiplierChanged(float NewMultiplier, UConnectIt_VisualHandle* Handle);
+    void OnMultiplierChanged(const FConnectItBoardEvent_MultiplierChanged& Event, UConnectIt_VisualHandle* Handle);
 
     UFUNCTION(BlueprintNativeEvent, Category = "ConnectIt|Tile Hooks")
-    void OnLockChanged(bool bLocked, UConnectIt_VisualHandle* Handle);
+    void OnLockChanged(const FConnectItBoardEvent_TileLockChanged& Event, UConnectIt_VisualHandle* Handle);
 
     UFUNCTION(BlueprintNativeEvent, Category = "ConnectIt|Tile Hooks")
-    void OnActiveChanged(bool bActive, UConnectIt_VisualHandle* Handle);
+    void OnActiveChanged(const FConnectItBoardEvent_TileActiveToggled& Event, UConnectIt_VisualHandle* Handle);
 
     // A Chained tile's partner was set or cleared -- called on the chained
     // tile and on its new partner (Event.Position is the chained one)
@@ -80,10 +85,10 @@ protected:
     virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 
     virtual void OnTilePowerTriggered_Implementation(const FConnectItBoardEvent_TilePowerTriggered& Event, UConnectIt_VisualHandle* Handle);
-    virtual void OnPieceEnter_Implementation(int32 Faction, FGameplayTag Cause, UConnectIt_VisualHandle* Handle);
-    virtual void OnPieceExit_Implementation(int32 Faction, FGameplayTag Cause, UConnectIt_VisualHandle* Handle);
-    virtual void OnMultiplierChanged_Implementation(float NewMultiplier, UConnectIt_VisualHandle* Handle);
-    virtual void OnLockChanged_Implementation(bool bLocked, UConnectIt_VisualHandle* Handle);
-    virtual void OnActiveChanged_Implementation(bool bActive, UConnectIt_VisualHandle* Handle);
+    virtual void OnPieceEnter_Implementation(const FInstancedStruct& Event, int32 Faction, UConnectIt_VisualHandle* Handle);
+    virtual void OnPieceExit_Implementation(const FInstancedStruct& Event, int32 Faction, UConnectIt_VisualHandle* Handle);
+    virtual void OnMultiplierChanged_Implementation(const FConnectItBoardEvent_MultiplierChanged& Event, UConnectIt_VisualHandle* Handle);
+    virtual void OnLockChanged_Implementation(const FConnectItBoardEvent_TileLockChanged& Event, UConnectIt_VisualHandle* Handle);
+    virtual void OnActiveChanged_Implementation(const FConnectItBoardEvent_TileActiveToggled& Event, UConnectIt_VisualHandle* Handle);
     virtual void OnChainPartnerChanged_Implementation(const FConnectItBoardEvent_ChainPartnerChanged& Event, UConnectIt_VisualHandle* Handle);
 };

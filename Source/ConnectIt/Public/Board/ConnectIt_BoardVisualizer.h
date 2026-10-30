@@ -12,6 +12,7 @@
 
 class AConnectIt_PieceBase;
 class AConnectIt_TileBase;
+class AConnectIt_EventVisual;
 class AGridPieceBase;
 class AGridTileBase;
 class UConnectIt_PieceRegistry;
@@ -37,9 +38,16 @@ class UGameEventTask_Async;
 //      visuals (call the parent) or replace them (don't);
 //   3. waits until every hold on the handle is released (or the timeout),
 //      then finishes the bookkeeping -- releasing pieces that left, destroying
-//      tiles that left, snapping moved actors onto their tiles -- and lets the
-//      queue move on.
-// An event with no function of its own goes to On Board Event.
+//      tiles that left, snapping moved actors onto their tiles -- reconciles
+//      the actors the event named, and lets the queue move on.
+// Once a board change has played out it reconciles every actor. Reconcile:
+// the registries are the truth -- an actor off its cell, a piece whose
+// position disagrees with the registry, or a board the registry doesn't
+// match is an error, and (ConnectIt.Visualizer.Reconcile 2, the default) is
+// put right.
+// An event with no function of its own goes to On Board Event. An event kind
+// with an event visual (the level config's Event Visuals) plays that instead
+// of its function -- AConnectIt_EventVisual.
 //
 // Being an actor, a Blueprint subclass can spawn effects (Niagara, sounds,
 // meshes), use timelines and delays; it goes away with the map.
@@ -61,6 +69,11 @@ public:
     UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Visualizer")
     FVector PieceOffset = FVector::ZeroVector;
 
+    // How far (world units) an actor may be from where it belongs before
+    // reconcile reports it
+    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Visualizer", meta = (ClampMin = 0))
+    float ReconcileTolerance = 1.f;
+
     // The map's visualizer (null if the map has no board)
     UFUNCTION(BlueprintPure, Category = "ConnectIt|Visualizer", meta = (WorldContext = "WorldContextObject"))
     static AConnectIt_BoardVisualizer* GetBoardVisualizer(const UObject* WorldContextObject);
@@ -75,6 +88,41 @@ public:
     // Lets go of every hold Holder has on the playing event (an actor leaving
     // play)
     void ReleaseHoldsBy(const UObject* Holder);
+
+    // --- Reconcile (the registries are the truth) ---
+
+    // Checks the tiles then the pieces at Positions against the registries:
+    // a tile on its cell; a piece's position equal to the registry's, with a
+    // tile under it, resting on it. Each mismatch is an error (actor, where
+    // it is, where it belongs, and the last event's handle if it timed out)
+    // and, with ConnectIt.Visualizer.Reconcile 2 (the default), is put right;
+    // 1 only logs, 0 skips. Returns the mismatches found. Runs by itself after
+    // each event; call it after moving actors outside an event.
+    UFUNCTION(BlueprintCallable, Category = "ConnectIt|Visualizer")
+    int32 ReconcileActors(const TArray<FGridPosition>& Positions);
+
+    // --- Event visuals ---
+
+    // Event visual classes by the event tag each declares. Two for one tag:
+    // an error, the first kept; an empty, abstract or tagless entry: a
+    // warning, skipped.
+    static TMap<FGameplayTag, TSubclassOf<AConnectIt_EventVisual>> BuildEventVisualMap(
+        const TArray<TSubclassOf<AConnectIt_EventVisual>>& Classes,
+        TArray<FString>* OutErrors = nullptr, TArray<FString>* OutWarnings = nullptr);
+
+    // The event visuals to use (Initialise passes the level config's);
+    // problems are logged as warnings
+    void SetEventVisuals(const TArray<TSubclassOf<AConnectIt_EventVisual>>& Classes);
+
+    // An event visual's Play Default: this visualizer's own function for
+    // Payload, with Handle
+    void PlayDefaultVisuals(const FInstancedStruct& Payload, UConnectIt_VisualHandle* Handle);
+
+    // Every tile and piece, then the board against the piece registry (a
+    // piece where the board has none, or the reverse -- logged, not fixed
+    // here). Runs by itself once a board change has played out.
+    UFUNCTION(BlueprintCallable, Category = "ConnectIt|Visualizer")
+    int32 ReconcileAll();
 
     // --- For event functions ---
 
@@ -218,6 +266,36 @@ private:
     // Unmaps the piece at Position; it is released when the event's visuals
     // are done
     void TakeLeavingPiece(const FGridPosition& Position);
+
+    // On Placed for each arriving piece, with a Piece Placed made for Source
+    void PlaceArrivingPieces(const FConnectItBoardEvent& Source, UConnectIt_VisualHandle* Handle);
+
+    // Plays Payload's event visual if it has one (spawned on first use)
+    bool PlayEventVisual(const FInstancedStruct& Payload, UConnectIt_VisualHandle* Handle);
+
+    TMap<FGameplayTag, TSubclassOf<AConnectIt_EventVisual>> EventVisualClasses;
+
+    UPROPERTY()
+    TMap<FGameplayTag, TObjectPtr<AConnectIt_EventVisual>> EventVisuals;
+
+    // A board change has played out: reconcile everything
+    UFUNCTION()
+    void HandleBoardEventsPlayed();
+
+    // Listens for that, once the board state exists
+    void BindToBoardState();
+    bool bBoundToBoardState = false;
+
+    void ReportMismatch(const AActor* Actor, const FGridPosition& Position, const FString& What, bool bFixed) const;
+
+    // Every grid position in an event's data (fields, arrays, nested structs)
+    static void CollectPositions(const UStruct* Struct, const void* Data, TArray<FGridPosition>& OutPositions);
+
+    // The playing event (reconciled once its visuals are done)
+    FInstancedStruct ActivePayload;
+
+    // The last event and how its handle ended, for reconcile errors
+    FString LastEventNote;
 
     // The board as the player sees it (before the playing event)
     const FConnectItBoardState* GetDisplayBoard() const;

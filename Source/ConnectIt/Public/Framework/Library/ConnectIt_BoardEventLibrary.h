@@ -144,6 +144,11 @@ public:
     UFUNCTION(BlueprintPure, Category = "ConnectIt|Board Events", meta = (WorldContext = "WorldContextObject"))
     static int32 GetActiveBoardEventIndex(const UObject* WorldContextObject);
 
+    // The tag of a board event held in an instanced struct (e.g. a tile
+    // hook's Event); none if it isn't a board event
+    UFUNCTION(BlueprintPure, Category = "ConnectIt|Board Events")
+    static FGameplayTag GetBoardEventTag(const FInstancedStruct& Event);
+
     // The event that set the playing one off -- e.g. a Tile Power Triggered
     // for a power's Piece Moved -- as its own struct (Get Instanced Struct
     // Value for its fields). False (the False pin) if it has none: the action
