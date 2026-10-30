@@ -2,6 +2,7 @@
 
 #include "Adventure/ConnectIt_ActionShardTableDataAsset.h"
 #include "Framework/Data/ConnectIt_ProjectSettings.h"
+#include "Action/TurnBasedPlayerAction.h"
 #include "Misc/DataValidation.h"
 
 int32 FConnectItActionShardCosts::GetPermanentUses(int32 Shards) const
@@ -41,6 +42,23 @@ EDataValidationResult UConnectIt_ActionShardTableDataAsset::IsDataValid(FDataVal
             Context.AddError(FText::FromString(TEXT("ConnectIt_ActionShardTableDataAsset: an entry has no action tag.")));
             Result = EDataValidationResult::Invalid;
             continue;
+        }
+
+        const TSubclassOf<UTurnBasedPlayerAction> ActionClass = Pair.Value.ActionClass;
+        if (!ActionClass)
+        {
+            Context.AddError(FText::FromString(FString::Printf(TEXT(
+                "ConnectIt_ActionShardTableDataAsset: %s has no Action Class -- an open node can't give its uses."),
+                *Pair.Key.ToString())));
+            Result = EDataValidationResult::Invalid;
+        }
+        else if (UTurnBasedPlayerAction::GetTagForClass(ActionClass) != Pair.Key)
+        {
+            Context.AddError(FText::FromString(FString::Printf(TEXT(
+                "ConnectIt_ActionShardTableDataAsset: %s's Action Class %s is the %s action -- the key must be its tag."),
+                *Pair.Key.ToString(), *ActionClass->GetName(),
+                *UTurnBasedPlayerAction::GetTagForClass(ActionClass).ToString())));
+            Result = EDataValidationResult::Invalid;
         }
 
         const TArray<int32>& Costs = Pair.Value.ShardsPerUse;

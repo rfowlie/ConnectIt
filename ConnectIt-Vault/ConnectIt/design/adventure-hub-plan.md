@@ -6,11 +6,11 @@ approved_on: 2026-10-23
 completed_on:
 started:             2026-10-23          # YYYY-MM-DD, when the first stage was built (blank until then)
 stages: 7              # how many stages the plan has
-current_stage: "2: progress and the save (Stage 1 built 2026-10-23)"   # the first stage not yet built ("complete" / "not started")
+current_stage: "3: starting a node and coming back (Stage 2 built 2026-10-29)"   # the first stage not yet built ("complete" / "not started")
 playtested: false
 design: "[adventure-hub](adventure-hub.md)"
 question:
-decision:
+decision: "[2026-10-29-adventure-saves-actions-by-tag](../_decisions/2026-10-29-adventure-saves-actions-by-tag.md)"
 requires: "[hover-component-plan](hover-component-plan.md)"
 ---
 
@@ -142,15 +142,32 @@ stages.
   - **break a seal:** spend the seals a gated node needs; it becomes available for good;
   - **record a result:** on a win, mark complete and grant rewards (shards, item actions up to their caps, seals).
     Win or lose, write back the item uses spent and any items granted during the match. Then save.
-- **Tag ↔ class (to settle here):** the save and rewards key player actions by tag, the plugin's inventory and
-  permanent list by class. Either the action shard table's entries also name their action class, or a lookup finds the
-  class for a tag.
+- **Tag ↔ class (settled 2026-10-29, owner: option 1 -- save stability first):** the save and rewards keep player
+  actions by **tag** (a tag survives renaming or moving an action Blueprint; a class path in a save wouldn't). Each
+  action shard table entry also names its **action class**; an item action's class comes from the item inventory
+  asset, which already lists every item action by class.
 - **Tests:**
   - a node's state through complete / gate / break;
   - rewards applied once;
   - derived uses grow with shards;
   - item uses don't satisfy a required action;
   - granted items respect their caps.
+
+- **As built (2026-10-29; 75/75 tests):**
+  - **The shard table** (`FConnectItActionShardCosts::ActionClass`): validation errors on an entry with no class, or
+    a class whose tag isn't the key.
+  - **The rules on the progress value** (`FConnectItAdventureProgress`), so tests need no disk:
+    - `GetNodeState` (`EConnectItNodeState`: Hidden / Available / Gated / Completed);
+    - `CanBreakSeal` (with a reason) / `BreakSeal`;
+    - `RecordResult`, which writes back the match's inventory (win or lose) and the last-played node, then on a first
+      win completes the node and grants its rewards, items capped (unlisted ones skipped with a warning);
+    - `FindActionClass` (tag -> class: the shard table, then the item caps) and `GetItemCount`.
+  - **Hidden is the hub's to say:** the state query takes whether the node is revealed (the hub map plan's reveal walk
+    decides), since the save holds no graph.
+  - `UConnectIt_AdventureSaveGame` (the progress + a `SaveVersion`); `UConnectIt_AdventureSubsystem` (game
+    instance): loads the "Adventure" slot on start, `SaveProgress` after each change, `GetNodeState`,
+    `GetPermanentUses`, `CanBreakSeal` / `BreakSeal`, `RecordResult`.
+  - Tests: `ConnectIt.Adventure.NodeState`, `.Results`. `.ShardTable`'s falling-costs case now uses a real action.
 
 ## Stage 3: starting a node and coming back
 

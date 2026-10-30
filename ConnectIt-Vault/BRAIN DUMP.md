@@ -16,6 +16,7 @@
 
 - find and replace deprecated pathways
 - CI_GridTileBase listens to it's own mouse hover instead of utilizing the OnTileHovered virtual function
+- Visualizer needs to be overhauled as we just used a random actor to connect things while we figured 
 
 ## Visualizer Framework
 
@@ -39,4 +40,22 @@
 	- How can we reconcile an action wanting a certain cursor and the tile actor wanting a certain cursor? Do actions override tiles?
 
 
+## Hover Continued
 
+• Tricky to consolidate who has control in what context. Generally an action will want to control cursor. For swap there will be marker cursors and a general hover cursor. Potentially a specific one the action wants. But then what if the level or even the tile want to control their look for hover? It will be easy to have them do some visual update when hovered as that is in their control. But what if we want a specific cursor for a tile during an action? In the same vein how does a tile understand what visual update to do? Will we need specific tags for each action? Having actions use the same cursors for their parts is easiest overall. The cursor classes can live in the action and don’t have to worry about overrides.  
+• What are the tags that would be needed to represent parts of actions?  
+• Place.hovered  
+• Place.selected  
+• Swap.hovered  
+• Swap.playerSelection  
+• Swap.opponentSelection  
+• Should tiles just never be responsible for cursors or interact with cursors?  
+• Any cursor selection lives in the action as cursors are related to input? Cursor selection logic can live in third party classes but then used by action? In general actions will tell tiles that they are (hovered, selected, valid, invalid, etc.). If there is a situation where we want the tile to control the cursor selection (incorporate it into the visual update, perhaps it’s easier this way sometimes), we could have a no cursor option for the action cursor selection and then when the action calls tile visual update and the tile handles it  
+• In general tiles probably don’t want to be responsible for cursor selection or behaviour. That should generally be managed in the cursor selection logic within actions.  
+• Cursor selection logic could potentially be setup per level, there should be a default cursor selection and then each level could override it if desired.  
+• Cursor selection logic should work more on a single action basis. Swap action would define a cursor selection object
+
+
+## Actor Pool Subsystem
+
+Actor pool subsystem should incorporate some sort of asynchronous actor spawn if possible and as an option when we aren’t worried about the speed of creation. Otherwise we should have a gate that only allows n actors to be spawned per tick as this is one of the clearest ways that a game gets poor performance  

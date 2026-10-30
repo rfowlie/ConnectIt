@@ -8,17 +8,31 @@
         "type": "tabs",
         "children": [
           {
+            "id": "da90aec7da8453c0",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "BRAIN DUMP.md",
+                "mode": "source",
+                "source": false
+              },
+              "icon": "lucide-file",
+              "title": "BRAIN DUMP"
+            }
+          },
+          {
             "id": "d21229c17b1e2e8b",
             "type": "leaf",
             "state": {
               "type": "markdown",
               "state": {
-                "file": "ConnectIt/design/__INDEX.md",
+                "file": "ConnectIt/design/adventure-hub-plan.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "__INDEX"
+              "title": "adventure-hub-plan"
             }
           }
         ]
@@ -79,7 +93,8 @@
               "title": "Bookmarks"
             }
           }
-        ]
+        ],
+        "currentTab": 2
       }
     ],
     "direction": "horizontal",
@@ -186,14 +201,22 @@
       "bases:Create new base": false
     }
   },
-  "active": "d21229c17b1e2e8b",
+  "active": "da90aec7da8453c0",
   "lastOpenFiles": [
+    "ConnectIt/_decisions/2026-10-29-adventure-saves-actions-by-tag.md",
+    "ConnectIt/_logs/2026-10-29-1855.md",
+    "ConnectIt/design/action-cursors-plan.md",
+    "ConnectIt/design/adventure-hub-plan.md",
+    "ConnectIt/_logs/2026-10-29-1412.md",
+    "ConnectIt/design/hover-cursor.md",
+    "ConnectIt/design/__INDEX.md",
+    "ConnectIt/_tasks/active.md",
+    "ConnectIt/design/adventure-hub-map-plan.md",
+    "BRAIN DUMP.md",
+    "ConnectIt/design/__README.md",
     "ConnectIt/_logs/2026-10-29-1400.md",
     "_core/__PLUGINS.md",
     "ConnectIt/_decisions/decsum.pl",
-    "ConnectIt/_tasks/active.md",
-    "BRAIN DUMP.md",
-    "ConnectIt/design/__INDEX.md",
     "ConnectIt/_logs/2026-10-29-1115.md",
     "ConnectIt/_decisions/2026-10-29-one-board-visualizer-per-map.md",
     "ConnectIt/code/recipes/add-visuals-for-a-board-event.md",
@@ -203,18 +226,10 @@
     "ConnectIt/_logs/2026-10-29-1052.md",
     "ConnectIt/design/board-visualizer-plan.md",
     "ConnectIt/code/__INDEX.md",
-    "ConnectIt/design/__README.md",
-    "ConnectIt/design/adventure-hub-map-plan.md",
     "ConnectIt/_logs/2026-10-29-1040.md",
     "ConnectIt/_logs/2026-10-29-1039.md",
     "ConnectIt/design/board-visualizer.md",
     "UnrealTurnBasedMechanics/code/ATurnBasedPlayerState.md",
-    "UnrealTurnBasedMechanics/code/UItemActionInventoryDataAsset.md",
-    "UnrealTurnBasedMechanics/code/ActionConfig.md",
-    "UnrealTurnBasedMechanics/code/UTurnBasedPlayerAction.md",
-    "ConnectIt/design/adventure-hub-plan.md",
-    "ConnectIt/_logs/2026-10-28-1511.md",
-    "ConnectIt/_decisions/2026-10-28-hover-through-a-component.md",
     "ConnectIt/design/level-outcomes-plan.md.tmp.7932.7141aac2726e",
     "ConnectIt/_logs/2026-10-24-1444.md.tmp.16900.05a8d2b10900",
     "ConnectIt/_logs/2026-10-24-1331.md.tmp.16900.98a1017df2d0",

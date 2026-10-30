@@ -4,9 +4,29 @@
 
 #include "CoreMinimal.h"
 #include "GameplayTagContainer.h"
+#include "Templates/SubclassOf.h"
+#include "Action/ActionConfig.h"
 #include "ConnectIt_AdventureProgress.generated.h"
 
 class UConnectIt_ActionShardTableDataAsset;
+class UConnectIt_MapNodeDataAsset;
+class UItemActionInventoryDataAsset;
+class UTurnBasedPlayerAction;
+struct FConnectItNodeRequirementCheck;
+
+// Where a node stands for a player
+UENUM(BlueprintType)
+enum class EConnectItNodeState : uint8
+{
+    // Not revealed on the hub yet
+    Hidden,
+    // Revealed and can be started
+    Available,
+    // Revealed, but needs its gate first: required actions, or seals to break
+    Gated,
+    // Won (no replays for now)
+    Completed,
+};
 
 
 // A player's Adventure progress: what the save holds. Nodes are named by their
@@ -30,8 +50,9 @@ struct CONNECTIT_API FConnectItAdventureProgress
     UPROPERTY(BlueprintReadOnly, Category = "Adventure")
     TMap<FGameplayTag, int32> Shards;
 
-    // One-time uses per action, from level rewards. Never count towards a
-    // node's required actions.
+    // The inventory: item actions held per player action (one-time uses).
+    // From level rewards and grants; never count towards a node's required
+    // actions.
     UPROPERTY(BlueprintReadOnly, Category = "Adventure")
     TMap<FGameplayTag, int32> ItemUses;
 
@@ -60,6 +81,43 @@ struct CONNECTIT_API FConnectItAdventureProgress
     // The permanent uses of Action the shards give, through Table (0 with no
     // table)
     int32 GetPermanentUses(const FGameplayTag& Action, const UConnectIt_ActionShardTableDataAsset* Table) const;
+
+    int32 GetItemCount(const FGameplayTag& Action) const
+    {
+        const int32* Found = ItemUses.Find(Action);
+        return Found ? *Found : 0;
+    }
+
+    // --- The rules (the Adventure subsystem calls these, then saves) ---
+
+    // Where Node stands: Completed if won; else Hidden unless the hub has
+    // revealed it (bRevealed); else Gated if it still needs anything (OutCheck
+    // says what), else Available
+    EConnectItNodeState GetNodeState(const UConnectIt_MapNodeDataAsset& Node, bool bRevealed,
+        const UConnectIt_ActionShardTableDataAsset* Table, FConnectItNodeRequirementCheck& OutCheck) const;
+
+    // Whether Node's seal can be broken now: it has one, it isn't broken, and
+    // the seals it needs are held. OutWhyNot says why not.
+    bool CanBreakSeal(const UConnectIt_MapNodeDataAsset& Node, FString* OutWhyNot = nullptr) const;
+
+    // Spends the seals Node's gate needs; its seal stays broken for good.
+    // False (and no change) if CanBreakSeal fails.
+    bool BreakSeal(const UConnectIt_MapNodeDataAsset& Node);
+
+    // A match of Node ended. Win or lose, the inventory becomes the match's
+    // (items spent are gone, items granted are kept) and Node is the last
+    // played. On a first win, Node is completed and its rewards granted:
+    // shards, item actions (each up to its cap in Items -- an action Items
+    // doesn't list can't be held), seals. Returns whether rewards were
+    // granted (never twice for a node).
+    bool RecordResult(const UConnectIt_MapNodeDataAsset& Node, bool bWon,
+        const TArray<FItemActionEntry>& Inventory, const UItemActionInventoryDataAsset* Items);
+
+    // The class of the player action Action names (the save's key): the
+    // shard table entry's Action Class, else the item action Items lists with
+    // that tag. Null if neither has it.
+    static TSubclassOf<UTurnBasedPlayerAction> FindActionClass(const FGameplayTag& Action,
+        const UConnectIt_ActionShardTableDataAsset* Table, const UItemActionInventoryDataAsset* Items);
 };
 
 // What a node still needs before it can be started (UConnectIt_MapNodeDataAsset::

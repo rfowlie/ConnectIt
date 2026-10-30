@@ -5,7 +5,10 @@
 #include "CoreMinimal.h"
 #include "Engine/DataAsset.h"
 #include "GameplayTagContainer.h"
+#include "Templates/SubclassOf.h"
 #include "ConnectIt_ActionShardTableDataAsset.generated.h"
+
+class UTurnBasedPlayerAction;
 
 
 // One action's shard costs: how many more shards each permanent use takes --
@@ -16,6 +19,12 @@ USTRUCT(BlueprintType)
 struct CONNECTIT_API FConnectItActionShardCosts
 {
     GENERATED_BODY()
+
+    // The action these shards are for: its tag must be the entry's key. The
+    // save names actions by tag; this is how a tag finds the class the match
+    // plays with (an open node's permanent actions).
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Shards")
+    TSubclassOf<UTurnBasedPlayerAction> ActionClass;
 
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Shards", meta = (ClampMin = 1))
     TArray<int32> ShardsPerUse;
