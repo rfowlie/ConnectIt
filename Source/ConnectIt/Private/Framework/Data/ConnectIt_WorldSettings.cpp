@@ -16,6 +16,8 @@
 #include "Adventure/ConnectIt_MapNodeComponent.h"
 #include "Adventure/ConnectIt_MapNodeDataAsset.h"
 #include "Framework/GameMode/ConnectIt_GameMode_AdventureHub.h"
+#include "Adventure/ConnectIt_ActionShardTableDataAsset.h"
+#include "Action/ItemActionInventoryDataAsset.h"
 #include "AssetRegistry/AssetRegistryModule.h"
 #include "EngineUtils.h"
 #endif
@@ -129,6 +131,35 @@ EDataValidationResult AConnectIt_WorldSettings::IsDataValid(FDataValidationConte
         for (const FString& Warning : Issues.Warnings)
         {
             Context.AddWarning(FText::FromString(TEXT("ConnectIt hub map: ") + Warning));
+        }
+
+        // Can it be finished: gates, shards, concepts. Not on a sub-map -- the
+        // player arrives there with the progress of the map around it.
+        const UConnectIt_MapNodeDataAsset* Start = nullptr;
+        int32 StartCount = 0;
+        TSet<const UConnectIt_MapNodeDataAsset*> MapNodes;
+        for (const UConnectIt_MapNodeComponent* Node : Nodes)
+        {
+            if (!Node || !Node->NodeData) continue;
+            MapNodes.Add(Node->NodeData);
+            if (Node->bIsStart)
+            {
+                Start = Node->NodeData;
+                StartCount++;
+            }
+        }
+        if (bIsSubMap)
+        {
+            Context.AddMessage(EMessageSeverity::Info, FText::FromString(TEXT(
+                "ConnectIt hub map: a sub-map -- its gates are checked from the map around it, not here.")));
+        }
+        else if (StartCount == 1)
+        {
+            for (const FString& Warning : UConnectIt_AdventureHubComponent::CheckHubProgression(
+                Start, MapNodes, UConnectIt_ActionShardTableDataAsset::Get(), UItemActionInventoryDataAsset::Get()))
+            {
+                Context.AddWarning(FText::FromString(TEXT("ConnectIt hub map: ") + Warning));
+            }
         }
         return Result;
     }

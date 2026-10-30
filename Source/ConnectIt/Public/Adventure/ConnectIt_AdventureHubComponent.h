@@ -10,6 +10,7 @@
 class UConnectIt_MapNodeComponent;
 class UConnectIt_MapNodeDataAsset;
 class UConnectIt_ActionShardTableDataAsset;
+class UItemActionInventoryDataAsset;
 class UGridHoverComponent;
 class AConnectIt_HubLinkActor;
 
@@ -148,6 +149,22 @@ public:
     //               map (it can't be revealed here); a node that can't be
     //               reached from the Start through Unlocks.
     static FConnectItHubMapIssues CheckHubMapNodes(const TArray<const UConnectIt_MapNodeComponent*>& Nodes, bool bIsSubMap);
+
+    // Whether a hub map can be finished (map validation; no world needed):
+    // plays it through from a fresh save with the real rules -- each round
+    // runs the reveal walk and wins every Available node; when none is left,
+    // breaks one affordable seal (preferring a node whose actions are met) and
+    // goes on. Warnings (never errors: the seal order is a guess):
+    //   -- a node revealed but never opened, with what it still needed (seals
+    //      not earnable before it, or a required action whose first permanent
+    //      use the shards before it don't reach);
+    //   -- a node that uses a concept no node before it teaches (on any
+    //      Unlocks path from the Start; teaching it itself counts).
+    // Only MapNodes are followed, as in the walk. A sub-map node counts with
+    // its own rewards, not what its map gives.
+    static TArray<FString> CheckHubProgression(const UConnectIt_MapNodeDataAsset* Start,
+        const TSet<const UConnectIt_MapNodeDataAsset*>& MapNodes, const UConnectIt_ActionShardTableDataAsset* Table,
+        const UItemActionInventoryDataAsset* Items);
 
     // Runs the walk with the player's progress and applies it to the nodes
     UFUNCTION(BlueprintCallable, Category = "ConnectIt|Adventure Hub")

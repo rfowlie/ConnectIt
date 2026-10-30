@@ -242,6 +242,119 @@ FConnectItHubMapIssues UConnectIt_AdventureHubComponent::CheckHubMapNodes(
     return Issues;
 }
 
+TArray<FString> UConnectIt_AdventureHubComponent::CheckHubProgression(const UConnectIt_MapNodeDataAsset* Start,
+    const TSet<const UConnectIt_MapNodeDataAsset*>& MapNodes, const UConnectIt_ActionShardTableDataAsset* Table,
+    const UItemActionInventoryDataAsset* Items)
+{
+    TArray<FString> Warnings;
+    if (!Start || !MapNodes.Contains(Start)) return Warnings;
+
+    // --- A play-through: win what's open, break a seal only when nothing is ---
+    FConnectItAdventureProgress Progress;
+    FConnectItRevealWalkResult Walk;
+    for (;;)
+    {
+        Walk = RunRevealWalk(Start, MapNodes, Progress, Table);
+
+        bool bWonAny = false;
+        for (const TPair<TObjectPtr<UConnectIt_MapNodeDataAsset>, EConnectItNodeState>& Pair : Walk.States)
+        {
+            if (Pair.Value == EConnectItNodeState::Available)
+            {
+                Progress.CompleteNode(*Pair.Key, Items);
+                bWonAny = true;
+            }
+        }
+        if (bWonAny) continue;
+
+        const UConnectIt_MapNodeDataAsset* ToBreak = nullptr;
+        for (const TPair<TObjectPtr<UConnectIt_MapNodeDataAsset>, EConnectItNodeState>& Pair : Walk.States)
+        {
+            if (Pair.Value != EConnectItNodeState::Gated || !Progress.CanBreakSeal(*Pair.Key)) continue;
+            const bool bActionsMet = Pair.Key->CheckRequirements(Progress, Table).MissingActions.IsEmpty();
+            if (!ToBreak || bActionsMet) ToBreak = Pair.Key;
+            if (bActionsMet) break;
+        }
+        if (!ToBreak) break;
+        Progress.BreakSeal(*ToBreak);
+    }
+
+    for (const TPair<TObjectPtr<UConnectIt_MapNodeDataAsset>, EConnectItNodeState>& Pair : Walk.States)
+    {
+        if (Pair.Value != EConnectItNodeState::Gated) continue;
+
+        const FConnectItNodeRequirementCheck Check = Pair.Key->CheckRequirements(Progress, Table);
+        TArray<FString> Needs;
+        if (!Check.MissingActions.IsEmpty())
+        {
+            Needs.Add(FString::Printf(TEXT("a permanent use of %s (not enough shards before it)"),
+                *Check.MissingActions.ToStringSimple()));
+        }
+        if (!Check.MissingSeals.IsEmpty())
+        {
+            Needs.Add(FString::Printf(TEXT("seals %s"), *Check.MissingSeals.ToStringSimple()));
+        }
+        if (Check.MissingGeneralSeals > 0)
+        {
+            Needs.Add(FString::Printf(TEXT("%d more general seal(s)"), Check.MissingGeneralSeals));
+        }
+        Warnings.Add(FString::Printf(TEXT("%s can't be opened on a play-through that wins everything it can -- it "
+            "still needs %s, and the nodes behind it are never revealed."),
+            *Pair.Key->GetName(), *FString::Join(Needs, TEXT("; "))));
+    }
+
+    // --- Concepts: taught on some path before they're used ---
+    const auto Descendants = [&MapNodes](const UConnectIt_MapNodeDataAsset* From)
+    {
+        TSet<const UConnectIt_MapNodeDataAsset*> Reached;
+        TArray<const UConnectIt_MapNodeDataAsset*> Queue = { From };
+        for (int32 Index = 0; Index < Queue.Num(); Index++)
+        {
+            for (const TSoftObjectPtr<UConnectIt_MapNodeDataAsset>& Unlock : Queue[Index]->Unlocks)
+            {
+                const UConnectIt_MapNodeDataAsset* Next = Unlock.Get();
+                if (Next && MapNodes.Contains(Next) && !Reached.Contains(Next))
+                {
+                    Reached.Add(Next);
+                    Queue.Add(Next);
+                }
+            }
+        }
+        return Reached;
+    };
+
+    TSet<const UConnectIt_MapNodeDataAsset*> Reachable = Descendants(Start);
+    Reachable.Add(Start);
+    TMap<const UConnectIt_MapNodeDataAsset*, TSet<const UConnectIt_MapNodeDataAsset*>> After;
+    for (const UConnectIt_MapNodeDataAsset* Node : Reachable)
+    {
+        if (!Node->TeachesConcepts.IsEmpty()) After.Add(Node, Descendants(Node));
+    }
+    for (const UConnectIt_MapNodeDataAsset* Node : Reachable)
+    {
+        for (const FGameplayTag& Concept : Node->UsesConcepts)
+        {
+            if (Node->TeachesConcepts.HasTagExact(Concept)) continue;
+
+            bool bTaught = false;
+            for (const TPair<const UConnectIt_MapNodeDataAsset*, TSet<const UConnectIt_MapNodeDataAsset*>>& Teacher : After)
+            {
+                if (Teacher.Key != Node && Teacher.Key->TeachesConcepts.HasTagExact(Concept) && Teacher.Value.Contains(Node))
+                {
+                    bTaught = true;
+                    break;
+                }
+            }
+            if (!bTaught)
+            {
+                Warnings.Add(FString::Printf(TEXT("%s uses concept %s, but no node before it (on any path from the "
+                    "Start) teaches it."), *Node->GetName(), *Concept.ToString()));
+            }
+        }
+    }
+    return Warnings;
+}
+
 void UConnectIt_AdventureHubComponent::RefreshReveal()
 {
     // The player's progress (the game instance loads it before any map: an

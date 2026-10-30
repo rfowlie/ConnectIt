@@ -101,6 +101,12 @@ Claude's notes (to discuss):
 ## Progression and gating
 
 > Hub look and feel, currencies and regions (2026-10-23): [adventure-hub](adventure-hub.md).
+>
+> **Settled and built (2026-10-29):** levels are **gated** by hand-set required actions and Seals. Rewards are shards
+> (permanent uses), item actions and Seals. The validator plays the map through and warns about unreachable gates and
+> untaught concepts. See [adventure economy](../_decisions/2026-10-29-adventure-economy-shards-items-seals.md) and
+> [add an adventure node or region](../code/recipes/add-an-adventure-node-or-region.md). The **Open** points below are
+> answered there.
 
 - The first module is mandatory up to a certain point before other levels can be tried.
 - Place piece is permanently unlocked and usable everywhere, unless a level prohibits it (e.g. swap-teaching levels).

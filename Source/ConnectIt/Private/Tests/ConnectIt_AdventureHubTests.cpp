@@ -2,6 +2,8 @@
 
 #include "Misc/AutomationTest.h"
 #include "Misc/ScopeExit.h"
+#include "NativeGameplayTags.h"
+#include "Adventure/ConnectIt_ActionShardTableDataAsset.h"
 #include "Adventure/ConnectIt_AdventureHubComponent.h"
 #include "Adventure/ConnectIt_MapNodeComponent.h"
 #include "Adventure/ConnectIt_MapNodeDataAsset.h"
@@ -20,6 +22,12 @@ namespace ConnectItAdventureHubTests
 {
     constexpr EAutomationTestFlags TestFlags =
         EAutomationTestFlags::EditorContext | EAutomationTestFlags::ProductFilter;
+
+    UE_DEFINE_GAMEPLAY_TAG_STATIC(HubTestAction, "ConnectIt.PlayerAction.HubTest");
+    UE_DEFINE_GAMEPLAY_TAG_STATIC(HubTestOtherAction, "ConnectIt.PlayerAction.HubTestOther");
+    UE_DEFINE_GAMEPLAY_TAG_STATIC(HubTestSeal, "ConnectIt.Adventure.Seal.HubTest");
+    UE_DEFINE_GAMEPLAY_TAG_STATIC(HubTestConcept, "ConnectIt.Adventure.Concept.HubTest");
+    UE_DEFINE_GAMEPLAY_TAG_STATIC(HubTestOtherConcept, "ConnectIt.Adventure.Concept.HubTestOther");
 
     // An actor dressed as a map node for NodeData
     UConnectIt_MapNodeComponent* SpawnNode(UWorld* World, UConnectIt_MapNodeDataAsset* NodeData, bool bIsStart = false)
@@ -334,6 +342,72 @@ bool FConnectItAdventureSubMapCompleteTest::RunTest(const FString& Parameters)
     // A win recorded on an already-complete node grants nothing either
     TestFalse(TEXT("record after: nothing"), Progress.RecordResult(*SubMapNode, true, {}, nullptr));
     TestEqual(TEXT("record after: seals once"), Progress.GeneralSeals, 2);
+    return true;
+}
+
+// Adventure hub plan, Stage 5: can a hub map be finished -- a play-through
+//   S (teaches a concept; 3 shards of the action) -> A, G1, G3
+//   A (a general seal) -> G2
+//   G1 (the action + a general seal: both earnable) -> X (uses the taught concept, and an untaught one)
+//   G2 (a specific seal nobody gives) -> Y (never revealed)
+//   G3 (another action, never given shards)
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FConnectItAdventureHubProgressionTest,
+    "ConnectIt.Adventure.HubProgression", ConnectItAdventureHubTests::TestFlags)
+
+bool FConnectItAdventureHubProgressionTest::RunTest(const FString& Parameters)
+{
+    using namespace ConnectItAdventureHubTests;
+    UConnectIt_ActionShardTableDataAsset* Table = NewObject<UConnectIt_ActionShardTableDataAsset>();
+    FConnectItActionShardCosts Costs;
+    Costs.ShardsPerUse = { 3 };
+    Table->Actions.Add(HubTestAction, Costs);
+    Costs.ShardsPerUse = { 5 };
+    Table->Actions.Add(HubTestOtherAction, Costs);
+
+    UConnectIt_MapNodeDataAsset* S = NewObject<UConnectIt_MapNodeDataAsset>();
+    UConnectIt_MapNodeDataAsset* A = NewObject<UConnectIt_MapNodeDataAsset>();
+    UConnectIt_MapNodeDataAsset* G1 = NewObject<UConnectIt_MapNodeDataAsset>();
+    UConnectIt_MapNodeDataAsset* G2 = NewObject<UConnectIt_MapNodeDataAsset>();
+    UConnectIt_MapNodeDataAsset* G3 = NewObject<UConnectIt_MapNodeDataAsset>();
+    UConnectIt_MapNodeDataAsset* X = NewObject<UConnectIt_MapNodeDataAsset>();
+    UConnectIt_MapNodeDataAsset* Y = NewObject<UConnectIt_MapNodeDataAsset>();
+    S->Unlocks = { A, G1, G3 };
+    S->TeachesConcepts.AddTag(HubTestConcept);
+    S->Rewards.Shards.Add(HubTestAction, 3);
+    A->Unlocks = { G2 };
+    A->Rewards.GeneralSeals = 1;
+    G1->Unlocks = { X };
+    G1->Gate.RequiredActions.AddTag(HubTestAction);
+    G1->Gate.GeneralSeals = 1;
+    G2->Unlocks = { Y };
+    G2->Gate.RequiredSeals.AddTag(HubTestSeal);
+    G3->Gate.RequiredActions.AddTag(HubTestOtherAction);
+    X->UsesConcepts.AddTag(HubTestConcept);
+    X->UsesConcepts.AddTag(HubTestOtherConcept);
+    const TSet<const UConnectIt_MapNodeDataAsset*> MapNodes = { S, A, G1, G2, G3, X, Y };
+
+    const TArray<FString> Warnings = UConnectIt_AdventureHubComponent::CheckHubProgression(S, MapNodes, Table, nullptr);
+    const auto Warned = [&Warnings](const UConnectIt_MapNodeDataAsset* Node, const TCHAR* Text)
+    {
+        return Warnings.ContainsByPredicate([Node, Text](const FString& Warning)
+        {
+            return Warning.StartsWith(Node->GetName() + TEXT(" ")) && Warning.Contains(Text);
+        });
+    };
+    TestEqual(TEXT("three warnings"), Warnings.Num(), 3);
+    TestTrue(TEXT("G2: its seal is never earned"), Warned(G2, TEXT("seals ConnectIt.Adventure.Seal.HubTest")));
+    TestTrue(TEXT("G3: its action never gets a use"), Warned(G3, TEXT("a permanent use of ConnectIt.PlayerAction.HubTestOther")));
+    TestTrue(TEXT("X: the untaught concept"), Warned(X, TEXT("ConnectIt.Adventure.Concept.HubTestOther")));
+    TestFalse(TEXT("G1 opens (shards and the seal come first)"), Warned(G1, TEXT("")));
+    TestFalse(TEXT("X: the taught concept is fine"), Warnings.ContainsByPredicate(
+        [](const FString& Warning) { return Warning.Contains(TEXT("concept ConnectIt.Adventure.Concept.HubTest, but")); }));
+
+    // The seal given after all: G2 opens
+    A->Rewards.Seals.AddTag(HubTestSeal);
+    const TArray<FString> After = UConnectIt_AdventureHubComponent::CheckHubProgression(S, MapNodes, Table, nullptr);
+    TestFalse(TEXT("seal earnable: G2 opens"), After.ContainsByPredicate(
+        [G2](const FString& Warning) { return Warning.StartsWith(G2->GetName() + TEXT(" ")); }));
+    TestEqual(TEXT("seal earnable: two warnings left"), After.Num(), 2);
     return true;
 }
 

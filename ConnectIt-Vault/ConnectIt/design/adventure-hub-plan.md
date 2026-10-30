@@ -6,7 +6,7 @@ approved_on: 2026-10-23
 completed_on:
 started:             2026-10-23          # YYYY-MM-DD, when the first stage was built (blank until then)
 stages: 7              # how many stages the plan has
-current_stage: "5: the map validator (Stage 3 built 2026-10-29; Stage 4 built by adventure-hub-map-plan 2026-10-29)"   # the first stage not yet built ("complete" / "not started")
+current_stage: "6: UI and art (owner, editor) -- Stages 5 and 7 built 2026-10-29"   # the first stage not yet built ("complete" / "not started")
 playtested: false
 design: "[adventure-hub](adventure-hub.md)"
 question:
@@ -262,6 +262,27 @@ An editor utility (map check on the hub map, plus a button) that walks the data 
 
 Warnings and errors only -- it never changes data.
 
+- **As built (2026-10-29; 83/83 tests):**
+  - **One-map checks** were built by the [adventure-hub-map-plan](adventure-hub-map-plan.md)'s Stage 3
+    (`CheckHubMapNodes`): one actor per node, no actor without data, unreachable nodes, a sub-map with no Exit.
+  - **`UConnectIt_AdventureHubComponent::CheckHubProgression(Start, MapNodes, Table, Items)`** (static, no world)
+    plays the map through from a fresh save **with the real rules**. Each round runs `RunRevealWalk` and
+    `CompleteNode`s every Available node. When none is left, it breaks one affordable seal (preferring a node whose
+    required actions are met) and goes on.
+    - It warns about every node left Gated, with what it still needs. This covers the plan's gate checks: seals not
+      earnable before the gate (specific or general), and a required action whose first permanent use the shards
+      before it don't reach. Gates that deadlock each other show up too.
+  - **Concepts:** it warns when a node uses a concept that no node on an Unlocks path from the Start to it teaches. A
+    node that teaches the concept itself is fine.
+  - **Different from the plan:**
+    - all of these are **warnings**, because the seal order is a guess;
+    - there is **no separate button**: Validate Data on the hub map (`AConnectIt_WorldSettings::IsDataValid`) is the
+      way to run it;
+    - it's **skipped on sub-maps** (the player arrives with the parent map's progress; an Info message says so);
+    - in a parent map, a sub-map node counts only its own rewards.
+  - Test: `ConnectIt.Adventure.HubProgression` (an unearnable seal, an action without shards, an untaught concept;
+    a seal and an action earned before their gate; giving the seal fixes it).
+
 ## Stage 6: UI and art (owner, editor)
 
 - Node panel: name, description, region, rewards, required (with what's missing) and recommended actions, concepts,
@@ -280,6 +301,17 @@ Decision notes (the hub as a 3D level with revealed node actors; shards, permane
 `code/` recipe "add an
 adventure node / region"; update [adventure-hub](adventure-hub.md) and
 [adventure-modules-and-progression](adventure-modules-and-progression.md); log.
+
+- **As built (2026-10-29), done before Stage 6, which is the owner's editor work:**
+  - decisions:
+    - [hub map nodes are components](../_decisions/2026-10-29-hub-map-nodes-are-components.md) (the hub as a 3D level
+      with revealed node actors);
+    - [adventure economy: shards, items, seals](../_decisions/2026-10-29-adventure-economy-shards-items-seals.md);
+  - recipes: [add an adventure node or region](../code/recipes/add-an-adventure-node-or-region.md), and
+    [build a hub map](../code/recipes/build-a-hub-map.md) from the hub map plan;
+  - [adventure-hub](adventure-hub.md) and [adventure-modules-and-progression](adventure-modules-and-progression.md)
+    point at what's built.
+  - Stage 6 (the UI, art and camera) adds no code. Once it's done, mark the plan complete.
 
 ## Not in this plan
 

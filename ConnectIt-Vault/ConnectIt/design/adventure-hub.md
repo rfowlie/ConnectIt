@@ -1,7 +1,9 @@
 # Adventure hub: the node map, currencies and regions
 
-Design note (2026-10-23), the owner's look-and-feel ideas for Adventure mode. **Settled over five rounds the same day;
-nothing built.** Plans: [adventure-hub-plan](adventure-hub-plan.md); the hub map: [adventure-hub-map-plan](adventure-hub-map-plan.md) (**built 2026-10-29**; decision
+Design note (2026-10-23), the owner's look-and-feel ideas for Adventure mode. **Settled over five rounds the same day.
+Built 2026-10-29** through the plans below, apart from the UI, art and camera (the hub plan's Stage 6, owner); decision:
+[adventure economy](../_decisions/2026-10-29-adventure-economy-shards-items-seals.md); recipe:
+[add an adventure node or region](../code/recipes/add-an-adventure-node-or-region.md). Plans: [adventure-hub-plan](adventure-hub-plan.md); the hub map: [adventure-hub-map-plan](adventure-hub-map-plan.md) (**built 2026-10-29**; decision
 [hub map nodes are components](../_decisions/2026-10-29-hub-map-nodes-are-components.md); recipe
 [build a hub map](../code/recipes/build-a-hub-map.md)). Builds on [adventure-modules-and-progression](adventure-modules-and-progression.md) (level
 types, the tutorial module, gating, the shard economy) and [adventure-mode](adventure-mode.md) (what a level can do).

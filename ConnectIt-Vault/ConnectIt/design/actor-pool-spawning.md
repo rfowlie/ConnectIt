@@ -10,7 +10,9 @@ option, and if not, can we clamp spawns per tick (frame rate later on)? **Direct
   (pops from the inactive list, and **spawns the shortfall** in the same call), and **`CreatePool`** (the same as
   `Create`).
 - **No pre-warming happens in practice.** `GetObjects` creates a pool on first use with the default
-  `InitialPoolSize = 1`, and nothing in the project calls `CreatePool`. So a pool grows **one synchronous spawn at a
+  `InitialPoolSize = 1`, and nothing in the project calls `CreatePool`. (*Correction, 2026-10-29:* the level config
+  already has **`PiecePoolInitialSize` = 32** and a Blueprint-callable `GetPiecePoolInitialSize`, but nothing in C++ or
+  the Blueprints I could search uses it -- an intended warm-up that was never wired.) So a pool grows **one synchronous spawn at a
   time, at the moment an actor is first needed** -- the first N piece placements each pay a full spawn.
 - **The only user so far is the grid piece registry** (`RetrievePiece` asks for one piece). Tiles are spawned directly
   (not pooled), so a layout change spawns each added tile in one frame. The action cursors plan will use the pool too.
@@ -127,7 +129,12 @@ pre-warming. Spawn mode as an option, per call:
 - **With the board visualizer's `Hold()` / `Release()`:** hold the event, request, release in `OnReady`.
 - **Pool-miss logging** on the synchronous `GetObjects` stays in the proposal, to tune pre-warm sizes.
 
-## Open (what's left)
+## Settled (owner, 2026-10-29)
+
+Clamp scope agreed; and **level-start warming, pooling tiles now, and the Blueprint async node are all in the first
+version.** Plan: [actor-pool-plan](actor-pool-plan.md) (**approved 2026-10-29**, not built).
+
+## Open (what's left -- resolved above)
 
 1. **Confirm the clamp scope:** one global spawn per tick shared by all pending async requests, applying to the async
    path only (the synchronous calls stay unclamped, and level-load warming uses them).
