@@ -13,6 +13,19 @@ class ATurnBasedPlayerState;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnConnectItAdventureProgressChanged);
 
+// A sub-map entered: the node that stands for it, and the map to go back to
+USTRUCT()
+struct FConnectItSubMapVisit
+{
+    GENERATED_BODY()
+
+    UPROPERTY()
+    TObjectPtr<UConnectIt_MapNodeDataAsset> SubMapNode = nullptr;
+
+    UPROPERTY()
+    TSoftObjectPtr<UWorld> ParentMap;
+};
+
 
 // The player's Adventure progress for the whole session: loads the save when
 // the game starts, answers questions about it, changes it by the rules
@@ -26,6 +39,11 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnConnectItAdventureProgressChanged);
 // the player up, and at match end hands over the result
 // (RecordPlayingNodeResult). ReturnToHub opens the hub again (e.g. from the
 // results screen), which focuses the last-played node.
+//
+// Sub-maps: starting a sub-map node opens its hub map, remembering the map it
+// came from. When that map's Exit node is won, ReturnToHub completes the
+// sub-map node (its rewards, once) and goes back to the parent map instead.
+// (Remembered for the session; not saved.)
 UCLASS()
 class CONNECTIT_API UConnectIt_AdventureSubsystem : public UGameInstanceSubsystem
 {
@@ -82,10 +100,11 @@ public:
 
     // --- Playing a node ---
 
-    // Starts Node's level (its match preset), remembering Node and the hub
-    // map WorldContextObject is in. False -- nothing started -- if Node can't
-    // be played: completed (no replays), still gated, a sub-map node (the hub
-    // opens those) or no level. Options: OpenLevel URL options.
+    // Starts Node: its level (with its match preset), or for a sub-map node
+    // its hub map. Remembers Node and the hub map WorldContextObject is in.
+    // False -- nothing started -- if Node can't be played: completed (no
+    // replays), still gated, or no level / sub-map. Options: OpenLevel URL
+    // options (a level only).
     UFUNCTION(BlueprintCallable, Category = "ConnectIt|Adventure", meta = (WorldContext = "WorldContextObject"))
     bool StartNode(const UObject* WorldContextObject, UConnectIt_MapNodeDataAsset* Node, const FString& Options);
 
@@ -106,7 +125,8 @@ public:
     void RecordPlayingNodeResult(const UObject* WorldContextObject, bool bWon, const TArray<FItemActionEntry>& Inventory);
 
     // Opens the hub map the node was started from (it focuses the
-    // last-played node). False if no node was started from a hub.
+    // last-played node) -- or, after a won sub-map Exit, completes the sub-map
+    // node and opens its parent map. False if no node was started from a hub.
     UFUNCTION(BlueprintCallable, Category = "ConnectIt|Adventure", meta = (WorldContext = "WorldContextObject"))
     bool ReturnToHub(const UObject* WorldContextObject);
 
@@ -129,4 +149,14 @@ private:
 
     // The playing node's result is in (one per match)
     bool bPlayingNodeRecorded = false;
+
+    // The playing node is its hub map's Exit (a sub-map's way out)
+    bool bPlayingExit = false;
+
+    // Sub-maps entered, innermost last
+    UPROPERTY()
+    TArray<FConnectItSubMapVisit> SubMapVisits;
+
+    // The map WorldContextObject is in, by its saved name (not a PIE copy's)
+    static TSoftObjectPtr<UWorld> MapOf(const UObject* WorldContextObject);
 };

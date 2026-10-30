@@ -114,6 +114,11 @@ struct CONNECTIT_API FConnectItAdventureProgress
     bool RecordResult(const UConnectIt_MapNodeDataAsset& Node, bool bWon,
         const TArray<FItemActionEntry>& Inventory, const UItemActionInventoryDataAsset* Items);
 
+    // Completes Node and grants its rewards (items up to their caps) -- once:
+    // false if it was already complete. The inventory is otherwise untouched
+    // (a sub-map node completes this way when its map's Exit is won).
+    bool CompleteNode(const UConnectIt_MapNodeDataAsset& Node, const UItemActionInventoryDataAsset* Items);
+
     // An open node's permanent actions, from Loadout (the level's Player
     // director's) and the shards: each loadout entry the shard table doesn't
     // price (Place Piece: everyone's) as it is; and each priced action the

@@ -24,7 +24,3 @@
 - This feels a bit monolithic and daunting.
 - It might be easier down the line to add flexibility by creating single visualizers. The concept would be that you have a base visualizer (the C++ default for example). Then a list of single visualizers that override one board operation each. This way we can more easily swap out behaviors. 
 	- Should be a map with Operation tag and Visualizer Actor (single)
-
-## Actor Pool Subsystem
-
-Actor pool subsystem should incorporate some sort of asynchronous actor spawn if possible and as an option when we aren’t worried about the speed of creation. Otherwise we should have a gate that only allows n actors to be spawned per tick as this is one of the clearest ways that a game gets poor performance  

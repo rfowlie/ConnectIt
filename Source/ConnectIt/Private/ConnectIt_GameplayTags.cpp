@@ -65,3 +65,4 @@ UE_DEFINE_GAMEPLAY_TAG_COMMENT(ConnectIt_Event_MultiplierChanged, "ConnectIt.Eve
 UE_DEFINE_GAMEPLAY_TAG_COMMENT(ConnectIt_Event_ChainPartnerChanged, "ConnectIt.Event.ChainPartnerChanged", "A Chained tile's partner was set or cleared (see FConnectItBoardEvent_ChainPartnerChanged)");
 UE_DEFINE_GAMEPLAY_TAG_COMMENT(ConnectIt_Event_PieceCaptured, "ConnectIt.Event.PieceCaptured", "");
 UE_DEFINE_GAMEPLAY_TAG_COMMENT(ConnectIt_Event_BoardShifted, "ConnectIt.Event.BoardShifted", "");
+UE_DEFINE_GAMEPLAY_TAG_COMMENT(ConnectIt_Adventure_MapNode, "ConnectIt.Adventure.MapNode", "An Adventure hub map node: its hover category");

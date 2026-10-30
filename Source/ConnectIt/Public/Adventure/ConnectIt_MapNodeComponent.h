@@ -9,6 +9,7 @@
 
 class UConnectIt_MapNodeComponent;
 class UConnectIt_MapNodeDataAsset;
+class UGridHoverComponent;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnConnectItMapNodeStateChanged, UConnectIt_MapNodeComponent*, Node);
 
@@ -61,6 +62,10 @@ public:
     // State or focus changed
     UPROPERTY(BlueprintAssignable, Category = "Map Node")
     FOnConnectItMapNodeStateChanged OnStateChanged;
+
+    // The actor's grid hover component (category ConnectIt.Adventure.MapNode),
+    // made if the actor has none: hover and clicks go to the hub through it
+    UGridHoverComponent* GetOrCreateHover();
 
 protected:
 

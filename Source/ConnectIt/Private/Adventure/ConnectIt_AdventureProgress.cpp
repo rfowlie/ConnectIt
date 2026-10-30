@@ -71,7 +71,12 @@ bool FConnectItAdventureProgress::RecordResult(const UConnectIt_MapNodeDataAsset
     }
     LastPlayedNode = Node.NodeId;
 
-    if (!bWon || IsCompleted(Node.NodeId)) return false;
+    return bWon && CompleteNode(Node, Items);
+}
+
+bool FConnectItAdventureProgress::CompleteNode(const UConnectIt_MapNodeDataAsset& Node, const UItemActionInventoryDataAsset* Items)
+{
+    if (IsCompleted(Node.NodeId)) return false;
     CompletedNodes.Add(Node.NodeId);
 
     const FConnectItNodeRewards& Rewards = Node.Rewards;

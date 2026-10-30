@@ -1,16 +1,16 @@
 ---
 type: plan
-status: in-progress
+status: complete
 approved: true
 approved_on: 2026-10-28
-completed_on:
+completed_on: 2026-10-29
 started: 2026-10-29             # YYYY-MM-DD, when the first stage was built (blank until then)
 stages: 6              # how many stages the plan has
-current_stage: "4: interaction, framing and links (Stage 3 built 2026-10-29)"   # the first stage not yet built ("complete" / "not started")
+current_stage: "complete"   # the first stage not yet built ("complete" / "not started")
 playtested: false
 design: "[adventure-hub](adventure-hub.md)"
 question:
-decision:
+decision: "[2026-10-29-hub-map-nodes-are-components](../_decisions/2026-10-29-hub-map-nodes-are-components.md)"
 requires:
   - "[adventure-hub-plan](adventure-hub-plan.md)"
   - "[hover-component-plan](hover-component-plan.md)"
@@ -20,7 +20,9 @@ requires:
 
 Design: [adventure-hub](adventure-hub.md) -- "The reveal walk" and its decisions (2026-10-28). This plan **replaces
 Stage 4 ("the hub level") of the [adventure-hub-plan](adventure-hub-plan.md)** and takes the hub-map checks from its
-Stage 5. Written 2026-10-28 in a design-only session; **approved by the owner 2026-10-28**. Not built -- building happens in its own session.
+Stage 5. Written 2026-10-28 in a design-only session; **approved by the owner 2026-10-28**. **Built 2026-10-29** (all
+six stages; 82/82 tests); decision: [hub map nodes are components](../_decisions/2026-10-29-hub-map-nodes-are-components.md);
+recipe: [build a hub map](../code/recipes/build-a-hub-map.md). Not yet playtested.
 
 > **Prerequisites:** the adventure hub plan's **Stages 2-3** (the progress / save subsystem and returning from a level)
 > and the **hover component plan** (map nodes hover through it). The **top-down camera plan** is used for framing and
@@ -172,6 +174,30 @@ cost: server-only (fine for a single-player hub), and discovery must be pulled a
   start.
 - **Links:** for each revealed link, spawn a **link actor** (a spline from node to node with a spline mesh / ribbon --
   the class set on the hub game mode); hidden links aren't spawned; shown when the destination is revealed.
+- **As built (2026-10-29; 81/81 tests at the time):**
+  - **`UTransformLerpComponent`** (`UnrealGameMechanics/Animation/`): `Duration` (0.15 s), `EndTransform` (default 15%
+    bigger, on top of the start with `bEndRelativeToStart`), `bStartFromCurrent` / `StartTransform`, `SetTarget`
+    (default: the owner's root), `PlayForward` / `PlayReverse` (turns around mid-way), `GetAlpha`,
+    `OnLerpFinished(bAtEnd)`. It ticks only while playing.
+  - **Hover:** the hub gives each node `GetOrCreateHover()`, which finds or creates a grid hover component on the owner.
+    The category is the new tag **`ConnectIt.Adventure.MapNode`** (not `Hover.MapNode`: the tag lives with the
+    adventure tags). The hub binds hover begin, end and click when a node is added, and unbinds them on removal.
+    Hidden nodes are ignored.
+  - **Hub additions:** `OnNodeHovered`, `OnNodeUnhovered`, `OnNodeSelected`; `GetHoveredNode`, `GetSelectedNode`,
+    `SelectNode`.
+    - On hover and unhover, the hub plays the owner's `UTransformLerpComponent` forward or in reverse.
+  - **Select:** `FocusOnNode` (BlueprintNativeEvent; the default moves the first player pawn over the node, keeping
+    its height) runs, and then `OnNodeSelected` fires **straight away**: there is no "on arrival" until the camera
+    plan exists.
+  - **Framing:** `GetRevealedBounds` (the revealed nodes' locations + `FramingMargin`, 500) is there for the camera.
+    Nothing clamps a camera to it yet. On `BeginPlay` after the reveal, the hub focuses the last-played node (the
+    progress `LastPlayedNode`, else the Start) and sets its focus flag.
+  - **Links:** `AConnectIt_HubLinkActor`, a spline root, and `SetEnds(From, To)` lays two world points and calls the
+    Blueprint `OnLinkBuilt` (spline meshes or a ribbon go there).
+    - The hub's `LinkActorClass` sets the class; empty = the C++ base.
+    - `ApplyReveal(Result)` sets states, then destroys and respawns the transient link actors (`GetLinkActors`).
+  - Test: `ConnectIt.Adventure.HubInteraction` (scale forward and back; hover and click reach the hub; a hidden node
+    ignored; link ends; links rebuilt).
 
 ## Stage 5: sub-maps
 
@@ -180,6 +206,20 @@ cost: server-only (fine for a single-player hub), and discovery must be pulled a
 - Completing the sub-map's **Exit** node returns to the parent map with the sub-map node **completed** (rewards on it
   applied once), and the walk there reveals what it unlocks.
 - Tests: the return marks the parent node complete once.
+- **As built (2026-10-29; 82/82 tests):**
+  - **Progress:** `CompleteNode(Node, Items)` completes a node and grants its rewards **once**; `RecordResult` now uses it
+    on a win.
+  - **`StartNode` on a sub-map node** pushes `{node, the map it was started from}` onto the subsystem's
+    `SubMapVisits` stack and opens the sub-map.
+    - A sub-map node needs no `Level`; the gate rules are the same as for any node.
+  - **Starting a level** notes whether the node is its hub's **Exit** (`bPlayingExit`, from the hub component).
+  - **`ReturnToHub`:** if the playing node is an Exit and is now completed, it pops the visit, `CompleteNode`s the
+    sub-map node, makes it the last played, saves, broadcasts `OnProgressChanged` and opens the **parent** map.
+    Otherwise it opens the hub as before.
+  - **Not saved:** the stack lives for the session. Quitting inside a sub-map loses the way back (see Follow-ups).
+  - Test: `ConnectIt.Adventure.SubMapComplete` covers the progress side (completes once, rewards once, a later win
+    grants nothing). The subsystem's map hops call `OpenLevel`, so they are an owner PIE check, not an automation
+    test.
 
 ## Stage 6: vault
 
@@ -187,6 +227,18 @@ Decision note (map nodes as components discovered by a component on the hub game
 walk, the gotchas); a `code/`
 recipe "build a hub map"; update [adventure-hub](adventure-hub.md) and the adventure hub plan (Stage 4 points here);
 log.
+
+- **As built (2026-10-29):**
+  - decision [hub map nodes are components](../_decisions/2026-10-29-hub-map-nodes-are-components.md);
+  - recipe [build a hub map](../code/recipes/build-a-hub-map.md);
+  - [adventure-hub](adventure-hub.md) and the [adventure-hub-plan](adventure-hub-plan.md) Stage 4 marked built here.
+
+## Follow-ups (from the build)
+
+- **The sub-map return path isn't saved.** If the game quits inside a sub-map, `ReturnToHub` after its Exit opens that
+  sub-map again, and its node in the parent is never completed. Fix when there's a "continue" flow: save the stack, or
+  derive the parent from the map node assets that name the sub-map (as validation already does).
+- **Camera:** `FocusOnNode`'s default and `GetRevealedBounds` are stand-ins until the top-down camera plan.
 
 ## Not in this plan
 

@@ -1,7 +1,9 @@
 # Adventure hub: the node map, currencies and regions
 
 Design note (2026-10-23), the owner's look-and-feel ideas for Adventure mode. **Settled over five rounds the same day;
-nothing built.** Plans: [adventure-hub-plan](adventure-hub-plan.md); the hub map: [adventure-hub-map-plan](adventure-hub-map-plan.md) (**approved 2026-10-28**, not built) (**approved 2026-10-23**, not built). Builds on [adventure-modules-and-progression](adventure-modules-and-progression.md) (level
+nothing built.** Plans: [adventure-hub-plan](adventure-hub-plan.md); the hub map: [adventure-hub-map-plan](adventure-hub-map-plan.md) (**built 2026-10-29**; decision
+[hub map nodes are components](../_decisions/2026-10-29-hub-map-nodes-are-components.md); recipe
+[build a hub map](../code/recipes/build-a-hub-map.md)). Builds on [adventure-modules-and-progression](adventure-modules-and-progression.md) (level
 types, the tutorial module, gating, the shard economy) and [adventure-mode](adventure-mode.md) (what a level can do).
 
 > **Vocabulary (2026-10-29):** the decisions below are kept as written; read them in the vocabulary settled by

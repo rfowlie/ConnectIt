@@ -10,6 +10,10 @@
 class UConnectIt_MapNodeComponent;
 class UConnectIt_MapNodeDataAsset;
 class UConnectIt_ActionShardTableDataAsset;
+class UGridHoverComponent;
+class AConnectIt_HubLinkActor;
+
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnConnectItHubNodeEvent, UConnectIt_MapNodeComponent*, Node);
 
 // One unlock link the walk revealed: From's Unlocks names To, both revealed
 USTRUCT(BlueprintType)
@@ -65,6 +69,12 @@ struct CONNECTIT_API FConnectItRevealWalkResult
 // the player's progress (UConnectIt_AdventureSubsystem); it runs again when the
 // progress changes (a seal broken). A late node takes its state from the last
 // walk. Console: ConnectIt.Adventure.RevealAll 1 / 0 reveals every node.
+//
+// The hub is also the map's listener: every node gets a grid hover component
+// (category ConnectIt.Adventure.MapNode); the hub plays a node's transform
+// lerp on hover (if it has one), selects on click (focus, then On Node
+// Selected for the node panel), focuses the last-played node on load, and
+// spawns a link actor for each revealed link. Nodes don't react on their own.
 UCLASS(ClassGroup = (Adventure), meta = (BlueprintSpawnableComponent))
 class CONNECTIT_API UConnectIt_AdventureHubComponent : public UActorComponent
 {
@@ -146,8 +156,56 @@ public:
     UFUNCTION(BlueprintPure, Category = "ConnectIt|Adventure Hub")
     const FConnectItRevealWalkResult& GetRevealResult() const { return RevealResult; }
 
+    // Applies a walk's result: each node's state, then the links
+    void ApplyReveal(const FConnectItRevealWalkResult& Result);
+
     // Debug (ConnectIt.Adventure.RevealAll): every node revealed
     static bool bRevealAllNodes;
+
+    // --- Interaction, framing, links ---
+
+    // The link actor spawned per revealed link (default: the bare spline)
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Adventure Hub")
+    TSubclassOf<AConnectIt_HubLinkActor> LinkActorClass;
+
+    // Added around the revealed nodes for the framing bounds (the camera stays
+    // inside)
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Adventure Hub", meta = (ClampMin = 0))
+    float FramingMargin = 500.f;
+
+    UPROPERTY(BlueprintAssignable, Category = "ConnectIt|Adventure Hub")
+    FOnConnectItHubNodeEvent OnNodeHovered;
+
+    UPROPERTY(BlueprintAssignable, Category = "ConnectIt|Adventure Hub")
+    FOnConnectItHubNodeEvent OnNodeUnhovered;
+
+    // A node was selected and the view focused on it: open its panel (Start
+    // and Break Seal live there -- selecting never starts a node)
+    UPROPERTY(BlueprintAssignable, Category = "ConnectIt|Adventure Hub")
+    FOnConnectItHubNodeEvent OnNodeSelected;
+
+    UFUNCTION(BlueprintPure, Category = "ConnectIt|Adventure Hub")
+    UConnectIt_MapNodeComponent* GetHoveredNode() const { return HoveredNode; }
+
+    UFUNCTION(BlueprintPure, Category = "ConnectIt|Adventure Hub")
+    UConnectIt_MapNodeComponent* GetSelectedNode() const { return SelectedNode; }
+
+    // Selects a revealed node: focuses the view on it, then On Node Selected
+    UFUNCTION(BlueprintCallable, Category = "ConnectIt|Adventure Hub")
+    void SelectNode(UConnectIt_MapNodeComponent* Node);
+
+    // The revealed nodes' area plus FramingMargin (empty if none is revealed)
+    UFUNCTION(BlueprintPure, Category = "ConnectIt|Adventure Hub")
+    FBox GetRevealedBounds() const;
+
+    // Moves the view to a node. Default (until the top-down camera exists):
+    // the first local player's pawn moves over it, keeping its height.
+    // Override for a real camera.
+    UFUNCTION(BlueprintNativeEvent, Category = "ConnectIt|Adventure Hub")
+    void FocusOnNode(UConnectIt_MapNodeComponent* Node);
+
+    UFUNCTION(BlueprintPure, Category = "ConnectIt|Adventure Hub")
+    TArray<AConnectIt_HubLinkActor*> GetLinkActors() const;
 
 protected:
 
@@ -177,6 +235,33 @@ private:
     bool bDiscovered = false;
     bool bWalked = false;
 
+    UPROPERTY()
+    TObjectPtr<UConnectIt_MapNodeComponent> HoveredNode;
+
+    UPROPERTY()
+    TObjectPtr<UConnectIt_MapNodeComponent> SelectedNode;
+
+    UPROPERTY()
+    TArray<TObjectPtr<AConnectIt_HubLinkActor>> LinkActors;
+
     UFUNCTION()
     void HandleProgressChanged();
+
+    // A node's hover component, to and from the hub
+    void BindHover(UConnectIt_MapNodeComponent* Node, bool bBind);
+    UConnectIt_MapNodeComponent* NodeForHover(const UGridHoverComponent* Hover) const;
+
+    UFUNCTION()
+    void HandleHoverBegin(UGridHoverComponent* Hover);
+
+    UFUNCTION()
+    void HandleHoverEnd(UGridHoverComponent* Hover);
+
+    UFUNCTION()
+    void HandleHoverClicked(UGridHoverComponent* Hover);
+
+    void RebuildLinks();
+
+    // On load: the last-played node (from the progress), else the start
+    void FocusLastPlayed();
 };

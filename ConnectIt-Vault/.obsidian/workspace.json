@@ -35,8 +35,7 @@
               "title": "active"
             }
           }
-        ],
-        "currentTab": 1
+        ]
       }
     ],
     "direction": "vertical"
@@ -202,8 +201,14 @@
       "bases:Create new base": false
     }
   },
-  "active": "d21229c17b1e2e8b",
+  "active": "da90aec7da8453c0",
   "lastOpenFiles": [
+    "ConnectIt/_logs/2026-10-29-2031.md",
+    "ConnectIt/code/recipes/build-a-hub-map.md",
+    "ConnectIt/_decisions/2026-10-29-hub-map-nodes-are-components.md",
+    "ConnectIt/_logs/2026-10-29-2026.md",
+    "ConnectIt/design/actor-pool-spawning.md",
+    "ConnectIt/_tasks/active.md",
     "ConnectIt/_logs/2026-10-29-2020.md",
     "ConnectIt/_logs/2026-10-29-2011.md",
     "ConnectIt/_logs/2026-10-29-1946.md",
@@ -217,7 +222,6 @@
     "ConnectIt/design/action-cursors-plan.md",
     "ConnectIt/_logs/2026-10-29-1412.md",
     "ConnectIt/design/hover-cursor.md",
-    "ConnectIt/_tasks/active.md",
     "ConnectIt/design/adventure-hub-map-plan.md",
     "ConnectIt/design/__README.md",
     "ConnectIt/_logs/2026-10-29-1400.md",
@@ -226,11 +230,6 @@
     "ConnectIt/_logs/2026-10-29-1115.md",
     "ConnectIt/_decisions/2026-10-29-one-board-visualizer-per-map.md",
     "ConnectIt/code/recipes/add-visuals-for-a-board-event.md",
-    "ConnectIt/design/player-actions-and-items-plan.md",
-    "ConnectIt/_logs/2026-10-29-1215.md",
-    "ConnectIt/_logs/2026-10-29-1130.md",
-    "ConnectIt/_logs/2026-10-29-1052.md",
-    "ConnectIt/design/board-visualizer-plan.md",
     "ConnectIt/design/level-outcomes-plan.md.tmp.7932.7141aac2726e",
     "ConnectIt/_logs/2026-10-24-1444.md.tmp.16900.05a8d2b10900",
     "ConnectIt/_logs/2026-10-24-1331.md.tmp.16900.98a1017df2d0",

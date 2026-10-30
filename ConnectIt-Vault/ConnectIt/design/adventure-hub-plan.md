@@ -6,7 +6,7 @@ approved_on: 2026-10-23
 completed_on:
 started:             2026-10-23          # YYYY-MM-DD, when the first stage was built (blank until then)
 stages: 7              # how many stages the plan has
-current_stage: "5: the map validator (Stage 3 built 2026-10-29; Stage 4 moved to adventure-hub-map-plan)"   # the first stage not yet built ("complete" / "not started")
+current_stage: "5: the map validator (Stage 3 built 2026-10-29; Stage 4 built by adventure-hub-map-plan 2026-10-29)"   # the first stage not yet built ("complete" / "not started")
 playtested: false
 design: "[adventure-hub](adventure-hub.md)"
 question:
@@ -212,6 +212,9 @@ stages.
 
 ## Stage 4: the hub level
 
+> **Built 2026-10-29 by [adventure-hub-map-plan](adventure-hub-map-plan.md)** (complete; decision
+> [hub map nodes are components](../_decisions/2026-10-29-hub-map-nodes-are-components.md)).
+>
 > **Moved to its own plan (2026-10-28): [adventure-hub-map-plan](adventure-hub-map-plan.md)** -- node components,
 > registration, the reveal walk with its gotchas, the hub game mode and validation, interaction, links, sub-maps. The
 > text below is kept for the record.

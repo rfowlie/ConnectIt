@@ -5,7 +5,12 @@
 #include "Adventure/ConnectIt_AdventureHubComponent.h"
 #include "Adventure/ConnectIt_MapNodeComponent.h"
 #include "Adventure/ConnectIt_MapNodeDataAsset.h"
+#include "Adventure/ConnectIt_HubLinkActor.h"
 #include "Framework/GameMode/ConnectIt_GameMode_AdventureHub.h"
+#include "Animation/TransformLerpComponent.h"
+#include "Hover/GridHoverComponent.h"
+#include "Components/SceneComponent.h"
+#include "Components/SplineComponent.h"
 #include "Engine/Engine.h"
 #include "Engine/World.h"
 
@@ -214,6 +219,121 @@ bool FConnectItAdventureHubValidationTest::RunTest(const FString& Parameters)
         TestEqual(TEXT("unreachable from the Start: a warning"), Issues.Warnings.Num(), 1);
     }
     TestEqual(TEXT("no node data: a warning"), Check({ NodeS, NodeA, NodeB, MakeNode(nullptr) }).Warnings.Num(), 1);
+    return true;
+}
+
+// Adventure hub map plan, Stage 4: a node scales up while hovered and back
+// after; hover and click reach the hub (hidden nodes ignored); the reveal's
+// links become link actors between the right nodes
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FConnectItAdventureHubInteractionTest,
+    "ConnectIt.Adventure.HubInteraction", ConnectItAdventureHubTests::TestFlags)
+
+bool FConnectItAdventureHubInteractionTest::RunTest(const FString& Parameters)
+{
+    using namespace ConnectItAdventureHubTests;
+    UWorld* World = UWorld::CreateWorld(EWorldType::Game, false, TEXT("ConnectItAdventureHubInteractionTestWorld"));
+    GEngine->CreateNewWorldContext(EWorldType::Game).SetCurrentWorld(World);
+    ON_SCOPE_EXIT
+    {
+        GEngine->DestroyWorldContext(World);
+        World->DestroyWorld(false);
+    };
+
+    AConnectIt_GameMode_AdventureHub* GameMode = World->SpawnActor<AConnectIt_GameMode_AdventureHub>();
+    UConnectIt_AdventureHubComponent* Hub = GameMode ? GameMode->GetAdventureHub() : nullptr;
+    if (!TestNotNull(TEXT("the hub game mode has the hub"), Hub)) return false;
+
+    UConnectIt_MapNodeDataAsset* S = NewObject<UConnectIt_MapNodeDataAsset>();
+    UConnectIt_MapNodeDataAsset* A = NewObject<UConnectIt_MapNodeDataAsset>();
+    UConnectIt_MapNodeDataAsset* B = NewObject<UConnectIt_MapNodeDataAsset>();
+    UConnectIt_MapNodeComponent* NodeS = SpawnNode(World, S, /*bIsStart=*/true);
+    UConnectIt_MapNodeComponent* NodeA = SpawnNode(World, A);
+    UConnectIt_MapNodeComponent* NodeB = SpawnNode(World, B);
+
+    // Node A gets a root to scale and a lerp; it sits away from the start
+    AActor* ActorA = NodeA->GetOwner();
+    USceneComponent* Root = NewObject<USceneComponent>(ActorA);
+    ActorA->SetRootComponent(Root);
+    Root->RegisterComponent();
+    ActorA->SetActorLocation(FVector(400.f, 0.f, 0.f));
+    UTransformLerpComponent* Lerp = NewObject<UTransformLerpComponent>(ActorA);
+    Lerp->Duration = 0.2f;
+    Lerp->RegisterComponent();
+
+    Hub->DiscoverNodes();
+    UGridHoverComponent* HoverA = ActorA->FindComponentByClass<UGridHoverComponent>();
+    UGridHoverComponent* HoverB = NodeB->GetOwner()->FindComponentByClass<UGridHoverComponent>();
+    if (!TestTrue(TEXT("discovery: each node got a hover component"), HoverA && HoverB)) return false;
+
+    // --- The reveal: S won, A available, B hidden; one link S -> A ---
+    FConnectItRevealWalkResult Result;
+    Result.States.Add(S, EConnectItNodeState::Completed);
+    Result.States.Add(A, EConnectItNodeState::Available);
+    FConnectItRevealedLink& Link = Result.Links.AddDefaulted_GetRef();
+    Link.From = S;
+    Link.To = A;
+    Hub->ApplyReveal(Result);
+    TestEqual(TEXT("reveal: B hidden"), NodeB->GetState(), EConnectItNodeState::Hidden);
+    const TArray<AConnectIt_HubLinkActor*> Links = Hub->GetLinkActors();
+    if (TestEqual(TEXT("links: one link actor"), Links.Num(), 1))
+    {
+        const USplineComponent* Spline = Links[0]->FindComponentByClass<USplineComponent>();
+        TestTrue(TEXT("links: S to A"), Spline && Spline->GetNumberOfSplinePoints() == 2
+            && Spline->GetLocationAtSplinePoint(0, ESplineCoordinateSpace::World).Equals(NodeS->GetOwner()->GetActorLocation())
+            && Spline->GetLocationAtSplinePoint(1, ESplineCoordinateSpace::World).Equals(ActorA->GetActorLocation()));
+    }
+
+    // --- Hover A: the hub knows, the node scales up over the duration ---
+    HoverA->NotifyHoverBegin();
+    TestTrue(TEXT("hover: A hovered"), Hub->GetHoveredNode() == NodeA);
+    for (int32 Step = 0; Step < 5; ++Step) Lerp->TickComponent(0.05f, LEVELTICK_All, nullptr);
+    TestEqual(TEXT("hover: fully up"), Lerp->GetAlpha(), 1.f);
+    TestTrue(TEXT("hover: scaled 15%"), Root->GetRelativeScale3D().Equals(FVector(1.15f)));
+
+    // --- Unhover: back to the start ---
+    HoverA->NotifyHoverEnd();
+    TestNull(TEXT("unhover: nothing hovered"), Hub->GetHoveredNode());
+    for (int32 Step = 0; Step < 5; ++Step) Lerp->TickComponent(0.05f, LEVELTICK_All, nullptr);
+    TestEqual(TEXT("unhover: back down"), Lerp->GetAlpha(), 0.f);
+    TestTrue(TEXT("unhover: original scale"), Root->GetRelativeScale3D().Equals(FVector(1.f)));
+
+    // --- Click A selects it; a hidden node is ignored ---
+    HoverA->NotifyClicked();
+    TestTrue(TEXT("click: A selected"), Hub->GetSelectedNode() == NodeA);
+    HoverB->NotifyHoverBegin();
+    HoverB->NotifyClicked();
+    TestNull(TEXT("hidden: B never hovered"), Hub->GetHoveredNode());
+    TestTrue(TEXT("hidden: A still selected"), Hub->GetSelectedNode() == NodeA);
+
+    // --- A new reveal replaces the link actors ---
+    Result.Links.Reset();
+    Hub->ApplyReveal(Result);
+    TestEqual(TEXT("links: rebuilt (none now)"), Hub->GetLinkActors().Num(), 0);
+    return true;
+}
+
+// Adventure hub map plan, Stage 5: a sub-map node completes on its own (its
+// map's Exit won) -- rewards once, the inventory otherwise untouched
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FConnectItAdventureSubMapCompleteTest,
+    "ConnectIt.Adventure.SubMapComplete", ConnectItAdventureHubTests::TestFlags)
+
+bool FConnectItAdventureSubMapCompleteTest::RunTest(const FString& Parameters)
+{
+    UConnectIt_MapNodeDataAsset* SubMapNode = NewObject<UConnectIt_MapNodeDataAsset>();
+    SubMapNode->Rewards.GeneralSeals = 2;
+
+    FConnectItAdventureProgress Progress;
+    TestTrue(TEXT("first: completed with rewards"), Progress.CompleteNode(*SubMapNode, nullptr));
+    TestTrue(TEXT("first: completed"), Progress.IsCompleted(SubMapNode->NodeId));
+    TestEqual(TEXT("first: seals granted"), Progress.GeneralSeals, 2);
+    TestFalse(TEXT("first: not the last played (the caller sets that)"), Progress.LastPlayedNode == SubMapNode->NodeId);
+
+    TestFalse(TEXT("again: nothing"), Progress.CompleteNode(*SubMapNode, nullptr));
+    TestEqual(TEXT("again: seals once"), Progress.GeneralSeals, 2);
+
+    // A win recorded on an already-complete node grants nothing either
+    TestFalse(TEXT("record after: nothing"), Progress.RecordResult(*SubMapNode, true, {}, nullptr));
+    TestEqual(TEXT("record after: seals once"), Progress.GeneralSeals, 2);
     return true;
 }
 

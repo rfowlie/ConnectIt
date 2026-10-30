@@ -6,6 +6,11 @@
 #include "Adventure/ConnectIt_ActionShardTableDataAsset.h"
 #include "Adventure/ConnectIt_AdventureSubsystem.h"
 #include "Engine/GameInstance.h"
+#include "Adventure/ConnectIt_HubLinkActor.h"
+#include "Animation/TransformLerpComponent.h"
+#include "Hover/GridHoverComponent.h"
+#include "GameFramework/Pawn.h"
+#include "GameFramework/PlayerController.h"
 #include "HAL/IConsoleManager.h"
 #include "GameFramework/Actor.h"
 #include "GameFramework/GameModeBase.h"
@@ -55,6 +60,7 @@ void UConnectIt_AdventureHubComponent::BeginPlay()
         Adventure->OnProgressChanged.AddUniqueDynamic(this, &UConnectIt_AdventureHubComponent::HandleProgressChanged);
     }
     RefreshReveal();
+    FocusLastPlayed();
 }
 
 void UConnectIt_AdventureHubComponent::EndPlay(const EEndPlayReason::Type EndPlayReason)
@@ -254,14 +260,8 @@ void UConnectIt_AdventureHubComponent::RefreshReveal()
         MapNodes.Add(Pair.Key);
     }
 
-    RevealResult = RunRevealWalk(StartNode ? StartNode->NodeData.Get() : nullptr, MapNodes, Progress,
-        UConnectIt_ActionShardTableDataAsset::Get(), bRevealAllNodes);
-    bWalked = true;
-
-    for (const TPair<TObjectPtr<UConnectIt_MapNodeDataAsset>, TObjectPtr<UConnectIt_MapNodeComponent>>& Pair : NodeToComponent)
-    {
-        if (IsValid(Pair.Value)) Pair.Value->SetState(RevealResult.GetState(Pair.Key));
-    }
+    ApplyReveal(RunRevealWalk(StartNode ? StartNode->NodeData.Get() : nullptr, MapNodes, Progress,
+        UConnectIt_ActionShardTableDataAsset::Get(), bRevealAllNodes));
 
     UE_LOG(LogTemp, Log, TEXT("ConnectIt_AdventureHubComponent: %d of %d node(s) revealed, %d link(s)%s"),
         RevealResult.States.Num(), NodeToComponent.Num(), RevealResult.Links.Num(),
@@ -317,6 +317,7 @@ void UConnectIt_AdventureHubComponent::AddNode(UConnectIt_MapNodeComponent* Node
     }
     NodeToComponent.Add(NodeData, Node);
     ActorToNode.Add(Node->GetOwner(), NodeData);
+    BindHover(Node, true);
 
     // A late arrival takes its state from the last walk (Hidden if it didn't
     // reach it)
@@ -354,6 +355,9 @@ void UConnectIt_AdventureHubComponent::AddNode(UConnectIt_MapNodeComponent* Node
 void UConnectIt_AdventureHubComponent::RemoveNode(UConnectIt_MapNodeComponent* Node)
 {
     if (!Node) return;
+    BindHover(Node, false);
+    if (HoveredNode == Node) HoveredNode = nullptr;
+    if (SelectedNode == Node) SelectedNode = nullptr;
 
     for (auto It = NodeToComponent.CreateIterator(); It; ++It)
     {
@@ -365,6 +369,171 @@ void UConnectIt_AdventureHubComponent::RemoveNode(UConnectIt_MapNodeComponent* N
     }
     if (StartNode == Node) StartNode = nullptr;
     if (ExitNode == Node) ExitNode = nullptr;
+}
+
+void UConnectIt_AdventureHubComponent::ApplyReveal(const FConnectItRevealWalkResult& Result)
+{
+    RevealResult = Result;
+    bWalked = true;
+    for (const TPair<TObjectPtr<UConnectIt_MapNodeDataAsset>, TObjectPtr<UConnectIt_MapNodeComponent>>& Pair : NodeToComponent)
+    {
+        if (IsValid(Pair.Value)) Pair.Value->SetState(RevealResult.GetState(Pair.Key));
+    }
+    RebuildLinks();
+}
+
+void UConnectIt_AdventureHubComponent::RebuildLinks()
+{
+    for (AConnectIt_HubLinkActor* Link : LinkActors)
+    {
+        if (IsValid(Link)) Link->Destroy();
+    }
+    LinkActors.Reset();
+
+    UWorld* World = GetWorld();
+    if (!World) return;
+
+    const TSubclassOf<AConnectIt_HubLinkActor> LinkClass =
+        LinkActorClass ? LinkActorClass : TSubclassOf<AConnectIt_HubLinkActor>(AConnectIt_HubLinkActor::StaticClass());
+    for (const FConnectItRevealedLink& Link : RevealResult.Links)
+    {
+        AActor* From = GetActorForNode(Link.From);
+        AActor* To = GetActorForNode(Link.To);
+        if (!From || !To) continue;
+
+        FActorSpawnParameters Params;
+        Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+        Params.ObjectFlags |= RF_Transient;
+        if (AConnectIt_HubLinkActor* LinkActor = World->SpawnActor<AConnectIt_HubLinkActor>(
+            LinkClass, From->GetActorTransform(), Params))
+        {
+            LinkActor->SetEnds(From, To);
+            LinkActors.Add(LinkActor);
+        }
+    }
+}
+
+TArray<AConnectIt_HubLinkActor*> UConnectIt_AdventureHubComponent::GetLinkActors() const
+{
+    TArray<AConnectIt_HubLinkActor*> Found;
+    for (AConnectIt_HubLinkActor* Link : LinkActors)
+    {
+        if (IsValid(Link)) Found.Add(Link);
+    }
+    return Found;
+}
+
+void UConnectIt_AdventureHubComponent::BindHover(UConnectIt_MapNodeComponent* Node, bool bBind)
+{
+    UGridHoverComponent* Hover = bBind ? Node->GetOrCreateHover()
+        : (Node->GetOwner() ? Node->GetOwner()->FindComponentByClass<UGridHoverComponent>() : nullptr);
+    if (!Hover) return;
+
+    if (bBind)
+    {
+        Hover->OnHoverBegin.AddUniqueDynamic(this, &UConnectIt_AdventureHubComponent::HandleHoverBegin);
+        Hover->OnHoverEnd.AddUniqueDynamic(this, &UConnectIt_AdventureHubComponent::HandleHoverEnd);
+        Hover->OnClicked.AddUniqueDynamic(this, &UConnectIt_AdventureHubComponent::HandleHoverClicked);
+    }
+    else
+    {
+        Hover->OnHoverBegin.RemoveDynamic(this, &UConnectIt_AdventureHubComponent::HandleHoverBegin);
+        Hover->OnHoverEnd.RemoveDynamic(this, &UConnectIt_AdventureHubComponent::HandleHoverEnd);
+        Hover->OnClicked.RemoveDynamic(this, &UConnectIt_AdventureHubComponent::HandleHoverClicked);
+    }
+}
+
+UConnectIt_MapNodeComponent* UConnectIt_AdventureHubComponent::NodeForHover(const UGridHoverComponent* Hover) const
+{
+    const UConnectIt_MapNodeDataAsset* NodeData = Hover ? GetNodeForActor(Hover->GetOwner()) : nullptr;
+    UConnectIt_MapNodeComponent* Node = GetNodeComponent(NodeData);
+    // A hidden node can't be hovered (no collision), but never react to one
+    return Node && Node->GetState() != EConnectItNodeState::Hidden ? Node : nullptr;
+}
+
+void UConnectIt_AdventureHubComponent::HandleHoverBegin(UGridHoverComponent* Hover)
+{
+    UConnectIt_MapNodeComponent* Node = NodeForHover(Hover);
+    if (!Node) return;
+
+    HoveredNode = Node;
+    if (UTransformLerpComponent* Lerp = Node->GetOwner()->FindComponentByClass<UTransformLerpComponent>())
+    {
+        Lerp->PlayForward();
+    }
+    OnNodeHovered.Broadcast(Node);
+}
+
+void UConnectIt_AdventureHubComponent::HandleHoverEnd(UGridHoverComponent* Hover)
+{
+    UConnectIt_MapNodeComponent* Node = NodeForHover(Hover);
+    if (!Node) return;
+
+    if (HoveredNode == Node) HoveredNode = nullptr;
+    if (UTransformLerpComponent* Lerp = Node->GetOwner()->FindComponentByClass<UTransformLerpComponent>())
+    {
+        Lerp->PlayReverse();
+    }
+    OnNodeUnhovered.Broadcast(Node);
+}
+
+void UConnectIt_AdventureHubComponent::HandleHoverClicked(UGridHoverComponent* Hover)
+{
+    SelectNode(NodeForHover(Hover));
+}
+
+void UConnectIt_AdventureHubComponent::SelectNode(UConnectIt_MapNodeComponent* Node)
+{
+    if (!IsValid(Node) || Node->GetState() == EConnectItNodeState::Hidden) return;
+
+    SelectedNode = Node;
+    FocusOnNode(Node);
+    OnNodeSelected.Broadcast(Node);
+}
+
+void UConnectIt_AdventureHubComponent::FocusOnNode_Implementation(UConnectIt_MapNodeComponent* Node)
+{
+    const AActor* NodeActor = Node ? Node->GetOwner() : nullptr;
+    const APlayerController* Player = GetWorld() ? GetWorld()->GetFirstPlayerController() : nullptr;
+    APawn* View = Player ? Player->GetPawn() : nullptr;
+    if (!NodeActor || !View) return;
+
+    const FVector Target = NodeActor->GetActorLocation();
+    View->SetActorLocation(FVector(Target.X, Target.Y, View->GetActorLocation().Z));
+}
+
+FBox UConnectIt_AdventureHubComponent::GetRevealedBounds() const
+{
+    FBox Bounds(ForceInit);
+    for (const TPair<TObjectPtr<UConnectIt_MapNodeDataAsset>, EConnectItNodeState>& Revealed : RevealResult.States)
+    {
+        if (const AActor* Actor = GetActorForNode(Revealed.Key))
+        {
+            Bounds += Actor->GetActorLocation();
+        }
+    }
+    return Bounds.IsValid ? Bounds.ExpandBy(FramingMargin) : Bounds;
+}
+
+void UConnectIt_AdventureHubComponent::FocusLastPlayed()
+{
+    const UGameInstance* GameInstance = GetWorld() ? GetWorld()->GetGameInstance() : nullptr;
+    const UConnectIt_AdventureSubsystem* Adventure = GameInstance ? GameInstance->GetSubsystem<UConnectIt_AdventureSubsystem>() : nullptr;
+    const FGuid LastPlayed = Adventure ? Adventure->GetProgress().LastPlayedNode : FGuid();
+
+    UConnectIt_MapNodeComponent* Focus = nullptr;
+    for (const TPair<TObjectPtr<UConnectIt_MapNodeDataAsset>, TObjectPtr<UConnectIt_MapNodeComponent>>& Pair : NodeToComponent)
+    {
+        if (LastPlayed.IsValid() && Pair.Key->NodeId == LastPlayed) Focus = Pair.Value;
+    }
+    if (!Focus || Focus->GetState() == EConnectItNodeState::Hidden) Focus = StartNode;
+    if (!Focus) return;
+
+    for (const TPair<TObjectPtr<UConnectIt_MapNodeDataAsset>, TObjectPtr<UConnectIt_MapNodeComponent>>& Pair : NodeToComponent)
+    {
+        if (IsValid(Pair.Value)) Pair.Value->SetFocused(Pair.Value == Focus);
+    }
+    FocusOnNode(Focus);
 }
 
 AActor* UConnectIt_AdventureHubComponent::GetActorForNode(const UConnectIt_MapNodeDataAsset* NodeData) const

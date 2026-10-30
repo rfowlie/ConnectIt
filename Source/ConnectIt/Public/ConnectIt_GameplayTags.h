@@ -48,6 +48,8 @@ UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_BoardOperation_BeginPhase);
 
 UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_Tile_ValidHover);
 UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_Tile_InvalidHover);
+// The hover category of an Adventure hub map node (its grid hover component)
+UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_Adventure_MapNode);
 UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_Tile_Occupied);
 UE_DECLARE_GAMEPLAY_TAG_EXTERN(ConnectIt_Tile_Default);
 

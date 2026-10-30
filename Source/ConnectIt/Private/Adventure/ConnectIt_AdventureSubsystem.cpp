@@ -8,6 +8,8 @@
 #include "Framework/PlayerState/TurnBasedPlayerState.h"
 #include "Framework/Data/ConnectIt_MatchPresetDataAsset.h"
 #include "Framework/Subsystem/ConnectIt_MatchSetupSubsystem.h"
+#include "Adventure/ConnectIt_AdventureHubComponent.h"
+#include "Adventure/ConnectIt_MapNodeComponent.h"
 #include "Engine/World.h"
 #include "Kismet/GameplayStatics.h"
 #include "Misc/PackageName.h"
@@ -92,25 +94,33 @@ bool UConnectIt_AdventureSubsystem::StartNode(const UObject* WorldContextObject,
 
     FConnectItNodeRequirementCheck Check;
     const EConnectItNodeState State = Progress.GetNodeState(*Node, true, UConnectIt_ActionShardTableDataAsset::Get(), Check);
-    if (State != EConnectItNodeState::Available || Node->IsSubMap() || Node->Level.IsNull())
+    if (State != EConnectItNodeState::Available || (!Node->IsSubMap() && Node->Level.IsNull()))
     {
         UE_LOG(LogTemp, Warning,
-            TEXT("ConnectIt_AdventureSubsystem: node %s can't be started (completed, gated, a sub-map or no level)"),
+            TEXT("ConnectIt_AdventureSubsystem: node %s can't be started (completed, gated, or no level)"),
             *Node->GetName());
         return false;
+    }
+
+    // A sub-map node: into its hub map, remembering where it came from
+    if (Node->IsSubMap())
+    {
+        FConnectItSubMapVisit& Visit = SubMapVisits.AddDefaulted_GetRef();
+        Visit.SubMapNode = Node;
+        Visit.ParentMap = MapOf(WorldContextObject);
+        UGameplayStatics::OpenLevelBySoftObjectPtr(WorldContextObject, Node->SubMap);
+        return true;
     }
 
     UConnectIt_MatchSetupSubsystem* MatchSetup = GetGameInstance()->GetSubsystem<UConnectIt_MatchSetupSubsystem>();
     if (!MatchSetup) return false;
 
-    // The hub to come back to: the map this is called from (its saved name,
-    // not a PIE copy's)
-    const UWorld* World = IsValid(WorldContextObject) ? WorldContextObject->GetWorld() : nullptr;
-    if (World)
-    {
-        const FString Package = UWorld::RemovePIEPrefix(World->GetOutermost()->GetName());
-        HubMap = TSoftObjectPtr<UWorld>(FSoftObjectPath(Package + TEXT(".") + FPackageName::GetShortName(Package)));
-    }
+    // The hub to come back to: the map this is called from; and whether this
+    // is its Exit (winning it completes the sub-map)
+    HubMap = MapOf(WorldContextObject);
+    const UConnectIt_AdventureHubComponent* Hub = UConnectIt_AdventureHubComponent::GetAdventureHub(WorldContextObject);
+    const UConnectIt_MapNodeComponent* Exit = Hub ? Hub->GetExitNode() : nullptr;
+    bPlayingExit = Exit && Exit->NodeData == Node;
 
     PlayingNode = Node;
     bPlayingNodeRecorded = false;
@@ -171,13 +181,41 @@ bool UConnectIt_AdventureSubsystem::ReturnToHub(const UObject* WorldContextObjec
 {
     if (HubMap.IsNull()) return false;
 
+    TSoftObjectPtr<UWorld> Destination = HubMap;
+
+    // A won Exit: the sub-map is done -- its node completes (rewards once) and
+    // the way back is the parent map
+    const bool bExitWon = bPlayingExit && IsValid(PlayingNode) && Progress.IsCompleted(PlayingNode->NodeId);
+    if (bExitWon && !SubMapVisits.IsEmpty())
+    {
+        const FConnectItSubMapVisit Visit = SubMapVisits.Pop();
+        if (IsValid(Visit.SubMapNode))
+        {
+            Progress.CompleteNode(*Visit.SubMapNode, UItemActionInventoryDataAsset::Get());
+            Progress.LastPlayedNode = Visit.SubMapNode->NodeId;
+            SaveProgress();
+            OnProgressChanged.Broadcast();
+        }
+        Destination = Visit.ParentMap;
+    }
+
     PlayingNode = nullptr;
+    bPlayingExit = false;
     if (UConnectIt_MatchSetupSubsystem* MatchSetup = GetGameInstance()->GetSubsystem<UConnectIt_MatchSetupSubsystem>())
     {
         MatchSetup->ClearMatchSettings();
     }
-    UGameplayStatics::OpenLevelBySoftObjectPtr(WorldContextObject, HubMap);
+    UGameplayStatics::OpenLevelBySoftObjectPtr(WorldContextObject, Destination);
     return true;
+}
+
+TSoftObjectPtr<UWorld> UConnectIt_AdventureSubsystem::MapOf(const UObject* WorldContextObject)
+{
+    const UWorld* World = IsValid(WorldContextObject) ? WorldContextObject->GetWorld() : nullptr;
+    if (!World) return TSoftObjectPtr<UWorld>();
+
+    const FString Package = UWorld::RemovePIEPrefix(World->GetOutermost()->GetName());
+    return TSoftObjectPtr<UWorld>(FSoftObjectPath(Package + TEXT(".") + FPackageName::GetShortName(Package)));
 }
 
 bool UConnectIt_AdventureSubsystem::RecordResult(const UConnectIt_MapNodeDataAsset* Node, bool bWon,

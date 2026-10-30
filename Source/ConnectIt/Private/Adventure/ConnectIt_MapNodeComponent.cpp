@@ -2,6 +2,8 @@
 
 #include "Adventure/ConnectIt_MapNodeComponent.h"
 #include "Adventure/ConnectIt_AdventureHubComponent.h"
+#include "ConnectIt_GameplayTags.h"
+#include "Hover/GridHoverComponent.h"
 #include "GameFramework/Actor.h"
 
 
@@ -48,6 +50,22 @@ void UConnectIt_MapNodeComponent::EndPlay(const EEndPlayReason::Type EndPlayReas
         Hub->RemoveNode(this);
     }
     Super::EndPlay(EndPlayReason);
+}
+
+UGridHoverComponent* UConnectIt_MapNodeComponent::GetOrCreateHover()
+{
+    AActor* Owner = GetOwner();
+    if (!Owner) return nullptr;
+
+    UGridHoverComponent* Hover = Owner->FindComponentByClass<UGridHoverComponent>();
+    if (!Hover)
+    {
+        Hover = NewObject<UGridHoverComponent>(Owner, TEXT("MapNodeHover"));
+        Owner->AddInstanceComponent(Hover);
+        Hover->RegisterComponent();
+    }
+    Hover->HoverCategory = ConnectIt_Adventure_MapNode;
+    return Hover;
 }
 
 void UConnectIt_MapNodeComponent::ApplyVisibility() const
