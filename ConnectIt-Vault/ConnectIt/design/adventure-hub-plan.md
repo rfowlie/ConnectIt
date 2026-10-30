@@ -6,7 +6,7 @@ approved_on: 2026-10-23
 completed_on:
 started:             2026-10-23          # YYYY-MM-DD, when the first stage was built (blank until then)
 stages: 7              # how many stages the plan has
-current_stage: "3: starting a node and coming back (Stage 2 built 2026-10-29)"   # the first stage not yet built ("complete" / "not started")
+current_stage: "5: the map validator (Stage 3 built 2026-10-29; Stage 4 moved to adventure-hub-map-plan)"   # the first stage not yet built ("complete" / "not started")
 playtested: false
 design: "[adventure-hub](adventure-hub.md)"
 question:
@@ -187,6 +187,28 @@ stages.
   - an open set-up built from a progress value;
   - the inventory read back after item uses and a grant;
   - a loss keeps grants and removes spent items.
+
+- **As built (2026-10-29; 77/77 tests):**
+  - **The rules on the progress value:**
+    - `BuildOpenPermanentActions(Loadout, Table)`: loadout entries the shard table doesn't price (Place Piece) as they
+      are; each priced action with permanent uses at **match uses = those uses**, turn uses / cooldown from its loadout
+      entry (else 1 / 0); a priced action with no uses left out. "The action's set-up" = the level's Player director
+      loadout entry;
+    - `MakeInventory(Table, Items)`: the saved tags back to classes.
+  - **`UConnectIt_AdventureSubsystem`:**
+    - `StartNode(WorldContext, Node, Options)`: only an Available level node (not completed, not gated, not a sub-map);
+      remembers the node and the hub map (its saved name, PIE prefix removed); starts through
+      `UConnectIt_MatchSetupSubsystem` (level + the node's preset);
+    - `GetPlayingNode(WorldContext)`: only in the node's own level, like the match settings;
+    - `SeedPlayerState`: open / closed actions, the inventory, `SetItemBudget(Node->ItemBudget)`;
+    - `RecordPlayingNodeResult` (once per match) and `ReturnToHub`.
+  - **The GameMode:** `SeedActionStateForPlayer` lets the Adventure subsystem seed the player when the level is a node
+    being played (else as before); `HandleMatchHasEnded` hands over won / lost (the GameState's winner vs the human's
+    slot) and the human's inventory.
+  - **Deviation:** the result is recorded (and saved) at match end, but the **hub isn't opened automatically** --
+    `ReturnToHub` is called by the results screen (owner's UI, Stage 6), so the player sees the result first.
+  - Tests: `ConnectIt.Adventure.OpenSetUp`, `.Inventory` (the inventory into a spawned PlayerState, an item used and
+    one granted, read back after a loss).
 
 ## Stage 4: the hub level
 

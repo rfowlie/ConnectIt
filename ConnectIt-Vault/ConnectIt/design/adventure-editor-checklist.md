@@ -1,128 +1,103 @@
 # Adventure: the owner's editor checklist
 
-Checklist (2026-10-25) of the **in-editor work** for the start of Adventure mode, gathered from every plan's "owner,
-editor" items. Tick boxes as you go. Each group says when it can start; links point at the plan with the details.
-Order follows the [roadmap](adventure-mode-roadmap.md): stabilise first, then the hub, then the intro region.
+Checklist of the **in-editor work** on the way to Adventure mode, gathered from every plan's "owner, editor" items.
+**Rewritten 2026-10-29** against what is built now (the first version, 2026-10-25, predated most of this). Tick boxes as
+you go; links point at the plan with the details.
 
-## 1. Foundations -- can start now
+How it is sorted: **A** can be done now and will not be redone; **B** is waiting on a plan that will change how the work
+is done -- doing it now means doing it twice; **C** is the play-testing every finished plan still owes.
 
-Visuals on the display board ([tile-powers-plan](tile-powers-plan.md), Stage 2):
+## A. Do now
 
-- [ ] Move the visual Blueprints that read the current board (tiles, score UI, `CI_PieceVisualHandler`) to
-      `GetDisplayBoard()` / `OnDisplayBoardChanged`.
-- [ ] Call `Shift Tiles` from the Board Shifted handler and animate the tile actors it returns.
+**A1. Resave renamed assets** ([data-asset-naming-plan](data-asset-naming-plan.md))
+- [ ] Open and resave, so the class redirects can be dropped later: every map (World Settings), match preset, tile
+      catalog, board layout, level catalog, shard table and match-condition asset. Fix anything that fails to load.
 
-Busy board ([one-board-change-at-a-time-plan](one-board-change-at-a-time-plan.md)):
+**A2. The tile catalog** ([tile-catalog-effects-plan](tile-catalog-effects-plan.md))
+- [ ] Entries are now an **array** (old map entries were dropped -- only `CIDTC_Test` had any): add an entry for each of
+      **Push, Repel, Vacuum, Chained** -- tile class plus the power's values (only the relevant ones show; the trigger mask
+      is still exposed).
+- [ ] Set a **Default Tile Class**; set the catalog in each map's **World Settings** and as the **Default Tile Catalog**
+      (Project Settings > ConnectIt).
+- [ ] Each entry's tile class must derive from `ConnectIt_TileBase` (your push tile is a child of `CI_GridTileBase` --
+      check that chain, or the catalog will not accept it).
 
-- [ ] Action buttons / input read `Is Board Change Resolving` and its event -- greyed out while the board resolves.
+**A3. Builder tiles and layouts** ([tile-powers-plan](tile-powers-plan.md) Stage 3)
+- [ ] A **builder tile Blueprint** with a blockout look; set it as **Builder Tile Class** in project settings.
+- [ ] Replace placed tiles with builder tiles in existing maps; **capture layouts again**.
+- [ ] Clear `DefaultTileClass` on the level configs once their maps have a catalog.
+- [ ] Preview / Clear buttons on the layout tool widget; a sandbox level for building layouts.
 
-Tile catalog and builder tiles ([tile-powers-plan](tile-powers-plan.md), Stage 3):
+**A4. Hover clean-up** ([hover-component-plan](hover-component-plan.md) Stage 4)
+- [ ] `CI_GridTileBase`: remove its manual *On Grid Tile Begin Cursor Over* broadcast (C++ raises hover now) and any look
+      driven directly by cursor-over. Keep the **tag-driven** state looks for now -- they change with the cursor plan (B2).
+- [ ] Confirm **pieces do not block the cursor** (the hovered tile gives the piece).
+- [ ] **Retest the push tile's hover** (benched earlier).
 
-- [ ] A builder tile Blueprint with a blockout look; set it as Builder Tile Class (project settings).
-- [ ] A tile catalog (Default Tile Class + entries); set it in each map's World Settings and as the Default Tile Catalog.
-- [ ] Replace placed tiles with builder tiles in existing maps; capture layouts again.
-- [ ] Clear `DefaultTileClass` on level configs once they have a catalog.
-
-Grid layout tool ([phased-levels-plan](phased-levels-plan.md) Stage 6, [tile-powers-plan](tile-powers-plan.md)):
-
-- [ ] The editor utility widget around the tool's helpers: Save Layout (Editor Asset Library), Load, **Preview /
-      Clear**, save the camera view.
-- [ ] A sandbox level for building layouts.
-
-Phased levels ([phased-levels-plan](phased-levels-plan.md), Stage 5):
-
-- [ ] Tile appear / disappear visuals (Tiles Added / Removed).
-- [ ] A camera listener on Layout Changed that moves to the layout's camera transform (until the camera plan replaces
-      it).
-
-## 2. Tiles for the intro region -- can start now
-
-First tile powers ([first-tile-powers-plan](first-tile-powers-plan.md)):
-
-- [ ] Catalog entries for **Push, Repel, Vacuum, Chained**: their tile classes and hook animations.
-
-Locked and chained tiles ([recipe: lock a tile or chain tiles](../code/recipes/lock-a-tile-or-chain-tiles.md)):
-
-- [ ] A **locked** look.
-- [ ] A **chained** look (chains) that snaps on Tile Lock Changed.
-- [ ] A **"no partner"** icon, and the **partner's** look (from `GetChainedTilesFor`).
-- [ ] The **refused-click message** from `GetPlacementBlocker` ("This tile is locked" / "already has a piece").
-
-## 3. Actions and items -- after the player-actions plan reaches its Stage 6
-
-([player-actions-and-items-plan](player-actions-and-items-plan.md))
-
-- [ ] Rebuild the **5 loadouts** (`Content/_ConnectItNetworked/Game/Data/ActionLoadout/`) with the one permanent list.
+**A5. Loadouts and actions** ([player-actions-and-items-plan](player-actions-and-items-plan.md) Stage 6)
+- [ ] **Rebuild the 5 loadouts** (`Content/_ConnectItNetworked/Game/Data/ActionLoadout/`) with the one permanent list.
 - [ ] Turn-end trees that need an **Item Used** leaf.
-- [ ] Check the action Blueprints load through the class redirect.
-- [ ] An **inventory button** in the action UI.
+- [ ] Open every action Blueprint -- they must load through the class redirect.
+- [ ] *(Later, with the UI)* an inventory button in the action UI.
 
-## 4. Level outcomes -- after the level-outcomes plan
+**A6. Start the hub's data** ([adventure-hub-plan](adventure-hub-plan.md) Stages 1-2 are built)
+- [ ] A **shard table** data asset (no default numbers -- you tune them), named in project settings.
+- [ ] A few **`MapNodeDataAsset`s** to exercise it (display name, region, `Unlocks`, gate, rewards, open / closed);
+      the levels they play can be stubs for now.
 
-([level-outcomes-plan](level-outcomes-plan.md))
+**A7. Check the editor features that were built** (each plan's Verification)
+- [ ] [World Settings validation](world-settings-validation-plan.md): Validate Data on the main menu / hub map is quiet;
+      a match map missing its preset warns.
+- [ ] [Layout preview sync](layout-preview-sync-plan.md): Preview → drag a preview two cells → Clear → its builder is at
+      the new cell; save while previewing → no preview tiles in the saved map.
+- [ ] A catalog entry shows only Push's own values for Push, Vacuum's for Vacuum.
 
-- [ ] An AI director Blueprint with the **rotating test opponent** strategy, for testing boards.
-- [ ] **Max steps** on loadouts that want longer shifts, and the shift UI's **distance picking**.
-- [ ] A **Turn Skipped** cue, and a draw on the results screen.
-- [ ] Set each level's **Stuck Board outcome** on its Level director (default Lose).
+## B. Wait -- a plan will change how this is done
 
-## 5. The adventure hub -- after hub Stages 2-5 (and the camera plan for 5c)
+**B1. The board visualizer** ([board-visualizer-plan](board-visualizer-plan.md); Stage 1 built, Stage 6 is your part)
+Replaces `CI_PieceVisualHandler` and gives tile hooks a completion handle. **Do not rewire the old handler** (to the
+display board, Shift Tiles, the Tiles Added / Removed handlers, the layout camera listener) -- that work becomes a
+`BP_BoardVisualizer`. The cost of waiting: until then, chains and power events do not animate properly; ordinary levels
+without powers are fine.
+- [ ] *(then)* `BP_BoardVisualizer`; set it on the level configs; move piece visuals into piece hooks; tile hooks use the
+      handle; delete the old handler.
 
-([adventure-hub-plan](adventure-hub-plan.md), Stage 6)
+**B2. Cursors and tile states** ([action-cursors-plan](action-cursors-plan.md), not started)
+- [ ] *(then)* cursor Blueprints (hover variants, a marker); tile Blueprints implement **`OnCursorStateChanged`**
+      (lands together with the actions switching over).
 
-5a. Data:
+**B3. Locked / chained tile looks** ([tile-lock-and-chained-tiles-plan](tile-lock-and-chained-tiles-plan.md); recipe
+[lock-a-tile-or-chain-tiles](../code/recipes/lock-a-tile-or-chain-tiles.md))
+- [ ] The art can be made now (a locked look, chains, a "no partner" icon, the partner's look); **wire it after B1**,
+      since the hooks it uses change.
+- [ ] The refused-click message from `GetPlacementBlocker` (UI).
 
-- [ ] **Seal** tags (`ConnectIt.Seal.*`) and the **shard tables** data asset (named in project settings) -- numbers
-      tuned by you.
-- [ ] A **`MapNodeDataAsset`** per intro node (level + preset, unlocks, gate, rewards, open / closed, concept tags,
-      difficulty 1-100).
+**B4. The hub map** ([adventure-hub-map-plan](adventure-hub-map-plan.md), [top-down-camera-plan](top-down-camera-plan.md),
+hub plan Stage 6)
+- [ ] The intro region's map with node actors (a Start flag on one), node visuals per state, a break-seal visual, link
+      actors; a small world map with the intro region as one node.
+- [ ] Two camera profiles (hub, match); the node panel (Break Seal / Start) and the progress display.
 
-5b. The hub map:
+**B5. Level outcomes** ([level-outcomes-plan](level-outcomes-plan.md), not started)
+- [ ] A rotating test-opponent AI director; max steps on loadouts that want longer shifts and the shift distance UI; a
+      Turn Skipped cue and a draw result; each level's Stuck Board outcome.
 
-- [ ] The intro region hub map with **node actors placed** (hidden by default), each pointing at its data asset.
-- [ ] Node actor visuals per state (available, gated, completed, focus) and a **break-seal** visual.
-- [ ] A small world map with the intro region as one node, two next nodes and one Seal gate.
+## C. PIE checks owed
 
-5c. Camera ([top-down-camera-plan](top-down-camera-plan.md), Stage 4):
+**Every finished plan is still `playtested: false`.** Rather than one pass per plan, one short smoke run covers most of
+them -- then set `playtested: true` on the plans it exercised:
 
-- [ ] Two camera profiles: **hub** (edge scroll, drag, wheel zoom, keyboard; bounds from revealed nodes) and
-      **match** (wheel zoom, drag, keyboard; bounds from the board).
+- [ ] **A classic match vs the AI:** place, score, win; a swap and a shift that score. *(directors, conditions, rules,
+      legal moves, the AI pipeline, level world settings)*
+- [ ] **A 2-player PIE** (a client): place / swap / shift animate on both; a move can't be sent while the board is busy.
+      *(one board change at a time, the display board)*
+- [ ] **A level with a Push, a Repel, a Vacuum and a Chained tile** (builders → catalog): the chain plays event by event;
+      a locked tile refuses a placement; a chained tile opens when its partner gets a piece. *(tile powers, first tile
+      powers, lock and chained tiles)*
+- [ ] **A phased level** (Change Layout / Begin Phase): tiles appear and disappear, the board reframes. *(phased levels)*
+- [ ] **Loadouts:** Swap runs out after its match uses; an item respects the item budget. *(player actions and items)*
 
-5d. Hub UI:
+## Not on this list yet
 
-- [ ] The **node panel**: name, description, region, rewards, required (with what's missing) and recommended actions,
-      concepts, gate and seal cost, item budget, **Break Seal** (enabled only when affordable) / **Start**.
-- [ ] The **progress display**: shards toward the next use per action, the inventory, seals held.
-
-## 6. Intro region levels -- once 1-5 are in place
-
-Per level (the [level template](adventure-content-definitions.md)): purpose, concepts, actions, goals, stuck outcome,
-opponent, board, rewards, difficulty.
-
-- [ ] A map + its World Settings (board, preset, tile catalog, camera profile).
-- [ ] A match preset naming its Level / Player / AI director classes.
-- [ ] A Level director Blueprint (win / lose conditions for both sides, triggers, phases).
-- [ ] The level's loadout (closed levels) and AI director (if there's an opponent).
-- [ ] Its node data asset and node actor on the hub map.
-- [ ] A PIE run through it.
-
-## 7. PIE checks owed -- any time, the sooner the better
-
-None of the complete plans has been played. Each plan's **Verification** lists its checks:
-
-- [ ] [AI director pipeline](ai-director-pipeline.md)
-- [ ] [Conditions and legal moves](conditions-and-legal-moves.md)
-- [ ] [Three directors](three-directors-plan.md)
-- [ ] [Level world settings](level-world-settings.md)
-- [ ] [One board change at a time](one-board-change-at-a-time-plan.md)
-- [ ] [Phased levels](phased-levels-plan.md)
-- [ ] [Tile powers](tile-powers-plan.md)
-- [ ] [Tile lock and chained tiles](tile-lock-and-chained-tiles-plan.md)
-- [ ] [First tile powers](first-tile-powers-plan.md)
-
-Set a plan's `playtested: true` once its checks pass.
-
-## Not on this list yet (later)
-
-The teaching layer (prompts, highlights), the level screens (card, goals, results, rewards reveal), player settings and
-save -- all `_tasks/active.md` rows to plan later.
+The teaching layer, the level screens (card, goals, results, rewards reveal), player settings and save -- the plan-later
+rows in `_tasks/active.md`.

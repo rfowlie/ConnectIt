@@ -5,7 +5,12 @@
 #include "Adventure/ConnectIt_ActionShardTableDataAsset.h"
 #include "Adventure/ConnectIt_MapNodeDataAsset.h"
 #include "Action/ItemActionInventoryDataAsset.h"
+#include "Framework/PlayerState/TurnBasedPlayerState.h"
+#include "Framework/Data/ConnectIt_MatchPresetDataAsset.h"
+#include "Framework/Subsystem/ConnectIt_MatchSetupSubsystem.h"
+#include "Engine/World.h"
 #include "Kismet/GameplayStatics.h"
+#include "Misc/PackageName.h"
 
 const FString UConnectIt_AdventureSubsystem::SaveSlotName = TEXT("Adventure");
 
@@ -75,6 +80,101 @@ bool UConnectIt_AdventureSubsystem::BreakSeal(const UConnectIt_MapNodeDataAsset*
 {
     if (!IsValid(Node) || !Progress.BreakSeal(*Node)) return false;
     SaveProgress();
+    return true;
+}
+
+bool UConnectIt_AdventureSubsystem::StartNode(const UObject* WorldContextObject, UConnectIt_MapNodeDataAsset* Node,
+    const FString& Options)
+{
+    if (!IsValid(Node)) return false;
+
+    FConnectItNodeRequirementCheck Check;
+    const EConnectItNodeState State = Progress.GetNodeState(*Node, true, UConnectIt_ActionShardTableDataAsset::Get(), Check);
+    if (State != EConnectItNodeState::Available || Node->IsSubMap() || Node->Level.IsNull())
+    {
+        UE_LOG(LogTemp, Warning,
+            TEXT("ConnectIt_AdventureSubsystem: node %s can't be started (completed, gated, a sub-map or no level)"),
+            *Node->GetName());
+        return false;
+    }
+
+    UConnectIt_MatchSetupSubsystem* MatchSetup = GetGameInstance()->GetSubsystem<UConnectIt_MatchSetupSubsystem>();
+    if (!MatchSetup) return false;
+
+    // The hub to come back to: the map this is called from (its saved name,
+    // not a PIE copy's)
+    const UWorld* World = IsValid(WorldContextObject) ? WorldContextObject->GetWorld() : nullptr;
+    if (World)
+    {
+        const FString Package = UWorld::RemovePIEPrefix(World->GetOutermost()->GetName());
+        HubMap = TSoftObjectPtr<UWorld>(FSoftObjectPath(Package + TEXT(".") + FPackageName::GetShortName(Package)));
+    }
+
+    PlayingNode = Node;
+    bPlayingNodeRecorded = false;
+
+    FConnectItMatchSettings Settings;
+    Settings.Level = Node->Level;
+    Settings.MatchPreset = Node->MatchPreset.LoadSynchronous();
+    return MatchSetup->StartMatch(Settings, Options);
+}
+
+UConnectIt_MapNodeDataAsset* UConnectIt_AdventureSubsystem::GetPlayingNode(const UObject* WorldContextObject) const
+{
+    // Only in the node's own level (the match settings say so)
+    FConnectItMatchSettings Settings;
+    if (!IsValid(PlayingNode)
+        || !UConnectIt_MatchSetupSubsystem::GetSettingsForCurrentLevel(WorldContextObject, Settings)
+        || Settings.Level != PlayingNode->Level)
+    {
+        return nullptr;
+    }
+    return PlayingNode;
+}
+
+bool UConnectIt_AdventureSubsystem::SeedPlayerState(ATurnBasedPlayerState* PlayerState, UActionLoadoutDataAsset* Loadout) const
+{
+    const UConnectIt_MapNodeDataAsset* Node = IsValid(PlayerState) ? GetPlayingNode(PlayerState) : nullptr;
+    if (!Node) return false;
+
+    const UConnectIt_ActionShardTableDataAsset* Table = UConnectIt_ActionShardTableDataAsset::Get();
+    if (Node->ActionDesign == EConnectItActionDesign::Open)
+    {
+        PlayerState->InitialiseActionState(Loadout, Progress.BuildOpenPermanentActions(Loadout, Table));
+    }
+    else
+    {
+        PlayerState->InitialiseActionState(Loadout);
+    }
+    PlayerState->InitialiseInventory(Progress.MakeInventory(Table, UItemActionInventoryDataAsset::Get()));
+    PlayerState->SetItemBudget(Node->ItemBudget);
+
+    UE_LOG(LogTemp, Log, TEXT("ConnectIt_AdventureSubsystem: %s set up for node %s (%s)"),
+        *PlayerState->GetPlayerName(), *Node->GetName(),
+        Node->ActionDesign == EConnectItActionDesign::Open ? TEXT("open") : TEXT("closed"));
+    return true;
+}
+
+void UConnectIt_AdventureSubsystem::RecordPlayingNodeResult(const UObject* WorldContextObject, bool bWon,
+    const TArray<FItemActionEntry>& Inventory)
+{
+    const UConnectIt_MapNodeDataAsset* Node = GetPlayingNode(WorldContextObject);
+    if (!Node || bPlayingNodeRecorded) return;
+
+    bPlayingNodeRecorded = true;
+    RecordResult(Node, bWon, Inventory);
+}
+
+bool UConnectIt_AdventureSubsystem::ReturnToHub(const UObject* WorldContextObject)
+{
+    if (HubMap.IsNull()) return false;
+
+    PlayingNode = nullptr;
+    if (UConnectIt_MatchSetupSubsystem* MatchSetup = GetGameInstance()->GetSubsystem<UConnectIt_MatchSetupSubsystem>())
+    {
+        MatchSetup->ClearMatchSettings();
+    }
+    UGameplayStatics::OpenLevelBySoftObjectPtr(WorldContextObject, HubMap);
     return true;
 }
 

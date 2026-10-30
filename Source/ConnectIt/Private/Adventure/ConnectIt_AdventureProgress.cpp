@@ -5,6 +5,7 @@
 #include "Adventure/ConnectIt_MapNodeDataAsset.h"
 #include "Action/ItemActionInventoryDataAsset.h"
 #include "Action/TurnBasedPlayerAction.h"
+#include "Action/ActionLoadoutDataAsset.h"
 
 int32 FConnectItAdventureProgress::GetPermanentUses(const FGameplayTag& Action, const UConnectIt_ActionShardTableDataAsset* Table) const
 {
@@ -96,6 +97,72 @@ bool FConnectItAdventureProgress::RecordResult(const UConnectIt_MapNodeDataAsset
     SpecificSeals.AppendTags(Rewards.Seals);
     GeneralSeals += FMath::Max(Rewards.GeneralSeals, 0);
     return true;
+}
+
+TArray<FPermanentActionConfig> FConnectItAdventureProgress::BuildOpenPermanentActions(
+    const UActionLoadoutDataAsset* Loadout, const UConnectIt_ActionShardTableDataAsset* Table) const
+{
+    TArray<FPermanentActionConfig> Actions;
+    const auto IsPriced = [Table](const TSubclassOf<UTurnBasedPlayerAction>& ActionClass)
+    {
+        return Table && Table->Actions.Contains(UTurnBasedPlayerAction::GetTagForClass(ActionClass));
+    };
+
+    // Everyone's actions (no shard price), as the loadout sets them up
+    if (Loadout)
+    {
+        for (const FPermanentActionConfig& Entry : Loadout->PermanentActions)
+        {
+            if (Entry.ActionClass && !IsPriced(Entry.ActionClass))
+            {
+                Actions.Add(Entry);
+            }
+        }
+    }
+
+    // Each action the shards have given uses of
+    if (Table)
+    {
+        for (const TPair<FGameplayTag, FConnectItActionShardCosts>& Priced : Table->Actions)
+        {
+            const int32 Uses = GetPermanentUses(Priced.Key, Table);
+            if (Uses < 1 || !Priced.Value.ActionClass) continue;
+
+            FPermanentActionConfig Config;
+            const FPermanentActionConfig* LoadoutEntry = Loadout ? Loadout->PermanentActions.FindByPredicate(
+                [&Priced](const FPermanentActionConfig& Entry) { return Entry.ActionClass == Priced.Value.ActionClass; }) : nullptr;
+            if (LoadoutEntry)
+            {
+                Config = *LoadoutEntry;
+            }
+            Config.ActionClass = Priced.Value.ActionClass;
+            Config.MatchUses = Uses;
+            Actions.Add(Config);
+        }
+    }
+    return Actions;
+}
+
+TArray<FItemActionEntry> FConnectItAdventureProgress::MakeInventory(const UConnectIt_ActionShardTableDataAsset* Table,
+    const UItemActionInventoryDataAsset* Items) const
+{
+    TArray<FItemActionEntry> Inventory;
+    for (const TPair<FGameplayTag, int32>& Held : ItemUses)
+    {
+        if (Held.Value < 1) continue;
+        const TSubclassOf<UTurnBasedPlayerAction> ActionClass = FindActionClass(Held.Key, Table, Items);
+        if (!ActionClass)
+        {
+            UE_LOG(LogTemp, Warning,
+                TEXT("ConnectIt_AdventureProgress: item %s has no action class (neither the shard table nor the item "
+                     "inventory asset names it) -- left out of the match"), *Held.Key.ToString());
+            continue;
+        }
+        FItemActionEntry& Entry = Inventory.AddDefaulted_GetRef();
+        Entry.ActionClass = ActionClass;
+        Entry.Count = Held.Value;
+    }
+    return Inventory;
 }
 
 TSubclassOf<UTurnBasedPlayerAction> FConnectItAdventureProgress::FindActionClass(const FGameplayTag& Action,

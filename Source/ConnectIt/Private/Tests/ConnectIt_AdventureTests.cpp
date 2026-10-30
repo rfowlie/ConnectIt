@@ -1,6 +1,7 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 #include "Misc/AutomationTest.h"
+#include "Misc/ScopeExit.h"
 #include "Misc/DataValidation.h"
 #include "NativeGameplayTags.h"
 #include "Adventure/ConnectIt_AdventureProgress.h"
@@ -9,6 +10,12 @@
 #include "Action/ItemActionInventoryDataAsset.h"
 #include "Action/ConnectIt_PlacePieceAction.h"
 #include "Action/ConnectIt_SwapPieceAction.h"
+#include "Action/ConnectIt_BoardShiftAction.h"
+#include "Action/ActionLoadoutDataAsset.h"
+#include "Framework/PlayerState/TurnBasedPlayerState.h"
+#include "TurnBasedMechanicsSettings.h"
+#include "Engine/Engine.h"
+#include "Engine/World.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
 
@@ -285,6 +292,126 @@ bool FConnectItAdventureResultsTest::RunTest(const FString& Parameters)
     // --- Won again: never rewarded twice ---
     TestFalse(TEXT("again: no rewards"), Progress.RecordResult(*Node, true, { Granted }, Items));
     TestTrue(TEXT("again: shards and seals unchanged"), Progress.GetShards(PlaceTag) == 2 && Progress.GeneralSeals == 1);
+    return true;
+}
+
+// Adventure hub plan, Stage 3: an open node's permanent actions, from the
+// level's loadout and the shards
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FConnectItAdventureOpenSetUpTest,
+    "ConnectIt.Adventure.OpenSetUp", ConnectItAdventureTests::TestFlags)
+
+bool FConnectItAdventureOpenSetUpTest::RunTest(const FString& Parameters)
+{
+    using namespace ConnectItAdventureTests;
+    const TSubclassOf<UTurnBasedPlayerAction> Place = UConnectIt_PlacePieceAction::StaticClass();
+    const TSubclassOf<UTurnBasedPlayerAction> Swap = UConnectIt_SwapPieceAction::StaticClass();
+    const TSubclassOf<UTurnBasedPlayerAction> Shift = UConnectIt_BoardShiftAction::StaticClass();
+
+    // The level's loadout: Place (unlimited) and Swap (2 a turn, cooldown 1)
+    UActionLoadoutDataAsset* Loadout = NewObject<UActionLoadoutDataAsset>();
+    FPermanentActionConfig PlaceEntry;
+    PlaceEntry.ActionClass = Place;
+    FPermanentActionConfig SwapEntry;
+    SwapEntry.ActionClass = Swap;
+    SwapEntry.MatchUses = 5;
+    SwapEntry.TurnUses = 2;
+    SwapEntry.CooldownTurns = 1;
+    Loadout->PermanentActions = { PlaceEntry, SwapEntry };
+
+    // Swap and Shift are priced in shards (TestAction too, with no class)
+    UConnectIt_ActionShardTableDataAsset* Table = MakeTable();
+    const auto Price = [Table](TSubclassOf<UTurnBasedPlayerAction> ActionClass, TArray<int32> Costs)
+    {
+        FConnectItActionShardCosts Entry;
+        Entry.ActionClass = ActionClass;
+        Entry.ShardsPerUse = MoveTemp(Costs);
+        Table->Actions.Add(UTurnBasedPlayerAction::GetTagForClass(ActionClass), Entry);
+    };
+    Price(Swap, { 2, 2 });
+    Price(Shift, { 3 });
+
+    FConnectItAdventureProgress Progress;
+    const auto Find = [](const TArray<FPermanentActionConfig>& Actions, TSubclassOf<UTurnBasedPlayerAction> ActionClass)
+    {
+        return Actions.FindByPredicate([ActionClass](const FPermanentActionConfig& Entry) { return Entry.ActionClass == ActionClass; });
+    };
+
+    // --- No shards: only everyone's actions ---
+    {
+        const TArray<FPermanentActionConfig> Actions = Progress.BuildOpenPermanentActions(Loadout, Table);
+        TestTrue(TEXT("no shards: Place only, as the loadout sets it"),
+            Actions.Num() == 1 && Find(Actions, Place) && Find(Actions, Place)->HasUnlimitedMatchUses());
+    }
+
+    // --- Shards: Swap 2 uses (its loadout's turn uses / cooldown), Shift 1 (defaults) ---
+    Progress.Shards.Add(UTurnBasedPlayerAction::GetTagForClass(Swap), 4);
+    Progress.Shards.Add(UTurnBasedPlayerAction::GetTagForClass(Shift), 3);
+    {
+        const TArray<FPermanentActionConfig> Actions = Progress.BuildOpenPermanentActions(Loadout, Table);
+        const FPermanentActionConfig* OpenSwap = Find(Actions, Swap);
+        const FPermanentActionConfig* OpenShift = Find(Actions, Shift);
+        TestEqual(TEXT("shards: Place, Swap and Shift"), Actions.Num(), 3);
+        TestTrue(TEXT("shards: Swap's match uses are its permanent uses; its turn uses and cooldown the loadout's"),
+            OpenSwap && OpenSwap->MatchUses == 2 && OpenSwap->TurnUses == 2 && OpenSwap->CooldownTurns == 1);
+        TestTrue(TEXT("shards: Shift (not in the loadout) gets 1 use, 1 a turn, no cooldown"),
+            OpenShift && OpenShift->MatchUses == 1 && OpenShift->TurnUses == 1 && OpenShift->CooldownTurns == 0);
+    }
+    return true;
+}
+
+// Adventure hub plan, Stage 3: the saved inventory goes into a match and comes
+// back -- an item spent is gone, an item granted is kept, even on a loss
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FConnectItAdventureInventoryTest,
+    "ConnectIt.Adventure.Inventory", ConnectItAdventureTests::TestFlags)
+
+bool FConnectItAdventureInventoryTest::RunTest(const FString& Parameters)
+{
+    using namespace ConnectItAdventureTests;
+    const TSubclassOf<UTurnBasedPlayerAction> Swap = UConnectIt_SwapPieceAction::StaticClass();
+    const TSubclassOf<UTurnBasedPlayerAction> Shift = UConnectIt_BoardShiftAction::StaticClass();
+    const FGameplayTag SwapTag = UTurnBasedPlayerAction::GetTagForClass(Swap);
+    const FGameplayTag ShiftTag = UTurnBasedPlayerAction::GetTagForClass(Shift);
+
+    // The game's item caps, for this test only
+    UItemActionInventoryDataAsset* Items = NewObject<UItemActionInventoryDataAsset>();
+    Items->MaxHeld.Add(Swap, 3);
+    Items->MaxHeld.Add(Shift, 2);
+    UTurnBasedMechanicsSettings* Settings = GetMutableDefault<UTurnBasedMechanicsSettings>();
+    const TSoftObjectPtr<UItemActionInventoryDataAsset> PreviousItems = Settings->ItemInventory;
+    Settings->ItemInventory = Items;
+
+    // A throwaway world, so a PlayerState can be spawned with authority
+    UWorld* World = UWorld::CreateWorld(EWorldType::Game, false, TEXT("ConnectItAdventureTestWorld"));
+    GEngine->CreateNewWorldContext(EWorldType::Game).SetCurrentWorld(World);
+    ON_SCOPE_EXIT
+    {
+        GEngine->DestroyWorldContext(World);
+        World->DestroyWorld(false);
+        GetMutableDefault<UTurnBasedMechanicsSettings>()->ItemInventory = PreviousItems;
+    };
+    ATurnBasedPlayerState* PlayerState = World->SpawnActor<ATurnBasedPlayerState>();
+    if (!TestNotNull(TEXT("player state"), PlayerState)) return false;
+
+    // --- Into the match: the saved inventory, by class ---
+    FConnectItAdventureProgress Progress;
+    Progress.ItemUses.Add(SwapTag, 2);
+    PlayerState->InitialiseInventory(Progress.MakeInventory(nullptr, Items));
+    TestEqual(TEXT("match: the saved Swaps held"), PlayerState->GetItemCount(Swap), 2);
+
+    // --- The match: one Swap used, one Shift granted ---
+    FItemBudget Budget;
+    Budget.MatchUses = -1;
+    Budget.TurnUses = 2;
+    PlayerState->SetItemBudget(Budget);
+    TestTrue(TEXT("match: a Swap used"), PlayerState->ConsumeItemUse(Swap));
+    TestEqual(TEXT("match: a Shift granted"), PlayerState->GrantItems(Shift, 1), 1);
+
+    // --- Back from a loss: the spent item gone, the grant kept, nothing completed ---
+    const UConnectIt_MapNodeDataAsset* Node = MakeGatedNode();
+    TestFalse(TEXT("loss: no rewards"), Progress.RecordResult(*Node, false, PlayerState->GetInventory(), Items));
+    TestEqual(TEXT("loss: one Swap left"), Progress.GetItemCount(SwapTag), 1);
+    TestEqual(TEXT("loss: the granted Shift kept"), Progress.GetItemCount(ShiftTag), 1);
+    TestFalse(TEXT("loss: not completed"), Progress.IsCompleted(Node->NodeId));
     return true;
 }
 

@@ -13,6 +13,7 @@
 #include "Framework/Data/ConnectIt_WorldSettings.h"
 #include "Framework/Data/ConnectIt_MatchPresetDataAsset.h"
 #include "Framework/Subsystem/ConnectIt_MatchSetupSubsystem.h"
+#include "Adventure/ConnectIt_AdventureSubsystem.h"
 #include "Framework/GameState/ConnectIt_GameState.h"
 #include "Framework/GameState/TurnBasedGameState.h"
 #include "Framework/PlayerState/ConnectIt_PlayerState.h"
@@ -107,6 +108,12 @@ void AConnectIt_GameMode::SeedActionStateForPlayer(APlayerController* NewPlayer)
             *PS->GetPlayerName());
         return;
     }
+
+    // An Adventure node sets the player up itself (open / closed, the saved
+    // inventory, the node's item budget)
+    UConnectIt_AdventureSubsystem* Adventure =
+        GetGameInstance() ? GetGameInstance()->GetSubsystem<UConnectIt_AdventureSubsystem>() : nullptr;
+    if (Adventure && Adventure->SeedPlayerState(PS, PlayerLoadout)) return;
 
     PS->InitialiseActionState(PlayerLoadout);
 
@@ -552,6 +559,24 @@ void AConnectIt_GameMode::HandleMatchHasStarted()
 void AConnectIt_GameMode::HandleMatchHasEnded()
 {
     Super::HandleMatchHasEnded();
+
+    // An Adventure node's result: won or lost, and the inventory the match
+    // left (items spent, items granted) -- for the human player
+    UConnectIt_AdventureSubsystem* Adventure =
+        GetGameInstance() ? GetGameInstance()->GetSubsystem<UConnectIt_AdventureSubsystem>() : nullptr;
+    const AConnectIt_GameState* GS = GetGameState<AConnectIt_GameState>();
+    if (Adventure && GS && Adventure->GetPlayingNode(this))
+    {
+        for (APlayerState* Player : GS->PlayerArray)
+        {
+            const ATurnBasedPlayerState* PS = Cast<ATurnBasedPlayerState>(Player);
+            if (!PS || PS->GetParticipantType() != EParticipantType::Human) continue;
+
+            const int32 Winner = GS->MatchResult.WinningFactionSlot;
+            Adventure->RecordPlayingNodeResult(this, Winner != -1 && Winner == PS->GetSlotIndex(), PS->GetInventory());
+            break;
+        }
+    }
 
     UE_LOG(LogTemp, Log,
         TEXT("ConnectIt_GameMode: Match ended"));

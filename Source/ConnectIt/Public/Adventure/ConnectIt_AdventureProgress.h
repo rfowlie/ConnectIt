@@ -12,6 +12,7 @@ class UConnectIt_ActionShardTableDataAsset;
 class UConnectIt_MapNodeDataAsset;
 class UItemActionInventoryDataAsset;
 class UTurnBasedPlayerAction;
+class UActionLoadoutDataAsset;
 struct FConnectItNodeRequirementCheck;
 
 // Where a node stands for a player
@@ -112,6 +113,20 @@ struct CONNECTIT_API FConnectItAdventureProgress
     // granted (never twice for a node).
     bool RecordResult(const UConnectIt_MapNodeDataAsset& Node, bool bWon,
         const TArray<FItemActionEntry>& Inventory, const UItemActionInventoryDataAsset* Items);
+
+    // An open node's permanent actions, from Loadout (the level's Player
+    // director's) and the shards: each loadout entry the shard table doesn't
+    // price (Place Piece: everyone's) as it is; and each priced action the
+    // shards give permanent uses of, with those uses as its match uses -- its
+    // turn uses and cooldown from its loadout entry if it has one, else 1 and
+    // 0. A priced action with no uses is left out.
+    TArray<FPermanentActionConfig> BuildOpenPermanentActions(const UActionLoadoutDataAsset* Loadout,
+        const UConnectIt_ActionShardTableDataAsset* Table) const;
+
+    // The inventory as a match plays it: each held item action by class
+    // (FindActionClass); one whose class can't be found is left out (logged)
+    TArray<FItemActionEntry> MakeInventory(const UConnectIt_ActionShardTableDataAsset* Table,
+        const UItemActionInventoryDataAsset* Items) const;
 
     // The class of the player action Action names (the save's key): the
     // shard table entry's Action Class, else the item action Items lists with
