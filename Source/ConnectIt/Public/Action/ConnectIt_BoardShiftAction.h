@@ -21,13 +21,10 @@ class CONNECTIT_API UConnectIt_BoardShiftAction : public UTurnBasedPlayerAction
 
 public:
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Action|Tags")
-	FGameplayTag TagActionGridState;
-	
-	// GameplayTags sent to tiles to drive their visual state -- same
-	// pattern as UConnectIt_PlacePieceAction. Single-tile selection (the
-	// whole line shifts from whichever tile is picked) -- not a two-step
-	// pick like UConnectIt_SwapPieceAction.
+	// The cursor state of every tile in the hovered line -- same as
+	// UConnectIt_PlacePieceAction (default Grid.CursorState.Hovered). Single-tile
+	// selection (the whole line shifts from whichever tile is picked) -- not a
+	// two-step pick like UConnectIt_SwapPieceAction. No cursor of its own yet.
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Action|Tags")
 	FGameplayTag TagActionMouseHover;
 

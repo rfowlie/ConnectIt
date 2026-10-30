@@ -18,7 +18,8 @@ class UGridTileRegistryBase;
 // support (built around one CurrentHoveredTile / one HandleValidSelection
 // call per pick). Layers a small first/second-pick state machine on top
 // instead: the first valid selection is remembered (bHasFirstSelection/
-// FirstPosition) and highlighted; the second fires the actual request.
+// FirstPosition) and marked (its cursor state and a marker cursor); the
+// second fires the actual request.
 // Purely a client-side UX aid -- UConnectIt_BoardRequestMediator::
 // DispatchRequest (FConnectItBoardOperation_SwapPieces::CanApply) independently re-validates everything (faction
 // ownership, occupancy, remaining uses) server-side regardless of what this
@@ -36,26 +37,32 @@ class CONNECTIT_API UConnectIt_SwapPieceAction : public UTurnBasedPlayerAction
 
 public:
 
-    // TODO: is this even needed? Wouldn't there just be some default state
-    // unless we want a unique default state for this action, which we would
-    // read when the action fires are set all tiles and pieces too. Then this would
-    // ensure that we return to this unique state when removing hover state
-    // return to default state for tiles and pieces
-    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Action|Tags")
-    FGameplayTag TagActionGridState;
-    
-    // GameplayTags sent to tiles to drive their visual state -- same
-    // pattern as UConnectIt_PlacePieceAction, plus Tag_FirstSelected for
-    // the two-step pick.
+    // The cursor state a valid hovered tile gets -- same as
+    // UConnectIt_PlacePieceAction. Default Grid.CursorState.Hovered.
     UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Action|Tags")
     FGameplayTag TagActionMouseHover;
 
-    // Sent to the tile chosen as the first (acting player's own) selection
-    // while awaiting the second pick -- distinct from Tag_ValidHover so the
-    // "already picked" tile stays visually marked even once hover moves on
-    // to the second tile.
+    // The cursor state of the tile chosen as the first (acting player's own)
+    // pick while awaiting the second -- it keeps it while hover moves on.
+    // Default Grid.CursorState.Selected.
     UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Action|Tags")
     FGameplayTag TagFirstSelection;
+
+    // The follow cursor, by what's under it: one of the player's own pieces,
+    // an opponent's piece, or a tile it can't pick. None = no cursor there.
+    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Action|Cursor", meta = (MustImplement = "/Script/UnrealGridMechanics.GridCursor"))
+    TSubclassOf<AActor> OwnPieceCursorClass;
+
+    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Action|Cursor", meta = (MustImplement = "/Script/UnrealGridMechanics.GridCursor"))
+    TSubclassOf<AActor> OpponentPieceCursorClass;
+
+    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Action|Cursor", meta = (MustImplement = "/Script/UnrealGridMechanics.GridCursor"))
+    TSubclassOf<AActor> InvalidCursorClass;
+
+    // Stays on the first pick until the second (or the action ends); none =
+    // the first pick's cursor state alone marks it
+    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Action|Cursor", meta = (MustImplement = "/Script/UnrealGridMechanics.GridCursor"))
+    TSubclassOf<AActor> MarkerCursorClass;
 
     // Server-side check that a request's ActionTag matches its OperationTag
     virtual bool ProducesRequestType_Implementation(FGameplayTag OperationTag) const override;
@@ -75,6 +82,7 @@ protected:
     virtual bool IsValidSelectionTile_Implementation(AGridTileBase* Tile) const override;
     virtual void HandleValidHover_Implementation(AGridTileBase* Tile) override;
     virtual void HandleHoverCleared_Implementation(AGridTileBase* PreviousTile) override;
+    virtual void HandleInvalidHover_Implementation(AGridTileBase* Tile) override;
     virtual void HandleValidSelection_Implementation(AGridTileBase* Tile) override;
     virtual void ClearSelectionState_Implementation() override;
 
@@ -91,6 +99,19 @@ private:
     // the normal awaiting-confirmation reactivation).
     bool bHasSelectionFirst = false;
     FGridPosition PositionFirst;
+
+    // The first pick's marker (held from the action's cursors)
+    UPROPERTY()
+    TObjectPtr<AActor> MarkerCursor = nullptr;
+
+    // The first-picked tile (null when there's no first pick)
+    AGridTileBase* GetFirstTile() const;
+
+    // The follow cursor's class for a valid hovered Tile: own or opponent's piece
+    TSubclassOf<AActor> GetHoverCursorClassFor(AGridTileBase* Tile) const;
+
+    // Unmarks the first pick (its state and marker) and forgets it
+    void ClearFirstSelection();
 
     // bool bHasSelectionSecond = false;
     // FGridPosition PositionSecond;

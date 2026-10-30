@@ -70,6 +70,32 @@ public:
     void HandleClicked(AGridTileBase* Tile) { Clicks++; LastTile = Tile; }
 };
 
+// Records what a tile's cursor state changes broadcast
+UCLASS(Hidden, NotBlueprintable)
+class UGridCursorStateTestListener : public UObject
+{
+    GENERATED_BODY()
+
+public:
+
+    int32 Changes = 0;
+    FGameplayTag LastPrevious;
+    FGameplayTag LastCurrent;
+
+    void Listen(AGridTileBase* Tile)
+    {
+        Tile->OnTileCursorStateChanged.AddDynamic(this, &UGridCursorStateTestListener::HandleChanged);
+    }
+
+    UFUNCTION()
+    void HandleChanged(AGridTileBase* Tile, FGameplayTag Previous, FGameplayTag Current)
+    {
+        Changes++;
+        LastPrevious = Previous;
+        LastCurrent = Current;
+    }
+};
+
 // A hover component whose CanHover is bAllow
 UCLASS(Hidden, NotBlueprintable)
 class UGridHoverTestVetoComponent : public UGridHoverComponent

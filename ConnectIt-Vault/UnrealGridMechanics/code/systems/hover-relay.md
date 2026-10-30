@@ -49,7 +49,8 @@ flowchart TD
 2. **Hover:** the tile's Begin / End Cursor Over and Clicked reach the component (bound in its `BeginPlay`), which
    broadcasts them if it is enabled and `CanHover` allows. The subsystem relays them with the tile.
 3. **Consume:** an active `UTurnBasedPlayerAction` with selection binds the three relays:
-   - **begin** → `HandleHoverCleared` on the previous tile, then `HandleValidHover` if `IsValidHoverTile`;
+   - **begin** → `HandleHoverCleared` on the previous tile, then `HandleValidHover` if `IsValidHoverTile`, else
+     `HandleInvalidHover` (2026-10-30);
    - **end** (for the tile it holds as hovered) → `HandleHoverCleared`;
    - **click** → `HandleTileClicked`, which does nothing by default because the selection input already selects
      (`HandleValidSelection`).

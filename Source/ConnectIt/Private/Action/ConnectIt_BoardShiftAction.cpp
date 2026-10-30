@@ -10,6 +10,7 @@
 #include "Framework/Library/ConnectIt_GameUtilityLibrary.h"
 #include "StructUtils/InstancedStruct.h"
 #include "Tile/GridTileBase.h"
+#include "Tile/GridCursorStateTags.h"
 
 
 bool UConnectIt_BoardShiftAction::ProducesRequestType_Implementation(FGameplayTag OperationTag) const
@@ -33,6 +34,8 @@ UConnectIt_BoardShiftAction::UConnectIt_BoardShiftAction()
 	// this, Activate_Internal_Implementation never binds hover/selection
 	// input in the first place.
 	bRequiresSelection = true;
+
+	TagActionMouseHover = Grid_CursorState_Hovered;
 }
 
 void UConnectIt_BoardShiftAction::PostInitialiseAction_Implementation()
@@ -61,13 +64,12 @@ void UConnectIt_BoardShiftAction::HandleValidHover_Implementation(AGridTileBase*
 {
 	if (!IsValid(Tile)) return;
 	if (!IsValid(TileRegistry)) return;
-	if (!TagActionMouseHover.IsValid()) return;
 
 	for (const auto OutTile : TileRegistry->GetTilesByDirection(
 		TileRegistry->GetPositionOfTile(Tile), ShiftDirection))
 	{
 		// TODO: could we have a ITileShiftVisualizer - SetShiftVisual(EGridDirection)
-		OutTile->SendGameplayTag(TagActionMouseHover);
+		SetTileCursorState(OutTile, TagActionMouseHover);
 	}
 }
 
@@ -75,12 +77,11 @@ void UConnectIt_BoardShiftAction::HandleHoverCleared_Implementation(AGridTileBas
 {
 	if (!IsValid(PreviousTile)) return;
 	if (!IsValid(TileRegistry)) return;
-	if (!TagActionGridState.IsValid()) return;
 
 	for (const auto OutTile : TileRegistry->GetTilesByDirection(
 		TileRegistry->GetPositionOfTile(PreviousTile), ShiftDirection))
 	{
-		OutTile->SendGameplayTag(TagActionGridState);
+		SetTileCursorState(OutTile, FGameplayTag());
 	}
 }
 

@@ -15,10 +15,10 @@ class UGridTileRegistryBase;
 // ConnectIt concrete action -- places a piece on the board
 // Responsibilities:
 //   - Validates hover and selection (empty, active tile)
-//   - Sends GameplayTags to tiles for visual hover feedback
+//   - Shows hover through the tile's cursor state and its hover cursor
 //   - Builds FTurnActionRequest and fires OnChangeRequested
 //   - Has NO knowledge of pools, piece actors, or board state mutation
-//   - Has NO visual responsibilities beyond sending tags to tiles
+//   - Has NO visual responsibilities beyond its cursor and tile cursor states
 UCLASS(Blueprintable, BlueprintType, EditInlineNew, DefaultToInstanced)
 class CONNECTIT_API UConnectIt_PlacePieceAction : public UTurnBasedPlayerAction
 {
@@ -28,13 +28,16 @@ class CONNECTIT_API UConnectIt_PlacePieceAction : public UTurnBasedPlayerAction
 
 public:
     
-    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Action|Tags")
-    FGameplayTag TagActionGridState;
-
-    // GameplayTags sent to tiles to drive their visual state
-    // Set in editor -- tile Blueprint responds to these tags
+    // The cursor state a placeable hovered tile gets (the tile shows it in
+    // OnCursorStateChanged; it goes back to neutral when hover leaves).
+    // Default Grid.CursorState.Hovered.
     UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Action|Tags")
     FGameplayTag TagActionMouseHover;
+
+    // The cursor that follows a placeable hovered tile; none = no cursor (the
+    // tile's cursor state alone shows the hover)
+    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Action|Cursor", meta = (MustImplement = "/Script/UnrealGridMechanics.GridCursor"))
+    TSubclassOf<AActor> HoverCursorClass;
 
     UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Action|Tags")
     FGameplayTag TagActionMouseHoverInvalid;

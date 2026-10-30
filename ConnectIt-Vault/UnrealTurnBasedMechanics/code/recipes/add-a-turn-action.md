@@ -41,8 +41,9 @@ A new [[UnrealTurnBasedMechanics/code/UTurnBasedPlayerAction|UTurnBasedPlayerAct
 2. **Selection behaviour (if `bRequiresSelection`).** Override the BlueprintNativeEvents:
    `IsValidHoverTile` / `IsValidSelectionTile` (predicate on `AGridTileBase`),
    `HandleValidHover` / `HandleHoverCleared` (preview; hover end clears too), `HandleValidSelection` (commit),
-   `HandleTileClicked` (optional, click-only handling),
-   `ClearSelectionState` (teardown). `BindInput()` / `BindGridSubsystem()` are called
+   `HandleTileClicked` (optional, click-only handling), `HandleInvalidHover` (optional),
+   `ClearSelectionState` (teardown). For cursors and tile looks, see
+   [give a player action a cursor](give-a-player-action-a-cursor.md). `BindInput()` / `BindGridSubsystem()` are called
    automatically from `Activate_Internal` when `bRequiresSelection` is true; for a
    deferred selection leave the flag false and call them yourself when ready.
 3. **Named inputs (optional).** Override `ConstructInputBindings()` (called once from

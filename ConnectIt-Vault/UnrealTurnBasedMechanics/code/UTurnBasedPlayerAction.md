@@ -5,8 +5,8 @@ role: primary
 source:
   - Plugins/UnrealTurnBasedMechanics/Source/UnrealTurnBasedMechanics/Public/Action/TurnBasedPlayerAction.h
   - Plugins/UnrealTurnBasedMechanics/Source/UnrealTurnBasedMechanics/Private/Action/TurnBasedPlayerAction.cpp
-reconciled: 2026-10-29
-commit: cb9f405
+reconciled: 2026-10-30
+commit: 075f269
 ---
 
 # UTurnBasedPlayerAction
@@ -50,7 +50,8 @@ the base but aren't player actions.
   - `ProducesRequestType(FGameplayTag)`: default true. The Mediator checks a request's operation tag against the
     action named by its `ActionTag`, so one action can't spend its uses sending another's request;
   - selection hooks `IsValidHoverTile`, `IsValidSelectionTile`, `HandleValidHover`, `HandleHoverCleared`,
-    `HandleValidSelection`, `HandleTileClicked` (no-op by default), `ClearSelectionState`;
+    `HandleValidSelection`, `HandleTileClicked` (no-op by default), `HandleInvalidHover` (the cursor moved onto a
+    tile `IsValidHoverTile` refuses; no-op by default), `ClearSelectionState`;
   - `ConstructInputBindings()`.
 - **Protected helpers:**
   - `RequestBoardChange(const FInstancedStruct& Payload)`: builds the `FTurnActionRequest` (this action's tag, the
@@ -58,13 +59,22 @@ the base but aren't player actions.
   - `BindInput()` / `UnbindInput()`, `BindGridSubsystem()` / `UnbindGridSubsystem()`;
   - `CurrentHoveredTile`, `GetOwnerPlayerState()`.
 
+- **Cursors** (public; see
+  [[UnrealTurnBasedMechanics/code/recipes/give-a-player-action-a-cursor|give a player action a cursor]]):
+  - pooled cursor actors, each of which **must implement `IGridCursor`** (refused with an error otherwise):
+    `AcquireActionCursor`, `ShowCursorAt(Cursor, Tile, bReactivate)`, `HideCursor`, `ReleaseActionCursor(s)`,
+    `HoldsActionCursor`, `CursorOffset`;
+  - the follow cursor: `ShowHoverCursor(Class, Tile)` swaps the class per tile; `HideHoverCursor`, `GetHoverCursor`;
+  - tile states: `SetTileCursorState(Tile, Tag)` remembers the tile; `ClearTileCursorStates`;
+  - complete, cancel and force-deactivate release every cursor and clear every touched tile.
+
 ## Collaborators
 
 - **Enhanced Input:** owns a [[UnrealGameMechanics/code/UInputTagBinder|UInputTagBinder]] hosting the
   `InputBindings` mapping context. Each `FInputTagBinding` dispatches straight to its own delegate.
   `bRequiresSelection` calls `BindInput()` from `Activate_Internal`.
 - **Grid:** `UGridHoverSubsystem` relays reach the selection hooks:
-  - `OnGridTileHoverChanged` → `HandleValidHover`;
+  - `OnGridTileHoverChanged` → `HandleValidHover`, or `HandleInvalidHover` for a refused tile;
   - `OnGridTileHoverEnded` → `HandleHoverCleared` (the tile it holds as hovered);
   - `OnGridTileClicked` → `HandleTileClicked`.
 
@@ -76,6 +86,8 @@ the base but aren't player actions.
 
 ## Gotchas
 
+- An override of `ForceDeactivate_Internal` must call Super, or the cursors and tile states aren't cleaned up on a
+  force-deactivate.
 - Uses are counted **by the server**, when the request commits (the Mediator's `ConsumeActionUse` or
   `ConsumeItemUse`), not by `Complete()`.
 - An item use never touches the action's permanent counters, and works for an action the player has no permanent uses
@@ -94,6 +106,9 @@ the base but aren't player actions.
 
 ## Changes
 
+- 2026-10-30 -- cursor helpers (pooled cursors, the follow cursor, tile cursor states, automatic cleanup) and
+  `HandleInvalidHover` ([action-cursors-plan](../../ConnectIt/design/action-cursors-plan.md)); cursors go through
+  the mandatory `IGridCursor` (MoveCursor / Show / Hide).
 - 2026-10-28 -- `HandleTileClicked`; hover end clears the hovered tile (hover component plan).
 - 2026-10-24 -- **renamed `UTurnBasedPlayerAction`** (was `UTurnBasedAction`, with a class redirect). Item uses
   added: `IsItemUse` / `SetItemUse`, and `RequestBoardChange` stamps `bIsItemUse`. `GetUsesRemaining` became

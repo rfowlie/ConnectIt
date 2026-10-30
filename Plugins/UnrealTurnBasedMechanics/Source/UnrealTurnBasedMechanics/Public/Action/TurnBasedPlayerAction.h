@@ -15,6 +15,7 @@ class UTurnBasedPlayerAction;
 class ATurnBasedPlayerState;
 class AGridTileBase;
 class UGridHoverSubsystem;
+class UActorPoolSubsystem;
 class UEnhancedInputComponent;
 class UEnhancedInputLocalPlayerSubsystem;
 class UInputAction;
@@ -174,6 +175,70 @@ public:
     // Component receives and pushes the named action onto the stack
     UFUNCTION(BlueprintCallable, Category = "Action")
     void RequestNextAction(TSubclassOf<UTurnBasedPlayerAction> NextActionClass);
+
+    // --- Cursors ---
+    // Each player action is its own cursor manager: it takes cursor actors
+    // from the actor pool, shows / moves / hides them, and sets tiles' cursor
+    // states, however its situation needs. Tiles never choose a cursor.
+    // When the action ends -- complete, cancel or force-deactivate -- every
+    // cursor it holds goes back to the pool and every tile it touched goes
+    // back to neutral, so a forgotten cursor or tile state can't leak.
+    // (An override of ForceDeactivate_Internal must call Super for that.)
+    // Every cursor class must implement IGridCursor (Cursor/GridCursorInterface.h):
+    // one that doesn't is refused with an error. Give cursor class properties
+    // meta = (MustImplement = "/Script/UnrealGridMechanics.GridCursor").
+
+    // Where a cursor sits relative to its tile
+    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Action|Cursor")
+    FVector CursorOffset = FVector(0.f, 0.f, 5.f);
+
+    // A cursor of CursorClass from the actor pool (activated in the pool, then
+    // hidden until shown), held by this action until released. Null -- and an
+    // error -- if CursorClass doesn't implement IGridCursor; null with no class
+    // or no pool.
+    UFUNCTION(BlueprintCallable, Category = "Action|Cursor")
+    AActor* AcquireActionCursor(TSubclassOf<AActor> CursorClass);
+
+    // Hides Cursor and returns it to the pool (only one this action holds)
+    UFUNCTION(BlueprintCallable, Category = "Action|Cursor")
+    void ReleaseActionCursor(AActor* Cursor);
+
+    UFUNCTION(BlueprintCallable, Category = "Action|Cursor")
+    void ReleaseActionCursors();
+
+    // Whether this action still holds Cursor (it isn't once released)
+    UFUNCTION(BlueprintPure, Category = "Action|Cursor")
+    bool HoldsActionCursor(const AActor* Cursor) const;
+
+    // Moves a held Cursor onto Tile (MoveCursor, at the tile plus
+    // CursorOffset) and shows it. bReactivate: replay its arrival effects.
+    UFUNCTION(BlueprintCallable, Category = "Action|Cursor")
+    void ShowCursorAt(AActor* Cursor, AGridTileBase* Tile, bool bReactivate = false);
+
+    UFUNCTION(BlueprintCallable, Category = "Action|Cursor")
+    void HideCursor(AActor* Cursor);
+
+    // The follow cursor: shows a cursor of CursorClass on Tile, swapping the
+    // current one if its class differs (so the class can be chosen per tile);
+    // reactivated whenever it lands on a different tile. No class = hidden.
+    UFUNCTION(BlueprintCallable, Category = "Action|Cursor")
+    void ShowHoverCursor(TSubclassOf<AActor> CursorClass, AGridTileBase* Tile);
+
+    // Hides the follow cursor (still held, for the next hover)
+    UFUNCTION(BlueprintCallable, Category = "Action|Cursor")
+    void HideHoverCursor();
+
+    UFUNCTION(BlueprintPure, Category = "Action|Cursor")
+    AActor* GetHoverCursor() const { return HoverCursor; }
+
+    // Sets Tile's cursor state (no tag = neutral) and remembers the tile, so
+    // it goes back to neutral when the action ends
+    UFUNCTION(BlueprintCallable, Category = "Action|Cursor")
+    void SetTileCursorState(AGridTileBase* Tile, FGameplayTag State);
+
+    // Every tile this action touched back to neutral
+    UFUNCTION(BlueprintCallable, Category = "Action|Cursor")
+    void ClearTileCursorStates();
     
 protected:
 
@@ -222,6 +287,12 @@ protected:
     UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "Action|Selection")
     void HandleHoverCleared(AGridTileBase* PreviousTile);
     virtual void HandleHoverCleared_Implementation(AGridTileBase* PreviousTile);
+
+    // The cursor moved onto a tile this action can't use (IsValidHoverTile
+    // false), after the previous tile's HandleHoverCleared. Default: nothing.
+    UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "Action|Selection")
+    void HandleInvalidHover(AGridTileBase* Tile);
+    virtual void HandleInvalidHover_Implementation(AGridTileBase* Tile);
 
     UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "Action|Selection")
     void HandleValidSelection(AGridTileBase* Tile);
@@ -285,8 +356,28 @@ private:
     TObjectPtr<UInputTagBinder> InputTagBinder = nullptr;
 
     // Shared tail of Complete()/Cancel() -- runs Deactivate_Internal,
-    // clears the active flag, and broadcasts OnDeactivated
+    // releases cursors and tile states, clears the active flag, and
+    // broadcasts OnDeactivated
     void FinishAction();
+
+    // --- Cursors (see the public section) ---
+
+    UPROPERTY()
+    TArray<TObjectPtr<AActor>> ActionCursors;
+
+    // The held cursors currently shown (activated in the pool)
+    UPROPERTY()
+    TSet<TObjectPtr<AActor>> ShownCursors;
+
+    UPROPERTY()
+    TObjectPtr<AActor> HoverCursor = nullptr;
+
+    // The tile the follow cursor was last shown on
+    TWeakObjectPtr<AGridTileBase> HoverCursorTile;
+
+    TArray<TWeakObjectPtr<AGridTileBase>> TouchedTiles;
+
+    UActorPoolSubsystem* GetActorPool() const;
 
     UFUNCTION()
     void OnGridTileHoverChanged(AGridTileBase* NewTile);

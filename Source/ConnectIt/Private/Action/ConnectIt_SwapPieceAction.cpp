@@ -10,6 +10,7 @@
 #include "Framework/Library/ConnectIt_GameUtilityLibrary.h"
 #include "StructUtils/InstancedStruct.h"
 #include "Tile/GridTileBase.h"
+#include "Tile/GridCursorStateTags.h"
 #include "Tile/GridTileRegistryBase.h"
 
 
@@ -30,6 +31,9 @@ UConnectIt_SwapPieceAction::UConnectIt_SwapPieceAction()
     // an Any group with PlacePiece) are configured in the loadout, not here.
     bIsCancellable = true;
     bRequiresSelection = true;
+
+    TagActionMouseHover = Grid_CursorState_Hovered;
+    TagFirstSelection = Grid_CursorState_Selected;
 }
 
 void UConnectIt_SwapPieceAction::Deactivate_Internal_Implementation()
@@ -45,6 +49,7 @@ void UConnectIt_SwapPieceAction::Deactivate_Internal_Implementation()
 
     bHasSelectionFirst = false;
     PositionFirst = FGridPosition();
+    MarkerCursor = nullptr;   // released with the action's cursors
 }
 
 void UConnectIt_SwapPieceAction::PostInitialiseAction_Implementation()
@@ -105,30 +110,51 @@ bool UConnectIt_SwapPieceAction::IsValidSelectionTile_Implementation(AGridTileBa
 void UConnectIt_SwapPieceAction::HandleValidHover_Implementation(AGridTileBase* Tile)
 {
     if (!IsValid(Tile)) return;
-    if (!TagActionMouseHover.IsValid()) return;
-    Tile->SendGameplayTag(TagActionMouseHover);
+
+    SetTileCursorState(Tile, TagActionMouseHover);
+    ShowHoverCursor(GetHoverCursorClassFor(Tile), Tile);
 }
 
 void UConnectIt_SwapPieceAction::HandleHoverCleared_Implementation(
     AGridTileBase* PreviousTile)
 {
+    HideHoverCursor();
     if (!IsValid(PreviousTile)) return;
 
-    // The first-picked tile isn't reverting to default just because hover
-    // moved off it while awaiting the second pick -- keep its distinct
-    // "already picked" highlight instead.
-    if (bHasSelectionFirst && IsValid(TileRegistry) &&
-        TileRegistry->GetPositionOfTile(PreviousTile) == PositionFirst)
-    {
-        if (TagFirstSelection.IsValid())
-        {
-            PreviousTile->SendGameplayTag(TagFirstSelection);
-        }
-        return;
-    }
+    // The first-picked tile keeps its "already picked" state while hover
+    // moves on (it's never a valid hover itself, so nothing replaced it)
+    if (PreviousTile == GetFirstTile()) return;
 
-    if (!TagActionGridState.IsValid()) return;
-    PreviousTile->SendGameplayTag(TagActionGridState);
+    SetTileCursorState(PreviousTile, FGameplayTag());
+}
+
+void UConnectIt_SwapPieceAction::HandleInvalidHover_Implementation(AGridTileBase* Tile)
+{
+    ShowHoverCursor(InvalidCursorClass, Tile);
+}
+
+AGridTileBase* UConnectIt_SwapPieceAction::GetFirstTile() const
+{
+    return bHasSelectionFirst && IsValid(TileRegistry) ? TileRegistry->GetTileAtPosition(PositionFirst) : nullptr;
+}
+
+TSubclassOf<AActor> UConnectIt_SwapPieceAction::GetHoverCursorClassFor(AGridTileBase* Tile) const
+{
+    const UConnectIt_BoardStateComponent* BoardState =
+        UConnectIt_GameUtilityLibrary::GetBoardStateComponent(this);
+    if (!IsValid(BoardState) || !IsValid(TileRegistry) || !IsValid(Tile)) return OpponentPieceCursorClass;
+
+    const FConnectItTileData* TileData = BoardState->GetCurrentState().GetTileData(TileRegistry->GetPositionOfTile(Tile));
+    return TileData && TileData->FactionPiece == GetOwningControllerFactionID()
+        ? OwnPieceCursorClass : OpponentPieceCursorClass;
+}
+
+void UConnectIt_SwapPieceAction::ClearFirstSelection()
+{
+    SetTileCursorState(GetFirstTile(), FGameplayTag());
+    HideCursor(MarkerCursor);
+    bHasSelectionFirst = false;
+    PositionFirst = FGridPosition();
 }
 
 void UConnectIt_SwapPieceAction::HandleValidSelection_Implementation(AGridTileBase* Tile)
@@ -143,9 +169,14 @@ void UConnectIt_SwapPieceAction::HandleValidSelection_Implementation(AGridTileBa
         PositionFirst = Position;
         bHasSelectionFirst = true;
 
-        if (TagFirstSelection.IsValid())
+        SetTileCursorState(Tile, TagFirstSelection);
+        if (MarkerCursorClass)
         {
-            Tile->SendGameplayTag(TagFirstSelection);
+            if (!HoldsActionCursor(MarkerCursor))
+            {
+                MarkerCursor = AcquireActionCursor(MarkerCursorClass);
+            }
+            ShowCursorAt(MarkerCursor, Tile, /*bReactivate=*/true);
         }
 
         UE_LOG(LogTemp, Log,
@@ -172,8 +203,7 @@ void UConnectIt_SwapPieceAction::HandleValidSelection_Implementation(AGridTileBa
     // Reset selection state before the round trip -- if the server rejects
     // this, the action reactivates via the normal awaiting-confirmation
     // flow and should start fresh, not stuck mid-pick.
-    bHasSelectionFirst = false;
-    PositionFirst = FGridPosition();
+    ClearFirstSelection();
 
     // Route to action component which sends to server. Complete() is not
     // called here -- UTurnBasedActionsComponent pushes an
@@ -186,25 +216,10 @@ void UConnectIt_SwapPieceAction::HandleValidSelection_Implementation(AGridTileBa
 
 void UConnectIt_SwapPieceAction::ClearSelectionState_Implementation()
 {
-    // Clear hover state on currently hovered tile
-    if (AGridTileBase* Hovered = CurrentHoveredTile.Get())
-    {
-        if (TagActionGridState.IsValid())
-        {
-            Hovered->SendGameplayTag(TagActionGridState);
-        }
-    }
-
-    // Also clear the first-picked tile's distinct highlight, if any
-    if (bHasSelectionFirst && IsValid(TileRegistry) && TagActionGridState.IsValid())
-    {
-        if (AGridTileBase* FirstTile = TileRegistry->GetTileAtPosition(PositionFirst))
-        {
-            FirstTile->SendGameplayTag(TagActionGridState);
-        }
-    }
-
-    bHasSelectionFirst = false;
+    // Clear the hovered tile, then the first pick's mark, if any
+    HideHoverCursor();
+    SetTileCursorState(CurrentHoveredTile.Get(), FGameplayTag());
+    ClearFirstSelection();
 }
 
 int32 UConnectIt_SwapPieceAction::GetOwningControllerFactionID() const

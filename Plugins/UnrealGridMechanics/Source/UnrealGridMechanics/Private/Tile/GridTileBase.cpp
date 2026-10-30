@@ -34,3 +34,13 @@ void AGridTileBase::ForwardHoverBegin(UGridHoverComponent* Component)
 void AGridTileBase::SendGameplayTag_Implementation(FGameplayTag StateTag)
 {
 }
+
+void AGridTileBase::SetCursorState(FGameplayTag NewState)
+{
+	if (NewState == CursorState) return;
+
+	const FGameplayTag Previous = CursorState;
+	CursorState = NewState;
+	OnCursorStateChanged(Previous, CursorState);
+	OnTileCursorStateChanged.Broadcast(this, Previous, CursorState);
+}

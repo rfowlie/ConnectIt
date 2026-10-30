@@ -1,17 +1,17 @@
 ---
 type: plan
-status: not-started
+status: complete
 approved: true
 approved_on: 2026-10-29
-completed_on: 
-started:
+completed_on: 2026-10-30
+started: 2026-10-30
 stages: 4
-current_stage: 1: tile cursor state (plugin)
+current_stage: "complete (code); owner content checks open"
 owner_done: false          # the owner's editor checks for this plan (a checkbox; separate from the code stages)
 playtested: false
 design: "[hover-cursor](hover-cursor.md)"
 question:
-decision:
+decision: "[2026-10-30-each-action-is-its-own-cursor-manager](../_decisions/2026-10-30-each-action-is-its-own-cursor-manager.md)"
 ---
 
 # Plan: each player action owns its cursors (simple version)
@@ -19,7 +19,11 @@ decision:
 Design: [hover-cursor](hover-cursor.md) ("Simpler for now", 2026-10-29). Builds on the finished
 [hover-component-plan](hover-component-plan.md) (components → `UGridHoverSubsystem` → the actions, which already get
 hover changed / ended / clicked). Written 2026-10-29 in a design-only session, **revised the same day** after the
-owner's answers; **approved by the owner 2026-10-29**. Not built -- building happens in its own session.
+owner's answers; **approved by the owner 2026-10-29**. **Built 2026-10-30** (all code stages in one go, at the
+owner's request; 86/86 tests). Decision:
+[each action is its own cursor manager](../_decisions/2026-10-30-each-action-is-its-own-cursor-manager.md); recipe:
+[give a player action a cursor](../../UnrealTurnBasedMechanics/code/recipes/give-a-player-action-a-cursor.md). The
+owner's content checks (below) are still open.
 
 ## Context
 
@@ -54,6 +58,14 @@ stages.
   action may set any tag, so nothing is limited to the set.
 - Tests: setting the same state raises nothing; a change raises one event with the right previous / current; clear →
   neutral.
+- **As built (2026-10-30):**
+  - `AGridTileBase`:
+    - `SetCursorState`, `ClearCursorState`, `GetCursorState` (the state itself is private; read it with the getter);
+    - the protected BlueprintNativeEvent `OnCursorStateChanged(Previous, Current)`, then the
+      `OnTileCursorStateChanged(Tile, Previous, Current)` delegate;
+    - `SendGameplayTag` is untouched.
+  - The tags are in `Tile/GridCursorStateTags.h`: `Grid.CursorState.Hovered / Selected / Valid / Invalid`.
+  - Test: `UnrealGridMechanics.Tile.CursorState`.
 
 ## Stage 2: the action's cursor helpers (plugin)
 
@@ -71,6 +83,24 @@ On **`UTurnBasedPlayerAction`** (so every action has them), using the actor pool
   touched tile to neutral -- an action that forgets can't leak a cursor or leave a tile stuck.
 - Tests: the pool gets every cursor back after each exit path; touched tiles return to neutral; showing a different
   class swaps the hover cursor and returns the old one (a test world where needed).
+- **As built (2026-10-30):**
+  - All the helpers are public `BlueprintCallable`, as named above, plus `HoldsActionCursor(Cursor)`: a kept pointer is
+    stale once released.
+  - `CursorOffset` defaults to (0, 0, 5).
+  - Cleanup runs in `FinishAction` (complete and cancel) and in `ForceDeactivate_Internal`; an override of that must
+    call Super.
+  - **Added beyond the plan:** a `HandleInvalidHover(Tile)` hook. The hover flow calls it, after the previous tile's
+    `HandleHoverCleared`, when the cursor moves onto a tile `IsValidHoverTile` refuses. Swap's "invalid" cursor
+    needed it, because before this only valid tiles reached an action.
+  - **Revised (owner, 2026-10-30): every cursor implements `IGridCursor`** (grid plugin `Cursor/`), and it's
+    mandatory with no fallback:
+    - `AcquireActionCursor` refuses any other class with an error, and ConnectIt's cursor class properties carry
+      `MustImplement`;
+    - the interface is `MoveCursor(Tile, Location, bReactivate)` (the follow cursor reactivates when it lands on a
+      different tile; Swap's marker always does), `ShowCursor` and `HideCursor`;
+    - the pool's activate / deactivate is now "in use" (on acquire / release), and Show / Hide is "visible while held".
+  - Test: `ConnectIt.PlayerAction.Cursors`. It uses a test action (ConnectIt's tests, since the plugin has no test
+    folder) and covers the per-tile class swap, a marker, and cancel / complete / force each returning everything.
 
 ## Stage 3: ConnectIt's actions adopt it
 
@@ -87,6 +117,23 @@ On **`UTurnBasedPlayerAction`** (so every action has them), using the actor pool
   state looks (nothing forwards to the old tag path).
 - Tests: Place and Swap acquire the cursors they declare and release them on every exit; Swap's marker follows the
   pick; the per-tile class choice swaps the hover cursor.
+- **As built (2026-10-30):**
+  - **Kept tags:** `TagActionMouseHover` and Swap's `TagFirstSelection` stay as the cursor-state values. Their
+    Blueprint values (`ConnectIt.Tile.ValidHover`, ...) carry over, so the tile Blueprint can switch on the same tags
+    in `OnCursorStateChanged`. The C++ defaults are now `Grid.CursorState.Hovered` / `.Selected`.
+  - **Removed:** `TagActionGridState` on all three actions, because neutral is now no tag. Its Blueprint values are
+    dropped on load.
+  - **Untouched:** Place's unused `TagActionMouseHoverInvalid`.
+  - **Place:** `HoverCursorClass`.
+  - **Swap:**
+    - follow-cursor classes `OwnPieceCursorClass` / `OpponentPieceCursorClass` (by the hovered tile's piece) and
+      `InvalidCursorClass` (`HandleInvalidHover`), plus `MarkerCursorClass` on the first pick;
+    - the first-picked tile keeps its Selected state while hover moves on, because nothing overwrites it, so nothing
+      is re-sent;
+    - `ClearFirstSelection` unmarks it on the second pick and on clear.
+  - **Shift:** the hovered line's tiles through `SetTileCursorState`.
+  - **Tests:** `ConnectIt.PlayerAction.CursorsAdopted` covers Place and Swap returning cursors and tile states on
+    complete, cancel and force. Their hover-driven paths need a board, so they're an owner PIE check (Verification).
 
 ## Owner checks: content
 
@@ -99,6 +146,14 @@ On **`UTurnBasedPlayerAction`** (so every action has them), using the actor pool
 Decision note (each action is its own cursor manager; tiles cache a `CursorState` set explicitly); code pages for
 `UnrealGridMechanics` and `UnrealTurnBasedMechanics`; a recipe "give a player action a cursor"; update
 [hover-cursor](hover-cursor.md); log.
+
+- **As built (2026-10-30):**
+  - the decision note;
+  - new `UnrealGridMechanics/code/AGridTileBase.md`;
+  - `UTurnBasedPlayerAction.md` and `hover-relay.md` updated;
+  - recipe `UnrealTurnBasedMechanics/code/recipes/give-a-player-action-a-cursor.md`;
+  - [hover-cursor](hover-cursor.md) marked built;
+  - log `_logs/2026-10-30-1026.md`.
 
 ## Not in this plan (expand later)
 

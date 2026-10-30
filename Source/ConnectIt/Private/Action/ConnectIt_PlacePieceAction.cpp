@@ -10,6 +10,7 @@
 #include "Framework/Library/ConnectIt_GameUtilityLibrary.h"
 #include "StructUtils/InstancedStruct.h"
 #include "Tile/GridTileBase.h"
+#include "Tile/GridCursorStateTags.h"
 #include "Tile/GridTileRegistryBase.h"
 #include "Tile/GridTileRegistryComponent.h"
 #include "Turn/Participant/TurnBasedParticipantComponent.h"
@@ -35,6 +36,8 @@ UConnectIt_PlacePieceAction::UConnectIt_PlacePieceAction()
     bIsCancellable = true;
 
     bRequiresSelection = true;
+
+    TagActionMouseHover = Grid_CursorState_Hovered;
 }
 
 void UConnectIt_PlacePieceAction::PostInitialiseAction_Implementation()
@@ -100,17 +103,15 @@ bool UConnectIt_PlacePieceAction::IsValidSelectionTile_Implementation(AGridTileB
 void UConnectIt_PlacePieceAction::HandleValidHover_Implementation(AGridTileBase* Tile)
 {
     if (!IsValid(Tile)) return;
-    if (!TagActionMouseHover.IsValid()) return;
 
-    Tile->SendGameplayTag(TagActionMouseHover);
+    SetTileCursorState(Tile, TagActionMouseHover);
+    ShowHoverCursor(HoverCursorClass, Tile);
 }
 
 void UConnectIt_PlacePieceAction::HandleHoverCleared_Implementation(AGridTileBase* PreviousTile)
 {
-    if (!IsValid(PreviousTile)) return;
-    if (!TagActionGridState.IsValid()) return;
-
-    PreviousTile->SendGameplayTag(TagActionGridState);
+    HideHoverCursor();
+    SetTileCursorState(PreviousTile, FGameplayTag());
 }
 
 void UConnectIt_PlacePieceAction::HandleValidSelection_Implementation(AGridTileBase* Tile)
@@ -154,13 +155,7 @@ void UConnectIt_PlacePieceAction::HandleValidSelection_Implementation(AGridTileB
 void UConnectIt_PlacePieceAction::ClearSelectionState_Implementation()
 {
     // Clear hover state on currently hovered tile
-    if (AGridTileBase* Hovered = CurrentHoveredTile.Get())
-    {
-        if (TagActionGridState.IsValid())
-        {
-            Hovered->SendGameplayTag(TagActionGridState);
-        }
-    }
+    HandleHoverCleared_Implementation(CurrentHoveredTile.Get());
 }
 
 int32 UConnectIt_PlacePieceAction::GetOwningControllerFactionID() const

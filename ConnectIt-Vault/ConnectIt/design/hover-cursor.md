@@ -1,6 +1,8 @@
 # Hover presentation: tile effects, a pooled cursor, and how they reconcile
 
-Design note, from the owner's notes on the hover framework. **Under discussion; the owner has simplified it ("Revised" below); nothing decided yet; nothing built.**
+Design note, from the owner's notes on the hover framework. **The owner simplified it ("Simpler for now" below); that version is decided and built (2026-10-30,
+[each action is its own cursor manager](../_decisions/2026-10-30-each-action-is-its-own-cursor-manager.md)).** The
+richer "Revised" model stays parked.
 Builds on [hover-component](hover-component.md) (components → `UGridHoverSubsystem` → listeners, approved plan:
 [hover-component-plan](hover-component-plan.md)) and [board-visualizer](board-visualizer.md).
 
@@ -158,7 +160,7 @@ The owner chose to **start simpler and expand later, since some of the details a
 - **Each action decides how its follow cursor works**, including dynamically (e.g. a different cursor class per tile).
 
 Everything in the "Revised" section (style tables, role tags, selection objects, level overrides) is **parked** as the
-way to expand later. Plan: [action-cursors-plan](action-cursors-plan.md) (**approved 2026-10-29**, not built).
+way to expand later. Plan: [action-cursors-plan](action-cursors-plan.md) (**built 2026-10-30**).
 
 ## Open
 

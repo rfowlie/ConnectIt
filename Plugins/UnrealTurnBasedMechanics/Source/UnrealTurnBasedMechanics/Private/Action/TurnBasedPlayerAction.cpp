@@ -7,6 +7,8 @@
 #include "Framework/PlayerState/TurnBasedPlayerState.h"
 #include "Subsystem/GridHoverSubsystem.h"
 #include "Tile/GridTileBase.h"
+#include "Pooling/ActorPoolSubsystem.h"
+#include "Cursor/GridCursorInterface.h"
 
 
 FGameplayTag UTurnBasedPlayerAction::GetTagForClass(TSubclassOf<UTurnBasedPlayerAction> ActionClass)
@@ -93,6 +95,8 @@ void UTurnBasedPlayerAction::FinishAction()
     // An item use ends with the activation it was made for
     bIsItemUse = false;
     Deactivate_Internal();
+    ReleaseActionCursors();
+    ClearTileCursorStates();
     SetIsActive(false);
     OnDeactivated.Broadcast(this);
     OnDeactivated_Native.Broadcast(this);
@@ -225,6 +229,131 @@ void UTurnBasedPlayerAction::ForceDeactivate_Internal_Implementation()
     UnbindInput();
     UnbindGridSubsystem();
     ClearSelectionState();
+    ReleaseActionCursors();
+    ClearTileCursorStates();
+}
+
+// --- Cursors ---
+
+UActorPoolSubsystem* UTurnBasedPlayerAction::GetActorPool() const
+{
+    UWorld* World = GetWorld();
+    return IsValid(World) ? World->GetSubsystem<UActorPoolSubsystem>() : nullptr;
+}
+
+AActor* UTurnBasedPlayerAction::AcquireActionCursor(TSubclassOf<AActor> CursorClass)
+{
+    UActorPoolSubsystem* Pool = GetActorPool();
+    if (!CursorClass || !Pool) return nullptr;
+    if (!CursorClass->ImplementsInterface(UGridCursor::StaticClass()))
+    {
+        UE_LOG(LogTurnBasedMechanics, Error,
+            TEXT("TurnBasedPlayerAction: '%s' cursor class %s doesn't implement IGridCursor -- "
+                 "every cursor must (Cursor/GridCursorInterface.h); no cursor shown"),
+            *GetActionTag().ToString(), *CursorClass->GetName());
+        return nullptr;
+    }
+
+    const TArray<AActor*> Cursors = Pool->GetObjects(CursorClass, 1);
+    AActor* Cursor = Cursors.IsEmpty() ? nullptr : Cursors[0];
+    if (!IsValid(Cursor)) return nullptr;
+
+    ActionCursors.Add(Cursor);
+    Pool->ActivateObject(Cursor);
+    IGridCursor::Execute_HideCursor(Cursor);
+    return Cursor;
+}
+
+void UTurnBasedPlayerAction::ReleaseActionCursor(AActor* Cursor)
+{
+    if (!Cursor || !ActionCursors.Contains(Cursor)) return;
+
+    HideCursor(Cursor);
+    ActionCursors.Remove(Cursor);
+    if (HoverCursor == Cursor) HoverCursor = nullptr;
+    if (UActorPoolSubsystem* Pool = GetActorPool())
+    {
+        Pool->DeactivateObject(Cursor);
+        Pool->ReleaseObject(Cursor);
+    }
+}
+
+void UTurnBasedPlayerAction::ReleaseActionCursors()
+{
+    const TArray<TObjectPtr<AActor>> Held = ActionCursors;
+    for (AActor* Cursor : Held)
+    {
+        ReleaseActionCursor(Cursor);
+    }
+    ActionCursors.Reset();
+    ShownCursors.Reset();
+    HoverCursor = nullptr;
+}
+
+bool UTurnBasedPlayerAction::HoldsActionCursor(const AActor* Cursor) const
+{
+    return Cursor && ActionCursors.Contains(Cursor);
+}
+
+void UTurnBasedPlayerAction::ShowCursorAt(AActor* Cursor, AGridTileBase* Tile, bool bReactivate)
+{
+    if (!IsValid(Tile) || !IsValid(Cursor) || !HoldsActionCursor(Cursor)) return;
+
+    IGridCursor::Execute_MoveCursor(Cursor, Tile, Tile->GetActorLocation() + CursorOffset, bReactivate);
+    if (!ShownCursors.Contains(Cursor))
+    {
+        ShownCursors.Add(Cursor);
+        IGridCursor::Execute_ShowCursor(Cursor);
+    }
+}
+
+void UTurnBasedPlayerAction::HideCursor(AActor* Cursor)
+{
+    if (!Cursor || ShownCursors.Remove(Cursor) == 0) return;
+
+    IGridCursor::Execute_HideCursor(Cursor);
+}
+
+void UTurnBasedPlayerAction::ShowHoverCursor(TSubclassOf<AActor> CursorClass, AGridTileBase* Tile)
+{
+    if (!CursorClass)
+    {
+        HideHoverCursor();
+        return;
+    }
+    if (HoverCursor && HoverCursor->GetClass() != CursorClass.Get())
+    {
+        ReleaseActionCursor(HoverCursor);
+    }
+    if (!HoverCursor)
+    {
+        HoverCursor = AcquireActionCursor(CursorClass);
+        HoverCursorTile = nullptr;
+    }
+    ShowCursorAt(HoverCursor, Tile, HoverCursorTile.Get() != Tile);
+    HoverCursorTile = Tile;
+}
+
+void UTurnBasedPlayerAction::HideHoverCursor()
+{
+    HideCursor(HoverCursor);
+}
+
+void UTurnBasedPlayerAction::SetTileCursorState(AGridTileBase* Tile, FGameplayTag State)
+{
+    if (!IsValid(Tile)) return;
+
+    Tile->SetCursorState(State);
+    TouchedTiles.AddUnique(Tile);
+}
+
+void UTurnBasedPlayerAction::ClearTileCursorStates()
+{
+    for (const TWeakObjectPtr<AGridTileBase>& Tile : TouchedTiles)
+    {
+        if (Tile.IsValid()) Tile->ClearCursorState();
+    }
+    TouchedTiles.Reset();
 }
 
 // --- Input Binding ---
@@ -299,10 +428,15 @@ void UTurnBasedPlayerAction::OnGridTileHoverChanged(AGridTileBase* NewTile)
     if (IsValid(NewTile) && IsValidHoverTile(NewTile))
     {
         HandleValidHover(NewTile);
+        return;
     }
-    else if (IsValid(Previous))
+    if (IsValid(Previous))
     {
         HandleHoverCleared(Previous);
+    }
+    if (IsValid(NewTile))
+    {
+        HandleInvalidHover(NewTile);
     }
 }
 
@@ -330,6 +464,7 @@ bool UTurnBasedPlayerAction::IsValidHoverTile_Implementation(AGridTileBase* Tile
 bool UTurnBasedPlayerAction::IsValidSelectionTile_Implementation(AGridTileBase* Tile) const { return IsValid(Tile); }
 void UTurnBasedPlayerAction::HandleValidHover_Implementation(AGridTileBase*) {}
 void UTurnBasedPlayerAction::HandleHoverCleared_Implementation(AGridTileBase*) {}
+void UTurnBasedPlayerAction::HandleInvalidHover_Implementation(AGridTileBase*) {}
 void UTurnBasedPlayerAction::HandleValidSelection_Implementation(AGridTileBase*) {}
 void UTurnBasedPlayerAction::HandleTileClicked_Implementation(AGridTileBase*) {}
 void UTurnBasedPlayerAction::ClearSelectionState_Implementation() {}
