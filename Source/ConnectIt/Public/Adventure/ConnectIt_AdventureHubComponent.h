@@ -24,6 +24,14 @@ struct CONNECTIT_API FConnectItRevealedLink
     TObjectPtr<UConnectIt_MapNodeDataAsset> To = nullptr;
 };
 
+// What's wrong with a hub map's nodes (CheckHubMapNodes): errors make the map
+// invalid, warnings don't
+struct CONNECTIT_API FConnectItHubMapIssues
+{
+    TArray<FString> Errors;
+    TArray<FString> Warnings;
+};
+
 // What the reveal walk found: each revealed node's state (a node not in it is
 // Hidden) and the links between revealed nodes
 USTRUCT(BlueprintType)
@@ -120,6 +128,16 @@ public:
     static FConnectItRevealWalkResult RunRevealWalk(const UConnectIt_MapNodeDataAsset* Start,
         const TSet<const UConnectIt_MapNodeDataAsset*>& MapNodes, const FConnectItAdventureProgress& Progress,
         const UConnectIt_ActionShardTableDataAsset* Table, bool bRevealAll = false);
+
+    // A hub map's checks (map validation; no world needed), on its node
+    // components:
+    //   errors   -- no node flagged Start, or more than one; more than one
+    //               flagged Exit; one data asset on two nodes; a sub-map
+    //               (bIsSubMap: a node elsewhere names this map) with no Exit;
+    //   warnings -- a node with no data; an Unlocks entry with no node in this
+    //               map (it can't be revealed here); a node that can't be
+    //               reached from the Start through Unlocks.
+    static FConnectItHubMapIssues CheckHubMapNodes(const TArray<const UConnectIt_MapNodeComponent*>& Nodes, bool bIsSubMap);
 
     // Runs the walk with the player's progress and applies it to the nodes
     UFUNCTION(BlueprintCallable, Category = "ConnectIt|Adventure Hub")

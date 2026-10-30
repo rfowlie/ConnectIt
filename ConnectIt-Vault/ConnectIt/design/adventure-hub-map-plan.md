@@ -6,7 +6,7 @@ approved_on: 2026-10-28
 completed_on:
 started: 2026-10-29             # YYYY-MM-DD, when the first stage was built (blank until then)
 stages: 6              # how many stages the plan has
-current_stage: "3: validation (Stage 2 built 2026-10-29)"   # the first stage not yet built ("complete" / "not started")
+current_stage: "4: interaction, framing and links (Stage 3 built 2026-10-29)"   # the first stage not yet built ("complete" / "not started")
 playtested: false
 design: "[adventure-hub](adventure-hub.md)"
 question:
@@ -146,6 +146,17 @@ cost: server-only (fine for a single-player hub), and discovery must be pulled a
   - match-data checks stay off (as built in the World Settings validation plan).
 - Takes over the adventure hub plan's Stage 5 checks that are about one hub map (reachability, one actor per data
   asset); the cross-map gate / shard reachability checks stay there.
+- **As built (2026-10-29; 80/80 tests):**
+  - `UConnectIt_AdventureHubComponent::CheckHubMapNodes(Nodes, bIsSubMap)` (static, no world) returns errors /
+    warnings:
+    - errors: no Start, or more than one; more than one Exit; a data asset on two nodes; a sub-map with no Exit;
+    - warnings: a node with no data; an `Unlocks` entry with no node in this map; a node not reachable from the
+      Start through `Unlocks` (the reachability check taken over from the hub plan's Stage 5).
+  - `AConnectIt_WorldSettings::IsDataValid`: a map whose game mode is the hub game mode (or a subclass) gathers its
+    node components and runs the checks, with no match data. A **sub-map** is a map that some map node asset's
+    `SubMap` names, found through the asset registry's referencers of this map's package (only those assets are
+    loaded).
+  - Test: `ConnectIt.Adventure.HubValidation`.
 
 ## Stage 4: interaction, framing and links
 

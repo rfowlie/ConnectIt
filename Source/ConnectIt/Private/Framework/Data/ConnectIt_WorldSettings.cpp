@@ -12,6 +12,12 @@
 #if WITH_EDITOR
 #include "GameMapsSettings.h"
 #include "Logging/TokenizedMessage.h"
+#include "Adventure/ConnectIt_AdventureHubComponent.h"
+#include "Adventure/ConnectIt_MapNodeComponent.h"
+#include "Adventure/ConnectIt_MapNodeDataAsset.h"
+#include "Framework/GameMode/ConnectIt_GameMode_AdventureHub.h"
+#include "AssetRegistry/AssetRegistryModule.h"
+#include "EngineUtils.h"
 #endif
 
 
@@ -74,6 +80,57 @@ EDataValidationResult AConnectIt_WorldSettings::IsDataValid(FDataValidationConte
     {
         const FString ProjectGameMode = UGameMapsSettings::GetGlobalDefaultGameMode();
         GameModeClass = ProjectGameMode.IsEmpty() ? nullptr : LoadClass<AGameModeBase>(nullptr, *ProjectGameMode);
+    }
+
+    // A hub map: its map nodes are checked (no match data)
+    if (GameModeClass && GameModeClass->IsChildOf(AConnectIt_GameMode_AdventureHub::StaticClass()))
+    {
+        Context.AddMessage(EMessageSeverity::Info, FText::FromString(FString::Printf(TEXT(
+            "ConnectIt_WorldSettings: checked as an Adventure hub map (game mode: %s)."), *GameModeClass->GetName())));
+
+        TArray<const UConnectIt_MapNodeComponent*> Nodes;
+        if (const UWorld* World = GetWorld())
+        {
+            for (TActorIterator<AActor> It(World); It; ++It)
+            {
+                TInlineComponentArray<UConnectIt_MapNodeComponent*> ActorNodes(*It);
+                Nodes.Append(ActorNodes);
+            }
+        }
+
+        // A sub-map: some node's Sub Map names this map (the node assets that
+        // reference this package)
+        bool bIsSubMap = false;
+        const FName Package = GetOutermost()->GetFName();
+        IAssetRegistry& Registry = FModuleManager::LoadModuleChecked<FAssetRegistryModule>("AssetRegistry").Get();
+        TArray<FName> Referencers;
+        Registry.GetReferencers(Package, Referencers);
+        for (const FName& Referencer : Referencers)
+        {
+            TArray<FAssetData> Assets;
+            Registry.GetAssetsByPackageName(Referencer, Assets);
+            for (const FAssetData& Asset : Assets)
+            {
+                const UConnectIt_MapNodeDataAsset* Node = Asset.IsInstanceOf(UConnectIt_MapNodeDataAsset::StaticClass())
+                    ? Cast<UConnectIt_MapNodeDataAsset>(Asset.GetAsset()) : nullptr;
+                if (Node && Node->SubMap.ToSoftObjectPath().GetLongPackageFName() == Package)
+                {
+                    bIsSubMap = true;
+                }
+            }
+        }
+
+        const FConnectItHubMapIssues Issues = UConnectIt_AdventureHubComponent::CheckHubMapNodes(Nodes, bIsSubMap);
+        for (const FString& Error : Issues.Errors)
+        {
+            Context.AddError(FText::FromString(TEXT("ConnectIt hub map: ") + Error));
+            Result = EDataValidationResult::Invalid;
+        }
+        for (const FString& Warning : Issues.Warnings)
+        {
+            Context.AddWarning(FText::FromString(TEXT("ConnectIt hub map: ") + Warning));
+        }
+        return Result;
     }
 
     // Match data is only checked on a match map (the hub and the menus have

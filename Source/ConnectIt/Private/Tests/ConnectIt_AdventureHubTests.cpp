@@ -163,4 +163,58 @@ bool FConnectItAdventureRevealWalkTest::RunTest(const FString& Parameters)
     return true;
 }
 
+// Adventure hub map plan, Stage 3: a hub map's checks (map validation)
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FConnectItAdventureHubValidationTest,
+    "ConnectIt.Adventure.HubValidation", ConnectItAdventureHubTests::TestFlags)
+
+bool FConnectItAdventureHubValidationTest::RunTest(const FString& Parameters)
+{
+    // Node components on throwaway actors (no world needed for the checks)
+    const auto MakeNode = [](UConnectIt_MapNodeDataAsset* NodeData, bool bIsStart = false, bool bIsExit = false)
+    {
+        UConnectIt_MapNodeComponent* Node = NewObject<UConnectIt_MapNodeComponent>(NewObject<AActor>());
+        Node->NodeData = NodeData;
+        Node->bIsStart = bIsStart;
+        Node->bIsExit = bIsExit;
+        return Node;
+    };
+    const auto Check = [](std::initializer_list<const UConnectIt_MapNodeComponent*> Nodes, bool bIsSubMap = false)
+    {
+        return UConnectIt_AdventureHubComponent::CheckHubMapNodes(TArray<const UConnectIt_MapNodeComponent*>(Nodes), bIsSubMap);
+    };
+
+    // S -> A -> B, and B is the exit
+    UConnectIt_MapNodeDataAsset* S = NewObject<UConnectIt_MapNodeDataAsset>();
+    UConnectIt_MapNodeDataAsset* A = NewObject<UConnectIt_MapNodeDataAsset>();
+    UConnectIt_MapNodeDataAsset* B = NewObject<UConnectIt_MapNodeDataAsset>();
+    S->Unlocks = { A };
+    A->Unlocks = { B };
+    const UConnectIt_MapNodeComponent* NodeS = MakeNode(S, true);
+    const UConnectIt_MapNodeComponent* NodeA = MakeNode(A);
+    const UConnectIt_MapNodeComponent* NodeB = MakeNode(B, false, true);
+
+    {
+        const FConnectItHubMapIssues Issues = Check({ NodeS, NodeA, NodeB }, true);
+        TestTrue(TEXT("a good sub-map: no errors, no warnings"), Issues.Errors.IsEmpty() && Issues.Warnings.IsEmpty());
+    }
+    TestEqual(TEXT("no Start: an error"), Check({ NodeA, NodeB }).Errors.Num(), 1);
+    TestEqual(TEXT("two Starts: an error"), Check({ NodeS, NodeA, MakeNode(B, true) }).Errors.Num(), 1);
+    TestEqual(TEXT("two Exits: an error"), Check({ NodeS, NodeA, NodeB, MakeNode(NewObject<UConnectIt_MapNodeDataAsset>(), false, true) }).Errors.Num(), 1);
+    TestEqual(TEXT("one node on two actors: an error"), Check({ NodeS, NodeA, NodeB, MakeNode(A) }).Errors.Num(), 1);
+    TestEqual(TEXT("a sub-map with no Exit: an error"), Check({ NodeS, NodeA, MakeNode(B) }, true).Errors.Num(), 1);
+    TestTrue(TEXT("not a sub-map: no Exit needed"), Check({ NodeS, NodeA, MakeNode(B) }).Errors.IsEmpty());
+
+    // Warnings: an unlock with no node here; a node nothing leads to; a node with no data
+    {
+        const FConnectItHubMapIssues Issues = Check({ NodeS, NodeA });   // A unlocks B, which isn't here
+        TestTrue(TEXT("unlock off the map: a warning"), Issues.Errors.IsEmpty() && Issues.Warnings.Num() == 1);
+    }
+    {
+        const FConnectItHubMapIssues Issues = Check({ NodeS, NodeA, NodeB, MakeNode(NewObject<UConnectIt_MapNodeDataAsset>()) });
+        TestEqual(TEXT("unreachable from the Start: a warning"), Issues.Warnings.Num(), 1);
+    }
+    TestEqual(TEXT("no node data: a warning"), Check({ NodeS, NodeA, NodeB, MakeNode(nullptr) }).Warnings.Num(), 1);
+    return true;
+}
+
 #endif // WITH_DEV_AUTOMATION_TESTS

@@ -140,6 +140,102 @@ FConnectItRevealWalkResult UConnectIt_AdventureHubComponent::RunRevealWalk(const
     return Result;
 }
 
+FConnectItHubMapIssues UConnectIt_AdventureHubComponent::CheckHubMapNodes(
+    const TArray<const UConnectIt_MapNodeComponent*>& Nodes, bool bIsSubMap)
+{
+    FConnectItHubMapIssues Issues;
+    const auto OwnerName = [](const UConnectIt_MapNodeComponent* Node)
+    {
+        return Node->GetOwner() ? Node->GetOwner()->GetActorNameOrLabel() : Node->GetName();
+    };
+
+    TMap<const UConnectIt_MapNodeDataAsset*, const UConnectIt_MapNodeComponent*> ByData;
+    TArray<const UConnectIt_MapNodeComponent*> Starts;
+    TArray<const UConnectIt_MapNodeComponent*> Exits;
+    for (const UConnectIt_MapNodeComponent* Node : Nodes)
+    {
+        if (!Node) continue;
+        if (Node->bIsStart) Starts.Add(Node);
+        if (Node->bIsExit) Exits.Add(Node);
+
+        if (!Node->NodeData)
+        {
+            Issues.Warnings.Add(FString::Printf(TEXT("map node on %s has no Node Data."), *OwnerName(Node)));
+            continue;
+        }
+        if (const UConnectIt_MapNodeComponent* const* First = ByData.Find(Node->NodeData))
+        {
+            Issues.Errors.Add(FString::Printf(TEXT("%s and %s are both node %s -- one actor per node."),
+                *OwnerName(*First), *OwnerName(Node), *Node->NodeData->GetName()));
+            continue;
+        }
+        ByData.Add(Node->NodeData, Node);
+    }
+
+    if (Starts.IsEmpty())
+    {
+        Issues.Errors.Add(TEXT("no map node is flagged Start -- the reveal walk has nowhere to begin."));
+    }
+    else if (Starts.Num() > 1)
+    {
+        Issues.Errors.Add(FString::Printf(TEXT("%d map nodes are flagged Start (%s, %s...) -- one per map."),
+            Starts.Num(), *OwnerName(Starts[0]), *OwnerName(Starts[1])));
+    }
+    if (Exits.Num() > 1)
+    {
+        Issues.Errors.Add(FString::Printf(TEXT("%d map nodes are flagged Exit (%s, %s...) -- one per map."),
+            Exits.Num(), *OwnerName(Exits[0]), *OwnerName(Exits[1])));
+    }
+    if (bIsSubMap && Exits.IsEmpty())
+    {
+        Issues.Errors.Add(TEXT("this map is a sub-map (a node elsewhere names it) but no map node is flagged Exit -- "
+            "it can never be completed."));
+    }
+
+    // Unlocks that point outside this map
+    for (const TPair<const UConnectIt_MapNodeDataAsset*, const UConnectIt_MapNodeComponent*>& Pair : ByData)
+    {
+        for (const TSoftObjectPtr<UConnectIt_MapNodeDataAsset>& Unlock : Pair.Key->Unlocks)
+        {
+            const UConnectIt_MapNodeDataAsset* Target = Unlock.LoadSynchronous();
+            if (Target && !ByData.Contains(Target))
+            {
+                Issues.Warnings.Add(FString::Printf(TEXT("%s unlocks %s, which has no node in this map -- it can't be "
+                    "revealed here."), *Pair.Key->GetName(), *Target->GetName()));
+            }
+        }
+    }
+
+    // Reachability from the Start, through every Unlocks (whatever the progress)
+    const UConnectIt_MapNodeDataAsset* StartData = Starts.Num() == 1 ? Starts[0]->NodeData.Get() : nullptr;
+    if (StartData)
+    {
+        TSet<const UConnectIt_MapNodeDataAsset*> Reached = { StartData };
+        TArray<const UConnectIt_MapNodeDataAsset*> Queue = { StartData };
+        for (int32 Index = 0; Index < Queue.Num(); Index++)
+        {
+            for (const TSoftObjectPtr<UConnectIt_MapNodeDataAsset>& Unlock : Queue[Index]->Unlocks)
+            {
+                const UConnectIt_MapNodeDataAsset* Next = Unlock.Get();
+                if (Next && ByData.Contains(Next) && !Reached.Contains(Next))
+                {
+                    Reached.Add(Next);
+                    Queue.Add(Next);
+                }
+            }
+        }
+        for (const TPair<const UConnectIt_MapNodeDataAsset*, const UConnectIt_MapNodeComponent*>& Pair : ByData)
+        {
+            if (!Reached.Contains(Pair.Key))
+            {
+                Issues.Warnings.Add(FString::Printf(TEXT("%s (on %s) can't be reached from the Start -- no node's "
+                    "Unlocks leads to it."), *Pair.Key->GetName(), *OwnerName(Pair.Value)));
+            }
+        }
+    }
+    return Issues;
+}
+
 void UConnectIt_AdventureHubComponent::RefreshReveal()
 {
     // The player's progress (the game instance loads it before any map: an
