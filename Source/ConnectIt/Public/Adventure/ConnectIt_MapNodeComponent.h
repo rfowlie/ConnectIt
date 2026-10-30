@@ -21,6 +21,9 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnConnectItMapNodeStateChanged, UCo
 // play later adds itself.
 //
 // Hidden hides the actor (and its collision); any other state shows it.
+// Like a grid tile, it sets its actor's root primitive to block the cursor
+// trace channel (UGridMechanicsSettings), so the node can be hovered and
+// clicked with no collision work.
 // Blueprint reacts to OnStateChanged (looks per state, the "you were here"
 // focus). Nodes don't react to hover or clicks themselves.
 UCLASS(ClassGroup = (Adventure), meta = (BlueprintSpawnableComponent))
@@ -71,6 +74,7 @@ protected:
 
     // Applies the state to the actor, then adds itself to the hub if the hub
     // has already found its nodes
+    virtual void OnRegister() override;
     virtual void BeginPlay() override;
 
     // Leaves the hub

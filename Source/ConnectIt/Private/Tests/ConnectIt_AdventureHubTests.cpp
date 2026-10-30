@@ -13,6 +13,8 @@
 #include "Hover/GridHoverComponent.h"
 #include "Components/SceneComponent.h"
 #include "Components/SplineComponent.h"
+#include "Components/BoxComponent.h"
+#include "GridMechanicsSettings.h"
 #include "Engine/Engine.h"
 #include "Engine/World.h"
 
@@ -317,6 +319,38 @@ bool FConnectItAdventureHubInteractionTest::RunTest(const FString& Parameters)
     Result.Links.Reset();
     Hub->ApplyReveal(Result);
     TestEqual(TEXT("links: rebuilt (none now)"), Hub->GetLinkActors().Num(), 0);
+    return true;
+}
+
+// Grid cursor channel: a map node's actor blocks the cursor trace channel,
+// set by the node component (no collision work on the actor)
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FConnectItAdventureNodeCollisionTest,
+    "ConnectIt.Adventure.NodeCollision", ConnectItAdventureHubTests::TestFlags)
+
+bool FConnectItAdventureNodeCollisionTest::RunTest(const FString& Parameters)
+{
+    UGridMechanicsSettings* Settings = GetMutableDefault<UGridMechanicsSettings>();
+    const TEnumAsByte<ECollisionChannel> Previous = Settings->CursorTraceChannel;
+    Settings->CursorTraceChannel = ECC_GameTraceChannel18;
+
+    UWorld* World = UWorld::CreateWorld(EWorldType::Game, false, TEXT("ConnectItNodeCollisionTestWorld"));
+    GEngine->CreateNewWorldContext(EWorldType::Game).SetCurrentWorld(World);
+    ON_SCOPE_EXIT
+    {
+        Settings->CursorTraceChannel = Previous;
+        GEngine->DestroyWorldContext(World);
+        World->DestroyWorld(false);
+    };
+
+    AActor* Actor = World->SpawnActor<AActor>();
+    UBoxComponent* Box = NewObject<UBoxComponent>(Actor);
+    Actor->SetRootComponent(Box);
+    Box->RegisterComponent();
+    Box->SetCollisionResponseToChannel(ECC_GameTraceChannel18, ECR_Ignore);
+
+    UConnectIt_MapNodeComponent* Node = NewObject<UConnectIt_MapNodeComponent>(Actor);
+    Node->RegisterComponent();
+    TestEqual(TEXT("the node's actor blocks the cursor channel"), Box->GetCollisionResponseToChannel(ECC_GameTraceChannel18), ECR_Block);
     return true;
 }
 

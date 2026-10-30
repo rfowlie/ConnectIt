@@ -58,8 +58,12 @@ flowchart TD
 ## Gotchas
 
 - **Only registered tiles relay.** A tile that isn't hovered: is it registered? Does a primitive block the cursor trace
-  (map check warns)?
-- **A piece over a tile:** pieces set their primitives to ignore the cursor channel in `PostInitializeComponents`
+  channel (map check warns, naming the channel -- and says so if the owner blocks only Visibility)?
+- **One channel, one setting:** `UGridMechanicsSettings::CursorTraceChannel` (Project Settings > Plugins > Grid
+  Mechanics); the plugin defines **GridCursor** (slot 18) in its own `Config/Engine.ini`. Tiles block it on their
+  root primitive and pieces ignore it, set in C++ at `OnConstruction`; the ConnectIt player controller traces it.
+  See [grid cursor trace channel](../../../ConnectIt/_decisions/2026-10-30-grid-cursor-trace-channel.md).
+- **A piece over a tile:** pieces also set every primitive to ignore the cursor channel in `PostInitializeComponents`
   (`AGridPieceBase::bBlocksCursorTrace`, default false). A Blueprint that sets a collision profile later undoes that.
 - The subsystem doesn't hit-test or decide. It forwards what the components raise.
 - **Deprecated, kept for one release:**

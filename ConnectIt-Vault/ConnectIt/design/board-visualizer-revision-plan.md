@@ -1,16 +1,17 @@
 ---
 type: plan
-status: not-started
+status: complete
 approved: true
 approved_on: 2026-10-30
-started:
+started: 2026-10-30
+completed_on: 2026-10-30
 stages: 5
-current_stage: not started
+current_stage: "complete (code); owner content migration open"
 owner_done: false
 playtested: false
 design: "[board-visualizer](board-visualizer.md)"
 question:
-decision:
+decision: "[2026-10-30-registries-own-grid-positions](../_decisions/2026-10-30-registries-own-grid-positions.md)"
 requires: "[board-visualizer-plan](board-visualizer-plan.md)"
 ---
 
@@ -49,6 +50,22 @@ stages.
 - Tests: instantiating through an override that sets nothing still yields the right `GridPosition`; map, move, swap and
   shift keep the cache equal to the registry's.
 
+- **As built (2026-10-30):**
+  - `AGridPieceBase::GridPosition` is private (`VisibleInstanceOnly`, Blueprint read-only). The piece registries are
+    friends and write it through `UGridPieceRegistryBase::SetPieceAt` on get-or-create, `UpdateMappings`, and
+    ConnectIt's map / move / swap / shift.
+  - `PieceMap` is Blueprint read-only. `GetPiece` maps only a valid piece (a null one used to be cached).
+  - New: `GetAllPiecePositions`.
+  - `AConnectIt_PieceBase`:
+    - `OccupiedPosition` and `SetBoardPosition` removed; `InitialisePiece(Faction)` lost its position pin;
+    - new `GetFactionID`;
+    - `using AGridPieceBase::GetGridPosition`, plus `IGridTileHandler::GetGridPosition` returning the same position (the
+      interface made the name ambiguous).
+  - **Not done:** the board-vs-registry log at map time. The display board lags while events play, so that check is in
+    `ReconcileAll` (Stage 3) instead.
+  - The "override that sets nothing" test needs a Blueprint (`InstantiatePiece` is Blueprint-implementable), so it's an
+    owner check. `ConnectIt.Board.PiecePositionCache` covers map / move / swap / shift / unmap.
+
 ## Stage 2: hooks take a copy of the event + the handle
 
 - Piece hooks: `OnPlaced(PiecePlaced, Handle)`, `OnMoved(PieceMoved, Handle)`, `OnSwapped(PiecesSwapped, Handle)`,
@@ -61,6 +78,20 @@ stages.
   hook. Lean: the base event copy (tag + cause) with typed getters, since the hook mostly wants the faction and cause.
 - The visualizer defaults pass `Event` through unchanged. `Cause` helpers (`GetBoardEventCause`) stay.
 - Tests: `ConnectIt.Visuals.HookDefaults` updated -- each default hands its hook the event it was fired by.
+
+- **As built (2026-10-30):**
+  - The signatures are as listed, plus `OnMultiplierChanged(MultiplierChanged)`, `OnLockChanged(TileLockChanged)` and
+    `OnActiveChanged(TileActiveToggled)`.
+  - **Decided at build:** `OnPieceEnter` / `OnPieceExit(Event, Faction, Handle)` take the source event as an
+    `FInstancedStruct`. The new `UConnectIt_BoardEventLibrary::GetBoardEventTag` reads its tag.
+  - **Events made for a hook:** a hook fed by another event kind gets an event built for it (`CauseIndex` / play index
+    = the source event's):
+    - a starting or added piece → Piece Placed;
+    - a shifted piece → Piece Moved;
+    - a piece going with its tile → Piece Removed;
+    - Scored / Tile Multiplier Destroyed → Multiplier Changed.
+  - Test: `ConnectIt.Visuals.HookDefaults` plays real events through the queue on a test board (registries, recording
+    tile and piece actors).
 
 ## Stage 3: the reconcile fallback
 
@@ -80,6 +111,19 @@ stages.
   checked until the handle completes; log only does not move.
 - An automation / PIE check that fails a test on any reconcile error, so a bad visual fails loudly in CI.
 
+- **As built (2026-10-30):**
+  - `ReconcileActors(Positions)` / `ReconcileAll()` return the mismatch count; `ReconcileTolerance` is 1 unit.
+  - **Which positions are checked after each event:** the event's own positions (found by reflection over its fields,
+    arrays and nested structs), plus the snapped and arriving positions.
+  - **Checks:** a tile on its cell (X / Y only; height is the tile's own); a piece's position cache; a piece with a
+    tile under it (logged only); a piece resting on its tile.
+  - **The whole board:** `UConnectIt_BoardStateComponent::OnBoardEventsPlayed` (new) triggers `ReconcileAll`, which
+    also checks the display board against the piece registry (logged only).
+  - The handle records a timeout (`HasTimedOut`, `GetTimedOutHolders`) for the error message.
+  - **No second deadline:** every event completes through its handle, whose timeout already covers a stuck hold.
+  - **CI:** a reconcile error fails any automation test by default, so no separate check was needed.
+  - Test: `ConnectIt.Visuals.Reconcile`. The registry subsystem gained a test-only `SetUpForTest`.
+
 ## Stage 4: single-event visualizers
 
 - **`UConnectIt_EventVisual`**: abstract Blueprintable actor, one subclass per event kind (thin, generated for each event
@@ -95,6 +139,18 @@ stages.
 - Tests: tag lookup builds from declared tags; a duplicate tag is reported; an override runs instead of the default;
   `PlayDefault` runs the default; the handle completes the task.
 - Optional later: a theme data asset bundling a set of event visuals (not in this plan).
+
+- **As built (2026-10-30):**
+  - `AConnectIt_EventVisual` is an actor, as planned; the plan's `UConnectIt_` prefix was a typo.
+  - There are 22 thin classes, `AConnectIt_EventVisual_<Kind>`, all Abstract, so a Blueprint is made from them. Each
+    declares its tag through a virtual `GetDeclaredEventTag` (read at runtime, not stored), has a typed
+    `OnPlay(Event, Handle)` (default: `PlayDefault()`), and is in `Board/ConnectIt_EventVisual.h`.
+  - The list is the level config's `EventVisuals`; the visualizer reads it in `Initialise` (`SetEventVisuals`).
+  - `BuildEventVisualMap`: a duplicate tag is an error (the first kept); an empty, abstract or tagless entry is a
+    warning. The level config's `IsDataValid` reports them.
+  - `PlayDefault` runs the visualizer's function for the stored event: call it from `OnPlay` before the handle seals.
+  - Test: `ConnectIt.Visuals.EventVisuals`.
+  - **Verified 2026-10-30:** 89/89 tests, Game target clean.
 
 ## Owner checks: content migration
 
@@ -112,6 +168,12 @@ stages.
 Decision note (the registries own grid positions; the event copy + handle hook rule; the reconcile fallback; event
 visuals); update the `code/` recipe "add visuals for a board event", [board-visualizer](board-visualizer.md) and the board
 state flow page; log.
+
+- **As built (2026-10-30):**
+  - decision [registries own grid positions](../_decisions/2026-10-30-registries-own-grid-positions.md);
+  - recipe [add visuals for a board event](../code/recipes/add-visuals-for-a-board-event.md) updated;
+  - [board-visualizer](board-visualizer.md) and the board state flow page updated;
+  - log `_logs/2026-10-30-1915.md`.
 
 ## Not in this plan
 

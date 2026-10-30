@@ -29,6 +29,8 @@ public class UnrealGridMechanics : ModuleRules
 				"InputCore",
 				"GameplayTags",
 				"GameplayTasks",
+				// DeveloperSettings -- public: UGridMechanicsSettings is in a public header
+				"DeveloperSettings",
 				"GameplayAbilities",
 				"UnrealGameMechanics",
 				// ... add other public dependencies that you statically link with here ...

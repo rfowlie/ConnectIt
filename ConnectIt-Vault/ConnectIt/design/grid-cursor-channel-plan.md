@@ -1,16 +1,17 @@
 ---
 type: plan
-status: not-started
+status: complete
 approved: true
 approved_on: 2026-10-30
-started:
+started: 2026-10-30
+completed_on: 2026-10-30
 stages: 4
-current_stage: not started
+current_stage: "complete (code); owner content checks open"
 owner_done: false
 playtested: false
 design: "[hover-component](hover-component.md)"
 question:
-decision:
+decision: "[2026-10-30-grid-cursor-trace-channel](../_decisions/2026-10-30-grid-cursor-trace-channel.md)"
 requires: "[hover-component-plan](hover-component-plan.md)"
 ---
 
@@ -49,6 +50,20 @@ stages.
   `Config` ini if the filename test passes, else in the game's `Config/DefaultEngine.ini`. Test: launch the editor and
   read the channel name in Project Settings > Collision.
 - Tests: the setting defaults to Visibility; `GetCursorTraceChannel()` returns what is set.
+- **As built (2026-10-30):**
+  - **The filename test passed, so the plugin ships the ini:** `Plugins/UnrealGridMechanics/Config/Engine.ini`. UE
+    loads a plugin's `{PLUGIN}/Config/{TYPE}.ini` into that branch; this was checked in `FConfigCacheIni::AddPluginToBranches`,
+    which uses the base filename as the branch name, so the file is `Engine.ini`, not `DefaultEngine.ini`.
+  - Its contents: GridCursor on `GameTraceChannel18` (default Ignore, trace type), GridTile (QueryOnly, WorldStatic,
+    blocks GridCursor), GridPiece (QueryOnly, WorldDynamic, ignores it). The other responses are the object type's
+    defaults.
+  - `UGridMechanicsSettings` (`Config = Game`) has `CursorTraceChannel`, `GetCursorTraceChannel()`,
+    `GetCursorTraceChannelName()`, and `SetRootCursorResponse(Actor, Response)`. `DeveloperSettings` was added to the
+    plugin's public dependencies.
+  - **Different from the plan:** the test can't assert "defaults to Visibility", because the project setting may
+    already be set. It checks the C++ read-back instead, plus that the channel and both profiles exist with the right
+    responses.
+  - Test: `UnrealGridMechanics.Cursor.Settings`.
 
 ## Stage 2: the plugin reads the setting
 
@@ -66,6 +81,17 @@ stages.
   Visibility **but not** the cursor channel (the common mistake after the switch).
 - Tests: with the channel set to GridCursor, a primitive that blocks it passes validation and one that only blocks
   Visibility warns; a spawned tile blocks the cursor channel and a spawned piece ignores it with no Blueprint changes.
+- **As built (2026-10-30):**
+  - `CursorTraceChannel` is removed from `UGridHoverComponent` and `AGridPieceBase`.
+  - **Collision is set in `OnConstruction` only:** the C++ constructor has no root (a Blueprint adds it), so the plan's
+    "when they are constructed" step does nothing there and was left out.
+  - Pieces still ignore the channel on every primitive in `PostInitializeComponents`.
+  - **Responses:** the base classes set only the cursor channel's response (`SetRootCursorResponse`); the other
+    responses stay the Blueprint's.
+  - **A non-primitive root:** a warning, once per class.
+  - `UGridHoverComponent::GetCursorTraceProblem()` feeds the map check. It returns empty, "blocks Visibility but not
+    the cursor channel", or "blocks nothing (channel)".
+  - Test: `UnrealGridMechanics.Cursor.Collision`.
 
 ## Stage 3: the controller traces on it
 
@@ -74,6 +100,13 @@ stages.
   their own channel later -- out of scope).
 - The hover subsystem's tile lookups (if any trace manually) use the same channel.
 - Tests: none without a world; covered by the owner checks.
+- **As built (2026-10-30):**
+  - `AConnectIt_PlayerController::BeginPlay` sets `CurrentClickTraceChannel` from the setting, on every instance
+    (harmless off the local client).
+  - The hover subsystem doesn't trace manually (it relays component events), so it needed nothing.
+  - **Verified:** 91/91 tests, Game target clean.
+  - **Added after (owner, 2026-10-30):** the map node component sets its actor's root primitive to block the channel
+    in `OnRegister`, as tiles do. Test: `ConnectIt.Adventure.NodeCollision`; 92/92 tests.
 
 ## Owner checks: content migration
 
@@ -91,6 +124,12 @@ stages.
 
 Decision note (the Grid cursor channel and the one setting; whether the plugin carries the ini); update
 [hover-component](hover-component.md), the hover-relay system page and the cursor recipe; log.
+
+- **As built (2026-10-30):**
+  - the decision note;
+  - [hover-component](hover-component.md), the hover-relay page, the `UGridHoverComponent` page, the grid code index
+    and the cursor recipe updated;
+  - log `_logs/2026-10-30-1945.md`.
 
 ## Not in this plan
 

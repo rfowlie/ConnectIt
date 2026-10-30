@@ -49,11 +49,6 @@ public:
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Grid|Hover")
     FGameplayTag HoverCategory;
 
-    // The channel the player controller's cursor traces (its Default Click
-    // Trace Channel); only checked by map check
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Grid|Hover")
-    TEnumAsByte<ECollisionChannel> CursorTraceChannel = ECC_Visibility;
-
     // Off: no hover or click is reported. Turning it off during a hover ends
     // the hover (OnHoverEnd).
     UFUNCTION(BlueprintCallable, Category = "Grid|Hover")
@@ -83,6 +78,12 @@ public:
 
     // Whether any primitive of the owner can be hit by the cursor trace
     bool DoesOwnerBlockCursorTrace() const;
+
+    // What stops the cursor reaching this owner, for the map check: nothing
+    // blocks the cursor channel (UGridMechanicsSettings) -- and, after a
+    // switch from Visibility, whether it blocks only Visibility. Empty if
+    // the owner can be hovered.
+    FString GetCursorTraceProblem() const;
 
 #if WITH_EDITOR
     virtual void CheckForErrors() override;

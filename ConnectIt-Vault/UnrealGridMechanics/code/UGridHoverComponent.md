@@ -31,8 +31,9 @@ decides nothing: listeners decide what a hover means. Every `AGridTileBase` crea
 - `CanHover()` (Blueprint-native, default true): a veto on hover and click.
 - `NotifyHoverBegin` / `NotifyHoverEnd` / `NotifyClicked`: the one path the owner's cursor events, other input and the
   tests all use. A repeated begin, or an end with no hover, does nothing.
-- `HoverCategory` (gameplay tag, for listeners that filter); `CursorTraceChannel` (default Visibility, used only by
-  map check).
+- `HoverCategory` (gameplay tag, for listeners that filter).
+- `DoesOwnerBlockCursorTrace()` / `GetCursorTraceProblem()`: the map check, on the channel from
+  `UGridMechanicsSettings` (2026-10-30: the per-component `CursorTraceChannel` is gone).
 
 ## Collaborators
 

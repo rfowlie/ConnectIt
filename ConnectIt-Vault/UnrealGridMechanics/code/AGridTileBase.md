@@ -32,6 +32,8 @@ position; registries map tiles and positions.
   - Standard tags (`GridCursorStateTags.h`): `Grid.CursorState.Hovered`, `.Selected`, `.Valid`, `.Invalid`. Any tag
     works.
 - `SendGameplayTag(Tag)` (BlueprintNativeEvent): a general tag channel, kept for anything else that uses it.
+- **Collision:** `OnConstruction` sets the root primitive to block the cursor trace channel (`UGridMechanicsSettings`),
+  so a tile Blueprint is hoverable with no collision work (a hand-set preset on the root overrides it).
 - `IGridBoardActor::RefreshFromBoard`: empty here; a game's tile reads its own board data.
 
 ## Collaborators

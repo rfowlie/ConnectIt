@@ -235,6 +235,9 @@ log.
 
 ## Follow-ups (from the build)
 
+- **Done 2026-10-30** (grid cursor channel): the map node component sets its actor's root primitive to block the cursor
+  trace channel in `OnRegister`, so a dressed node is clickable with no collision work.
+
 - **The sub-map return path isn't saved.** If the game quits inside a sub-map, `ReturnToHub` after its Exit opens that
   sub-map again, and its node in the parent is never completed. Fix when there's a "continue" flow: save the stack, or
   derive the parent from the map node assets that name the sub-map (as validation already does).

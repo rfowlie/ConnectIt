@@ -8,6 +8,7 @@
 #include "Board/ConnectIt_EventVisual.h"
 #include "Board/ConnectIt_VisualHandle.h"
 #include "Framework/Library/ConnectIt_BoardEventLibrary.h"
+#include "Components/SceneComponent.h"
 #include "ConnectIt_BoardVisualizerTestTypes.generated.h"
 
 
@@ -20,6 +21,9 @@ class AConnectIt_TestTile : public AConnectIt_TileBase
     GENERATED_BODY()
 
 public:
+
+    // A root, so it stands where it is spawned
+    AConnectIt_TestTile() { RootComponent = CreateDefaultSubobject<USceneComponent>(TEXT("Root")); }
 
     TArray<FGameplayTag> EnterTags;
     TArray<int32> EnterFactions;
@@ -71,6 +75,8 @@ class AConnectIt_TestPiece : public AConnectIt_PieceBase
     GENERATED_BODY()
 
 public:
+
+    AConnectIt_TestPiece() { RootComponent = CreateDefaultSubobject<USceneComponent>(TEXT("Root")); }
 
     TArray<FConnectItBoardEvent_PiecePlaced> Placed;
     TArray<FConnectItBoardEvent_PieceMoved> Moved;

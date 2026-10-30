@@ -3,6 +3,7 @@
 
 #include "Piece/GridPieceBase.h"
 #include "Components/PrimitiveComponent.h"
+#include "GridMechanicsSettings.h"
 
 
 AGridPieceBase::AGridPieceBase()
@@ -16,11 +17,24 @@ void AGridPieceBase::PostInitializeComponents()
 	// The tile under the piece gets the cursor, not the piece
 	if (!bBlocksCursorTrace)
 	{
+		const ECollisionChannel Channel = UGridMechanicsSettings::GetCursorTraceChannel();
 		TInlineComponentArray<UPrimitiveComponent*> Primitives(this);
 		for (UPrimitiveComponent* Primitive : Primitives)
 		{
-			Primitive->SetCollisionResponseToChannel(CursorTraceChannel, ECR_Ignore);
+			Primitive->SetCollisionResponseToChannel(Channel, ECR_Ignore);
 		}
+	}
+}
+
+void AGridPieceBase::OnConstruction(const FTransform& Transform)
+{
+	Super::OnConstruction(Transform);
+
+	// Set up as a piece with no collision work in the Blueprint (the root
+	// isn't there yet in the C++ constructor -- a Blueprint adds it)
+	if (!bBlocksCursorTrace)
+	{
+		UGridMechanicsSettings::SetRootCursorResponse(this, ECR_Ignore);
 	}
 }
 

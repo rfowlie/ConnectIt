@@ -2,6 +2,7 @@
 
 
 #include "Framework/Controller/ConnectIt_PlayerController.h"
+#include "GridMechanicsSettings.h"
 #include "Framework/GameMode/ConnectIt_GameMode.h"
 #include "Framework/GameState/ConnectIt_GameState.h"
 #include "Framework/Library/ConnectIt_GameUtilityLibrary.h"
@@ -26,6 +27,10 @@ void AConnectIt_PlayerController::BeginPlay()
     // together (and to game state match phase changes) via
     // CoordinatorComponent, and notifies ready
     Super::BeginPlay();
+
+    // Cursor-over and clicks trace the Grid cursor channel (tiles block it,
+    // pieces ignore it)
+    CurrentClickTraceChannel = UGridMechanicsSettings::GetCursorTraceChannel();
 
     // Only owning client needs actions and input wiring
     if (!IsLocalController()) return;

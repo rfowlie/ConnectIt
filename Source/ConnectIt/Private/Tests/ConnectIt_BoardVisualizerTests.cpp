@@ -329,7 +329,7 @@ bool FConnectItBoardVisualizerHooksTest::RunTest(const FString& Parameters)
     Captured.PreviousFaction = 0;
     Board.Play(Captured);
     TestTrue(TEXT("captured: the piece got the new faction"), P->Captured.Num() == 1 && P->Captured[0].CapturingFaction == 1);
-    TestTrue(TEXT("captured: the tile's enter has the new faction"), Tile1->EnterFactions.Last() == 1);
+    TestTrue(TEXT("captured: the tile's enter has the new faction"), !Tile1->EnterFactions.IsEmpty() && Tile1->EnterFactions.Last() == 1);
 
     // --- Swapped: both pieces get the event; positions follow ---
     AConnectIt_TestPiece* Q = Board.AddPiece(FGridPosition(2, 0), 0);

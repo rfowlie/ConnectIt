@@ -41,15 +41,12 @@ public:
 		"Pieces aren't hovered any more: find the piece through the hovered tile."))
 	FGridPieceBaseBeginCursorOver OnGridPieceBeginCursorOver;
 
-	// Pieces ignore the cursor trace by default, so the tile under them is
-	// hovered. True: leave this piece's collision as it is.
+	// Pieces ignore the cursor trace channel (UGridMechanicsSettings) by
+	// default, so the tile under them is hovered: set on the root primitive
+	// at construction, and on every primitive when play starts. True: leave
+	// this piece's collision as it is.
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Grid|Hover")
 	bool bBlocksCursorTrace = false;
-
-	// The channel the player controller's cursor traces (its Default Click
-	// Trace Channel)
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Grid|Hover")
-	TEnumAsByte<ECollisionChannel> CursorTraceChannel = ECC_Visibility;
 
 	// Fired once this piece's own activation (spawn-in) visual effect has
 	// genuinely finished, not merely started -- a Blueprint subclass with
@@ -76,6 +73,7 @@ public:
 protected:
 	virtual void BeginPlay() override;
 	virtual void PostInitializeComponents() override;
+	virtual void OnConstruction(const FTransform& Transform) override;
 
 private:
 	// Only the piece registries write it (see GetGridPosition)

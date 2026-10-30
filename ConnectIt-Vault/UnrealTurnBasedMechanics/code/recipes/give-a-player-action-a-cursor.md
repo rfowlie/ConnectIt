@@ -63,5 +63,7 @@ and the tiles to neutral. Decision: [each action is its own cursor manager](../.
 - **One state per tile at a time:** the last `SetTileCursorState` wins. To keep a mark while hover passes over a tile
   (Swap's first pick), don't overwrite it in the hover hooks.
 - **Don't place `AGridCursorManagerBase`** in a map that uses action cursors, or there will be a second cursor.
+- **Cursor actors shouldn't block the cursor trace channel** (GridCursor, `UGridMechanicsSettings`), or they take the
+  hover from the tile under them. GridCursor ignores everything by default, so this only matters if you set it.
 - **No action active, no cursor** (e.g. the opponent's turn).
 - Cursors snap to the tile; there's no lerp.

@@ -5,6 +5,7 @@
 #include "GameplayTagContainer.h"
 #include "GridMechanics_GridLibrary.h"
 #include "Hover/GridHoverComponent.h"
+#include "GridMechanicsSettings.h"
 
 
 AGridTileBase::AGridTileBase()
@@ -24,6 +25,12 @@ void AGridTileBase::BeginPlay()
 
 	// Tiles don't self-register -- UGridTileRegistryComponent discovers and
 	// registers them with UGridHoverSubsystem.
+}
+
+void AGridTileBase::OnConstruction(const FTransform& Transform)
+{
+	Super::OnConstruction(Transform);
+	UGridMechanicsSettings::SetRootCursorResponse(this, ECR_Block);
 }
 
 void AGridTileBase::ForwardHoverBegin(UGridHoverComponent* Component)

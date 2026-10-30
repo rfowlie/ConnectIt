@@ -6,6 +6,8 @@
 #include "Hover/GridHoverComponent.h"
 #include "Subsystem/GridHoverSubsystem.h"
 #include "Tile/GridTileBase.h"
+#include "Piece/GridPieceBase.h"
+#include "Components/BoxComponent.h"
 #include "GridHoverTestTypes.generated.h"
 
 
@@ -94,6 +96,28 @@ public:
         LastPrevious = Previous;
         LastCurrent = Current;
     }
+};
+
+// A tile and a piece with a box as their root primitive (what a Blueprint's
+// mesh would be): the cursor channel response comes from the C++ base
+UCLASS(Hidden, NotBlueprintable, NotPlaceable)
+class AGridTestBoxTile : public AGridTileBase
+{
+    GENERATED_BODY()
+
+public:
+
+    AGridTestBoxTile() { RootComponent = CreateDefaultSubobject<UBoxComponent>(TEXT("Box")); }
+};
+
+UCLASS(Hidden, NotBlueprintable, NotPlaceable)
+class AGridTestBoxPiece : public AGridPieceBase
+{
+    GENERATED_BODY()
+
+public:
+
+    AGridTestBoxPiece() { RootComponent = CreateDefaultSubobject<UBoxComponent>(TEXT("Box")); }
 };
 
 // A hover component whose CanHover is bAllow

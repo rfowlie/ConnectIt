@@ -1,6 +1,7 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 #include "Hover/GridHoverComponent.h"
+#include "GridMechanicsSettings.h"
 #include "GameFramework/Actor.h"
 #include "Components/PrimitiveComponent.h"
 
@@ -80,22 +81,45 @@ void UGridHoverComponent::NotifyClicked()
     OnClicked.Broadcast(this);
 }
 
+namespace
+{
+    // Whether one of Owner's query-enabled primitives blocks Channel
+    bool BlocksChannel(const AActor* Owner, ECollisionChannel Channel)
+    {
+        if (!Owner) return false;
+
+        TInlineComponentArray<UPrimitiveComponent*> Primitives(Owner);
+        for (const UPrimitiveComponent* Primitive : Primitives)
+        {
+            if (Primitive
+                && CollisionEnabledHasQuery(Primitive->GetCollisionEnabled())
+                && Primitive->GetCollisionResponseToChannel(Channel) == ECR_Block)
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+}
+
 bool UGridHoverComponent::DoesOwnerBlockCursorTrace() const
 {
-    const AActor* Owner = GetOwner();
-    if (!Owner) return false;
+    return BlocksChannel(GetOwner(), UGridMechanicsSettings::GetCursorTraceChannel());
+}
 
-    TInlineComponentArray<UPrimitiveComponent*> Primitives(Owner);
-    for (const UPrimitiveComponent* Primitive : Primitives)
+FString UGridHoverComponent::GetCursorTraceProblem() const
+{
+    const AActor* Owner = GetOwner();
+    if (!Owner || DoesOwnerBlockCursorTrace()) return FString();
+
+    const FString Channel = UGridMechanicsSettings::GetCursorTraceChannelName();
+    if (UGridMechanicsSettings::GetCursorTraceChannel() != ECC_Visibility && BlocksChannel(Owner, ECC_Visibility))
     {
-        if (Primitive
-            && CollisionEnabledHasQuery(Primitive->GetCollisionEnabled())
-            && Primitive->GetCollisionResponseToChannel(CursorTraceChannel) == ECR_Block)
-        {
-            return true;
-        }
+        return FString::Printf(TEXT("blocks Visibility but not the cursor trace channel (%s) -- it is never hovered or "
+            "clicked. Block %s on its primitive (or use the GridTile collision profile)."), *Channel, *Channel);
     }
-    return false;
+    return FString::Printf(TEXT("has a Grid Hover Component, but none of its primitives block the cursor trace channel "
+        "(%s) -- it is never hovered or clicked."), *Channel);
 }
 
 void UGridHoverComponent::HandleOwnerBeginCursorOver(AActor* TouchedActor)
@@ -120,14 +144,12 @@ void UGridHoverComponent::CheckForErrors()
 
     // The other silent way hover fails: nothing for the cursor to hit
     AActor* Owner = GetOwner();
-    if (Owner && !DoesOwnerBlockCursorTrace())
+    const FString Problem = GetCursorTraceProblem();
+    if (Owner && !Problem.IsEmpty())
     {
         FMessageLog(TEXT("MapCheck")).Warning()
             ->AddToken(FUObjectToken::Create(Owner))
-            ->AddToken(FTextToken::Create(FText::FromString(FString::Printf(TEXT(
-                "has a Grid Hover Component, but none of its primitives block the cursor trace channel (%s) -- it is "
-                "never hovered or clicked."),
-                *UEnum::GetValueAsString(CursorTraceChannel.GetValue())))));
+            ->AddToken(FTextToken::Create(FText::FromString(Problem)));
     }
 }
 #endif

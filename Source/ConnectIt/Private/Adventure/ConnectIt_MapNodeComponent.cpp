@@ -4,6 +4,7 @@
 #include "Adventure/ConnectIt_AdventureHubComponent.h"
 #include "ConnectIt_GameplayTags.h"
 #include "Hover/GridHoverComponent.h"
+#include "GridMechanicsSettings.h"
 #include "GameFramework/Actor.h"
 
 
@@ -25,6 +26,14 @@ void UConnectIt_MapNodeComponent::SetFocused(bool bInFocused)
     if (bFocused == bInFocused) return;
     bFocused = bInFocused;
     OnStateChanged.Broadcast(this);
+}
+
+void UConnectIt_MapNodeComponent::OnRegister()
+{
+    Super::OnRegister();
+
+    // As a grid tile does (AGridTileBase::OnConstruction): the cursor can hit it
+    UGridMechanicsSettings::SetRootCursorResponse(GetOwner(), ECR_Block);
 }
 
 void UConnectIt_MapNodeComponent::BeginPlay()

@@ -41,6 +41,11 @@ public:
 	UFUNCTION(BlueprintPure, Category = "ConnectIt|Piece")
 	int32 GetFactionID() const { return FactionID; }
 
+	// The registry's position (AGridPieceBase), not IGridTileHandler's
+	// same-named event -- which returns it too
+	using AGridPieceBase::GetGridPosition;
+	virtual FGridPosition GetGridPosition_Implementation() override { return AGridPieceBase::GetGridPosition(); }
+
 	// --- Piece hooks ---
 	// The board visualizer (AConnectIt_BoardVisualizer) calls these as board
 	// events play, after the registry has followed the event. Each gets a

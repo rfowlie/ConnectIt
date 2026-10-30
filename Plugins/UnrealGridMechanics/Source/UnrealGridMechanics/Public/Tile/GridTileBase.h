@@ -67,6 +67,10 @@ public:
 protected:
 	virtual void BeginPlay() override;
 
+	// Blocks the cursor trace channel (UGridMechanicsSettings) on the root
+	// primitive, so a tile Blueprint is hoverable with no collision work
+	virtual void OnConstruction(const FTransform& Transform) override;
+
 	// Show the new cursor state here (Previous -> Current; no tag = neutral)
 	UFUNCTION(BlueprintNativeEvent, Category = "Grid Tile|Cursor")
 	void OnCursorStateChanged(FGameplayTag Previous, FGameplayTag Current);

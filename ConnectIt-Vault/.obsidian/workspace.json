@@ -214,8 +214,14 @@
       "bases:Create new base": false
     }
   },
-  "active": "97e0ab6e321a7903",
+  "active": "d21229c17b1e2e8b",
   "lastOpenFiles": [
+    "UnrealEngineTools/CLAUDE.md",
+    "UnrealEngineTools/AssetNamingKeeper.md",
+    "UnrealEngineTools",
+    "ConnectIt/_logs/2026-10-30-1945.md",
+    "ConnectIt/_decisions/2026-10-30-grid-cursor-trace-channel.md",
+    "ConnectIt/_logs/2026-10-30-1915.md",
     "ConnectIt/_decisions/2026-10-30-registries-own-grid-positions.md",
     "ConnectIt/design/grid-cursor-channel-plan.md",
     "ConnectIt/design/__INDEX.md",
@@ -238,11 +244,6 @@
     "ConnectIt/_decisions/2026-10-29-adventure-economy-shards-items-seals.md",
     "ConnectIt/design/actor-pool-plan.md",
     "ConnectIt/_logs/2026-10-29-2031.md",
-    "ConnectIt/code/recipes/build-a-hub-map.md",
-    "ConnectIt/_decisions/2026-10-29-hub-map-nodes-are-components.md",
-    "ConnectIt/_logs/2026-10-29-2026.md",
-    "ConnectIt/design/actor-pool-spawning.md",
-    "ConnectIt/_logs/2026-10-29-2020.md",
     "ConnectIt/_decisions/decsum.pl",
     "ConnectIt/design/level-outcomes-plan.md.tmp.7932.7141aac2726e",
     "ConnectIt/_logs/2026-10-24-1444.md.tmp.16900.05a8d2b10900",
@@ -251,7 +252,6 @@
     "ConnectIt/_questions/tile-powers-in-the-board-pipeline.md.tmp.33392.4e6a2c82500f",
     "ConnectIt/design/tile-powers-plan.md.tmp.32036.653886de9551",
     "ConnectIt/design/tile-power-setup.md.tmp.23744.981cbff5cdd4",
-    "ConnectIt/code/recipes/add-a-win-condition.md.tmp.34052.e14f2c7b1e47",
     "Untitled.canvas"
   ]
 }

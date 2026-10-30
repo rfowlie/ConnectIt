@@ -137,3 +137,5 @@ game defines the channel; a plugin can carry the ini -- UE merges a plugin's `Co
 but the slot number and filename need a test).
 
 Plan approved 2026-10-30, with the base `AGridTileBase` / `AGridPieceBase` setting their collision for the cursor channel in C++.
+**Built 2026-10-30** -- the plugin ships the channel itself (`Config/Engine.ini`, GridCursor on slot 18); decision:
+[grid cursor trace channel](../_decisions/2026-10-30-grid-cursor-trace-channel.md).
