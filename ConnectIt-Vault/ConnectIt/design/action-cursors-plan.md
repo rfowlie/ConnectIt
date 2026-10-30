@@ -3,10 +3,11 @@ type: plan
 status: not-started
 approved: true
 approved_on: 2026-10-29
-completed_on:
+completed_on: 
 started:
-stages: 5
-current_stage: not started
+stages: 4
+current_stage: 1: tile cursor state (plugin)
+owner_done: false          # the owner's editor checks for this plan (a checkbox; separate from the code stages)
 playtested: false
 design: "[hover-cursor](hover-cursor.md)"
 question:
@@ -87,7 +88,7 @@ On **`UTurnBasedPlayerAction`** (so every action has them), using the actor pool
 - Tests: Place and Swap acquire the cursors they declare and release them on every exit; Swap's marker follows the
   pick; the per-tile class choice swaps the hover cursor.
 
-## Stage 4: content (owner, editor)
+## Owner checks: content
 
 - Cursor Blueprints (hover variants; a marker), set on the actions' defaults.
 - **Tile Blueprints:** implement `OnCursorStateChanged` (the new explicit path) instead of reacting in the tag handler.

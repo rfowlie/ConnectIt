@@ -5,8 +5,9 @@ approved: true
 approved_on: 2026-10-22
 completed_on: 2026-10-23
 started:             2026-10-22          # YYYY-MM-DD, when the first stage was built (blank until then)
-stages: 4              # how many stages the plan has
-current_stage: complete   # the first stage not yet built ("complete" / "not started")
+stages: 3
+current_stage: complete
+owner_done: false          # the owner's editor checks for this plan (a checkbox; separate from the code stages)
 playtested: false
 design: "[tile-lock](tile-lock.md)"
 question:
@@ -221,7 +222,7 @@ catalog and builder tiles.*
     - Simulate Operation and the AI's ApplyMove;
     - replay checks throughout.
 
-## Stage 3: visuals and the tutorial (owner, editor)
+## Owner checks: visuals and the tutorial
 
 *Left to the owner (2026-10-23): not tracked by this plan any more; the recipe `code/recipes/lock-a-tile-or-chain-tiles.md`
 lists what the editor side needs.*

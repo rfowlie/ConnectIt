@@ -1,12 +1,13 @@
 ---
 type: plan
-status: in-progress
+status: complete
 approved: true
 approved_on: 2026-10-23
-completed_on:
+completed_on: 2026-10-29
 started:             2026-10-24          # YYYY-MM-DD, when the first stage was built (blank until then)
-stages: 7              # how many stages the plan has
-current_stage: "6: content (owner, editor); Stages 1-5 and 7 built"   # the first stage not yet built ("complete" / "not started")
+stages: 6
+current_stage: complete
+owner_done: false          # the owner's editor checks for this plan (a checkbox; separate from the code stages)
 playtested: false
 design: "[adventure-hub](adventure-hub.md)"
 question:
@@ -290,7 +291,7 @@ stages.
       inventory and permanent list by class).
   - **Tests:** renamed, plus a closed node's item-budget warning (in `.NodeData`).
 
-## Stage 6: content (owner, editor)
+## Owner checks: content
 
 - **Rebuild the 5 loadouts** (`Content/_ConnectItNetworked/Game/Data/ActionLoadout/`) with the one permanent list.
 - **Turn-end trees** that need an Item Used leaf.
@@ -299,8 +300,7 @@ stages.
 
 ## Stage 7: vault
 
-**Done 2026-10-29** ([log](../_logs/2026-10-29-1040.md)). Stage 6 (owner, editor) is still open, so the plan stays in
-progress.
+**Done 2026-10-29** ([log](../_logs/2026-10-29-1040.md)). The owner checks under "Owner checks: content" are still open; they do not hold up the plan being complete.
 
 - The decision note, updated with the item model.
 - **UnrealTurnBasedMechanics code pages:** the actions component, the action stack and turn-end flows, the

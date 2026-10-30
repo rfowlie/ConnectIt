@@ -11,10 +11,21 @@ Dataview plugin.) Plan properties are described in the [README](__README.md).
 Newest first, by the date the file was created.
 
 ```dataview
-TABLE WITHOUT ID file.link AS Plan, file.cday AS Created, status AS Status, current_stage AS "Current stage", started AS Started, approved_on AS Approved, completed_on AS Completed, decision AS Decision
+TABLE WITHOUT ID file.link AS Plan, file.cday AS Created, status AS Status, current_stage AS "Current stage", started AS Started, approved_on AS Approved, completed_on AS Completed, owner_done AS "Owner checks done", decision AS Decision
 FROM "ConnectIt/design"
 WHERE type = "plan"
 SORT file.cday DESC, file.name ASC
+```
+
+### Owner checks outstanding
+
+Complete for code, but the owner's editor checks are not done (the `owner_done` checkbox).
+
+```dataview
+TABLE WITHOUT ID file.link AS Plan, status AS Status, current_stage AS "Current stage", completed_on AS Completed
+FROM "ConnectIt/design"
+WHERE type = "plan" AND owner_done = false
+SORT completed_on DESC, file.name ASC
 ```
 
 ### Plans still to do

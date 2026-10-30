@@ -5,8 +5,9 @@ approved: true
 approved_on: 2026-10-28
 completed_on: 2026-10-28
 started:             2026-10-28          # YYYY-MM-DD, when the first stage was built (blank until then)
-stages: 5              # how many stages the plan has
-current_stage: complete   # the first stage not yet built ("complete" / "not started")
+stages: 4
+current_stage: complete
+owner_done: false          # the owner's editor checks for this plan (a checkbox; separate from the code stages)
 playtested: false
 design: "[hover-component](hover-component.md)"
 question:
@@ -97,7 +98,7 @@ stages.
   happens until a tile Blueprint implements it). **Also (owner, 2026-10-28): `UGridTrackerSubsystem` removed** --
   nothing read it; `AGridUnitBase` no longer registers with it.
 
-## Stage 4: ConnectIt clean-up (owner, editor)
+## Owner checks: ConnectIt clean-up
 
 - `CI_GridTileBase`: remove its manual *On Grid Tile Begin Cursor Over* broadcast and its own hover reactions;
   highlights move to the actions' `HandleValidHover` (or the action defers to a tile function).

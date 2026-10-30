@@ -1,12 +1,13 @@
 ---
 type: plan
-status: in-progress
+status: complete
 approved: true
 approved_on: 2026-10-29
-completed_on:
+completed_on: 2026-10-29
 started:             2026-10-29          # YYYY-MM-DD, when the first stage was built (blank until then)
-stages: 7              # how many stages the plan has
-current_stage: "2: the completion handle (Stage 1 built 2026-10-29)"   # the first stage not yet built ("complete" / "not started")
+stages: 6
+current_stage: complete
+owner_done: false          # the owner's editor checks for this plan (a checkbox; separate from the code stages)
 playtested: false
 design: "[board-visualizer](board-visualizer.md)"
 question:
@@ -120,7 +121,7 @@ convenience -- so e.g. `OnPieceMoved` can ask whether a tile power caused it.
   - Tests: `ConnectIt.Visuals.Handle`, `.Events`, `.HookDefaults`, and cause checks in `ConnectIt.Board.TilePowerChain`.
     The old `ConnectIt.Board.TileHooks` was removed (73/73).
 
-## Stage 6: content migration (owner, editor)
+## Owner checks: content migration
 
 - A `BP_BoardVisualizer` subclass; set it on the level configs.
 - Move `CI_PieceVisualHandler`'s piece visuals into piece hooks (`OnMoved`...) or the visualizer's overrides; delete

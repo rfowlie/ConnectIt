@@ -2,7 +2,8 @@
 
 Checklist of the **in-editor work** on the way to Adventure mode, gathered from every plan's "owner, editor" items.
 **Rewritten 2026-10-29** against what is built now (the first version, 2026-10-25, predated most of this). Tick boxes as
-you go; links point at the plan with the details.
+you go; links point at the plan with the details. For the full path from nothing, see
+[adventure-from-scratch-checklist](adventure-from-scratch-checklist.md).
 
 How it is sorted: **A** can be done now and will not be redone; **B** is waiting on a plan that will change how the work
 is done -- doing it now means doing it twice; **C** is the play-testing every finished plan still owes.

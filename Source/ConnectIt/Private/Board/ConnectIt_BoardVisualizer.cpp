@@ -415,8 +415,8 @@ AConnectIt_TileBase* AConnectIt_BoardVisualizer::GetTileAt(FGridPosition Positio
 
 AConnectIt_PieceBase* AConnectIt_BoardVisualizer::GetPieceAt(FGridPosition Position) const
 {
-    const UConnectIt_PieceRegistry* Pieces = GetPieceRegistry();
-    return Pieces ? Pieces->GetPieceAt(Position) : nullptr;
+    const UConnectIt_PieceRegistry* PieceRegistry = GetPieceRegistry();
+    return PieceRegistry ? PieceRegistry->GetPieceAt(Position) : nullptr;
 }
 
 FVector AConnectIt_BoardVisualizer::GetPieceLocation(FGridPosition Position) const

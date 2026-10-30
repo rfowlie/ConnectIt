@@ -1,12 +1,13 @@
 ---
 type: plan
-status: in-progress
+status: complete
 approved: true
 approved_on: 2026-10-23
-completed_on:
+completed_on: 2026-10-29
 started:             2026-10-23          # YYYY-MM-DD, when the first stage was built (blank until then)
-stages: 7              # how many stages the plan has
-current_stage: "6: UI and art (owner, editor) -- Stages 5 and 7 built 2026-10-29"   # the first stage not yet built ("complete" / "not started")
+stages: 6
+current_stage: complete
+owner_done: false          # the owner's editor checks for this plan (a checkbox; separate from the code stages)
 playtested: false
 design: "[adventure-hub](adventure-hub.md)"
 question:
@@ -283,7 +284,7 @@ Warnings and errors only -- it never changes data.
   - Test: `ConnectIt.Adventure.HubProgression` (an unearnable seal, an action without shards, an untaught concept;
     a seal and an action earned before their gate; giving the seal fixes it).
 
-## Stage 6: UI and art (owner, editor)
+## Owner checks: UI and art
 
 - Node panel: name, description, region, rewards, required (with what's missing) and recommended actions, concepts,
   gate and its seal cost, the **item budget**, **Break Seal** / **Start**.

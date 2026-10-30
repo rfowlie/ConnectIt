@@ -35,9 +35,7 @@ public:
 	// Called immediately after retrieval from pool
 	UFUNCTION(BlueprintCallable, Category = "ConnectIt|Piece")
 	void InitialisePiece(int32 InFactionID, FGridPosition InGridPosition);
-
 	
-
 	// Grid position this piece occupies
 	UPROPERTY(BlueprintReadOnly, Category = "ConnectIt|Piece")
 	FGridPosition OccupiedPosition;

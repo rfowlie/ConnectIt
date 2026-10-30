@@ -24,3 +24,21 @@
 - This feels a bit monolithic and daunting.
 - It might be easier down the line to add flexibility by creating single visualizers. The concept would be that you have a base visualizer (the C++ default for example). Then a list of single visualizers that override one board operation each. This way we can more easily swap out behaviors. 
 	- Should be a map with Operation tag and Visualizer Actor (single)
+
+
+## Updating Vault
+
+- use that Microsoft article about the development cycle to better structure the ConnectIt Domain
+- Already doing some of the things listed, but could look to better arrange things
+
+
+## Trace Channel
+
+- since we are building a custom framework, should we just make a grid trace channel and use that going forward?
+	- Is it just easier to not do this?
+
+
+## Random Notes
+
+-  AConnectIt_HubLinkActor is fine for now but feels a bit restrictive. Mostly functions and two params could be turned into a single function call SetConnection(To, From) so an interface feels like a solid possibility.
+- When closing project there is a crash that happens, not sure what it is

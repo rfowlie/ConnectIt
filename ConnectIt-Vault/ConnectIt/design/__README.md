@@ -15,10 +15,11 @@ type: plan
 status: draft          # draft | not-started | in-progress | complete | suspended | dropped
 approved: false        # true once the owner approves it
 approved_on:           # YYYY-MM-DD
-completed_on:          # YYYY-MM-DD, once every stage is done
+completed_on:          # YYYY-MM-DD, once every code stage is built (owner checks do not hold it up)
 started:               # YYYY-MM-DD, when the first stage was built (blank until then)
 stages:                # how many stages the plan has
 current_stage:         # the first stage not yet built, e.g. "3: the visualizer actor"; "complete" / "not started"
+owner_done:          # checkbox: the owner's editor checks (a separate "Owner checks" section, not a stage) are done
 playtested: false      # true once the owner has checked it in PIE
 design:                # "[note](note.md)" -- the design note it builds
 question:              # "[note](../_questions/note.md)" -- the discussion behind it, if any
@@ -28,12 +29,12 @@ requires:              # "[plan](other-plan.md)" -- a plan that must be built fi
 ```
 
 - **status**: `draft` while being written or discussed; `not-started` once written (approved or not); `in-progress`
-  from the first stage built; `complete` when every stage is done; `suspended` paused on purpose; `dropped` abandoned
+  from the first stage built; `complete` when every code stage is built (the vault stage counts as code; owner checks do not); `suspended` paused on purpose; `dropped` abandoned
   (keep the note, say why in it).
 - **approved** is separate from status: a plan can be approved and not started.
-- **started**, **stages** and **current-stage** say where an in-progress plan sits without reading the code: `started` is the
-  date the first stage was built; `current-stage` is the first stage not yet built (an owner-in-the-editor stage counts), with
-  a few words on what is already built. A finished plan says `complete`; an unstarted one `not started`. Set them when a
+- **started**, **stages**, **current_stage** and **owner_done** say where an in-progress plan sits without reading the code: `started` is the
+  date the first stage was built; `current_stage` is the first code stage not yet built (owner checks are not stages), with
+  a few words on what is already built. A finished plan says `complete`; an unstarted one `not started`. `stages` counts the numbered stages only. Owner work sits in an unnumbered "## Owner checks" section and is tracked by `owner_done` (a checkbox), so a plan can be `complete` with owner checks still open. Set them when a
   stage is built (same edit as `status`). For plans that were already complete, `started` is the approval date.
 - **requires** names prerequisite plans; say in the body which stages wait for them (often only some do).
 - **playtested** tracks the PIE check that "built" plans used to note in prose ("PIE pending").
