@@ -6,7 +6,7 @@ approved_on: 2026-10-28
 completed_on:
 started: 2026-10-29             # YYYY-MM-DD, when the first stage was built (blank until then)
 stages: 6              # how many stages the plan has
-current_stage: "2: the reveal walk (Stage 1 built 2026-10-29)"   # the first stage not yet built ("complete" / "not started")
+current_stage: "3: validation (Stage 2 built 2026-10-29)"   # the first stage not yet built ("complete" / "not started")
 playtested: false
 design: "[adventure-hub](adventure-hub.md)"
 question:
@@ -117,6 +117,22 @@ cost: server-only (fine for a single-player hub), and discovery must be pulled a
 - Tests: the walk on small graphs -- start only; after completions; a gated node revealed but not playable; a broken
   seal makes it available; a loop; a deleted id in progress ignored (gotcha 5); an unlock with no registered node
   skipped.
+- **As built (2026-10-29; 79/79 tests):**
+  - `UConnectIt_AdventureHubComponent::RunRevealWalk(Start, MapNodes, Progress, Table, bRevealAll)` (static, no world)
+    returns `FConnectItRevealWalkResult`: `States` (revealed nodes; absent = Hidden) and `Links` (`From` / `To`,
+    from completed nodes to revealed ones; a loop back to the start is a link too). Unlocks are followed only into
+    nodes registered in this map (their soft pointers resolve because the components hold them), so off-map unlocks
+    and ids the save has but no node has are skipped.
+  - **States use the progress rules** (`GetNodeState`): required actions still count after a seal is broken (the
+    adventure plan's Stage 2 rule) -- a broken seal makes a node Available only if its actions are also met.
+  - `RefreshReveal` (on `BeginPlay` after discovery; on the Adventure subsystem's new `OnProgressChanged`, broadcast
+    after a load, Break Seal and a recorded result) applies the states and keeps `RevealResult`; a late node gets
+    its state from it.
+  - Debug: console command `ConnectIt.Adventure.RevealAll 1` / `0`, applied at once.
+  - Gotcha 4: the Adventure subsystem loads the save in its `Initialize` (game instance start), before any map; no
+    subsystem -> a logged error and the start only.
+  - Test: `ConnectIt.Adventure.RevealWalk` (fresh; completions; a loop; gated then seal broken; a deleted id; an
+    off-map unlock; reveal all).
 
 ## Stage 3: validation
 

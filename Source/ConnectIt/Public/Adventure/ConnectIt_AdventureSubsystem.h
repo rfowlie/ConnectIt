@@ -11,6 +11,8 @@ class UConnectIt_MapNodeDataAsset;
 class UActionLoadoutDataAsset;
 class ATurnBasedPlayerState;
 
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnConnectItAdventureProgressChanged);
+
 
 // The player's Adventure progress for the whole session: loads the save when
 // the game starts, answers questions about it, changes it by the rules
@@ -50,6 +52,11 @@ public:
 
     UFUNCTION(BlueprintPure, Category = "ConnectIt|Adventure")
     const FConnectItAdventureProgress& GetProgress() const { return Progress; }
+
+    // The progress changed (a seal broken, a result recorded, a load) -- the
+    // hub re-runs its reveal walk
+    UPROPERTY(BlueprintAssignable, Category = "ConnectIt|Adventure")
+    FOnConnectItAdventureProgressChanged OnProgressChanged;
 
     // Where Node stands. Hidden unless the hub has revealed it (bRevealed: its
     // reveal walk decides); OutCheck says what a gated node still needs.

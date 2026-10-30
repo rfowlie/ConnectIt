@@ -34,6 +34,7 @@ bool UConnectIt_AdventureSubsystem::LoadProgress()
         return false;
     }
     Progress = Save->Progress;
+    OnProgressChanged.Broadcast();
     return true;
 }
 
@@ -80,6 +81,7 @@ bool UConnectIt_AdventureSubsystem::BreakSeal(const UConnectIt_MapNodeDataAsset*
 {
     if (!IsValid(Node) || !Progress.BreakSeal(*Node)) return false;
     SaveProgress();
+    OnProgressChanged.Broadcast();
     return true;
 }
 
@@ -184,5 +186,6 @@ bool UConnectIt_AdventureSubsystem::RecordResult(const UConnectIt_MapNodeDataAss
     if (!IsValid(Node)) return false;
     const bool bRewarded = Progress.RecordResult(*Node, bWon, Inventory, UItemActionInventoryDataAsset::Get());
     SaveProgress();
+    OnProgressChanged.Broadcast();
     return bRewarded;
 }

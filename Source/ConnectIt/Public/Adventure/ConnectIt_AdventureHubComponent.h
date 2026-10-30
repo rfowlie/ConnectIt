@@ -4,10 +4,45 @@
 
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
+#include "Adventure/ConnectIt_AdventureProgress.h"
 #include "ConnectIt_AdventureHubComponent.generated.h"
 
 class UConnectIt_MapNodeComponent;
 class UConnectIt_MapNodeDataAsset;
+class UConnectIt_ActionShardTableDataAsset;
+
+// One unlock link the walk revealed: From's Unlocks names To, both revealed
+USTRUCT(BlueprintType)
+struct CONNECTIT_API FConnectItRevealedLink
+{
+    GENERATED_BODY()
+
+    UPROPERTY(BlueprintReadOnly, Category = "Adventure Hub")
+    TObjectPtr<UConnectIt_MapNodeDataAsset> From = nullptr;
+
+    UPROPERTY(BlueprintReadOnly, Category = "Adventure Hub")
+    TObjectPtr<UConnectIt_MapNodeDataAsset> To = nullptr;
+};
+
+// What the reveal walk found: each revealed node's state (a node not in it is
+// Hidden) and the links between revealed nodes
+USTRUCT(BlueprintType)
+struct CONNECTIT_API FConnectItRevealWalkResult
+{
+    GENERATED_BODY()
+
+    UPROPERTY(BlueprintReadOnly, Category = "Adventure Hub")
+    TMap<TObjectPtr<UConnectIt_MapNodeDataAsset>, EConnectItNodeState> States;
+
+    UPROPERTY(BlueprintReadOnly, Category = "Adventure Hub")
+    TArray<FConnectItRevealedLink> Links;
+
+    EConnectItNodeState GetState(const UConnectIt_MapNodeDataAsset* Node) const
+    {
+        const EConnectItNodeState* Found = States.Find(Node);
+        return Found ? *Found : EConnectItNodeState::Hidden;
+    }
+};
 
 
 // The hub map's system, on its game mode (AConnectIt_GameMode_AdventureHub),
@@ -16,8 +51,12 @@ class UConnectIt_MapNodeDataAsset;
 //
 // Discovery is pulled: when it begins play it finds every map node component
 // in the world (load order doesn't matter). A node that begins play later adds
-// itself (add-or-update); one leaving play removes itself. The reveal walk
-// that sets the nodes' states runs after discovery.
+// itself (add-or-update); one leaving play removes itself.
+//
+// After discovery the reveal walk (RunRevealWalk) sets every node's state from
+// the player's progress (UConnectIt_AdventureSubsystem); it runs again when the
+// progress changes (a seal broken). A late node takes its state from the last
+// walk. Console: ConnectIt.Adventure.RevealAll 1 / 0 reveals every node.
 UCLASS(ClassGroup = (Adventure), meta = (BlueprintSpawnableComponent))
 class CONNECTIT_API UConnectIt_AdventureHubComponent : public UActorComponent
 {
@@ -68,9 +107,34 @@ public:
     UFUNCTION(BlueprintPure, Category = "ConnectIt|Adventure Hub")
     int32 GetNodeCount() const { return NodeToComponent.Num(); }
 
+    // --- The reveal walk ---
+
+    // Which nodes the player sees, and how (no world needed): breadth-first
+    // from Start through the Unlocks of completed nodes -- a completed node
+    // reveals its unlocks, any other revealed node is the frontier (its
+    // unlocks stay hidden). A revealed node's state comes from Progress
+    // (FConnectItAdventureProgress::GetNodeState). Only nodes in MapNodes (this
+    // map's) are followed: an unlock elsewhere, or an id the save knows but no
+    // node has, is skipped. A visited set keeps loops finite. bRevealAll
+    // (debug) reveals every node in MapNodes.
+    static FConnectItRevealWalkResult RunRevealWalk(const UConnectIt_MapNodeDataAsset* Start,
+        const TSet<const UConnectIt_MapNodeDataAsset*>& MapNodes, const FConnectItAdventureProgress& Progress,
+        const UConnectIt_ActionShardTableDataAsset* Table, bool bRevealAll = false);
+
+    // Runs the walk with the player's progress and applies it to the nodes
+    UFUNCTION(BlueprintCallable, Category = "ConnectIt|Adventure Hub")
+    void RefreshReveal();
+
+    UFUNCTION(BlueprintPure, Category = "ConnectIt|Adventure Hub")
+    const FConnectItRevealWalkResult& GetRevealResult() const { return RevealResult; }
+
+    // Debug (ConnectIt.Adventure.RevealAll): every node revealed
+    static bool bRevealAllNodes;
+
 protected:
 
     virtual void BeginPlay() override;
+    virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 
 private:
 
@@ -88,5 +152,13 @@ private:
     UPROPERTY()
     TObjectPtr<UConnectIt_MapNodeComponent> ExitNode;
 
+    // The last walk (a late node takes its state from it)
+    UPROPERTY()
+    FConnectItRevealWalkResult RevealResult;
+
     bool bDiscovered = false;
+    bool bWalked = false;
+
+    UFUNCTION()
+    void HandleProgressChanged();
 };

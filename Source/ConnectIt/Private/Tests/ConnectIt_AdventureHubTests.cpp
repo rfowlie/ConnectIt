@@ -93,4 +93,74 @@ bool FConnectItAdventureHubDiscoveryTest::RunTest(const FString& Parameters)
     return true;
 }
 
+// Adventure hub map plan, Stage 2: the reveal walk on a small graph
+//   S -> A, B;  A -> C (gated by a seal), D (not in this map);  B -> S (a loop)
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FConnectItAdventureRevealWalkTest,
+    "ConnectIt.Adventure.RevealWalk", ConnectItAdventureHubTests::TestFlags)
+
+bool FConnectItAdventureRevealWalkTest::RunTest(const FString& Parameters)
+{
+    using EState = EConnectItNodeState;
+    UConnectIt_MapNodeDataAsset* S = NewObject<UConnectIt_MapNodeDataAsset>();
+    UConnectIt_MapNodeDataAsset* A = NewObject<UConnectIt_MapNodeDataAsset>();
+    UConnectIt_MapNodeDataAsset* B = NewObject<UConnectIt_MapNodeDataAsset>();
+    UConnectIt_MapNodeDataAsset* C = NewObject<UConnectIt_MapNodeDataAsset>();
+    UConnectIt_MapNodeDataAsset* D = NewObject<UConnectIt_MapNodeDataAsset>();
+    S->Unlocks = { A, B };
+    A->Unlocks = { C, D };
+    B->Unlocks = { S };
+    C->Gate.GeneralSeals = 1;
+    const TSet<const UConnectIt_MapNodeDataAsset*> MapNodes = { S, A, B, C };
+    const auto Walk = [&](const FConnectItAdventureProgress& Progress, bool bRevealAll = false)
+    {
+        return UConnectIt_AdventureHubComponent::RunRevealWalk(S, MapNodes, Progress, nullptr, bRevealAll);
+    };
+    const auto HasLink = [](const FConnectItRevealWalkResult& Result, const UConnectIt_MapNodeDataAsset* From, const UConnectIt_MapNodeDataAsset* To)
+    {
+        return Result.Links.ContainsByPredicate([From, To](const FConnectItRevealedLink& Link) { return Link.From == From && Link.To == To; });
+    };
+
+    // --- A fresh save: the start only ---
+    FConnectItAdventureProgress Progress;
+    Progress.CompletedNodes.Add(FGuid::NewGuid());   // an id no node has (a deleted node): ignored
+    {
+        const FConnectItRevealWalkResult Result = Walk(Progress);
+        TestTrue(TEXT("fresh: the start available, nothing else"),
+            Result.States.Num() == 1 && Result.GetState(S) == EState::Available && Result.GetState(A) == EState::Hidden);
+        TestEqual(TEXT("fresh: no links"), Result.Links.Num(), 0);
+    }
+
+    // --- The start completed: its unlocks revealed (the frontier), the loop back to it harmless ---
+    Progress.CompletedNodes.Add(S->NodeId);
+    Progress.CompletedNodes.Add(B->NodeId);
+    {
+        const FConnectItRevealWalkResult Result = Walk(Progress);
+        TestTrue(TEXT("start won: S completed, A available, B completed"),
+            Result.GetState(S) == EState::Completed && Result.GetState(A) == EState::Available && Result.GetState(B) == EState::Completed);
+        TestEqual(TEXT("start won: C still hidden (A not won)"), Result.GetState(C), EState::Hidden);
+        TestTrue(TEXT("start won: links S->A, S->B, and the loop B->S"),
+            HasLink(Result, S, A) && HasLink(Result, S, B) && HasLink(Result, B, S) && Result.Links.Num() == 3);
+    }
+
+    // --- A won: C revealed but gated; D (not in this map) skipped ---
+    Progress.CompletedNodes.Add(A->NodeId);
+    {
+        const FConnectItRevealWalkResult Result = Walk(Progress);
+        TestEqual(TEXT("A won: C gated"), Result.GetState(C), EState::Gated);
+        TestTrue(TEXT("A won: link A->C, nothing to D"), HasLink(Result, A, C) && !HasLink(Result, A, D) && Result.GetState(D) == EState::Hidden);
+    }
+
+    // --- C's seal broken: available ---
+    Progress.BrokenSeals.Add(C->NodeId);
+    TestEqual(TEXT("seal broken: C available"), Walk(Progress).GetState(C), EState::Available);
+
+    // --- Reveal all (debug): every node of the map, even from a fresh save ---
+    {
+        const FConnectItRevealWalkResult Result = Walk(FConnectItAdventureProgress(), true);
+        TestEqual(TEXT("reveal all: the four map nodes"), Result.States.Num(), 4);
+        TestEqual(TEXT("reveal all: C still gated"), Result.GetState(C), EState::Gated);
+    }
+    return true;
+}
+
 #endif // WITH_DEV_AUTOMATION_TESTS
