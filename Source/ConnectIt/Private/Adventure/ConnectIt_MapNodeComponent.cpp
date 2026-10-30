@@ -1,0 +1,61 @@
+// Fill out your copyright notice in the Description page of Project Settings.
+
+#include "Adventure/ConnectIt_MapNodeComponent.h"
+#include "Adventure/ConnectIt_AdventureHubComponent.h"
+#include "GameFramework/Actor.h"
+
+
+UConnectIt_MapNodeComponent::UConnectIt_MapNodeComponent()
+{
+    PrimaryComponentTick.bCanEverTick = false;
+}
+
+void UConnectIt_MapNodeComponent::SetState(EConnectItNodeState NewState)
+{
+    if (State == NewState) return;
+    State = NewState;
+    ApplyVisibility();
+    OnStateChanged.Broadcast(this);
+}
+
+void UConnectIt_MapNodeComponent::SetFocused(bool bInFocused)
+{
+    if (bFocused == bInFocused) return;
+    bFocused = bInFocused;
+    OnStateChanged.Broadcast(this);
+}
+
+void UConnectIt_MapNodeComponent::BeginPlay()
+{
+    Super::BeginPlay();
+    ApplyVisibility();
+
+    // Found already by the hub's discovery, or arriving after it (a late
+    // spawn, a streamed level): either way add-or-update
+    if (UConnectIt_AdventureHubComponent* Hub = UConnectIt_AdventureHubComponent::GetAdventureHub(this))
+    {
+        if (Hub->HasDiscovered())
+        {
+            Hub->AddNode(this);
+        }
+    }
+}
+
+void UConnectIt_MapNodeComponent::EndPlay(const EEndPlayReason::Type EndPlayReason)
+{
+    if (UConnectIt_AdventureHubComponent* Hub = UConnectIt_AdventureHubComponent::GetAdventureHub(this))
+    {
+        Hub->RemoveNode(this);
+    }
+    Super::EndPlay(EndPlayReason);
+}
+
+void UConnectIt_MapNodeComponent::ApplyVisibility() const
+{
+    AActor* Owner = GetOwner();
+    if (!Owner) return;
+
+    const bool bHidden = State == EConnectItNodeState::Hidden;
+    Owner->SetActorHiddenInGame(bHidden);
+    Owner->SetActorEnableCollision(!bHidden);
+}

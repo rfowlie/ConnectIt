@@ -1,12 +1,12 @@
 ---
 type: plan
-status: not-started
+status: in-progress
 approved: true
 approved_on: 2026-10-28
 completed_on:
-started:                       # YYYY-MM-DD, when the first stage was built (blank until then)
+started: 2026-10-29             # YYYY-MM-DD, when the first stage was built (blank until then)
 stages: 6              # how many stages the plan has
-current_stage: not started   # the first stage not yet built ("complete" / "not started")
+current_stage: "2: the reveal walk (Stage 1 built 2026-10-29)"   # the first stage not yet built ("complete" / "not started")
 playtested: false
 design: "[adventure-hub](adventure-hub.md)"
 question:
@@ -85,6 +85,19 @@ cost: server-only (fine for a single-player hub), and discovery must be pulled a
   component (add-or-update); `EndPlay` calls `RemoveNode`.
 - Tests: discovery finds every node; a duplicate data asset rejected; a late node added once even if it pushes twice;
   removal clears both maps (with a test world where needed).
+- **As built (2026-10-29; 78/78 tests):**
+  - `UConnectIt_MapNodeComponent`: `NodeData`, `bIsStart`, `bIsExit`; `State` reuses the adventure plan's
+    `EConnectItNodeState` (Hidden / Available / Gated / Completed) plus `SetFocused`; `OnStateChanged` (node).
+    Hidden hides its owner and its collision; it starts Hidden. Its `BeginPlay` pushes itself to the hub only if the hub
+    has already discovered (add-or-update); `EndPlay` removes it.
+  - `UConnectIt_AdventureHubComponent`: `NodeToComponent` (data asset -> node component, so -> actor) and
+    `ActorToNode`; `DiscoverNodes` (once, on `BeginPlay`; the world's node components); `AddNode` rejects a node with
+    no data and a second node naming the same data asset (error, first kept); a second Start / Exit is an error, first
+    kept; `GetActorForNode`, `GetNodeForActor`, `GetNodeComponent`, `GetStartNode`, `GetExitNode`; static
+    `GetAdventureHub` (the auth game mode's component).
+  - `AConnectIt_GameMode_AdventureHub` (`AGameModeBase`, `Framework/GameMode/`) creates the hub component.
+  - Test: `ConnectIt.Adventure.HubDiscovery` (a test world: discovery, the duplicate, a late node pushed twice,
+    removal, Hidden hides the actor). The walk is Stage 2: discovery doesn't change states yet.
 
 ## Stage 2: the reveal walk
 
