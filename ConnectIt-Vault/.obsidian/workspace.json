@@ -27,12 +27,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "UnrealUnsorted/CLAUDE.md",
+                "file": "UnrealEngineTools/PathTracer.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "CLAUDE"
+              "title": "PathTracer"
             }
           },
           {
@@ -231,8 +231,15 @@
   },
   "active": "73240bcde6b4b764",
   "lastOpenFiles": [
-    "Unsorted/2026-09-11 Debugging Online Setup.md",
+    "_core/_logs/2026-10-30-1330.md",
+    "UnrealEditorMechanics/CLAUDE.md",
+    "UnrealEditorMechanics",
     "UnrealEngineTools/CLAUDE.md",
+    "UnrealUnsorted/CLAUDE.md",
+    "_core/_logs/2026-10-30-1250.md",
+    "UnrealPathMechanics/CLAUDE.md",
+    "UnrealPathMechanics",
+    "Unsorted/2026-09-11 Debugging Online Setup.md",
     "UnrealEngineTools/PathTracer.md",
     "UnrealEngineTools/AssetNamingKeeper.md",
     "BRAIN DUMP.md",
@@ -254,19 +261,12 @@
     "ConnectIt/_tasks/active.md",
     "ConnectIt/_logs/2026-10-29-2107.md",
     "Development/board-of-advisors/_knowledge/raw/jonas-tyroller/01-this-problem-changes-your-perspective-on-game-dev.md",
-    "ConnectIt/design/top-down-camera-plan.md",
-    "ConnectIt/_logs/2026-10-29-1500.md",
-    "ConnectIt/_logs/2026-10-29-2052.md",
-    "ConnectIt/code/recipes/add-an-adventure-node-or-region.md",
-    "ConnectIt/_decisions/2026-10-29-adventure-economy-shards-items-seals.md",
     "ConnectIt/_decisions/decsum.pl",
     "ConnectIt/design/level-outcomes-plan.md.tmp.7932.7141aac2726e",
     "ConnectIt/_logs/2026-10-24-1444.md.tmp.16900.05a8d2b10900",
     "ConnectIt/_logs/2026-10-24-1331.md.tmp.16900.98a1017df2d0",
     "UnrealUnsorted",
     "ConnectIt/_questions/tile-powers-in-the-board-pipeline.md.tmp.33392.4e6a2c82500f",
-    "ConnectIt/design/tile-powers-plan.md.tmp.32036.653886de9551",
-    "ConnectIt/design/tile-power-setup.md.tmp.23744.981cbff5cdd4",
     "Untitled.canvas"
   ]
 }

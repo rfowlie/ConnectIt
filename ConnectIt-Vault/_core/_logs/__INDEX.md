@@ -8,6 +8,10 @@ in `<domain>/_logs/`, not here.
 
 Newest first:
 
+- [2026-10-30-1330](2026-10-30-1330.md) — session — UnrealEditorMechanics plugin created (editor-only module, skeleton) with its vault domain note and domain-table row.
+
+- [2026-10-30-1250](2026-10-30-1250.md) — session — UnrealEngineTools and UnrealPathMechanics domains set to the vault domain format; Path Tracer goals written; both in the domain table.
+
 - [2026-10-23-1221](2026-10-23-1221.md) — session — process-code flags resolved: `retired` code status (schema +
   skill), recipe `touches:` lead with paths (6 recipes refreshed), `add-a-scoring-rule` rewritten, `UGridDefinition`
   page, tile power inventory rows, ConnectIt index intro.

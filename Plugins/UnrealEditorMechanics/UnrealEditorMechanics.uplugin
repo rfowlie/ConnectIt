@@ -1,0 +1,25 @@
+{
+	"FileVersion": 3,
+	"Version": 1,
+	"VersionName": "1.0",
+	"FriendlyName": "UnrealEditorMechanics",
+	"Description": "Editor-only tools: Editor Utility Widgets, Content Browser helpers and other authoring tools that are not tied to one gameplay plugin. Its module is Editor type, so it never loads or ships in a packaged build.",
+	"Category": "Other",
+	"CreatedBy": "Robert A Fowlie",
+	"CreatedByURL": "",
+	"DocsURL": "",
+	"MarketplaceURL": "",
+	"SupportURL": "",
+	"CanContainContent": true,
+	"IsBetaVersion": false,
+	"IsExperimentalVersion": true,
+	"Installed": false,
+	"EnabledByDefault": false,
+	"Modules": [
+		{
+			"Name": "UnrealEditorMechanics",
+			"Type": "Editor",
+			"LoadingPhase": "Default"
+		}
+	]
+}

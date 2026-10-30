@@ -35,6 +35,9 @@ portfolio evidence), also unrelated to the game's code.
 | [UnrealUIMechanics](UnrealUIMechanics/CLAUDE.md) | UI widgets plugin. **Stub** — empty module skeleton, not enabled. |
 | [UnrealUnsorted](UnrealUnsorted/CLAUDE.md) | Holding area for code migrated from other plugins/projects, waiting to be digested. **Empty on purpose; nothing may depend on it.** |
 | [UnrealSkinMechanics](UnrealSkinMechanics/CLAUDE.md) | Player-selectable skin system: tag categories, DataTable skin/preset catalogs, `UDeveloperSettings` entry point. **Slice 1** — scaffold + settings + data types; subsystem/save not built yet. |
+| [UnrealPathMechanics](UnrealPathMechanics/CLAUDE.md) | Path tracer plugin. **Content only**: Blueprints, materials and demo assets, being converted to C++ and rehomed. |
+| [UnrealEditorMechanics](UnrealEditorMechanics/CLAUDE.md) | Editor-only tools (Editor Utility Widgets, Content Browser helpers). Editor module: never loads or ships in a packaged game. Not enabled yet. |
+| [UnrealEngineTools](UnrealEngineTools/CLAUDE.md) | Notes on outside editor tools (from other projects) under investigation for reuse. Notes only; the tools' assets stay where they live. |
 | [Development](Development/CLAUDE.md) | The owner's personal knowledge vault: the virtual advisory board, career/owner knowledge, and the game-projects group (its own nested `CLAUDE.md` tree, self-contained). |
 | [Portfolio](Portfolio/CLAUDE.md) | Career-presentation work: the plan and tasks for showcasing ConnectIt (case studies, footage, public showcase repo, write-ups, outreach) for the technical-artist → gameplay-programmer pivot. **Active** — plan approved 2026-09-30. |
 
